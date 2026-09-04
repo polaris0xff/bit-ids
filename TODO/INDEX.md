@@ -1,17 +1,17 @@
 # Work index
 
 Total: 52
-Open: 44
+Open: 43
 In progress: 0
 Blocked: 0
-Done: 8
+Done: 9
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| P0 | 14 | 0 | 0 | 8 | 22 |
+| P0 | 13 | 0 | 0 | 9 | 22 |
 | P1 | 29 | 0 | 0 | 0 | 29 |
 | P2 | 1 | 0 | 0 | 0 | 1 |
-| Total | 44 | 0 | 0 | 8 | 52 |
+| Total | 43 | 0 | 0 | 9 | 52 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -31,7 +31,7 @@ Done: 8
 | OBS-06 | P1 | M | OPEN | Adjacent protocol observer suite |
 | OBS-07 | P1 | M | OPEN | Known-client positive controls |
 | ACQ-01 | P0 | L | DONE | Acquisition route schema |
-| ACQ-02 | P0 | L | OPEN | Latest stable release resolver |
+| ACQ-02 | P0 | L | DONE | Latest stable release resolver |
 | ACQ-03 | P0 | L | OPEN | Same-version multi-route verifier |
 | ACQ-04 | P0 | L | OPEN | Disposable-host execution boundary |
 | ACQ-05 | P1 | M | OPEN | Artifact cache and authenticity evidence |

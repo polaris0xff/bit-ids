@@ -5,6 +5,36 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-04T17:35:00Z
+
+- Closed `ACQ-02`. Something can now decide which version to acquire, and the
+  decision is a document that keeps every candidate it weighed, the bytes each
+  source answered with, and the instant it was made. Record:
+  [`TODO/acquisition.md`](TODO/acquisition.md).
+- ⛔ Version strings are not comparable in general. Sorting tags as text puts
+  `4.1.10` before `4.1.9`, and a project can publish a preview without setting
+  the prerelease flag. A target declares how it spells versions, both stability
+  signals are believed, and a candidate the scheme cannot order blocks the
+  resolution rather than being skipped: skipping yields an older version chosen
+  confidently, with nothing saying a newer one was seen and not understood.
+- What settles an unorderable candidate is a second signal, not a looser rule.
+  One published strictly before the winner cannot be the newest whatever its tag
+  says. With no date, or a later one, it still blocks.
+- The shell half fetches and nothing else. The digest in a resolution is then of
+  what arrived rather than of what a parser reconstructed.
+- Driven against four real projects through the route `docs/AGENTS.md` rule 8
+  prescribes, since direct `api.github.com` answers 403 from this host. The
+  first run failed closed over 51 of `transmission`'s own decade-old tags and
+  was right to; that is what produced the publication-order rule.
+- Two defects the tests found: `4.1` and `4.1.0` were ordered rather than
+  compared equal, because a shorter component vector sorts first; and a schema
+  check `from_json` could never reach was deleted rather than left as a guard
+  nobody knows works.
+- CI now finds every tracked shell script rather than listing two directories.
+  A list is what let a new directory arrive unchecked on the lane meant to
+  check it.
+- Deployment: no data branch, release or capture service was created.
+
 ### 2026-09-04T16:40:00Z
 
 - Closed `ACQ-01`. A route record now carries the typed kind, what resolved it,

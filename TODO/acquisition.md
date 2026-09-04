@@ -91,7 +91,7 @@ a route alone cannot answer them. `Profile` remains the validated boundary.
 ## ACQ-02: Latest stable release resolver
 
 Source: operator latest-stable-only scope and bit-cli tag-selection guards
-Priority: P0 | Effort: L | Status: OPEN
+Priority: P0 | Effort: L | Status: DONE
 
 Problem: Lexical tag sorting and package channel labels can select previews,
 older trains, or incomparable versions.
@@ -103,8 +103,90 @@ Approach: Implement Rust resolvers with explicit prerelease rules and shell
 fetch wrappers. Record source responses; never derive profile fields from
 release source code.
 
+Decision: the shell half fetches and nothing else. It writes the bytes to a
+file and prints the URL that answered; the Rust half parses, orders and decides.
+That is the line `../scripts/README.md` already draws, and it is what makes the
+digest in a resolution mean something: it is of what arrived, not of what a
+parser reconstructed. A shell script that also picked the newest version would
+be a second implementation of the ordering rule with no test behind it.
+
+Decision: an unorderable candidate blocks the resolution rather than being
+skipped, and only a second signal releases it. Skipping was the rejected
+alternative and it is the dangerous one: it produces an older version selected
+confidently, with nothing saying a newer one was seen and not understood.
+
+Decision: no date crate. One function formats an instant, and a dependency for
+that is one this project would have to argue for under
+`../docs/supply-chain.md`.
+
 Prove: resolver fixtures cover stable, prerelease, missing, divergent, and
 non-semantic version sets, and a live dry run emits a complete decision trace.
+
+Closure evidence: run on 2026-09-04. `cargo test --workspace --locked
+--all-targets` is 146 passed, 0 failed.
+[`../crates/bit-ids/tests/resolution.rs`](../crates/bit-ids/tests/resolution.rs)
+carries all five sets the acceptance names and eight more, with a planted defect
+for every diagnostic code.
+
+⭐ Live dry run, four real targets, through the route `docs/AGENTS.md` rule 8
+prescribes, `https://api.gh.pkgforge.dev/`. Direct `api.github.com` answered 403
+from this host, which is the reason that rule exists.
+
+| target | tag shape | candidates | selected | trace |
+| --- | --- | ---: | --- | --- |
+| `qbittorrent` | `release-` + 3 or 4 | 4 | `5.2.3` | 1 selected, 3 superseded |
+| `transmission` | bare, 3 | 83 | `4.1.3` | 1 selected, 10 superseded, 21 prerelease, 51 predating |
+| `aria2` | `release-` + 3 | 24 | `1.37.0` | 1 selected, 23 superseded |
+| `qbittorrent-enhanced` | `release-` + 4 | 100 | `5.2.3.10` | 1 selected, 99 superseded |
+
+⚠ **The driven pass changed the design, which is what it is for.** The first
+live run against `transmission` failed closed over 51 candidates and was
+correct to: they are two-component tags from a decade ago that a
+three-component scheme cannot read, and nothing in the resolver could rule out
+that one of them was newer. Refusing over a project's own history made the
+resolver correct and useless. The fix is not a loosened rule but a second
+signal: a candidate published strictly before the winner cannot be the newest
+whatever its tag says, so it is recorded as `predates_selection`. One with no
+date, or a date at or after the winner's, still blocks, and both cases are
+tested.
+
+Two more findings, both fixed:
+
+1. **`4.1` and `4.1.0` were ordered rather than compared equal.** A shorter
+   component vector sorts first, so the resolver called them different versions
+   with the longer one newer. They are one release. Components are now padded to
+   the scheme's width, which makes the pair ambiguous and fails closed. Found by
+   writing the ambiguity test and watching it select.
+2. **`E-RES-01` checked a schema identifier `from_json` could never reach**,
+   because the version probe answers first. The schema became a type that cannot
+   hold a wrong value, the same construction the manifest already used, and the
+   invariant was deleted rather than left as a guard nobody knows works. That is
+   the path `E-BND-10` took in `SCHEMA-02`.
+
+⭐ Door sweep, three findings, all fixed:
+
+1. **`Verdict::excludes_from_ordering` had no callers.** It was a leftover from
+   an earlier shape of `decide`, and a little dead code is a safety margin only
+   when it is one. Deleted.
+2. **`Verdict::as_str` and serde's `rename_all` were two spellings of one
+   vocabulary with nothing comparing them**, which is the drift refused
+   everywhere else here. A test now holds them together and refuses a variant
+   added without a spelling.
+3. ⛔ **`retrieved_at` was the response file's modification time.** An mtime
+   survives a copy, an archive restore and a checkout, so a published retrieval
+   instant would have been one no retrieval produced. The fetch wrapper now
+   writes the instant beside the body and the resolver reads that, refusing to
+   proceed when it is absent.
+
+Residual: `min_components` and `max_components` describe a target's current
+tagging convention, and a project that changes convention will produce
+unorderable candidates until the scheme is updated. That is the intended
+behaviour rather than a gap: it fails closed and says so. The catalogue does not
+yet carry a scheme per target; `ACQ-03` needs one to compare two routes and is
+where it lands.
+
+Residual: `fetch-releases.sh` has no PowerShell twin. `../scripts/README.md`
+carries why, and `ACQ-04` owns the Windows runner contract where one is needed.
 
 ## ACQ-03: Same-version multi-route verifier
 

@@ -49,10 +49,10 @@ No arrow reads identity values from client source code.
 
 | component | owns | does not own |
 | --- | --- | --- |
-| `bit-ids` crate | public types, schema identity, validation and eventually embedded/pinned catalogue access | capture, installation or network mutation |
+| `bit-ids` crate | public types, schema identity, validation, stable-version resolution and eventually embedded/pinned catalogue access | capture, installation or network mutation |
 | `bit-ids-wire` crate | byte-exact codecs for the observed surfaces, and the fixture corpus every observer parses against | sockets, timing, and any mapping from a peer-ID prefix to a client name |
 | `bit-ids-probe` | active Rust tracker/peer/DHT/web-seed endpoints and raw evidence writing | client launch or package installation |
-| acquisition scripts | stable-version discovery, two-route download/install and version equality | identity parsing |
+| acquisition scripts | retrieval: fetching a release listing or artifact and keeping the exact bytes | parsing, ordering or deciding anything, all of which are Rust's |
 | client drivers | launch/configure one target against the isolated fixture | deciding whether the observation is valid |
 | reference connectors | independent live observation of overlapping fields | filling gaps by inference |
 | corpus tool | normalize, correlate, validate, supersede and assemble | modifying an existing published profile |
@@ -356,6 +356,35 @@ index, a name and an exact version; a source build is a full commit. `E-ACQ-05`
 refuses a kind carrying another kind's identity, and `E-ACQ-06` refuses an
 abbreviated commit, which is the shape `FOUND-02` measured passing an action-pin
 rule written to refuse floating refs.
+
+### Choosing which version to acquire
+
+Before any of that, something has to decide what the newest stable release *is*,
+and [`../crates/bit-ids/src/resolution.rs`](../crates/bit-ids/src/resolution.rs)
+is where that happens. `ACQ-02` owns it and `bit-ids/resolution/1` is the
+document it writes.
+
+⛔ **Version strings are not comparable in general.** Sorting tags as text puts
+`4.1.10` before `4.1.9`. A channel label is no better: a project can publish a
+preview without setting the flag. So a target declares how it spells versions,
+the resolver compares only what that scheme can order, and a candidate it cannot
+order **blocks the resolution** instead of being skipped. Skipping is the
+dangerous case: it yields an older version, selected confidently, with nothing
+saying a newer one was seen and not understood.
+
+The one thing that settles an unorderable candidate is a second signal rather
+than a guess. A candidate published strictly before the winner cannot be the
+newest whatever its tag says, so it is recorded as predating the selection. With
+no publication date, or one at or after the winner's, it still blocks.
+
+Stability is judged by both signals and pessimistically: anything the source or
+the version text calls a prerelease is not stable. Being wrong that way costs a
+skipped release. Being wrong the other way publishes a preview build as the
+stable one, which is a measurement about a build nobody runs.
+
+The resolution keeps **every** candidate with the verdict it got, the exact
+bytes each source answered with, and the instant the decision was made. A
+selection nobody can re-derive is a claim, not a measurement.
 
 The gate compares the version reported by the installed executable or harness,
 not the requested version. It also records artifact digests. Different bytes

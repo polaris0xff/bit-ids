@@ -37,9 +37,13 @@ jobs:
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
           go install mvdan.cc/sh/v3/cmd/shfmt@v3.14.0
       - name: Shell syntax and style
+        # Every tracked shell script, found rather than listed. A glob per
+        # directory is a list, and ACQ-02 added a directory the list did not
+        # have, so the new script would have gone unchecked on the lane that is
+        # meant to check it.
         run: |
-          shellcheck scripts/doctor/*.sh scripts/common/*.sh
-          shfmt -d -i 2 -ci scripts/doctor/*.sh scripts/common/*.sh
+          find scripts -name '*.sh' -print0 | xargs -0 shellcheck
+          find scripts -name '*.sh' -print0 | xargs -0 shfmt -d -i 2 -ci
       - name: Rust formatting
         run: cargo fmt --all -- --check
       - name: Rust check

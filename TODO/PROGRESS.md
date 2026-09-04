@@ -1,17 +1,18 @@
 # Current progress
 
 State instant: 2026-09-04
-Baseline commit: `a1cf3ee` on `main`
+Baseline commit: `6338a67` on `main`
 Total: 52
-Open: 44
+Open: 43
 In progress: 0
 Blocked: 0
-Done: 8
+Done: 9
 
 ## Current state
 
-The whole `SCHEMA-*` group is closed, along with `FOUND-01` through `FOUND-03`
-and `ACQ-01`. Foundations are finished and acquisition has its record shape.
+The whole `SCHEMA-*` group is closed, along with `FOUND-01` through `FOUND-03`,
+`ACQ-01` and `ACQ-02`. Foundations are finished, acquisition has its record
+shape, and something can now decide which version to acquire.
 
 The `bit-ids` crate carries the published record shape, the six field states,
 the derived record identifier, the canonical value forms and the publication
@@ -55,6 +56,14 @@ for is typed to its kind, so a release asset is a tag and a file name and a
 source build is a whole commit, and an installed version cites the process
 output the build printed rather than being asserted.
 
+Choosing the newest stable release is a decision that fails closed and keeps
+its reasoning. Version strings are not comparable in general, so a target
+declares how it spells them and a candidate the scheme cannot order blocks the
+resolution rather than being skipped, because a skip produces an older version
+selected confidently. A candidate published before the winner is settled by that
+second signal rather than by a guess. Every candidate keeps its verdict, and the
+bytes each source answered with are digested into the document.
+
 The supply chain is pinned at all three layers and each pin has a check behind
 it. [`../docs/supply-chain.md`](../docs/supply-chain.md) carries the layers and
 the update procedure. `FOUND-03` added a workspace member and no new
@@ -70,8 +79,10 @@ anything.
 
 ## Work order
 
-1. `ACQ-02` through `ACQ-04`; do not install proprietary clients earlier.
+1. `ACQ-03` and `ACQ-04`; do not install proprietary clients earlier.
    `ACQ-04`'s two disposable-runner guards must exist before any client runs.
+   `ACQ-03` needs a version scheme per target in the catalogue, which `ACQ-02`
+   left to it.
 2. Split `OBS-01`, then implement `OBS-02` through `OBS-05`. Each parses
    against the `bit-ids-wire` fixture corpus rather than against a live client.
 3. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
