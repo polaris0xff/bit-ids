@@ -170,7 +170,17 @@ foreach ($rel in $files) {
         # one from the root name the same file.
         $joined = if ($dir -eq '.') { $bare } else { $dir + '/' + $bare }
         $norm = $joined -replace '/\./', '/'
-        while ($norm -match '[^/]+/\.\./') { $norm = $norm -replace '[^/]+/\.\./', '' }
+        # ⛔ ONE REPLACEMENT PER PASS, because `..` matches `[^/]+` too.
+        # PowerShell's -replace is global, so a single call collapsed a real
+        # segment AND the `../..` pair after it: four levels up from
+        # crates/bit-ids/tests/fixtures resolved to crates/bit-ids/docs and a
+        # correct link was reported broken. The sh twin never had it, because
+        # sed without /g takes the leftmost match and the loop re-runs. ⚠ This
+        # is the same shape as the whole-line allowlist in
+        # docs/conventions/forbidden-patterns.md: the rule was applied to more
+        # of the string than it was written for.
+        $collapse = [regex]'[^/]+/\.\./'
+        while ($collapse.IsMatch($norm)) { $norm = $collapse.Replace($norm, '', 1) }
         $norm = $norm -replace '^\./', ''
         [void]$linked.Add($norm)
         if (-not (Test-Path -LiteralPath (Join-Path $root $norm))) {

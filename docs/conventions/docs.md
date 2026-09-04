@@ -139,6 +139,14 @@ not a defect.
 | the story of a fix, or a superseded claim kept for provenance | ⭐ here |
 | the full detail of one session's work | ⛔ the handoff. Here goes a pointer to it. |
 
+⛔ **A section heading is `## `, an entry heading is `### `.** A release, or
+`Unreleased`, is a section; one shipped unit of work is an entry, and dates are
+compared within a section so that `Unreleased` above `1.0.0` is not read as
+backwards. ⚠ This repository wrote its entries at `## ` and the checker
+therefore parsed none of them, reporting a clean changelog it had never read.
+It now refuses a file with no entries, because rules that are enforced per
+entry are all satisfied by having no entries.
+
 Four rules, and [`scripts/common/check-changelog.sh`](../../scripts/common/check-changelog.sh)
 holds all four. ⭐ They were stated here and enforced by nothing for as long as
 this document existed, which is the shape a rule takes on its way to becoming

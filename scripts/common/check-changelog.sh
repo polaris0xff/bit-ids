@@ -22,6 +22,9 @@
 #   3. ⛔ Every entry names its record. An entry with no record is a claim.
 #   4. ⛔ Every entry says whether it deployed. Silence is not an answer;
 #      "not deployed" is.
+#   5. ⛔ That there are entries at all. Rules 1 to 4 are per entry, so a file
+#      whose headings this parser does not recognise passes them by having
+#      nothing to check. That is not a clean changelog, it is an unread one.
 #
 # ⛔ WHAT IT DELIBERATELY DOES NOT CHECK IS WHETHER AN ENTRY IS TRUE. That is a
 # reading and it belongs to the claim audit, docs/methodology/reviews.md lens 3.
@@ -165,6 +168,23 @@ BODY=$(grep -v '^PROBLEMS \|^ENTRIES ' "$OUT" || true)
 rm -f "$OUT"
 [ -n "${COUNT:-}" ] || COUNT=0
 [ -n "${ENTRIES:-}" ] || ENTRIES=0
+
+# ⛔ A CHANGELOG THAT PARSES TO NO ENTRIES IS A FAILURE, NOT A CLEAN RUN.
+# The four rules above are enforced per entry, so a file whose headings this
+# parser does not recognise satisfies all of them by having nothing to check,
+# and the run prints "ok: 0 entries". This repository shipped exactly that: the
+# file used `## ` for what the parser reads as a section, so from the bootstrap
+# until it was noticed the changelog was never checked at all and said it was.
+# ⚠ The header above already warns about a vacuous pass and the check still had
+# one, in the one number it prints. An absent file is a different answer and
+# stays exit 2, above.
+if [ "$ENTRIES" -eq 0 ]; then
+  printf 'changelog check failed: %s has no entries this parser recognises.\n\n' "$FILE" >&2
+  printf 'An entry heading is `### `, a section heading is `## `, and a file of\n' >&2
+  printf 'section headings alone passes every per-entry rule by having nothing\n' >&2
+  printf 'to check. docs/conventions/docs.md carries the shape.\n' >&2
+  exit 1
+fi
 
 if [ "$JSON" = "1" ]; then
   printf '{"schema":"check-changelog/1","problems":%s,"entries":%s}\n' "$COUNT" "$ENTRIES"

@@ -91,6 +91,7 @@ will add.
 | forbidden | what it caused |
 | --- | --- |
 | A literal control byte in a tracked text file | the file becomes invisible to review. Grep calls it binary and skips it, and a diff says only that the files differ. |
+| A global regex replace where the pattern also matches what it is meant to preserve | a correct input reported as broken. `check-docs.ps1` collapsed `a/../` to normalise a link, but `[^/]+` matches `..` as readily as a directory name, and PowerShell's `-replace` is global: `crates/bit-ids/tests/fixtures/../../../../docs/x.md` lost a real segment AND a `../..` pair in one call, resolving to `crates/bit-ids/docs/x.md`. The sh twin was correct only because `sed` without `/g` takes the leftmost match and the loop re-runs. ⚠ It sat green for as long as no link went up more than two levels. ⭐ Replace one leftmost match per pass, or exclude the preserved form from the pattern. |
 | Reading an exit code through a pipe | the pipeline's status, not the check's. A guard that failed reads as green. |
 | A prose payload passed inline to a shell | backticks executed inside the text, even in a quoted heredoc |
 | A doc claim written without being verified | the most confident sentence in a file is regularly the only false one |

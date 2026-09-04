@@ -16,6 +16,9 @@
 #   2. ⛔ Every entry heading carries a date, ISO 8601.
 #   3. ⛔ Every entry names its record. An entry with no record is a claim.
 #   4. ⛔ Every entry says whether it deployed. Silence is not an answer.
+#   5. ⛔ That there are entries at all. Rules 1 to 4 are per entry, so a file
+#      whose headings this parser does not recognise passes them by having
+#      nothing to check. That is not a clean changelog, it is an unread one.
 #
 # ⛔ WHAT IT DELIBERATELY DOES NOT CHECK IS WHETHER AN ENTRY IS TRUE. That is a
 # reading and it belongs to the claim audit, docs/methodology/reviews.md lens 3.
@@ -142,6 +145,20 @@ foreach ($line in $lines) {
 Complete-Entry
 
 $problems = $script:problems
+
+# ⛔ A CHANGELOG THAT PARSES TO NO ENTRIES IS A FAILURE, NOT A CLEAN RUN.
+# The rules are enforced per entry, so a file whose headings this parser does
+# not recognise satisfies all of them by having nothing to check, and the run
+# prints "ok: 0 entries". This repository shipped exactly that from the
+# bootstrap until it was noticed. ⛔ Keep this identical to the sh twin.
+if ($entries -eq 0) {
+    [Console]::Error.WriteLine("changelog check failed: $File has no entries this parser recognises.")
+    [Console]::Error.WriteLine('')
+    [Console]::Error.WriteLine('An entry heading is `### `, a section heading is `## `, and a file of')
+    [Console]::Error.WriteLine('section headings alone passes every per-entry rule by having nothing')
+    [Console]::Error.WriteLine('to check. docs/conventions/docs.md carries the shape.')
+    exit 1
+}
 
 if ($Json) {
     Write-Output ('{"schema":"check-changelog/1","problems":' + $problems + ',"entries":' + $entries + '}')
