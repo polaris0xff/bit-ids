@@ -146,6 +146,20 @@ done
 # reads as a skip rather than a pass. That is correct: nothing was verified.
 [ -f "$HERE/check-remote-items.sh" ] && run "check-remote-items" sh "$HERE/check-remote-items.sh"
 
+# ⛔ NOT IN common/, AND IN THE GATE ANYWAY. `check-runner` mutation-proves the
+# guards that stand between this project and installing an untrusted client on a
+# machine somebody keeps. It is hermetic, it takes no network, and it is the one
+# check whose silence would be worst, so it runs on every gate rather than only
+# where captures happen. It is not in check-twins' pair list because it has no
+# PowerShell half; scripts/README.md carries why.
+RUNNER="$HERE/../acquisition/check-runner.sh"
+if [ -f "$RUNNER" ]; then
+  run "check-runner" sh "$RUNNER"
+else
+  row "SKIP  check-runner  (not present)"
+  SKIP=$((SKIP + 1))
+fi
+
 # ⭐ THE SLOW ONE. Measured on one Windows 11 Pro 26200 machine, 2026-08-28:
 # check-twins alone is most of a full run's wall time, because it starts both
 # halves of every pair. --fast drops it and nothing else.

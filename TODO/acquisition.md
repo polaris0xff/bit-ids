@@ -268,7 +268,7 @@ cross-record comparison becomes a gate rather than a function.
 ## ACQ-04: Disposable-host execution boundary
 
 Source: proprietary installers and active network client execution
-Priority: P0 | Effort: L | Status: OPEN
+Priority: P0 | Effort: L | Status: DONE
 
 Problem: Running untrusted clients on persistent CI hosts can leak state,
 escape the lab, contaminate later samples, or violate package terms.
@@ -279,8 +279,84 @@ teardown can make captures reproducible and bounded.
 Approach: Define Linux and Windows runner contracts, deny public BitTorrent
 traffic, snapshot inputs, wipe the guest, and attest cleanup after every run.
 
+Decision: the claim guard detects the failure of disposal rather than trusting
+a declaration of it. A token the provisioner writes saying "this host is
+disposable" was the rejected alternative and it is the shape that fails
+silently: a runner misconfigured to persist its disk still carries the token and
+still means it. Claiming by writing a marker makes a survived host produce
+evidence of itself, and a misconfiguration cannot produce the marker's absence.
+
+Decision: the egress guard reads `/proc/net/route` and never probes anything.
+Reaching out from a machine the guard exists to establish is contained would be
+the wrong order, and a connection attempt against a third party is not this
+project's to make.
+
+Decision: `check-runner` runs on every gate rather than only where captures
+happen. It is hermetic and takes no network, and it is the check whose silence
+would be worst.
+
 Prove: the runner test detects forbidden egress and persistent state, then
 shows a fresh host fingerprint for the next job.
+
+Closure evidence: run on 2026-09-04.
+[`../scripts/acquisition/check-runner.sh`](../scripts/acquisition/check-runner.sh)
+is 7 guard cases, 7 passed, 0 failed, run twice with the exit code read unpiped
+from its own process both times. It plants a default route that is up (refused),
+one that is configured and down (allowed, so the flags are actually read), a
+loopback-only table (allowed), an unreadable table (exit 2, because not knowing
+is not a pass), a second claim on one host (refused), and a claim after teardown
+(allowed). It prints the host fingerprint the next job compares.
+
+The gate is 12 checks, 11 passed, 0 failed, 1 skipped, with `check-runner`
+among them. The Windows gate reports it as a skip naming the reason rather than
+omitting the row, because a lane that leaves a check out looks like one that
+checked it.
+
+⚠ **Two defects found by driving it, both fixed:**
+
+1. **The egress guard could not run on this host.** It tested the route flags
+   with `and(strtonum(...))`, which are gawk extensions; against a POSIX awk
+   they are undefined functions and the guard reported "could not establish"
+   over a machine with a plain default route. The direction of the failure was
+   right and its reach was not;
+   [`../docs/capture-host.md`](../docs/capture-host.md) says why that matters.
+   The UP bit is the low bit of the flags word, so the last hex digit being odd
+   is the same test with no extensions.
+2. ⛔ **The runner test claimed the real machine.** One case ran `--claim`
+   without the scratch state directory, so it wrote `/var/lib/bit-ids/host-claimed`
+   on the session host: it passed once and failed every run after. On a
+   persistent CI runner that is a check which goes green the day it is written
+   and red forever, for a reason that looks like the guard being broken rather
+   than the test being. Found by running it twice, which is the only thing that
+   finds it. The marker it left was removed.
+
+⚠ A third finding was in the measurement rather than the code: the exit code was
+first read after a pipe into `tail`, so a script that exited 1 read as 0. That
+is this repository's oldest stated rule, broken while checking a guard.
+
+The manifest gained `isolation.claim`, carrying the fingerprint the guard read
+and when it claimed the host. `E-MAN-33` refuses a claim stamped after the run
+started, which is the distinction the whole entry rests on: a guard that ran
+after the install is a report, not a boundary.
+
+Residual: ⛔ **the executable guards are Linux-only**, because they read
+`/proc/net/route` and `/etc/machine-id`. A Windows capture host needs its own
+pair reading `Get-NetRoute` and the machine GUID, and until it exists a Windows
+capture is not permitted rather than permitted-with-a-warning: there is no
+boundary to run before the install. `CI-03` owns the runner matrix and is where
+that pair lands. [`../docs/capture-host.md`](../docs/capture-host.md) carries
+both contracts.
+
+Residual: the guards prove they fire, not that they are sufficient. A host can
+be non-disposable in ways neither models, and
+[`../docs/capture-host.md`](../docs/capture-host.md) lists the ones considered
+rather than leaving them implied.
+
+Residual: the fingerprint's discriminating power is argued from its inputs
+rather than measured across two machines, because this session had one host. It
+is a digest of the machine id, the boot id, the hostname, the kernel string and
+the root device number; any single one of those can collide and the combination
+is what is relied on.
 
 ## ACQ-05: Artifact cache and authenticity evidence
 

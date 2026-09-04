@@ -1,17 +1,17 @@
 # Work index
 
 Total: 52
-Open: 42
+Open: 41
 In progress: 0
 Blocked: 0
-Done: 10
+Done: 11
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| P0 | 12 | 0 | 0 | 10 | 22 |
+| P0 | 11 | 0 | 0 | 11 | 22 |
 | P1 | 29 | 0 | 0 | 0 | 29 |
 | P2 | 1 | 0 | 0 | 0 | 1 |
-| Total | 42 | 0 | 0 | 10 | 52 |
+| Total | 41 | 0 | 0 | 11 | 52 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -33,7 +33,7 @@ Done: 10
 | ACQ-01 | P0 | L | DONE | Acquisition route schema |
 | ACQ-02 | P0 | L | DONE | Latest stable release resolver |
 | ACQ-03 | P0 | L | DONE | Same-version multi-route verifier |
-| ACQ-04 | P0 | L | OPEN | Disposable-host execution boundary |
+| ACQ-04 | P0 | L | DONE | Disposable-host execution boundary |
 | ACQ-05 | P1 | M | OPEN | Artifact cache and authenticity evidence |
 | CLIENT-01 | P1 | L | OPEN | qBittorrent capture adapter |
 | CLIENT-02 | P1 | L | OPEN | qBittorrent Enhanced capture adapter |

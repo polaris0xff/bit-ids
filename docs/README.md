@@ -5,6 +5,7 @@
 | [`AGENTS.md`](AGENTS.md) | how a fresh agent starts, routes work and ends a session |
 | [`architecture.md`](architecture.md) | what the system and profile contract are |
 | [`capture-methodology.md`](capture-methodology.md) | what counts as an observation and corroboration |
+| [`capture-host.md`](capture-host.md) | what a machine must be before a client is installed on it, and what refuses one that is not |
 | [`client-matrix.md`](client-matrix.md) | which clients/libraries/platforms and acquisition candidates are in scope |
 | [`publishing.md`](publishing.md) | what the data branch and releases will contain |
 | [`supply-chain.md`](supply-chain.md) | what this repository executes that it did not write, how it is pinned, and how a pin is updated |

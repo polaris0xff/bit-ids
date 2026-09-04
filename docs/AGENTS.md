@@ -86,7 +86,7 @@ Run these in order.
 | any open item | its category file from `TODO/INDEX.md`, `docs/methodology/work-todo.md`, `docs/methodology/gate.md` |
 | data model or validation | `docs/architecture.md`, `docs/capture-methodology.md`, `TODO/schema.md`, `TODO/corpus.md` |
 | observer or connector | `docs/architecture.md`, `docs/capture-methodology.md`, `TODO/observer.md`, the bit-cli reference sweep |
-| client acquisition/capture | `docs/client-matrix.md`, `TODO/acquisition.md`, `TODO/clients.md`, `SECURITY.md` |
+| client acquisition/capture | `docs/client-matrix.md`, `docs/capture-host.md`, `TODO/acquisition.md`, `TODO/clients.md`, `SECURITY.md` |
 | library-backed targets | `docs/client-matrix.md`, `TODO/engines.md`, `TODO/acquisition.md` |
 | publishing or CI | `docs/publishing.md`, `TODO/publishing.md`, `TODO/ci.md`, `docs/security/remote-ops.md` |
 | reference research | `docs/methodology/references.md`, `docs/methodology/experiments.md`, existing `docs/reference-sweeps/` files |

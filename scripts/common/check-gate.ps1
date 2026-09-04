@@ -116,6 +116,15 @@ Invoke-Check 'check-no-secrets -Public' 'check-no-secrets.ps1' @('-Public')
 # reads as a skip rather than a pass. Correct: nothing was verified.
 Invoke-Check 'check-remote-items' 'check-remote-items.ps1'
 
+# ⛔ REPORTED AS A SKIP, NEVER OMITTED. check-runner mutation-proves the
+# disposable-host guards, and those guards read /proc/net/route, so they are
+# Linux-only today. A Windows capture host needs its own pair and ACQ-04
+# carries that as a named residual. ⚠ Leaving the row out entirely would make
+# this lane look like it checked something it never looked at, which is the
+# difference between a skip and a pass that this whole runner is about.
+Add-Row 'SKIP  check-runner  (the guards are Linux-only; ACQ-04 residual)'
+$skip++
+
 # ⭐ THE SLOW ONE, and ⚠ it is the one part of this gate that needs a POSIX
 # shell: check-twins runs the sh half of every pair, so it cannot run on a host
 # without one. That is reported as a skip, never as a pass.

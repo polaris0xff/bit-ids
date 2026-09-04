@@ -14,6 +14,10 @@
     "disposable": true
   },
   "isolation": {
+    "claim": {
+      "fingerprint": "sha256:890783547978093cccb617c190be7916e16eba117c8f25add54c2eb9aa5dbe04",
+      "claimed_at": "2026-09-04T13:29:50Z"
+    },
     "host": "disposable_container",
     "network": "loopback_only",
     "external_reason": null

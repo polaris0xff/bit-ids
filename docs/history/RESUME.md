@@ -3,15 +3,22 @@
 **Task:** Take the work order in `TODO/PROGRESS.md` in dependency order,
 committing and pushing each green unit to `main`.
 
-**Resume point:** `FOUND-03` and `ACQ-01` through `ACQ-03` are closed. The next
-item is `ACQ-04`, the disposable-host execution boundary. Its two guards must
-exist before any client is installed or run.
+**Resume point:** `FOUND-03` and `ACQ-01` through `ACQ-04` are closed. Nothing
+structural now stands between here and a first Linux capture. The next item is
+splitting `OBS-01` and then `OBS-02` onward: what is missing is something to
+observe with.
+
+⛔ A Windows capture is not permitted yet. The disposable-host guards read
+`/proc/net/route` and `/etc/machine-id`, so there is no boundary to run before
+an install on Windows. `CI-03` owns the pair; `docs/capture-host.md` carries
+both contracts.
 
 **In flight:** Nothing. The tree is coherent.
 
 **Tree:** Clean and level with `origin/main`, on `main`.
-`sh scripts/common/check-gate.sh` is green: 10 passed, 0 failed, 1 skipped.
+`sh scripts/common/check-gate.sh` is green: 11 passed, 0 failed, 1 skipped.
 `cargo test --workspace --locked --all-targets` is 157 passed, 0 failed.
+`sh scripts/acquisition/check-runner.sh` is 7 guard cases, 7 passed, 0 failed.
 `cargo fmt --all -- --check`, `cargo check`, `cargo clippy` at
 `--workspace --locked --all-targets`, `shellcheck` and `shfmt -d -i 2 -ci` all
 exit 0.

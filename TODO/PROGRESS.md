@@ -1,20 +1,20 @@
 # Current progress
 
 State instant: 2026-09-04
-Baseline commit: `ec348ec` on `main`
+Baseline commit: `bf94f13` on `main`
 Total: 52
-Open: 42
+Open: 41
 In progress: 0
 Blocked: 0
-Done: 10
+Done: 11
 
 ## Current state
 
 The whole `SCHEMA-*` group is closed, along with `FOUND-01` through `FOUND-03`,
-`ACQ-01` through `ACQ-03`. Foundations are finished, and acquisition has its
-record shape, a resolver that chooses the version, and a verifier that says what
-two routes agreeing is actually worth. `ACQ-04`, the disposable-host boundary,
-is the last thing standing between here and running a real client.
+`ACQ-01` through `ACQ-04`. Foundations are finished, and acquisition has its
+record shape, a resolver that chooses the version, a verifier that says what two
+routes agreeing is worth, and a boundary that runs before anything is installed.
+Nothing structural now stands between here and a first Linux capture.
 
 The `bit-ids` crate carries the published record shape, the six field states,
 the derived record identifier, the canonical value forms and the publication
@@ -75,6 +75,18 @@ observed are unresolved and do not, because nothing put the other bytes on the
 wire. Reaching a positive verdict over differing bytes takes a capture through
 each route.
 
+A client is installed only on a host a guard has refused to disqualify, and the
+guard runs before the install rather than in the record. The manifest already
+refused to record a capture on a host somebody keeps; that cannot stop one,
+because by the time a manifest exists an untrusted installer has run. Two
+independent guards now run first: one refuses a host that already ran a capture,
+which is how a survived host produces evidence of itself rather than being
+trusted to declare it, and one refuses a host with a route off loopback, read
+from the kernel's own table without probing anything.
+[`../docs/capture-host.md`](../docs/capture-host.md) carries both runner
+contracts. ⛔ The guards are Linux-only, so a Windows capture is not permitted
+yet.
+
 The supply chain is pinned at all three layers and each pin has a check behind
 it. [`../docs/supply-chain.md`](../docs/supply-chain.md) carries the layers and
 the update procedure. `FOUND-03` added a workspace member and no new
@@ -90,14 +102,14 @@ anything.
 
 ## Work order
 
-1. `ACQ-04`, the disposable-host execution boundary. Its two guards must exist
-   before any client runs, proprietary or not. A version scheme per target in
-   the catalogue is still unwritten; `ACQ-05` or `CI-03` is where it lands now
-   that `ACQ-03` is closed without needing it.
-2. Split `OBS-01`, then implement `OBS-02` through `OBS-05`. Each parses
+1. Split `OBS-01`, then implement `OBS-02` through `OBS-05`. Each parses
    against the `bit-ids-wire` fixture corpus rather than against a live client.
-3. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
-   captures.
+   This is now the critical path: the boundary and the acquisition record exist,
+   and what is missing is something to observe with.
+2. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
+   captures, on Linux only until `CI-03` provides the Windows guard pair.
+3. `ACQ-05`, the artifact cache, and `FOUND-04`, the licence register, before
+   the first proprietary client is acquired.
 4. `CORPUS-01` through `CORPUS-03`, then `PUB-01` through `PUB-03`.
 5. `CI-01` through `CI-04`, followed by remaining client and engine breadth.
 6. `FOUND-04`, the licence and redistribution register, before the first

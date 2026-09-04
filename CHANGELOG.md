@@ -5,6 +5,35 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-04T19:20:00Z
+
+- Closed `ACQ-04`, and with it the acquisition group's blocking work. A client
+  is now installed only on a host two independent guards have refused to
+  disqualify, and they run before the install. Record:
+  [`TODO/acquisition.md`](TODO/acquisition.md).
+- ⛔ The boundary could not live in the record. `E-MAN-30` refuses to record a
+  capture on a host somebody keeps, and cannot stop one: by the time a manifest
+  exists, an untrusted installer has already run somewhere.
+- A host is claimed by writing a marker and refused when one is already there,
+  so a survived host produces evidence of itself. A provisioner token was the
+  rejected design: a runner misconfigured to persist its disk still carries one
+  and still means it.
+- The egress guard reads the kernel's routing table and probes nothing. Reaching
+  out from a machine the guard exists to establish is contained would be the
+  wrong order.
+- Two defects found by driving it. The egress test used gawk-only functions, so
+  on a POSIX awk it reported "could not establish" over a machine with a plain
+  default route; it failed closed, but a guard that cannot run on a minimal
+  image does not run where it matters. And the runner test claimed the real
+  machine, so it passed once and failed every run after, which only running it
+  twice finds.
+- The manifest records what the guard read and when. A claim stamped after the
+  run started is refused, because that is a report rather than a boundary.
+- `check-runner` joins the gate on every run. The Windows gate reports it as a
+  skip naming the reason: ⛔ the guards are Linux-only, so a Windows capture is
+  not permitted rather than permitted with a warning.
+- Deployment: no data branch, release or capture service was created.
+
 ### 2026-09-04T18:30:00Z
 
 - Closed `ACQ-03`. Every route already had to report the version the record

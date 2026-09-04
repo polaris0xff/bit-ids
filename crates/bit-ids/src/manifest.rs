@@ -200,6 +200,15 @@ pub enum NetworkMode {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Isolation {
+    /// What the pre-flight guard established about the host, before anything
+    /// was installed on it.
+    ///
+    /// ⛔ `host.disposable` is a claim the run makes about itself, and
+    /// `E-MAN-30` refuses a run that admits otherwise. It cannot catch a run
+    /// that is wrong: a runner misconfigured to persist its disk says
+    /// `disposable: true` and means it. This is the guard's own answer, taken
+    /// before the install, and `ACQ-04` owns it.
+    pub claim: HostClaim,
     /// What kind of disposable host.
     pub host: IsolationKind,
     /// What the target could reach.
@@ -208,6 +217,21 @@ pub struct Isolation {
     /// any mode but [`NetworkMode::LoopbackOnly`] and forbidden for it, because
     /// an unexplained route off the host is a capture nobody can bound.
     pub external_reason: Option<Label>,
+}
+
+/// What the pre-flight guard read off the host before the run.
+///
+/// `scripts/acquisition/assert-disposable.sh` produces both values. The
+/// fingerprint is what a later job compares to see it is on a different
+/// machine; the instant is when the host was claimed, which is necessarily
+/// before the run it was claimed for.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HostClaim {
+    /// Digest of the host identity the guard read.
+    pub fingerprint: Sha256Digest,
+    /// When the guard claimed the host, UTC.
+    pub claimed_at: Instant,
 }
 
 /// The machine the run happened on.
@@ -612,6 +636,20 @@ fn check_environment(manifest: &RunManifest, out: &mut Vec<SchemaError>) {
             format!("loopback-only needs no reason, found {reason}"),
         )),
         _ => {}
+    }
+    // ⛔ The host is claimed before the run, never during or after. A claim
+    // stamped inside the run is a guard that ran too late to be a boundary,
+    // which is the whole distinction between this and `E-MAN-30`.
+    if manifest.isolation.claim.claimed_at > manifest.clocks.wall_start {
+        out.push(SchemaError::new(
+            "E-MAN-33",
+            "isolation.claim.claimed_at",
+            format!(
+                "claimed at {} and the run started at {}; a guard that ran after the \
+                 install is a report, not a boundary",
+                manifest.isolation.claim.claimed_at, manifest.clocks.wall_start
+            ),
+        ));
     }
     if manifest.clocks.wall_end < manifest.clocks.wall_start {
         out.push(SchemaError::new(

@@ -329,6 +329,12 @@ const PLANTED: &[(&str, Mutation)] = &[
     ("E-MAN-30", |m| {
         m["host"]["disposable"] = json!(false);
     }),
+    // ⛔ A guard that ran after the install is a report, not a boundary. This
+    // is the difference between `E-MAN-30`, which refuses a run that admits it
+    // was not disposable, and a pre-flight guard, which stops one.
+    ("E-MAN-33", |m| {
+        m["isolation"]["claim"]["claimed_at"] = json!("2026-09-04T13:30:30Z");
+    }),
     ("E-MAN-31", |m| {
         m["isolation"]["network"] = json!("host_routed");
     }),
