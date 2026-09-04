@@ -25,7 +25,11 @@ pub struct SchemaError {
 }
 
 impl SchemaError {
-    fn new(code: &'static str, at: impl Into<String>, detail: impl Into<String>) -> Self {
+    pub(crate) fn new(
+        code: &'static str,
+        at: impl Into<String>,
+        detail: impl Into<String>,
+    ) -> Self {
         Self {
             code,
             at: at.into(),
@@ -65,6 +69,20 @@ impl core::error::Error for SchemaError {}
 pub struct Violations(Vec<SchemaError>);
 
 impl Violations {
+    /// Wraps a set of refusals, or reports that there were none.
+    ///
+    /// # Errors
+    ///
+    /// Returns the refusals when `errors` is non-empty. A `Violations` is never
+    /// constructed empty, which is what lets `is_empty` mean what it says.
+    pub(crate) fn from_errors(errors: Vec<SchemaError>) -> Result<(), Self> {
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(Self(errors))
+        }
+    }
+
     /// The refused invariants.
     #[must_use]
     pub fn errors(&self) -> &[SchemaError] {
@@ -116,7 +134,7 @@ impl core::error::Error for Violations {}
 /// Order is checked rather than imposed. A validator that sorted on the way in
 /// would accept two byte-different files as one record, which is the drift the
 /// append-only store cannot survive.
-fn strictly_ascending<T>(items: &[T], key: impl Fn(&T) -> String) -> Option<usize> {
+pub(crate) fn strictly_ascending<T>(items: &[T], key: impl Fn(&T) -> String) -> Option<usize> {
     let mut previous: Option<String> = None;
     for (index, item) in items.iter().enumerate() {
         let current = key(item);
@@ -643,9 +661,5 @@ pub fn validate(profile: &Profile) -> Result<(), Violations> {
     check_evidence(profile, &mut out);
     check_observations(profile, &mut out);
     check_corroboration(profile, &mut out);
-    if out.is_empty() {
-        Ok(())
-    } else {
-        Err(Violations(out))
-    }
+    Violations::from_errors(out)
 }

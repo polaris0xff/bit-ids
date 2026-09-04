@@ -150,6 +150,52 @@ planted against one by one in
 `CORPUS-02` extends the set with the invariants that only a whole store can
 answer.
 
+### The run manifest
+
+A profile says what a build put on the wire. The run manifest,
+`bit-ids/manifest/1` in
+[`../crates/bit-ids/src/manifest.rs`](../crates/bit-ids/src/manifest.rs), says
+what was running when it did. It is a second document, kept beside the raw
+bytes it describes rather than inside the profile, because a replay needs the
+whole run and a consumer of the catalogue needs only the record.
+
+| section | required content |
+| --- | --- |
+| `schema`, `capture` | versioned schema and the capture run this describes |
+| `target`, `version`, `platform`, `arch`, `package` | which build |
+| `host` | image, kernel, operating system, architecture, and whether the host is destroyed after the run |
+| `isolation` | disposable host kind, what the target could reach, and why if that was more than loopback |
+| `clocks` | UTC either side of the run, and a monotonic elapsed time |
+| `tools` | every implementation that took part, at the version that took part, with its role |
+| `acquisition` | per route: where the artifact came from, when, its digest and size, what was done about its signature |
+| `phases` | the steps of the section 8 state machine the run actually walked, in order, with the clock either side |
+| `evidence` | per artifact: kind, readable path, size, digest, the tool that produced it, the phase it came out of, and whether anything was scrubbed |
+| `redactions` | what class of value was removed from which artifact, and how many |
+
+Evidence is content-addressed. The store path is **derived** from the digest,
+never recorded beside it, so it cannot disagree with the bytes it names and two
+runs that captured identical bytes land on one object.
+
+An absence in the manifest is as constrained as one in the profile. A run that
+reached beyond loopback must say why. A host that is not disposable is refused
+outright. A phase cannot be skipped, because a phase nobody ran is a phase
+nobody can produce evidence for. And an artifact marked redacted must have a
+declaration saying what was taken out of it, so that "raw" cannot quietly mean
+"edited".
+
+### Binding the two documents
+
+The manifest and the profile overlap on purpose, and
+[`bind`](../crates/bit-ids/src/manifest.rs) compares every value they share:
+capture, target, the build tuple, each evidence artifact, each connector and
+its version, which tool was the observer, the route set and the artifact
+digests, and whether the profile's capture instant falls inside the run.
+
+⛔ **The overlap is the point, and so is the check.** A value in two places with
+nothing comparing them is the copy a reader trusts being the wrong one. Pairing
+a manifest with the profile of a different run of the same build is the
+realistic version of that mistake, and it is refused.
+
 ## 5. Observation surfaces
 
 ### Tracker HTTP

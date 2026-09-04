@@ -1,0 +1,191 @@
+{
+  "schema": "bit-ids/manifest/1",
+  "capture": "fixture-capture-0001",
+  "target": "fixture-client",
+  "version": "0.0.0-fixture",
+  "platform": "linux",
+  "arch": "x86-64",
+  "package": "tar-gz",
+  "host": {
+    "image": "fixture-runner-0",
+    "kernel": "0.0.0-fixture",
+    "os": "Fixture Host 0",
+    "arch": "x86-64",
+    "disposable": true
+  },
+  "isolation": {
+    "host": "disposable_container",
+    "network": "loopback_only",
+    "external_reason": null
+  },
+  "clocks": {
+    "wall_start": "2026-09-04T13:30:00Z",
+    "wall_end": "2026-09-04T13:35:00Z",
+    "monotonic_elapsed_ns": 270000000000
+  },
+  "tools": [
+    {
+      "id": "bit-ids-probe",
+      "version": "0.0.0",
+      "role": "observer"
+    },
+    {
+      "id": "fixture-forge",
+      "version": "0.0.0",
+      "role": "harness"
+    },
+    {
+      "id": "packet-oracle",
+      "version": "0.0.0",
+      "role": "connector"
+    },
+    {
+      "id": "route-runner",
+      "version": "0.0.0",
+      "role": "acquisition"
+    }
+  ],
+  "acquisition": [
+    {
+      "route": "route-package-manager",
+      "source": "https://packages.example.invalid/fixture-client-0.0.0-fixture.tar.gz",
+      "retrieved_at": "2026-09-04T13:30:45Z",
+      "artifact": "sha256:0233e54b2c847cfdef308dc2f00ccc3de92a14fbf8845fef38ea135f31e8be34",
+      "bytes": 1048576,
+      "signature": "unsigned",
+      "installed_version": "0.0.0-fixture"
+    },
+    {
+      "route": "route-vendor-release",
+      "source": "https://vendor.example.invalid/download/fixture-client/0.0.0-fixture.tar.gz",
+      "retrieved_at": "2026-09-04T13:30:55Z",
+      "artifact": "sha256:65779fdb46c128a2979f001ca0ab0c580dc5578e94e1aeac65df32c19388cb11",
+      "bytes": 1048580,
+      "signature": "verified",
+      "installed_version": "0.0.0-fixture"
+    }
+  ],
+  "phases": [
+    {
+      "name": "planned",
+      "started_at": "2026-09-04T13:30:00Z",
+      "ended_at": "2026-09-04T13:30:10Z",
+      "detail": "target and version chosen from the catalogue"
+    },
+    {
+      "name": "resolved",
+      "started_at": "2026-09-04T13:30:10Z",
+      "ended_at": "2026-09-04T13:30:40Z",
+      "detail": "both routes resolved the same stable version"
+    },
+    {
+      "name": "acquired_twice",
+      "started_at": "2026-09-04T13:30:40Z",
+      "ended_at": "2026-09-04T13:31:10Z",
+      "detail": "two independent routes delivered the build"
+    },
+    {
+      "name": "installed",
+      "started_at": "2026-09-04T13:31:10Z",
+      "ended_at": "2026-09-04T13:31:30Z",
+      "detail": "both installations reported the same version"
+    },
+    {
+      "name": "observed",
+      "started_at": "2026-09-04T13:31:30Z",
+      "ended_at": "2026-09-04T13:33:00Z",
+      "detail": "observer and connector ran against the fixture"
+    },
+    {
+      "name": "corroborated",
+      "started_at": "2026-09-04T13:33:00Z",
+      "ended_at": "2026-09-04T13:34:00Z",
+      "detail": "overlapping observations compared field by field"
+    },
+    {
+      "name": "validated",
+      "started_at": "2026-09-04T13:34:00Z",
+      "ended_at": "2026-09-04T13:34:30Z",
+      "detail": "publication invariants checked"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev-connector-report",
+      "kind": "connector_output",
+      "path": "connector/packet-oracle.json",
+      "bytes": 4096,
+      "sha256": "sha256:7958abaa05137cf562c7ff8867fdc085e0228efa799d0eb9d5c11527560a4de0",
+      "produced_by": "packet-oracle",
+      "phase": "corroborated",
+      "redacted": false
+    },
+    {
+      "id": "ev-control-dht",
+      "kind": "positive_control",
+      "path": "control/dht.log",
+      "bytes": 2048,
+      "sha256": "sha256:296e6735bc8e4309df9528aa7bc2ad80052795f2cc1457fd9dfc45c3e8033850",
+      "produced_by": "bit-ids-probe",
+      "phase": "observed",
+      "redacted": false
+    },
+    {
+      "id": "ev-control-web-seed",
+      "kind": "positive_control",
+      "path": "control/web-seed.log",
+      "bytes": 1024,
+      "sha256": "sha256:d1801003f1d263095688a5ccad55f76412c9f432c0568abfff9becce44514666",
+      "produced_by": "bit-ids-probe",
+      "phase": "observed",
+      "redacted": false
+    },
+    {
+      "id": "ev-metainfo",
+      "kind": "metainfo",
+      "path": "fixture/generated.torrent",
+      "bytes": 512,
+      "sha256": "sha256:2183888ce19959bfead50d70433701f0dc0521aaa98da3fe50fcb29be929331d",
+      "produced_by": "fixture-forge",
+      "phase": "observed",
+      "redacted": false
+    },
+    {
+      "id": "ev-observer-stream",
+      "kind": "observer_stream",
+      "path": "observer/events.jsonl",
+      "bytes": 16384,
+      "sha256": "sha256:3e578a73663e91f552eaffec5e02cf86edbc7eb639c149225e584b83eb5caf3e",
+      "produced_by": "bit-ids-probe",
+      "phase": "observed",
+      "redacted": true
+    },
+    {
+      "id": "ev-packet-capture",
+      "kind": "packet_capture",
+      "path": "packets/loopback.pcapng",
+      "bytes": 65536,
+      "sha256": "sha256:0f4b79b009ac912961b5759c1dc0d8db0547391da7143172094512780196f2e2",
+      "produced_by": "packet-oracle",
+      "phase": "observed",
+      "redacted": false
+    },
+    {
+      "id": "ev-peer-transcript",
+      "kind": "peer_transcript",
+      "path": "observer/peer-transcript.bin",
+      "bytes": 8192,
+      "sha256": "sha256:b75432e63de7c4a09e5ee253bb1aa4bac21e4be18b141416628b4bbfcaffdc97",
+      "produced_by": "bit-ids-probe",
+      "phase": "observed",
+      "redacted": false
+    }
+  ],
+  "redactions": [
+    {
+      "evidence": "ev-observer-stream",
+      "rule": "absolute_path",
+      "occurrences": 3
+    }
+  ]
+}

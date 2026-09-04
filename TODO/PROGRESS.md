@@ -1,22 +1,29 @@
 # Current progress
 
 State instant: 2026-09-04
-Baseline commit: `4815225` on `main`
+Baseline commit: `c60f772` on `main`
 Total: 52
-Open: 49
+Open: 48
 In progress: 0
 Blocked: 0
-Done: 3
+Done: 4
 
 ## Current state
 
-`SCHEMA-01` and `FOUND-02` are closed.
+`SCHEMA-01`, `FOUND-02` and `SCHEMA-02` are closed.
 
 The `bit-ids` crate carries the published record shape, the six field states,
 the derived record identifier, the canonical value forms and the publication
 invariants, with one validating read path and one validating write path.
 [`../docs/architecture.md`](../docs/architecture.md) section 4 is the
 reference.
+
+The run manifest carries the rest of a capture: host, isolation, both clocks,
+every tool at the version that ran, the routes the build came through, the
+phases of the state machine the run walked, the content-addressed evidence and
+what was scrubbed from it. `bind` compares every value the manifest and the
+profile share, so the deliberate overlap between the two documents cannot
+drift.
 
 The supply chain is pinned at all three layers and each pin has a check behind
 it. [`../docs/supply-chain.md`](../docs/supply-chain.md) carries the layers and
@@ -36,9 +43,9 @@ nothing to check. Both are fixed and both now refuse the shape that shipped.
 
 ## Work order
 
-1. `SCHEMA-02`, then `SCHEMA-03`. They extend the `capture` and `corroboration`
-   sections `SCHEMA-01` deliberately left thin, and every later entry consumes
-   their contracts.
+1. `SCHEMA-03`, the agreement and conflict model. It extends the
+   `corroboration` section `SCHEMA-01` deliberately left thin, and every later
+   entry consumes its contract.
 2. `FOUND-03` and `SCHEMA-04` against deterministic fixtures.
 3. `ACQ-01` through `ACQ-04`; do not install proprietary clients earlier.
 4. Split `OBS-01`, then implement `OBS-02` through `OBS-05`.

@@ -21,10 +21,18 @@ result about that client.
 | `valid-correction.json` | the same build, a second capture run, superseding the first |
 | `unsupported-schema.json` | the golden record with a schema identifier from another generation |
 | `unproven-field.json` | the golden record with the peer ID field stripped of its evidence |
+| `valid-manifest.json` | the run that produced `valid-profile.json`, walking every phase |
+| `unsupported-manifest-schema.json` | the golden run with a manifest schema from another generation |
 
-The remaining refusals are planted into a copy of `valid-profile.json` by
-[`../profile_schema.rs`](../profile_schema.rs), one per diagnostic code, so a
-new invariant cannot be added without a defect that proves it fires.
+⚠ **`valid-manifest.json` and `valid-profile.json` are one pair and have to
+stay one pair.** `evidence_manifest_binds_to_the_profile_of_the_same_run`
+compares every value they share, so editing an evidence digest, a connector
+version or the build tuple in one means editing it in the other.
+
+The remaining refusals are planted into a copy of the golden documents by
+[`../profile_schema.rs`](../profile_schema.rs) and
+[`../evidence_manifest.rs`](../evidence_manifest.rs), one per diagnostic code,
+so a new invariant cannot be added without a defect that proves it fires.
 
 ## Regenerating
 
@@ -35,8 +43,10 @@ hand:
 
 ```sh
 cargo run --quiet --example validate-profile -- crates/bit-ids/tests/fixtures/valid-profile.json
+cargo run --quiet --example validate-run -- crates/bit-ids/tests/fixtures/valid-manifest.json crates/bit-ids/tests/fixtures/valid-profile.json
 ```
 
-That command validates without writing. To change a record, edit it, run the
-command to see what is refused, and let `cargo test --workspace profile_schema`
-report any deviation from the canonical form.
+Neither command writes. To change a record, edit it, run these to see what is
+refused, and let `cargo test --workspace profile_schema` and
+`cargo test --workspace evidence_manifest` report any deviation from the
+canonical form.

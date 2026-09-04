@@ -84,7 +84,7 @@ catalogue reader, which is `CORPUS-02`.
 ## SCHEMA-02: Raw evidence and run manifest schema
 
 Source: b-ids evidence bundles and operator accuracy requirement
-Priority: P0 | Effort: L | Status: OPEN
+Priority: P0 | Effort: L | Status: DONE
 
 Problem: A normalized profile without acquisition and packet provenance cannot
 be independently replayed or audited.
@@ -95,8 +95,63 @@ host facts, and hashes are sufficient to reproduce a normalization verdict.
 Approach: Define canonical manifests with content-addressed evidence paths,
 redaction declarations, tool versions, and ordered run phases.
 
+Decision: the manifest is a second document beside the raw bytes, not a larger
+`capture` section inside the profile. A replay needs the whole run and a
+consumer of the catalogue needs only the record, and one document serving both
+would make every consumer carry the run. The cost is an overlap, which `bind`
+pays for by comparing every shared value.
+
+Decision: the content-addressed path is derived from the digest rather than
+stored beside it. A stored path is a second copy of the digest that can
+disagree with the bytes it names.
+
+Decision: phases are the state machine in `docs/architecture.md` section 8, and
+a run advances one step at a time or falls to `provisional`. Skipping is
+refused because a phase nobody ran is a phase nobody can produce evidence for.
+
 Prove: `cargo test --workspace evidence_manifest` round-trips a complete run
 and rejects missing digests, connector versions, or acquisition identity.
+
+Closure evidence: `cargo test --workspace evidence_manifest` reports 15 passed,
+0 failed on 2026-09-04. The three rejections the acceptance names are covered:
+a record with `sha256` removed is refused during deserialization, a connector
+whose version differs between the documents is `E-BND-07`, and acquisition
+identity is `E-BND-09` and `E-BND-11` across the pair plus `E-MAN-10` through
+`E-MAN-13` within the run. `cargo fmt --all -- --check`, `cargo check`,
+`cargo test` and `cargo clippy` at `--workspace --locked --all-targets`,
+`shellcheck`, `shfmt -d -i 2 -ci` and `sh scripts/common/check-gate.sh` all
+exit 0.
+
+Every diagnostic code has a planted defect, 30 for the manifest and 10 for the
+binding, and a test reads the module's own source and fails when a code has
+none. Three further mutations were run by hand: dropping a row from the binding
+table named the uncovered code, disabling the redaction cross-check failed 2
+tests, and letting a run skip a phase failed 2.
+
+Driven pass: `cargo run --example validate-run -- MANIFEST PROFILE`. Exit 0 on
+the golden pair; exit 1 with `E-BND-01` and `E-BND-12` when the manifest is
+paired with the profile of a different capture run of the same build, which is
+the realistic version of the mistake the two-document design exists to catch;
+exit 1 on a refused manifest and exit 2 on the two routes that could not run.
+
+⭐ Guard-mutation finding, fixed: `E-BND-10` compared the installed version
+across the two documents and could not fail. The manifest already requires
+every route to have installed its own recorded version, the profile requires
+the same of its build, and `E-BND-03` requires those to agree, so the fourth
+comparison was unreachable while the other three held. It was found while
+trying to plant a defect for it, and removed rather than left as a guard nobody
+knows works.
+
+Door sweep: the only route from bytes to a `RunManifest` is `from_json`, and
+`RunManifest` does not derive `Deserialize` for the reason `SCHEMA-01` found
+the hard way; `evidence_manifest_validates_on_every_serde_route_not_just_from_json`
+holds it. `bind` answers agreement and not validity, which is now stated on it,
+because a caller who built a document in memory has not had its own invariants
+run.
+
+Residual: `acquisition` carries the identity a replay needs, not the full route
+record. Resolver evidence, package metadata and the mirrors tried belong to
+`ACQ-01`.
 
 ## SCHEMA-03: Connector agreement and conflict model
 

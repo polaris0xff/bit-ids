@@ -5,6 +5,31 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-04T14:29:09Z
+
+- Closed `SCHEMA-02`. The run manifest records how a capture was produced: the
+  host, the isolation it ran under, both clocks, every tool at the version that
+  ran, where each artifact came from, the phases of the state machine the run
+  walked, the content-addressed evidence and what was scrubbed from it. Record:
+  [`TODO/schema.md`](TODO/schema.md).
+- It is a second document rather than a larger section inside the profile, so
+  a consumer of the catalogue does not have to carry a whole run. `bind`
+  compares every value the two share, which is what stops a deliberate overlap
+  from becoming drift. Pairing a manifest with the profile of a different run
+  of the same build is refused.
+- Absence stays as constrained as it is in a profile: a run that reached beyond
+  loopback says why, a host that is not disposable is refused outright, a phase
+  cannot be skipped, and an artifact marked redacted must say what was taken out
+  of it so that "raw" cannot quietly mean "edited".
+- One guard was written and then deleted. `E-BND-10` compared the installed
+  version across the two documents and could not fail, because three existing
+  invariants already implied it. It was found while trying to plant a defect
+  for it, which is the only way that class of dead guard shows up.
+- `ProfileError` is now `DocumentError` and carries the schema it expected. It
+  covered both documents while naming only one, and its message told a reader
+  with a manifest problem to go and look at the profile schema.
+- Deployment: no data branch, release or capture service was created.
+
 ### 2026-09-04T14:11:29Z
 
 - Closed `FOUND-02`. The action pin rule is now an allowlist of forms that are

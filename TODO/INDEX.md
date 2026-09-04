@@ -1,17 +1,17 @@
 # Work index
 
 Total: 52
-Open: 49
+Open: 48
 In progress: 0
 Blocked: 0
-Done: 3
+Done: 4
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| P0 | 19 | 0 | 0 | 3 | 22 |
+| P0 | 18 | 0 | 0 | 4 | 22 |
 | P1 | 29 | 0 | 0 | 0 | 29 |
 | P2 | 1 | 0 | 0 | 0 | 1 |
-| Total | 49 | 0 | 0 | 3 | 52 |
+| Total | 48 | 0 | 0 | 4 | 52 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -20,7 +20,7 @@ Done: 3
 | FOUND-03 | P0 | L | OPEN | Deterministic protocol fixture suite |
 | FOUND-04 | P1 | M | OPEN | Third-party licence and redistribution register |
 | SCHEMA-01 | P0 | L | DONE | Versioned identity profile schema |
-| SCHEMA-02 | P0 | L | OPEN | Raw evidence and run manifest schema |
+| SCHEMA-02 | P0 | L | DONE | Raw evidence and run manifest schema |
 | SCHEMA-03 | P0 | L | OPEN | Connector agreement and conflict model |
 | SCHEMA-04 | P0 | M | OPEN | Variability and repeated-sampling model |
 | OBS-01 | P0 | XL | OPEN | Isolated Rust loopback observation lab |

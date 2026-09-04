@@ -3,8 +3,8 @@
 **Task:** Take the work order in `TODO/PROGRESS.md` in dependency order,
 committing and pushing each green unit to `main`.
 
-**Resume point:** `SCHEMA-01` and `FOUND-02` are closed. The next item is
-`SCHEMA-02`, then `SCHEMA-03`.
+**Resume point:** `SCHEMA-01`, `FOUND-02` and `SCHEMA-02` are closed. The next
+item is `SCHEMA-03`, the agreement and conflict model.
 
 **In flight:** Nothing. The tree is coherent.
 

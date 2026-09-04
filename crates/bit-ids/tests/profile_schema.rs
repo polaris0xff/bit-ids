@@ -15,7 +15,7 @@
 //! source and fails if the table has stopped covering a code.
 
 use bit_ids::identity::{RecordId, RecordKey, SchemaVersion};
-use bit_ids::{Profile, ProfileError, Violations};
+use bit_ids::{DocumentError, Profile, Violations};
 use serde_json::{Value, json};
 
 const GOLDEN: &str = include_str!("fixtures/valid-profile.json");
@@ -39,7 +39,7 @@ fn golden_value() -> Value {
 fn refuse(document: &Value) -> Violations {
     let text = serde_json::to_string(document).expect("a mutated document serializes");
     match Profile::from_json(&text) {
-        Err(ProfileError::Invalid(violations)) => violations,
+        Err(DocumentError::Invalid(violations)) => violations,
         Ok(_) => panic!("the mutated document validated, so the guard did not fire"),
         Err(other) => panic!("expected a refused invariant, got: {other}"),
     }
@@ -160,8 +160,9 @@ fn profile_schema_gives_two_captures_of_one_build_two_record_ids() {
 #[test]
 fn profile_schema_rejects_an_unknown_schema_version() {
     match Profile::from_json(UNSUPPORTED_SCHEMA) {
-        Err(ProfileError::UnsupportedSchema { found }) => {
+        Err(DocumentError::UnsupportedSchema { found, expected }) => {
             assert_eq!(found, "bit-ids/profile/2");
+            assert_eq!(expected, bit_ids::PROFILE_SCHEMA);
         }
         other => panic!("expected an unsupported schema, got: {other:?}"),
     }
@@ -174,8 +175,9 @@ fn profile_schema_reports_the_version_before_complaining_about_a_field() {
     document["a_field_from_a_later_generation"] = json!(true);
     let text = serde_json::to_string(&document).expect("serializes");
     match Profile::from_json(&text) {
-        Err(ProfileError::UnsupportedSchema { found }) => {
+        Err(DocumentError::UnsupportedSchema { found, expected }) => {
             assert_eq!(found, "bit-ids/profile/9");
+            assert_eq!(expected, bit_ids::PROFILE_SCHEMA);
         }
         other => panic!(
             "a later generation must be told its version is unsupported, not that a field is \
@@ -189,7 +191,7 @@ fn profile_schema_reports_the_version_before_complaining_about_a_field() {
 fn malformed(document: &Value) -> String {
     let text = serde_json::to_string(document).expect("serializes");
     match Profile::from_json(&text) {
-        Err(ProfileError::Malformed(error)) => error.to_string(),
+        Err(DocumentError::Malformed(error)) => error.to_string(),
         other => panic!("expected a malformed document, got: {other:?}"),
     }
 }
@@ -325,7 +327,7 @@ fn profile_schema_rejects_a_record_id_that_is_not_a_record_id() {
 #[test]
 fn profile_schema_rejects_an_unproven_field() {
     match Profile::from_json(UNPROVEN_FIELD) {
-        Err(ProfileError::Invalid(violations)) => {
+        Err(DocumentError::Invalid(violations)) => {
             assert!(
                 violations.has("E-OBS-05"),
                 "a field asserting a measurement with no evidence must be refused: {violations}"
@@ -353,7 +355,7 @@ fn profile_schema_refuses_to_write_a_record_it_would_refuse_to_read() {
     let mut profile = Profile::from_json(GOLDEN).expect("the golden record validates");
     profile.observations[3].evidence.clear();
     match profile.to_json() {
-        Err(ProfileError::Invalid(violations)) => assert!(violations.has("E-OBS-05")),
+        Err(DocumentError::Invalid(violations)) => assert!(violations.has("E-OBS-05")),
         other => panic!("an invalid record has no canonical form, got: {other:?}"),
     }
 }

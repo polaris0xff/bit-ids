@@ -27,11 +27,13 @@
 pub mod canonical;
 pub mod identity;
 mod json;
+pub mod manifest;
 pub mod observation;
 pub mod record;
 pub mod validate;
 
-pub use json::ProfileError;
+pub use json::DocumentError;
+pub use manifest::{MANIFEST_SCHEMA, RunManifest, bind, validate_manifest};
 pub use record::Profile;
 pub use validate::{SchemaError, Violations, validate};
 

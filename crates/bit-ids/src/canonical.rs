@@ -472,6 +472,146 @@ impl<'de> Deserialize<'de> for Version {
     }
 }
 
+/// A short recorded fact about a host, a tool or a reason.
+///
+/// Bounded and printable, with no leading or trailing space. It is a value read
+/// off a machine and written down, not prose: a kernel string, a runner image
+/// name, the reason a run needed something.
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct Label(String);
+
+impl Label {
+    /// The longest accepted label.
+    pub const MAX_LEN: usize = 128;
+
+    /// Parses a recorded fact.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the value is empty, longer than [`Label::MAX_LEN`],
+    /// carries a non-printable byte, or begins or ends with a space. Surrounding
+    /// space is refused rather than trimmed, because a value read off a machine
+    /// with stray whitespace is a parsing defect where it was read.
+    pub fn parse(text: &str) -> Result<Self, CanonicalError> {
+        if text.is_empty() || text.len() > Self::MAX_LEN {
+            return Err(CanonicalError::new(
+                "label-length",
+                format!("{} characters", text.len()),
+            ));
+        }
+        if !text.bytes().all(|b| b.is_ascii_graphic() || b == b' ')
+            || text.starts_with(' ')
+            || text.ends_with(' ')
+        {
+            return Err(CanonicalError::new("label-shape", text.to_owned()));
+        }
+        Ok(Self(text.to_owned()))
+    }
+
+    /// The canonical spelling.
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl fmt::Display for Label {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl Serialize for Label {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.0)
+    }
+}
+
+impl<'de> Deserialize<'de> for Label {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let text = String::deserialize(deserializer)?;
+        Self::parse(&text).map_err(D::Error::custom)
+    }
+}
+
+/// The location an artifact was retrieved from.
+///
+/// HTTPS only, and never with credentials in it. A record of where a build came
+/// from is published, so a URL carrying userinfo would publish whatever was in
+/// it, and a plain HTTP retrieval cannot support a claim about which bytes
+/// arrived.
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct Url(String);
+
+impl Url {
+    /// The longest accepted URL.
+    pub const MAX_LEN: usize = 512;
+
+    /// Parses a retrieval location.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the value is empty or over-long, is not `https://`,
+    /// carries an `@` in its authority, contains whitespace or a control byte,
+    /// or has no host.
+    pub fn parse(text: &str) -> Result<Self, CanonicalError> {
+        if text.is_empty() || text.len() > Self::MAX_LEN {
+            return Err(CanonicalError::new(
+                "url-length",
+                format!("{} characters", text.len()),
+            ));
+        }
+        let Some(rest) = text.strip_prefix("https://") else {
+            return Err(CanonicalError::new(
+                "url-scheme",
+                "a retrieval location is https",
+            ));
+        };
+        if !text.bytes().all(|b| b.is_ascii_graphic()) {
+            return Err(CanonicalError::new(
+                "url-character",
+                "whitespace or a non-printable byte",
+            ));
+        }
+        let authority = rest.split(['/', '?', '#']).next().unwrap_or("");
+        if authority.is_empty() {
+            return Err(CanonicalError::new("url-host", "no host"));
+        }
+        if authority.contains('@') {
+            return Err(CanonicalError::new(
+                "url-credentials",
+                "a published location must not carry userinfo",
+            ));
+        }
+        Ok(Self(text.to_owned()))
+    }
+
+    /// The canonical spelling.
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl fmt::Display for Url {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl Serialize for Url {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.0)
+    }
+}
+
+impl<'de> Deserialize<'de> for Url {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let text = String::deserialize(deserializer)?;
+        Self::parse(&text).map_err(D::Error::custom)
+    }
+}
+
 /// A path inside an evidence bundle, relative to the bundle root.
 ///
 /// Absolute paths, drive letters, backslashes, `.` and `..` segments are all
