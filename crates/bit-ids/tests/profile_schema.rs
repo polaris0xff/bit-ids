@@ -70,6 +70,20 @@ fn swap(document: &mut Value, key: &str, left: usize, right: usize) {
         .swap(left, right);
 }
 
+/// A record identifier that is well formed and is not the golden record's, so
+/// planting it exercises the correction rules rather than the identity ones.
+const CORRECTION_ID: &str =
+    "record:sha256:9308390b39915df84619e0b12f7983918539a1497b9061979115748dcecb64b7";
+
+fn adjudication(evidence: &Value) -> Value {
+    json!({
+        "decided_at": "2026-09-04T14:02:11Z",
+        "reason": "parser_defect",
+        "summary": "planted",
+        "evidence": evidence.clone()
+    })
+}
+
 // -- the golden records ----------------------------------------------------
 
 #[test]
@@ -497,21 +511,111 @@ const PLANTED: &[(&str, Mutation)] = &[
     }),
     ("E-COR-03", |document| swap(document, "corroboration", 0, 1)),
     ("E-COR-04", |document| {
-        corroboration_mut(document, "dht/node_id")["connectors"] =
-            json!(["bit-ids-probe", "a-connector-that-did-not-run"]);
+        corroboration_mut(document, "dht/node_id")["observations"][1]["connector"] =
+            json!("a-connector-that-did-not-run");
     }),
     ("E-COR-05", |document| {
-        corroboration_mut(document, "dht/node_id")["connectors"] = json!(["bit-ids-probe"]);
+        // One connector could not see it, so the pair never overlapped. Calling
+        // that agreement is the mistake this whole model exists to refuse.
+        corroboration_mut(document, "dht/node_id")["observations"][1]["seen"] =
+            json!({ "kind": "out_of_scope" });
     }),
     ("E-COR-06", |document| {
-        corroboration_mut(document, "dht/node_id")["connectors"] =
-            json!(["bit-ids-probe", "bit-ids-probe"]);
+        corroboration_mut(document, "dht/node_id")["observations"][1]["connector"] =
+            json!("bit-ids-probe");
     }),
     ("E-COR-07", |document| {
         document["corroboration"]
             .as_array_mut()
             .expect("an array")
             .remove(0);
+    }),
+    ("E-COR-08", |document| {
+        corroboration_mut(document, "dht/node_id")["observations"]
+            .as_array_mut()
+            .expect("an array")
+            .swap(0, 1);
+    }),
+    ("E-COR-09", |document| {
+        corroboration_mut(document, "dht/node_id")["observations"][0]["evidence"] =
+            json!("ev-that-was-never-collected");
+    }),
+    ("E-COR-10", |document| {
+        corroboration_mut(document, "peer_wire/bep10.client")["observations"][0]["projection"] =
+            json!({ "kind": "normalized", "detail": "a-normalization-nobody-declared" });
+    }),
+    ("E-COR-11", |document| {
+        document["normalizations"][0]["preserves_unknown_bytes"] = json!(false);
+    }),
+    ("E-COR-12", |document| {
+        corroboration_mut(document, "dht/node_id")["agreement"] = json!("not_corroborated");
+    }),
+    ("E-COR-13", |document| {
+        corroboration_mut(document, "peer_wire/reserved")["observations"][1]["seen"] =
+            json!({ "kind": "bytes", "detail": "0000000000100006" });
+    }),
+    ("E-COR-14", |document| {
+        let entry = corroboration_mut(document, "peer_wire/reserved");
+        entry["agreement"] = json!("disagrees");
+        entry["conflict"] = json!("planted, but the observations are identical");
+    }),
+    ("E-COR-15", |document| {
+        corroboration_mut(document, "peer_wire/bep10.client")["agreement"] = json!("exact");
+    }),
+    ("E-COR-16", |document| {
+        corroboration_mut(document, "peer_wire/peer_id")["agreement"] = json!("normalized");
+    }),
+    ("E-COR-17", |document| {
+        let entry = corroboration_mut(document, "peer_wire/reserved");
+        entry["observations"][1]["seen"] = json!({ "kind": "bytes", "detail": "0000000000100006" });
+        entry["agreement"] = json!("disagrees");
+    }),
+    ("E-COR-18", |document| {
+        corroboration_mut(document, "peer_wire/reserved")["conflict"] =
+            json!("nothing is in conflict here");
+    }),
+    ("E-COR-19", |document| {
+        let entry = corroboration_mut(document, "peer_wire/reserved");
+        entry["agreement"] = json!("not_corroborated");
+        for index in 0..2 {
+            entry["observations"][index]["seen"] = json!({ "kind": "out_of_scope" });
+        }
+    }),
+    ("E-NRM-01", |document| {
+        let first = document["normalizations"][0].clone();
+        document["normalizations"]
+            .as_array_mut()
+            .expect("an array")
+            .push(first);
+    }),
+    ("E-NRM-02", |document| {
+        document["normalizations"]
+            .as_array_mut()
+            .expect("an array")
+            .push(json!({
+                "id": "zz-never-applied",
+                "summary": "declared and used by nothing",
+                "preserves_order": true,
+                "preserves_unknown_bytes": true
+            }));
+    }),
+    ("E-ADJ-01", |document| {
+        document["supersedes"] = json!(CORRECTION_ID);
+    }),
+    ("E-ADJ-02", |document| {
+        document["adjudication"] = adjudication(&json!(["ev-packet-capture"]));
+    }),
+    ("E-ADJ-03", |document| {
+        document["supersedes"] = json!(CORRECTION_ID);
+        document["adjudication"] = adjudication(&json!([]));
+    }),
+    ("E-ADJ-04", |document| {
+        document["supersedes"] = json!(CORRECTION_ID);
+        document["adjudication"] = adjudication(&json!(["ev-that-was-never-collected"]));
+    }),
+    ("E-ADJ-05", |document| {
+        document["supersedes"] = json!(CORRECTION_ID);
+        document["adjudication"] = adjudication(&json!(["ev-packet-capture", "ev-packet-capture"]));
     }),
 ];
 

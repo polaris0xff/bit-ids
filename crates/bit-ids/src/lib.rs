@@ -24,6 +24,7 @@
 //! assembles one field at a time and a test needs to plant a defect in one.
 //! The write path is where that is caught.
 
+pub mod agreement;
 pub mod canonical;
 pub mod identity;
 mod json;
@@ -32,6 +33,7 @@ pub mod observation;
 pub mod record;
 pub mod validate;
 
+pub use agreement::publishable;
 pub use json::DocumentError;
 pub use manifest::{MANIFEST_SCHEMA, RunManifest, bind, validate_manifest};
 pub use record::Profile;

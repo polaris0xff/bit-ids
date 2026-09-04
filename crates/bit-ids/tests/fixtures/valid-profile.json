@@ -149,50 +149,182 @@
   "corroboration": [
     {
       "path": "dht/node_id",
-      "connectors": [
-        "bit-ids-probe",
-        "packet-oracle"
+      "observations": [
+        {
+          "connector": "bit-ids-probe",
+          "evidence": "ev-control-dht",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "absent"
+          }
+        },
+        {
+          "connector": "packet-oracle",
+          "evidence": "ev-packet-capture",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "absent"
+          }
+        }
       ],
-      "agreement": "exact"
+      "agreement": "exact",
+      "conflict": null
     },
     {
       "path": "mse/handshake_padding",
-      "connectors": [
-        "bit-ids-probe"
+      "observations": [
+        {
+          "connector": "bit-ids-probe",
+          "evidence": "ev-observer-stream",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "bytes",
+            "detail": "0102030405060708090a0b0c0d0e0f10"
+          }
+        },
+        {
+          "connector": "packet-oracle",
+          "evidence": "ev-packet-capture",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "bytes",
+            "detail": "0102030405060708090a0b0c0d0e0f10"
+          }
+        }
       ],
-      "agreement": "not_corroborated"
+      "agreement": "exact",
+      "conflict": null
     },
     {
       "path": "peer_wire/bep10.client",
-      "connectors": [
-        "bit-ids-probe",
-        "packet-oracle"
+      "observations": [
+        {
+          "connector": "bit-ids-probe",
+          "evidence": "ev-peer-transcript",
+          "projection": {
+            "kind": "normalized",
+            "detail": "bep10-value-unwrap"
+          },
+          "seen": {
+            "kind": "bytes",
+            "detail": "666978747572652f302e302e30"
+          }
+        },
+        {
+          "connector": "packet-oracle",
+          "evidence": "ev-packet-capture",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "bytes",
+            "detail": "666978747572652f302e302e30"
+          }
+        }
       ],
-      "agreement": "exact"
+      "agreement": "normalized",
+      "conflict": null
     },
     {
       "path": "peer_wire/peer_id",
-      "connectors": [
-        "bit-ids-probe",
-        "packet-oracle"
+      "observations": [
+        {
+          "connector": "bit-ids-probe",
+          "evidence": "ev-peer-transcript",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "bytes",
+            "detail": "2d5858303030302d313233343536373839303132"
+          }
+        },
+        {
+          "connector": "packet-oracle",
+          "evidence": "ev-packet-capture",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "bytes",
+            "detail": "2d5858303030302d313233343536373839303132"
+          }
+        }
       ],
-      "agreement": "exact"
+      "agreement": "exact",
+      "conflict": null
     },
     {
       "path": "peer_wire/reserved",
-      "connectors": [
-        "bit-ids-probe",
-        "packet-oracle"
+      "observations": [
+        {
+          "connector": "bit-ids-probe",
+          "evidence": "ev-peer-transcript",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "bytes",
+            "detail": "0000000000100005"
+          }
+        },
+        {
+          "connector": "packet-oracle",
+          "evidence": "ev-connector-report",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "bytes",
+            "detail": "0000000000100005"
+          }
+        }
       ],
-      "agreement": "normalized"
+      "agreement": "exact",
+      "conflict": null
     },
     {
       "path": "web_seed/user_agent",
-      "connectors": [
-        "bit-ids-probe",
-        "packet-oracle"
+      "observations": [
+        {
+          "connector": "bit-ids-probe",
+          "evidence": "ev-control-web-seed",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "absent"
+          }
+        },
+        {
+          "connector": "packet-oracle",
+          "evidence": "ev-packet-capture",
+          "projection": {
+            "kind": "raw"
+          },
+          "seen": {
+            "kind": "absent"
+          }
+        }
       ],
-      "agreement": "exact"
+      "agreement": "exact",
+      "conflict": null
+    }
+  ],
+  "normalizations": [
+    {
+      "id": "bep10-value-unwrap",
+      "summary": "strips the bencode length prefix from a string value",
+      "preserves_order": true,
+      "preserves_unknown_bytes": true
     }
   ],
   "evidence": [
@@ -253,5 +385,6 @@
       "connector": "bit-ids-probe"
     }
   ],
-  "supersedes": null
+  "supersedes": null,
+  "adjudication": null
 }

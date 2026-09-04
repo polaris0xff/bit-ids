@@ -74,14 +74,15 @@ types are the schema; there is no separate schema document to drift from them.
 | `capture` | UTC instant, runner image, kernel, isolation mode, fixture digest, observer and connector versions | `SCHEMA-02` |
 | `observations` | typed surface records, each preserving raw bytes/order and a parsed view | `SCHEMA-01` |
 | `corroboration` | connector identities, overlapping fields, normalization, outcome and disagreement details | `SCHEMA-03` |
+| `normalizations` | every transformation a comparison applied, declared once | `SCHEMA-03` |
 | `evidence` | relative paths plus size and SHA-256 for every raw artifact | `SCHEMA-01` |
 | `supersedes` | absent for an original record; the prior record ID for a correction | `SCHEMA-01` |
+| `adjudication` | why a correction corrects; absent on an original | `SCHEMA-03` |
 
-Three sections carry only what a profile-level invariant needs until the entry
+Two sections carry only what a profile-level invariant needs until the entry
 that owns them lands. `acquisition` carries route identity and installed
-versions, `capture` carries run identity and the connector list, and
-`corroboration` carries the per-field outcome. Every field that exists is read
-by the validator; none is a placeholder.
+versions, and `capture` carries run identity and the connector list. Every
+field that exists is read by the validator; none is a placeholder.
 
 ### Field states
 
@@ -182,6 +183,53 @@ outright. A phase cannot be skipped, because a phase nobody ran is a phase
 nobody can produce evidence for. And an artifact marked redacted must have a
 declaration saying what was taken out of it, so that "raw" cannot quietly mean
 "edited".
+
+### Agreement, and what it is not
+
+A corroboration entry keeps what **each** connector saw, in
+[`../crates/bit-ids/src/agreement.rs`](../crates/bit-ids/src/agreement.rs):
+which connector, which artifact the value was read out of, what was applied
+before comparing, and the value itself. Choosing one observation and recording
+only that would throw away the disagreement along with the evidence of it.
+
+An observation is one of three things. Bytes, an absence the connector actually
+looked for, or **out of scope**: this connector cannot see this surface at all.
+
+⛔ **The third one is the whole point.** A field only one connector could see
+has nothing disagreeing with it, and calling that agreement is the easiest
+mistake in the model. Overlap counts only the observations that were in a
+position to see the field, and an outcome of `exact` or `normalized` over fewer
+than two of those is refused.
+
+A comparison that needed a transformation names it, and the transformation is
+declared once in `normalizations` with two properties it must both have: order
+survives it, and bytes it does not understand survive it. A normalization that
+discards either cannot be used to reach agreement, which is the rule in
+section 6 made checkable rather than remembered.
+
+### Valid is not publishable
+
+These are different questions and the record set needs both.
+
+A disagreement has to be **recordable**. A run whose observers differ moves to
+`provisional` with its evidence retained, per section 8, and a schema that
+refused to express the conflict would lose exactly the evidence that matters.
+So [`validate`](../crates/bit-ids/src/validate.rs) accepts a record carrying a
+conflict, and it must.
+
+A disagreement must not be **published**.
+[`publishable`](../crates/bit-ids/src/agreement.rs) is the separate gate, and
+it refuses two things: a field whose observations disagree, and a field that
+asserts a measurement no second connector could see. The second is
+`capture-methodology.md`'s provisional-until-a-second-route rule; a record
+carrying a provisional field is itself provisional.
+
+A record that supersedes another carries an adjudication: when it was settled,
+which of the four causes it was, what was decided, and the evidence behind it.
+The causes are the ones a disagreement actually has: a parser defect, a timing
+effect, genuine client variability, or the observer perturbing what the target
+offered. An original record has nothing to adjudicate and carrying one is
+refused.
 
 ### Binding the two documents
 

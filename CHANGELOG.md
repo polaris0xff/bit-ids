@@ -5,6 +5,30 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-04T14:40:23Z
+
+- Closed `SCHEMA-03`. Corroboration now keeps what each connector saw, the
+  artifact it read the value out of and what was applied before comparing,
+  rather than a verdict and a list of names. Record:
+  [`TODO/schema.md`](TODO/schema.md).
+- A connector that cannot see a surface says so. Left out, a single observation
+  looks like a pair that happened to agree, which is the easiest false
+  agreement available; named, it is the reason that connector's silence proves
+  nothing. An outcome of exact or normalized over fewer than two observers who
+  could actually see the field is refused.
+- Validity and publishability became separate gates, and both are needed. A
+  disagreement has to be recordable or the project loses the evidence of one,
+  so a conflicted record reads and validates; `publishable` is what refuses to
+  ship it. A record that supersedes another now has to say why, out of the four
+  causes a disagreement actually has.
+- A normalization used to reach agreement must declare that order and unknown
+  bytes survive it. That rule was written in the architecture and enforced by
+  nothing.
+- A door sweep found `is_publishable` and `publishable` answering the same
+  question at different scopes with nothing holding them together. A test now
+  drives a record through all four outcomes and asserts the two agree.
+- Deployment: no data branch, release or capture service was created.
+
 ### 2026-09-04T14:29:09Z
 
 - Closed `SCHEMA-02`. The run manifest records how a capture was produced: the

@@ -163,6 +163,10 @@ if [ "$PUBLIC" = "1" ]; then
   # algorithm attached and observed bytes under a field that names them, so
   # both are excluded by that shape rather than by being test data.
   # docs/architecture.md section 4 is where those forms are defined.
+  # ⚠ THE KEY LIST IS THE SCHEMA'S BYTE-CARRYING KEYS AND IT GROWS WITH THE
+  # SCHEMA. `detail` joined it when SCHEMA-03 gave the corroboration enums an
+  # adjacent tag; the value must still be nothing but lowercase hex, so this
+  # stays a shape rule rather than a licence for whatever sits under that key.
   #
   # ⛔ THE ALLOWED ITEM IS DELETED FROM THE LINE, THE LINE IS NOT DROPPED.
   # `grep -v` drops lines, not characters, so an allowed digest sitting beside
@@ -177,7 +181,7 @@ if [ "$PUBLIC" = "1" ]; then
       -e 's#([Pp]inned(Ref|Sha256|Commit|Digest)|PINNED_(REF|SHA256))([^0-9a-f]*)[0-9a-f]{24,}#\1\4ALLOWED#g' \
       -e 's#^(.*Cargo\.lock:[0-9]+:checksum = )"[0-9a-f]{64}"$#\1"ALLOWED"#' \
       -e 's#(record:)?sha256:[0-9a-f]{64}#ALLOWED#g' \
-      -e 's#"(value|bytes|alphabet)": "[0-9a-f]+"#"\1": "ALLOWED"#g' |
+      -e 's#"(value|bytes|alphabet|detail)": "[0-9a-f]+"#"\1": "ALLOWED"#g' |
     grep -E '\b[0-9a-f]{24,}\b' || true)
   [ -n "$_hex_out" ] && hit "a long hex identifier" "$_hex_out"
   # ⚠ Narrowed rather than switched off. `/home/linuxbrew/` and `/home/runner/`

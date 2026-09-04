@@ -13,10 +13,11 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::ReleaseChannel;
+use crate::agreement::{Adjudication, FieldCorroboration, Normalization};
 use crate::canonical::{Instant, RelPath, Sha256Digest, Slug, Version};
 use crate::identity::{RecordId, SchemaVersion};
 use crate::observation::{FieldPath, ObservedField};
-use crate::{Agreement, ReleaseChannel};
 
 /// Whether the target is a product a user installs or a library harness.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -115,22 +116,6 @@ pub struct Capture {
     pub connectors: Vec<Connector>,
 }
 
-/// What the independent connectors said about one field.
-///
-/// `SCHEMA-03` owns the agreement and conflict model, including adjudication of
-/// a disagreement. What is here is the per-field outcome and which connectors
-/// produced it.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct FieldCorroboration {
-    /// The field this outcome is about.
-    pub path: FieldPath,
-    /// The connectors whose observations were compared.
-    pub connectors: Vec<Slug>,
-    /// The outcome of the comparison.
-    pub agreement: Agreement,
-}
-
 /// What kind of raw artifact an evidence entry is.
 ///
 /// The set mirrors the raw bundle in `docs/capture-methodology.md`.
@@ -199,8 +184,10 @@ pub(crate) struct ProfileFields {
     pub(crate) capture: Capture,
     pub(crate) observations: Vec<ObservedField>,
     pub(crate) corroboration: Vec<FieldCorroboration>,
+    pub(crate) normalizations: Vec<Normalization>,
     pub(crate) evidence: Vec<EvidenceRef>,
     pub(crate) supersedes: Option<RecordId>,
+    pub(crate) adjudication: Option<Adjudication>,
 }
 
 impl From<ProfileFields> for Profile {
@@ -214,8 +201,10 @@ impl From<ProfileFields> for Profile {
             capture,
             observations,
             corroboration,
+            normalizations,
             evidence,
             supersedes,
+            adjudication,
         } = fields;
         Self {
             schema,
@@ -226,8 +215,10 @@ impl From<ProfileFields> for Profile {
             capture,
             observations,
             corroboration,
+            normalizations,
             evidence,
             supersedes,
+            adjudication,
         }
     }
 }
@@ -266,11 +257,18 @@ pub struct Profile {
     pub observations: Vec<ObservedField>,
     /// The per-field corroboration outcomes, sorted by path.
     pub corroboration: Vec<FieldCorroboration>,
+    /// Every normalization a projection cites, sorted by identifier. Declared
+    /// once here rather than repeated at each use, so two fields cannot claim
+    /// the same name for different transformations.
+    pub normalizations: Vec<Normalization>,
     /// The raw artifacts, sorted by identifier.
     pub evidence: Vec<EvidenceRef>,
     /// The record this one corrects, or `null` for an original record. A
     /// correction never edits the record it supersedes.
     pub supersedes: Option<RecordId>,
+    /// Why this record corrects the one it supersedes. Required on a
+    /// correction, forbidden on an original.
+    pub adjudication: Option<Adjudication>,
 }
 
 impl Profile {
@@ -278,6 +276,12 @@ impl Profile {
     #[must_use]
     pub fn field(&self, path: &FieldPath) -> Option<&ObservedField> {
         self.observations.iter().find(|field| &field.path == path)
+    }
+
+    /// The normalization with one identifier, when the record declares it.
+    #[must_use]
+    pub fn normalization(&self, id: &Slug) -> Option<&Normalization> {
+        self.normalizations.iter().find(|entry| &entry.id == id)
     }
 
     /// The evidence entry with one identifier, when the record carries it.

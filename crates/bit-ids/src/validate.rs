@@ -12,6 +12,7 @@
 use core::fmt;
 
 use crate::Agreement;
+use crate::agreement::FieldCorroboration;
 use crate::identity::{RecordId, RecordKey};
 use crate::observation::{FieldState, ObservedField, PatternRun};
 use crate::record::{EvidenceKind, Profile};
@@ -561,6 +562,235 @@ fn check_observations(profile: &Profile, out: &mut Vec<SchemaError>) {
     }
 }
 
+/// Who observed the field, and whether the record can support what they claim.
+fn check_observers(
+    profile: &Profile,
+    entry: &FieldCorroboration,
+    at: &str,
+    out: &mut Vec<SchemaError>,
+) {
+    if let Some(index) = strictly_ascending(&entry.observations, |observation| {
+        observation.connector.to_string()
+    }) {
+        let code = if index > 0
+            && entry.observations[index].connector == entry.observations[index - 1].connector
+        {
+            // ⛔ One connector is not two observations. Listing it twice is the
+            // cheapest way to manufacture an overlap that never happened.
+            "E-COR-06"
+        } else {
+            "E-COR-08"
+        };
+        out.push(SchemaError::new(
+            code,
+            at,
+            format!(
+                "observing connectors must be unique and ascending, found {}",
+                entry.observations[index].connector
+            ),
+        ));
+    }
+
+    for observation in &entry.observations {
+        if !profile
+            .capture
+            .connectors
+            .iter()
+            .any(|declared| declared.id == observation.connector)
+        {
+            out.push(SchemaError::new(
+                "E-COR-04",
+                at,
+                format!(
+                    "names connector {}, which the capture does not declare",
+                    observation.connector
+                ),
+            ));
+        }
+        if profile.evidence_entry(&observation.evidence).is_none() {
+            out.push(SchemaError::new(
+                "E-COR-09",
+                at,
+                format!(
+                    "{} read the value out of {}, which the record does not carry",
+                    observation.connector, observation.evidence
+                ),
+            ));
+        }
+        if let Some(id) = observation.projection.normalization() {
+            match profile.normalization(id) {
+                None => out.push(SchemaError::new(
+                    "E-COR-10",
+                    at,
+                    format!("applies {id}, which the record does not declare"),
+                )),
+                Some(normalization) if !normalization.is_usable() => {
+                    out.push(SchemaError::new(
+                        "E-COR-11",
+                        at,
+                        format!(
+                            "{id} discards order or unknown bytes, so it cannot be used to reach \
+                             agreement"
+                        ),
+                    ));
+                }
+                Some(_) => {}
+            }
+        }
+    }
+}
+
+/// Whether the outcome is one the observations can actually support.
+///
+/// ⛔ This is the entry's whole point. A field only one connector could see has
+/// nothing disagreeing with it, and calling that agreement is the easiest
+/// mistake in the model.
+fn check_outcome(entry: &FieldCorroboration, at: &str, out: &mut Vec<SchemaError>) {
+    let overlap = entry.overlap();
+    let compared = entry.agreement != Agreement::NotCorroborated;
+
+    if compared && overlap < 2 {
+        out.push(SchemaError::new(
+            "E-COR-05",
+            at,
+            format!(
+                "outcome {:?} compares observations, but {overlap} connector(s) could see the \
+                 field; the rest are out of scope and prove nothing",
+                entry.agreement
+            ),
+        ));
+    }
+    if !compared && overlap > 1 {
+        out.push(SchemaError::new(
+            "E-COR-12",
+            at,
+            format!("{overlap} connectors saw the field, so it was corroborated"),
+        ));
+    }
+
+    let matched = entry.in_scope_values_match();
+    if matches!(entry.agreement, Agreement::Exact | Agreement::Normalized)
+        && overlap >= 2
+        && !matched
+    {
+        out.push(SchemaError::new(
+            "E-COR-13",
+            at,
+            "claims agreement over observations that are not equal",
+        ));
+    }
+    if entry.agreement == Agreement::Disagrees && overlap >= 2 && matched {
+        out.push(SchemaError::new(
+            "E-COR-14",
+            at,
+            "claims a disagreement over observations that are all equal",
+        ));
+    }
+
+    if entry.agreement == Agreement::Exact && entry.uses_normalization() {
+        out.push(SchemaError::new(
+            "E-COR-15",
+            at,
+            "a value that needed a normalization did not agree exactly",
+        ));
+    }
+    if entry.agreement == Agreement::Normalized && !entry.uses_normalization() {
+        out.push(SchemaError::new(
+            "E-COR-16",
+            at,
+            "claims a normalized agreement with no normalization applied",
+        ));
+    }
+
+    match (&entry.conflict, entry.agreement) {
+        (None, Agreement::Disagrees) => out.push(SchemaError::new(
+            "E-COR-17",
+            at,
+            "a disagreement nobody described is one nobody can adjudicate",
+        )),
+        (Some(_), outcome) if outcome != Agreement::Disagrees => out.push(SchemaError::new(
+            "E-COR-18",
+            at,
+            format!("outcome {outcome:?} carries a conflict description"),
+        )),
+        _ => {}
+    }
+}
+
+/// The normalizations a record declares, and the correction it settles.
+fn check_normalizations(profile: &Profile, out: &mut Vec<SchemaError>) {
+    if let Some(index) = strictly_ascending(&profile.normalizations, |entry| entry.id.to_string()) {
+        out.push(SchemaError::new(
+            "E-NRM-01",
+            format!("normalizations[{index}]"),
+            format!(
+                "normalization ids must be unique and ascending, found {}",
+                profile.normalizations[index].id
+            ),
+        ));
+    }
+    for (index, normalization) in profile.normalizations.iter().enumerate() {
+        let used = profile.corroboration.iter().any(|entry| {
+            entry.observations.iter().any(|observation| {
+                observation.projection.normalization() == Some(&normalization.id)
+            })
+        });
+        if !used {
+            out.push(SchemaError::new(
+                "E-NRM-02",
+                format!("normalizations[{index}] {}", normalization.id),
+                "is declared and never applied",
+            ));
+        }
+    }
+}
+
+/// A correction says why, and an original has nothing to say.
+fn check_adjudication(profile: &Profile, out: &mut Vec<SchemaError>) {
+    match (&profile.adjudication, &profile.supersedes) {
+        (None, Some(superseded)) => out.push(SchemaError::new(
+            "E-ADJ-01",
+            "adjudication",
+            format!(
+                "this record corrects {superseded} and does not say why; the store keeps both \
+                 forever"
+            ),
+        )),
+        (Some(_), None) => out.push(SchemaError::new(
+            "E-ADJ-02",
+            "adjudication",
+            "an original record corrects nothing, so it has nothing to adjudicate",
+        )),
+        _ => {}
+    }
+    let Some(adjudication) = &profile.adjudication else {
+        return;
+    };
+    if adjudication.evidence.is_empty() {
+        out.push(SchemaError::new(
+            "E-ADJ-03",
+            "adjudication.evidence",
+            "a decision with no evidence behind it is an opinion",
+        ));
+    }
+    for (index, id) in adjudication.evidence.iter().enumerate() {
+        if profile.evidence_entry(id).is_none() {
+            out.push(SchemaError::new(
+                "E-ADJ-04",
+                "adjudication.evidence",
+                format!("cites {id}, which the record does not carry"),
+            ));
+        }
+        if adjudication.evidence[..index].contains(id) {
+            out.push(SchemaError::new(
+                "E-ADJ-05",
+                "adjudication.evidence",
+                format!("cites {id} more than once"),
+            ));
+        }
+    }
+}
+
 fn check_corroboration(profile: &Profile, out: &mut Vec<SchemaError>) {
     let entries = &profile.corroboration;
     if let Some(index) = strictly_ascending(entries, |entry| entry.path.to_string()) {
@@ -588,44 +818,16 @@ fn check_corroboration(profile: &Profile, out: &mut Vec<SchemaError>) {
                 "names a field the record does not observe",
             ));
         }
-        for (cited, id) in entry.connectors.iter().enumerate() {
-            if !profile
-                .capture
-                .connectors
-                .iter()
-                .any(|declared| &declared.id == id)
-            {
-                out.push(SchemaError::new(
-                    "E-COR-04",
-                    &at,
-                    format!("names connector {id}, which the capture does not declare"),
-                ));
-            }
-            if entry.connectors[..cited].contains(id) {
-                out.push(SchemaError::new(
-                    "E-COR-06",
-                    &at,
-                    format!("names connector {id} twice; one connector is not two observations"),
-                ));
-            }
-        }
-        let expected_two = entry.agreement != Agreement::NotCorroborated;
-        let counted = entry.connectors.len();
-        if expected_two && counted < 2 {
+        check_observers(profile, entry, &at, out);
+        check_outcome(entry, &at, out);
+        let measured = profile
+            .field(&entry.path)
+            .is_some_and(|field| field.state.asserts_a_measurement());
+        if measured && entry.overlap() == 0 {
             out.push(SchemaError::new(
-                "E-COR-05",
+                "E-COR-19",
                 &at,
-                format!(
-                    "outcome {:?} compares observations, but {counted} connector(s) are named",
-                    entry.agreement
-                ),
-            ));
-        }
-        if !expected_two && counted != 1 {
-            out.push(SchemaError::new(
-                "E-COR-05",
-                &at,
-                format!("outcome not_corroborated names {counted} connector(s), not one"),
+                "the record states a measurement and no connector could see the field",
             ));
         }
     }
@@ -661,5 +863,7 @@ pub fn validate(profile: &Profile) -> Result<(), Violations> {
     check_evidence(profile, &mut out);
     check_observations(profile, &mut out);
     check_corroboration(profile, &mut out);
+    check_normalizations(profile, &mut out);
+    check_adjudication(profile, &mut out);
     Violations::from_errors(out)
 }

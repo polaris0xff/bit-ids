@@ -1,16 +1,16 @@
 # Current progress
 
 State instant: 2026-09-04
-Baseline commit: `c60f772` on `main`
+Baseline commit: `c107f67` on `main`
 Total: 52
-Open: 48
+Open: 47
 In progress: 0
 Blocked: 0
-Done: 4
+Done: 5
 
 ## Current state
 
-`SCHEMA-01`, `FOUND-02` and `SCHEMA-02` are closed.
+`SCHEMA-01`, `FOUND-02`, `SCHEMA-02` and `SCHEMA-03` are closed.
 
 The `bit-ids` crate carries the published record shape, the six field states,
 the derived record identifier, the canonical value forms and the publication
@@ -24,6 +24,12 @@ phases of the state machine the run walked, the content-addressed evidence and
 what was scrubbed from it. `bind` compares every value the manifest and the
 profile share, so the deliberate overlap between the two documents cannot
 drift.
+
+Corroboration keeps what each connector saw rather than a verdict, and a
+connector that cannot see a surface says so, so a field only one observer could
+reach is never called agreement. Validity and publishability are separate
+gates: a record carrying a disagreement reads and validates, which is what
+keeps the evidence of one, and `publishable` refuses it.
 
 The supply chain is pinned at all three layers and each pin has a check behind
 it. [`../docs/supply-chain.md`](../docs/supply-chain.md) carries the layers and
@@ -43,17 +49,16 @@ nothing to check. Both are fixed and both now refuse the shape that shipped.
 
 ## Work order
 
-1. `SCHEMA-03`, the agreement and conflict model. It extends the
-   `corroboration` section `SCHEMA-01` deliberately left thin, and every later
-   entry consumes its contract.
-2. `FOUND-03` and `SCHEMA-04` against deterministic fixtures.
-3. `ACQ-01` through `ACQ-04`; do not install proprietary clients earlier.
-4. Split `OBS-01`, then implement `OBS-02` through `OBS-05`.
-5. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
+1. `SCHEMA-04`, then `FOUND-03`. `SCHEMA-04` closes the schema group and the
+   record already carries sample counts for it to constrain; `FOUND-03` gives
+   every later observer the byte-exact fixtures it parses against.
+2. `ACQ-01` through `ACQ-04`; do not install proprietary clients earlier.
+3. Split `OBS-01`, then implement `OBS-02` through `OBS-05`.
+4. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
    captures.
-6. `CORPUS-01` through `CORPUS-03`, then `PUB-01` through `PUB-03`.
-7. `CI-01` through `CI-04`, followed by remaining client and engine breadth.
-8. Consumer library, public documentation, and refinements.
+5. `CORPUS-01` through `CORPUS-03`, then `PUB-01` through `PUB-03`.
+6. `CI-01` through `CI-04`, followed by remaining client and engine breadth.
+7. Consumer library, public documentation, and refinements.
 
 ## Pending operator decisions
 

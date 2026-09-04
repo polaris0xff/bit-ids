@@ -58,6 +58,18 @@ fn main() -> ExitCode {
                 measured,
                 profile.evidence.len(),
             );
+            // ⚠ Validity and publishability are different questions. A record
+            // carrying a disagreement is a valid record, and has to be, or the
+            // project has no way to keep the evidence of one. It is refused
+            // here rather than never written.
+            if let Err(blockers) = bit_ids::publishable(&profile) {
+                let _ = writeln!(
+                    std::io::stderr(),
+                    "provisional, not publishable\n{blockers}"
+                );
+                return ExitCode::from(1);
+            }
+            let _ = writeln!(stdout, "publishable");
             ExitCode::SUCCESS
         }
         Err(error) => {

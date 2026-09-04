@@ -3,8 +3,9 @@
 **Task:** Take the work order in `TODO/PROGRESS.md` in dependency order,
 committing and pushing each green unit to `main`.
 
-**Resume point:** `SCHEMA-01`, `FOUND-02` and `SCHEMA-02` are closed. The next
-item is `SCHEMA-03`, the agreement and conflict model.
+**Resume point:** `SCHEMA-01`, `FOUND-02`, `SCHEMA-02` and `SCHEMA-03` are
+closed. The next item is `SCHEMA-04`, the variability and repeated-sampling
+model.
 
 **In flight:** Nothing. The tree is coherent.
 

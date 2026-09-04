@@ -156,7 +156,7 @@ record. Resolver evidence, package metadata and the mirrors tried belong to
 ## SCHEMA-03: Connector agreement and conflict model
 
 Source: operator requirement for at least two correlated connectors
-Priority: P0 | Effort: L | Status: OPEN
+Priority: P0 | Effort: L | Status: DONE
 
 Problem: Two observers can disagree through a parser defect, timing effect, or
 client variability; silently choosing one corrupts the corpus.
@@ -168,8 +168,58 @@ Approach: Model independent observations, comparable projections, agreement,
 non-overlap, and blocking conflicts. Require an adjudication record for any
 later correction.
 
+Decision: validity and publishability are separate gates. A disagreement has to
+be recordable or the project loses the evidence of one, and
+`docs/architecture.md` section 8 already says such a run moves to provisional
+with its evidence retained. So `validate` accepts a record carrying a conflict
+and `publishable` refuses it. Folding the two together would have made the
+conflict unwritable, which is the opposite of keeping it.
+
+Decision: a connector that cannot see a surface says so, in `out_of_scope`,
+rather than being left out. Left out, a single observation looks like a pair
+that happened to agree; named, it is the reason that connector's silence proves
+nothing.
+
+Decision: `corroboration` replaced its `connectors` list with per-connector
+observations, so the record keeps what each one saw rather than a verdict. The
+list was derivable from the observations and keeping both would have been one
+value in two places.
+
 Prove: `cargo test --workspace agreement` proves conflicts are unpublishable
 and that non-overlapping observations are not falsely called agreement.
+
+Closure evidence: `cargo test --workspace agreement` reports 14 passed, 0
+failed on 2026-09-04, and the whole suite is 53 passed, 0 failed.
+`agreement_refuses_to_publish_a_conflict` is the first half of the acceptance
+and `agreement_is_not_claimed_over_a_field_one_connector_could_not_see` the
+second. `cargo fmt --all -- --check`, `cargo check`, `cargo test` and
+`cargo clippy` at `--workspace --locked --all-targets`, `shellcheck`,
+`shfmt -d -i 2 -ci` and `sh scripts/common/check-gate.sh` all exit 0.
+
+Every diagnostic code has a planted defect: `E-COR-01` through `E-COR-19`,
+`E-NRM-01`, `E-NRM-02` and `E-ADJ-01` through `E-ADJ-05` in
+`tests/profile_schema.rs`, and `E-PUB-01` and `E-PUB-02` in `tests/agreement.rs`,
+each with a coverage test that reads the module's own source. Three further
+mutations were run by hand: letting an overlap of one be called agreement
+failed 2 tests, letting a conflict be published failed 4, and allowing a lossy
+normalization failed 2.
+
+Driven pass: `cargo run --example validate-profile -- RECORD`. The golden
+record prints `publishable` and exits 0. A record whose connectors disagree on
+`peer_wire/reserved` still reads and validates, prints
+`provisional, not publishable` with `E-PUB-01`, and exits 1. That is the
+distinction the entry exists for, shown on the real path.
+
+⭐ Door-sweep finding, fixed: `is_publishable`, which answers for one outcome,
+and `publishable`, which answers for a record, are two public rules with
+nothing holding them together. `agreement_keeps_the_per_outcome_and_per_record_rules_in_step`
+now drives a record through all four outcomes and asserts the two answers
+match.
+
+Residual: the record states which normalization was applied and that it
+preserves order and unknown bytes. Nothing executes it, so the declaration is
+an assertion by the capture tool rather than a property this crate verifies.
+`OBS-07` owns the controls that would test one against real bytes.
 
 ## SCHEMA-04: Variability and repeated-sampling model
 

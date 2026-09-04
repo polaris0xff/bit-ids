@@ -170,6 +170,9 @@ if ($Public) {
     # algorithm attached and observed bytes under a field that names them, so
     # both are excluded by that shape rather than by being test data.
     # docs/architecture.md section 4 is where those forms are defined.
+    # ⚠ THE KEY LIST IS THE SCHEMA'S BYTE-CARRYING KEYS AND IT GROWS WITH THE
+    # SCHEMA. `detail` joined it when SCHEMA-03 gave the corroboration enums an
+    # adjacent tag; the value must still be nothing but lowercase hex.
     #
     # ⛔ THE ALLOWED ITEM IS DELETED FROM THE LINE, THE LINE IS NOT DROPPED.
     # A whole-line filter drops characters beside the allowed one, so an
@@ -186,7 +189,7 @@ if ($Public) {
             $line = $line -creplace '([Pp]inned(Ref|Sha256|Commit|Digest)|PINNED_(REF|SHA256))([^0-9a-f]*)[0-9a-f]{24,}', '$1$4ALLOWED'
             $line = $line -creplace '^(.*Cargo\.lock:[0-9]+:checksum = )"[0-9a-f]{64}"$', '$1"ALLOWED"'
             $line = $line -creplace '(record:)?sha256:[0-9a-f]{64}', 'ALLOWED'
-            $line = $line -creplace '"(value|bytes|alphabet)": "[0-9a-f]+"', '"$1": "ALLOWED"'
+            $line = $line -creplace '"(value|bytes|alphabet|detail)": "[0-9a-f]+"', '"$1": "ALLOWED"'
             $line
         } |
         Where-Object { $_ -cmatch '\b[0-9a-f]{24,}\b' })
