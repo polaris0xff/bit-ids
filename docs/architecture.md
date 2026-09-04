@@ -479,6 +479,12 @@ consume the same artifact assembled once.
 ## 10. Limits
 
 - There are no measured profiles yet.
+- There is no observer yet, so nothing can take a capture whatever the
+  acquisition side supports. `OBS-01` through `OBS-05` own that.
+- ⛔ A Windows capture is not permitted. The disposable-host guards in
+  [`capture-host.md`](capture-host.md) read `/proc/net/route` and
+  `/etc/machine-id`, so there is no boundary to run before an install on
+  Windows. `CI-03` owns the pair.
 - `dht`, `pex`, `mse` and `web_seed` have no codec and no fixture. A fixture on
   one of those surfaces is refused with `E-FIX-07` rather than silently passing.
   `OBS-06` owns them.

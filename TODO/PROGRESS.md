@@ -14,7 +14,8 @@ The whole `SCHEMA-*` group is closed, along with `FOUND-01` through `FOUND-03`,
 `ACQ-01` through `ACQ-04`. Foundations are finished, and acquisition has its
 record shape, a resolver that chooses the version, a verifier that says what two
 routes agreeing is worth, and a boundary that runs before anything is installed.
-Nothing structural now stands between here and a first Linux capture.
+⚠ No capture is possible yet regardless: there is no observer. `OBS-01` through
+`OBS-05` are what is missing, and they are the critical path now.
 
 The `bit-ids` crate carries the published record shape, the six field states,
 the derived record identifier, the canonical value forms and the publication

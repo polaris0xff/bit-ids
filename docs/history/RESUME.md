@@ -3,10 +3,10 @@
 **Task:** Take the work order in `TODO/PROGRESS.md` in dependency order,
 committing and pushing each green unit to `main`.
 
-**Resume point:** `FOUND-03` and `ACQ-01` through `ACQ-04` are closed. Nothing
-structural now stands between here and a first Linux capture. The next item is
-splitting `OBS-01` and then `OBS-02` onward: what is missing is something to
-observe with.
+**Resume point:** `FOUND-03` and `ACQ-01` through `ACQ-04` are closed. The
+acquisition side is finished and ⚠ no capture is possible yet regardless, because
+there is no observer. The next item is splitting `OBS-01` and then `OBS-02`
+onward, against the `bit-ids-wire` fixture corpus rather than a live client.
 
 ⛔ A Windows capture is not permitted yet. The disposable-host guards read
 `/proc/net/route` and `/etc/machine-id`, so there is no boundary to run before
