@@ -4,15 +4,15 @@ The session summary printed to the operator, saved so it survives the chat. It
 carries no work order; [`../../TODO/PROGRESS.md`](../../TODO/PROGRESS.md) has
 that and is where it is correct.
 
-Start instant `2026-09-04T15:05:01Z`, baseline `ba07d65`, head `f7c20da`.
+Start instant `2026-09-04T15:05:01Z`, baseline `ba07d65`, last work commit `e0912f3`.
 
 | row | measured |
 | --- | --- |
-| Elapsed | 15:05:01Z to 16:39Z, about 1h35m |
-| Commits | 6 on `main`, all pushed and read back from `origin/main` |
+| Elapsed | 15:05:01Z to 16:50Z, about 1h45m |
+| Commits | 5 closing work (`ba07d65..e0912f3`), then the record commits that follow. All pushed and read back from `origin/main` |
 | Work | 5 entries completed, 0 deferred, 0 failed |
-| Changes | 61 files, +8462 / -111 |
-| Size | 31,820 tracked lines over 146 files, from 23,469 over 116. Delta +8,351 |
+| Changes | 61 files over `ba07d65..e0912f3`, +8455 / -111 |
+| Size | 31,901 tracked lines over 147 files, from 23,469 over 116. Delta +8,432 |
 | Checks | gate 12 checks, 11 passed, 0 failed, 1 skipped. At the start it was 11 checks, 10 passed, 0 failed, 1 skipped |
 | Cost | no money. Network: 5 release listings retrieved through `api.gh.pkgforge.dev`, plus three tool downloads |
 | Health | tree clean, level with `origin/main`; 4 debts cleared, 8 residuals recorded, nothing deployed |
