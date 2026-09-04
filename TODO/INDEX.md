@@ -1,17 +1,17 @@
 # Work index
 
 Total: 52
-Open: 51
+Open: 50
 In progress: 0
 Blocked: 0
-Done: 1
+Done: 2
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| P0 | 21 | 0 | 0 | 1 | 22 |
+| P0 | 20 | 0 | 0 | 2 | 22 |
 | P1 | 29 | 0 | 0 | 0 | 29 |
 | P2 | 1 | 0 | 0 | 0 | 1 |
-| Total | 51 | 0 | 0 | 1 | 52 |
+| Total | 50 | 0 | 0 | 2 | 52 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -19,7 +19,7 @@ Done: 1
 | FOUND-02 | P0 | L | OPEN | Reproducible Rust dependency and action pins |
 | FOUND-03 | P0 | L | OPEN | Deterministic protocol fixture suite |
 | FOUND-04 | P1 | M | OPEN | Third-party licence and redistribution register |
-| SCHEMA-01 | P0 | L | OPEN | Versioned identity profile schema |
+| SCHEMA-01 | P0 | L | DONE | Versioned identity profile schema |
 | SCHEMA-02 | P0 | L | OPEN | Raw evidence and run manifest schema |
 | SCHEMA-03 | P0 | L | OPEN | Connector agreement and conflict model |
 | SCHEMA-04 | P0 | M | OPEN | Variability and repeated-sampling model |

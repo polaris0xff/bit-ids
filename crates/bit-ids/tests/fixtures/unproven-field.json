@@ -1,0 +1,254 @@
+{
+  "schema": "bit-ids/profile/1",
+  "id": "record:sha256:5bb973d379d48a5dc0c928935dc1d661ca2b909315a5f29f0007a5a12a89ec3a",
+  "target": {
+    "id": "fixture-client",
+    "display_name": "Schema Fixture Client",
+    "kind": "client",
+    "engine": null
+  },
+  "build": {
+    "version": "0.0.0-fixture",
+    "channel": "stable",
+    "platform": "linux",
+    "arch": "x86-64",
+    "package": "tar-gz",
+    "executable": "sha256:33331813ba3054d2ded7f37934afbf959f2fa47b75f792b656b4773dd3035e8b"
+  },
+  "acquisition": [
+    {
+      "id": "route-package-manager",
+      "resolved_version": "0.0.0-fixture",
+      "artifact": "sha256:0233e54b2c847cfdef308dc2f00ccc3de92a14fbf8845fef38ea135f31e8be34",
+      "installed_version": "0.0.0-fixture"
+    },
+    {
+      "id": "route-vendor-release",
+      "resolved_version": "0.0.0-fixture",
+      "artifact": "sha256:65779fdb46c128a2979f001ca0ab0c580dc5578e94e1aeac65df32c19388cb11",
+      "installed_version": "0.0.0-fixture"
+    }
+  ],
+  "capture": {
+    "id": "fixture-capture-0001",
+    "captured_at": "2026-09-04T13:31:33Z",
+    "fixture": "sha256:2183888ce19959bfead50d70433701f0dc0521aaa98da3fe50fcb29be929331d",
+    "observer": "bit-ids-probe",
+    "connectors": [
+      {
+        "id": "bit-ids-probe",
+        "version": "0.0.0"
+      },
+      {
+        "id": "packet-oracle",
+        "version": "0.0.0"
+      }
+    ]
+  },
+  "observations": [
+    {
+      "path": "dht/node_id",
+      "state": {
+        "kind": "not_observed"
+      },
+      "evidence": [
+        "ev-control-dht",
+        "ev-observer-stream"
+      ]
+    },
+    {
+      "path": "mse/handshake_padding",
+      "state": {
+        "kind": "variable",
+        "detail": {
+          "length": null,
+          "samples": 8,
+          "distinct": 8
+        }
+      },
+      "evidence": [
+        "ev-observer-stream"
+      ]
+    },
+    {
+      "path": "peer_wire/bep10.client",
+      "state": {
+        "kind": "constant",
+        "detail": {
+          "value": "666978747572652f302e302e30",
+          "samples": 8
+        }
+      },
+      "evidence": [
+        "ev-packet-capture",
+        "ev-peer-transcript"
+      ]
+    },
+    {
+      "path": "peer_wire/peer_id",
+      "state": {
+        "kind": "patterned",
+        "detail": {
+          "pattern": {
+            "length": 20,
+            "runs": [
+              {
+                "kind": "fixed",
+                "detail": {
+                  "bytes": "2d5858303030302d"
+                }
+              },
+              {
+                "kind": "varying",
+                "detail": {
+                  "length": 12,
+                  "alphabet": "30313233343536373839"
+                }
+              }
+            ]
+          },
+          "samples": 8
+        }
+      },
+      "evidence": []
+    },
+    {
+      "path": "peer_wire/reserved",
+      "state": {
+        "kind": "constant",
+        "detail": {
+          "value": "0000000000100005",
+          "samples": 8
+        }
+      },
+      "evidence": [
+        "ev-connector-report",
+        "ev-peer-transcript"
+      ]
+    },
+    {
+      "path": "tracker_http/announce.query_order",
+      "state": {
+        "kind": "unknown"
+      },
+      "evidence": []
+    },
+    {
+      "path": "web_seed/user_agent",
+      "state": {
+        "kind": "not_supported"
+      },
+      "evidence": [
+        "ev-control-web-seed"
+      ]
+    }
+  ],
+  "corroboration": [
+    {
+      "path": "dht/node_id",
+      "connectors": [
+        "bit-ids-probe",
+        "packet-oracle"
+      ],
+      "agreement": "exact"
+    },
+    {
+      "path": "mse/handshake_padding",
+      "connectors": [
+        "bit-ids-probe"
+      ],
+      "agreement": "not_corroborated"
+    },
+    {
+      "path": "peer_wire/bep10.client",
+      "connectors": [
+        "bit-ids-probe",
+        "packet-oracle"
+      ],
+      "agreement": "exact"
+    },
+    {
+      "path": "peer_wire/peer_id",
+      "connectors": [
+        "bit-ids-probe",
+        "packet-oracle"
+      ],
+      "agreement": "exact"
+    },
+    {
+      "path": "peer_wire/reserved",
+      "connectors": [
+        "bit-ids-probe",
+        "packet-oracle"
+      ],
+      "agreement": "normalized"
+    },
+    {
+      "path": "web_seed/user_agent",
+      "connectors": [
+        "bit-ids-probe",
+        "packet-oracle"
+      ],
+      "agreement": "exact"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev-connector-report",
+      "kind": "connector_output",
+      "path": "connector/packet-oracle.json",
+      "bytes": 4096,
+      "sha256": "sha256:7958abaa05137cf562c7ff8867fdc085e0228efa799d0eb9d5c11527560a4de0",
+      "connector": "packet-oracle"
+    },
+    {
+      "id": "ev-control-dht",
+      "kind": "positive_control",
+      "path": "control/dht.log",
+      "bytes": 2048,
+      "sha256": "sha256:296e6735bc8e4309df9528aa7bc2ad80052795f2cc1457fd9dfc45c3e8033850",
+      "connector": "bit-ids-probe"
+    },
+    {
+      "id": "ev-control-web-seed",
+      "kind": "positive_control",
+      "path": "control/web-seed.log",
+      "bytes": 1024,
+      "sha256": "sha256:d1801003f1d263095688a5ccad55f76412c9f432c0568abfff9becce44514666",
+      "connector": "bit-ids-probe"
+    },
+    {
+      "id": "ev-metainfo",
+      "kind": "metainfo",
+      "path": "fixture/generated.torrent",
+      "bytes": 512,
+      "sha256": "sha256:2183888ce19959bfead50d70433701f0dc0521aaa98da3fe50fcb29be929331d",
+      "connector": null
+    },
+    {
+      "id": "ev-observer-stream",
+      "kind": "observer_stream",
+      "path": "observer/events.jsonl",
+      "bytes": 16384,
+      "sha256": "sha256:3e578a73663e91f552eaffec5e02cf86edbc7eb639c149225e584b83eb5caf3e",
+      "connector": "bit-ids-probe"
+    },
+    {
+      "id": "ev-packet-capture",
+      "kind": "packet_capture",
+      "path": "packets/loopback.pcapng",
+      "bytes": 65536,
+      "sha256": "sha256:0f4b79b009ac912961b5759c1dc0d8db0547391da7143172094512780196f2e2",
+      "connector": "packet-oracle"
+    },
+    {
+      "id": "ev-peer-transcript",
+      "kind": "peer_transcript",
+      "path": "observer/peer-transcript.bin",
+      "bytes": 8192,
+      "sha256": "sha256:b75432e63de7c4a09e5ee253bb1aa4bac21e4be18b141416628b4bbfcaffdc97",
+      "connector": "bit-ids-probe"
+    }
+  ],
+  "supersedes": null
+}

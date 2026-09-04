@@ -158,9 +158,38 @@ if ($Public) {
     # ⛔ Excluded by NAME, narrowly. The hex has to be assigned to an identifier
     # that says it is a pin, because a credential is not assigned to something
     # called PinnedSha256. ⛔ Keep this identical to the sh twin.
+    #
+    # ⚠ A REGISTRY LOCKFILE DIGEST is the third shape. Cargo.lock records a
+    # published crate's SHA-256, which is public by construction and is the pin
+    # FOUND-02 exists to require. Anchored to that one file and that one line
+    # shape, so it cannot spread to hex elsewhere.
+    #
+    # ⚠ A PROFILE RECORD is the fourth, and it is not a fixture-only concern.
+    # An identity measurement IS long hex: a peer ID is 40 hex digits and every
+    # evidence artifact carries a digest. The record writes a digest with its
+    # algorithm attached and observed bytes under a field that names them, so
+    # both are excluded by that shape rather than by being test data.
+    # docs/architecture.md section 4 is where those forms are defined.
+    #
+    # ⛔ THE ALLOWED ITEM IS DELETED FROM THE LINE, THE LINE IS NOT DROPPED.
+    # A whole-line filter drops characters beside the allowed one, so an
+    # allowed digest sitting next to a real credential would take the
+    # credential out of the report with it.
+    # docs/conventions/forbidden-patterns.md carries that row and names this as
+    # the fix. ⚠ -creplace, not -replace: PowerShell replaces case-insensitively
+    # by default and the sh twin's grep does not, which would be a silent
+    # divergence check-twins could not see on a tree with no uppercase hex.
     $hex = @(Find-Pattern '\b[0-9a-f]{24,}\b' |
-        Where-Object { $_ -notmatch 'uses:\s*[A-Za-z0-9._-]+/[A-Za-z0-9._-]+@[0-9a-f]{40}' } |
-        Where-Object { $_ -cnotmatch '[Pp]inned(Ref|Sha256|Commit|Digest)|PINNED_(REF|SHA256)' })
+        ForEach-Object {
+            $line = $_
+            $line = $line -creplace 'uses:\s*[A-Za-z0-9._-]+/[A-Za-z0-9._-]+@[0-9a-f]{40}', 'uses: ALLOWED'
+            $line = $line -creplace '([Pp]inned(Ref|Sha256|Commit|Digest)|PINNED_(REF|SHA256))([^0-9a-f]*)[0-9a-f]{24,}', '$1$4ALLOWED'
+            $line = $line -creplace '^(.*Cargo\.lock:[0-9]+:checksum = )"[0-9a-f]{64}"$', '$1"ALLOWED"'
+            $line = $line -creplace '(record:)?sha256:[0-9a-f]{64}', 'ALLOWED'
+            $line = $line -creplace '"(value|bytes|alphabet)": "[0-9a-f]+"', '"$1": "ALLOWED"'
+            $line
+        } |
+        Where-Object { $_ -cmatch '\b[0-9a-f]{24,}\b' })
     Add-Hit 'a long hex identifier' $hex
 
     # ⚠ Narrowed rather than switched off. These are well-known generic paths,
