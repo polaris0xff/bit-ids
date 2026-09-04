@@ -18,14 +18,42 @@
   "acquisition": [
     {
       "id": "route-package-manager",
+      "kind": "linux_package_manager",
+      "resolver": "fixture-distro-index",
+      "delivery": "fixture-distro-fetch",
+      "origin": "https://packages.example.invalid/fixture-client-0.0.0-fixture.tar.gz",
+      "source": {
+        "form": "indexed_package",
+        "detail": {
+          "index": "fixture-extra",
+          "package": "fixture-client",
+          "version": "0.0.0-fixture-1"
+        }
+      },
       "resolved_version": "0.0.0-fixture",
       "artifact": "sha256:0233e54b2c847cfdef308dc2f00ccc3de92a14fbf8845fef38ea135f31e8be34",
+      "signature": "unsigned",
+      "installed_probe": "fixture-client --version",
+      "installed_evidence": "ev-installed-package-manager",
       "installed_version": "0.0.0-fixture"
     },
     {
       "id": "route-vendor-release",
+      "kind": "official_download",
+      "resolver": "fixture-vendor-downloads",
+      "delivery": "fixture-vendor-https",
+      "origin": "https://vendor.example.invalid/download/fixture-client/0.0.0-fixture.tar.gz",
+      "source": {
+        "form": "published_file",
+        "detail": {
+          "asset": "0.0.0-fixture.tar.gz"
+        }
+      },
       "resolved_version": "0.0.0-fixture",
       "artifact": "sha256:65779fdb46c128a2979f001ca0ab0c580dc5578e94e1aeac65df32c19388cb11",
+      "signature": "verified",
+      "installed_probe": "fixture-client --version",
+      "installed_evidence": "ev-installed-vendor-release",
       "installed_version": "0.0.0-fixture"
     }
   ],
@@ -348,6 +376,22 @@
       "bytes": 1024,
       "sha256": "sha256:d1801003f1d263095688a5ccad55f76412c9f432c0568abfff9becce44514666",
       "connector": "bit-ids-probe"
+    },
+    {
+      "id": "ev-installed-package-manager",
+      "kind": "process_output",
+      "path": "install/package-manager-version.txt",
+      "bytes": 42,
+      "sha256": "sha256:90be06f4dfe471633274524d6c044e64373d041aa401fbd3d05cefd629c727d6",
+      "connector": null
+    },
+    {
+      "id": "ev-installed-vendor-release",
+      "kind": "process_output",
+      "path": "install/vendor-release-version.txt",
+      "bytes": 42,
+      "sha256": "sha256:21bdaffa9da5f6b508c1bf41c2407eb126471e7c33d8537b255e8277ae9569dd",
+      "connector": null
     },
     {
       "id": "ev-metainfo",

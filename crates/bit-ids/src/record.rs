@@ -14,6 +14,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::ReleaseChannel;
+use crate::acquisition::AcquisitionRoute;
 use crate::agreement::{Adjudication, FieldCorroboration, Normalization};
 use crate::canonical::{Instant, RelPath, Sha256Digest, Slug, Version};
 use crate::identity::{RecordId, SchemaVersion};
@@ -61,28 +62,6 @@ pub struct Build {
     pub package: Slug,
     /// Digest of the installed executable or harness binary.
     pub executable: Sha256Digest,
-}
-
-/// One independent way the build was obtained.
-///
-/// `ACQ-01` owns the full route record: resolver evidence, original URLs,
-/// signature status and package metadata. What is here is what a profile-level
-/// invariant needs, which is that two independent routes resolved and installed
-/// the same version.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct AcquisitionRoute {
-    /// Route identifier, unique within the record.
-    pub id: Slug,
-    /// The version this route's resolver advertised before download.
-    pub resolved_version: Version,
-    /// Digest of the artifact this route delivered. Two routes may legitimately
-    /// deliver different bytes for one version; that is a packaging
-    /// observation, not a failure.
-    pub artifact: Sha256Digest,
-    /// The version the installed build reported when asked. This is the value
-    /// the same-version gate compares, never the requested one.
-    pub installed_version: Version,
 }
 
 /// An implementation that observed the run.

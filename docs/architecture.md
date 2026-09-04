@@ -71,7 +71,7 @@ types are the schema; there is no separate schema document to drift from them.
 | `schema`, `id` | versioned schema and deterministic opaque record identifier | `SCHEMA-01` |
 | `target` | canonical ID, display name, kind, edition/engine relationship | `SCHEMA-01` |
 | `build` | exact stable version, platform, architecture, package format and executable digest | `SCHEMA-01` |
-| `acquisition` | at least two route records, original URLs, resolver evidence, artifact digest/signature, installed-version evidence | `ACQ-01` |
+| `acquisition` | at least two independent route records: kind, resolver, delivery, original URL, immutable source identity, artifact digest and signature, and the evidence of the installed version | `ACQ-01` |
 | `capture` | UTC instant, runner image, kernel, isolation mode, fixture digest, observer and connector versions | `SCHEMA-02` |
 | `observations` | typed surface records, each preserving raw bytes/order and a parsed view | `SCHEMA-01` |
 | `corroboration` | connector identities, overlapping fields, normalization, outcome and disagreement details | `SCHEMA-03` |
@@ -80,10 +80,10 @@ types are the schema; there is no separate schema document to drift from them.
 | `supersedes` | absent for an original record; the prior record ID for a correction | `SCHEMA-01` |
 | `adjudication` | why a correction corrects; absent on an original | `SCHEMA-03` |
 
-Two sections carry only what a profile-level invariant needs until the entry
-that owns them lands. `acquisition` carries route identity and installed
-versions, and `capture` carries run identity and the connector list. Every
-field that exists is read by the validator; none is a placeholder.
+One section carries only what a profile-level invariant needs until the entry
+that owns it lands: `capture` carries run identity and the connector list, and
+`SCHEMA-02`'s manifest carries the rest of the run. Every field that exists is
+read by the validator; none is a placeholder.
 
 ### Field states
 
@@ -343,10 +343,39 @@ A route is distinct when its resolver and delivery mechanism are independent,
 for example a system package manager and a vendor release URL. Two package
 manager aliases pointing at the same manifest are one route.
 
+⛔ **That rule is enforced rather than remembered.** A route in
+[`../crates/bit-ids/src/acquisition.rs`](../crates/bit-ids/src/acquisition.rs)
+records what resolved it and what delivered it as two separate values, and
+`E-ACQ-07` and `E-ACQ-08` refuse a record whose routes share either. Counting
+routes without that check leaves the two-route rule satisfiable by asking one
+index twice under two names, which is the failure it exists to prevent.
+
+A route also names the **immutable identity** of what it asked for, typed to the
+kind: a release asset is a repository, a tag and a file name; a package is an
+index, a name and an exact version; a source build is a full commit. `E-ACQ-05`
+refuses a kind carrying another kind's identity, and `E-ACQ-06` refuses an
+abbreviated commit, which is the shape `FOUND-02` measured passing an action-pin
+rule written to refuse floating refs.
+
 The gate compares the version reported by the installed executable or harness,
 not the requested version. It also records artifact digests. Different bytes
 may still represent the same version and become useful packaging observations;
 they are never silently collapsed.
+
+⭐ **An installed version is a measurement, so it cites evidence like one.** A
+route records the command it ran to ask, and the evidence entry holding what the
+build answered. `E-ACQ-09` refuses a citation that resolves to nothing and
+`E-ACQ-10` refuses one that resolves to anything but process output: a version
+read out of a packet capture or a filename is not the build speaking.
+
+The signature disposition is recorded in both documents and `E-BND-13` compares
+them, because nothing else forces them into step and a record publishing
+`verified` over a run that says `not_checked` is the publishable half of a claim
+nobody made. `ACQ-05` owns the authenticity evidence behind the status.
+
+⚠ `candidate_routes` in [`../catalogue/clients.toml`](../catalogue/clients.toml)
+is a research lead and never an availability claim. Nothing reads it at run
+time; one test reads it as a vocabulary to keep in step with `RouteKind`.
 
 For libraries, the two routes are normally a language package registry/module
 proxy and the matching upstream Git tag. Both build the same committed harness

@@ -92,7 +92,9 @@ fn profile_schema_accepts_the_golden_record() {
     assert_eq!(profile.schema.as_str(), bit_ids::PROFILE_SCHEMA);
     assert_eq!(profile.target.id.as_str(), "fixture-client");
     assert_eq!(profile.observations.len(), 7);
-    assert_eq!(profile.evidence.len(), 7);
+    // Nine since `ACQ-01`: the seven observation artifacts plus the version
+    // output each route's installed build printed when it was asked.
+    assert_eq!(profile.evidence.len(), 9);
     assert!(profile.supersedes.is_none());
 }
 
@@ -408,6 +410,45 @@ const PLANTED: &[(&str, Mutation)] = &[
     ("E-ACQ-03", |document| swap(document, "acquisition", 0, 1)),
     ("E-ACQ-04", |document| {
         document["acquisition"][0]["installed_version"] = json!("0.0.1-fixture");
+    }),
+    // A package-manager route carrying a release-asset identity. It reads as a
+    // complete record and names nothing anyone could resolve again.
+    ("E-ACQ-05", |document| {
+        document["acquisition"][0]["source"] = json!({
+            "form": "release_asset",
+            "detail": {
+                "repository": "fixture/fixture-client",
+                "tag": "v0.0.0-fixture",
+                "asset": "fixture-client.tar.gz",
+            },
+        });
+    }),
+    // An abbreviated commit. `FOUND-02` measured this exact shape passing a
+    // pin rule written to refuse floating refs, because it looked like a commit.
+    ("E-ACQ-06", |document| {
+        document["acquisition"][0]["kind"] = json!("source_build");
+        document["acquisition"][0]["source"] = json!({
+            "form": "source_commit",
+            "detail": {
+                "repository": "fixture/fixture-client",
+                "commit": "abcdef01",
+            },
+        });
+    }),
+    // Two routes, one resolver: the two-route rule satisfied by asking one
+    // index twice under two names.
+    ("E-ACQ-07", |document| {
+        document["acquisition"][1]["resolver"] = document["acquisition"][0]["resolver"].clone();
+    }),
+    ("E-ACQ-08", |document| {
+        document["acquisition"][1]["delivery"] = document["acquisition"][0]["delivery"].clone();
+    }),
+    ("E-ACQ-09", |document| {
+        document["acquisition"][0]["installed_evidence"] = json!("ev-does-not-exist");
+    }),
+    // The installed version cited against an artifact the build did not print.
+    ("E-ACQ-10", |document| {
+        document["acquisition"][0]["installed_evidence"] = json!("ev-metainfo");
     }),
     ("E-CAP-01", |document| {
         document["capture"]["connectors"]

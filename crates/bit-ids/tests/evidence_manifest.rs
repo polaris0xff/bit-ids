@@ -98,7 +98,9 @@ fn evidence_manifest_accepts_a_complete_run() {
     let manifest = RunManifest::from_json(MANIFEST).expect("the golden manifest validates");
     assert_eq!(manifest.schema.as_str(), bit_ids::MANIFEST_SCHEMA);
     assert_eq!(manifest.phases.len(), 7);
-    assert_eq!(manifest.evidence.len(), 7);
+    // Nine since `ACQ-01`: seven observation artifacts plus the version output
+    // each route's installed build printed when it was asked.
+    assert_eq!(manifest.evidence.len(), 9);
     assert_eq!(manifest.acquisition.len(), 2);
     assert_eq!(
         manifest.observer().map(|tool| tool.id.as_str()),
@@ -442,6 +444,13 @@ const PLANTED_BINDING: &[(&str, Pair)] = &[
     }),
     ("E-BND-12", |_, p| {
         p["capture"]["captured_at"] = json!("2026-09-04T20:00:00Z");
+    }),
+    // ⛔ The publishable half of a claim the run never made. The record says the
+    // signature was verified; the run says it was not checked. Nothing else
+    // forces the two into step, which is why this comparison can fail and
+    // `E-BND-10` could not.
+    ("E-BND-13", |_, p| {
+        p["acquisition"][0]["signature"] = json!("verified");
     }),
     ("E-BND-20", |m, _| {
         // A run that restarted nothing and offered one torrent over one

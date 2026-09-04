@@ -13,6 +13,7 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::acquisition::SignatureStatus;
 use crate::canonical::{CanonicalError, Instant, Label, RelPath, Sha256Digest, Slug, Url, Version};
 use crate::record::{EvidenceKind, Profile};
 use crate::sampling::SamplingPlan;
@@ -240,19 +241,6 @@ pub struct Clocks {
     pub wall_end: Instant,
     /// How long it took, from a monotonic source.
     pub monotonic_elapsed_ns: u64,
-}
-
-/// Whether the artifact's signature was checked, and what happened.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum SignatureStatus {
-    /// A signature was present and verified against a published key.
-    Verified,
-    /// The publisher ships no signature for this artifact.
-    Unsigned,
-    /// A signature exists and this run did not check it. ⚠ Not the same as
-    /// unsigned, and recorded separately so it cannot be read as one.
-    NotChecked,
 }
 
 /// Where one route's artifact came from, and what arrived.
@@ -973,6 +961,22 @@ fn bind_acquisition(manifest: &RunManifest, profile: &Profile, out: &mut Vec<Sch
                 "E-BND-11",
                 format!("acquisition {}", run.route),
                 "the artifact digest differs between the two documents",
+            ));
+        }
+        // ⚠ This one CAN fail, which is why it is here and E-BND-10 is not.
+        // Nothing else forces the two records of the signature into step: the
+        // run writes what it did about the signature, the profile publishes
+        // what it claims was done, and a record that says `verified` over a run
+        // that says `not_checked` is the publishable half of a claim nobody
+        // made. `ACQ-05` owns the authenticity evidence behind the status.
+        if run.signature != published.signature {
+            out.push(SchemaError::new(
+                "E-BND-13",
+                format!("acquisition {}", run.route),
+                format!(
+                    "the run recorded {} and the record publishes {}",
+                    run.signature, published.signature
+                ),
             ));
         }
     }

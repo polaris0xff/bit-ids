@@ -17,7 +17,7 @@ result about that client.
 
 | file | what it is |
 | --- | --- |
-| `valid-profile.json` | a complete original record exercising all six field states |
+| `valid-profile.json` | a complete original record exercising all six field states and two independent acquisition routes |
 | `valid-correction.json` | the same build, a second capture run, superseding the first |
 | `unsupported-schema.json` | the golden record with a schema identifier from another generation |
 | `unproven-field.json` | the golden record with the peer ID field stripped of its evidence |

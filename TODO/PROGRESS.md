@@ -1,17 +1,17 @@
 # Current progress
 
 State instant: 2026-09-04
-Baseline commit: `ba07d65` on `main`
+Baseline commit: `a1cf3ee` on `main`
 Total: 52
-Open: 45
+Open: 44
 In progress: 0
 Blocked: 0
-Done: 7
+Done: 8
 
 ## Current state
 
-The whole `SCHEMA-*` group is closed, along with `FOUND-01` through `FOUND-03`.
-Foundations are finished; acquisition is next.
+The whole `SCHEMA-*` group is closed, along with `FOUND-01` through `FOUND-03`
+and `ACQ-01`. Foundations are finished and acquisition has its record shape.
 
 The `bit-ids` crate carries the published record shape, the six field states,
 the derived record identifier, the canonical value forms and the publication
@@ -47,6 +47,14 @@ is the cheapest check that catches every retention rule in
 codecs observe rather than impose, and none of them maps a peer-ID prefix to a
 client name.
 
+A route now says how it was independent rather than asserting that it was. It
+records what resolved it and what delivered it separately, and a record whose
+routes share either is refused: the two-route rule was otherwise satisfiable by
+asking one index twice under two names. The identity of what each route asked
+for is typed to its kind, so a release asset is a tag and a file name and a
+source build is a whole commit, and an installed version cites the process
+output the build printed rather than being asserted.
+
 The supply chain is pinned at all three layers and each pin has a check behind
 it. [`../docs/supply-chain.md`](../docs/supply-chain.md) carries the layers and
 the update procedure. `FOUND-03` added a workspace member and no new
@@ -62,7 +70,8 @@ anything.
 
 ## Work order
 
-1. `ACQ-01` through `ACQ-04`; do not install proprietary clients earlier.
+1. `ACQ-02` through `ACQ-04`; do not install proprietary clients earlier.
+   `ACQ-04`'s two disposable-runner guards must exist before any client runs.
 2. Split `OBS-01`, then implement `OBS-02` through `OBS-05`. Each parses
    against the `bit-ids-wire` fixture corpus rather than against a live client.
 3. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical

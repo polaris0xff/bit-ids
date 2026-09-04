@@ -5,6 +5,35 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-04T16:40:00Z
+
+- Closed `ACQ-01`. A route record now carries the typed kind, what resolved it,
+  what delivered it, the original URL, the immutable identity of what it asked
+  for, the artifact digest and signature, and the evidence of the installed
+  version. Record: [`TODO/acquisition.md`](TODO/acquisition.md).
+- ⛔ Two routes are two routes only if nothing they depend on is shared. The
+  resolver and the delivery mechanism are separate values and a record whose
+  routes share either is refused, because the two-route rule was otherwise
+  satisfiable by asking one index twice under two names.
+- The identity of what a route asked for is typed to its kind, so a release
+  asset is a repository, a tag and a file name, and a source build is a full
+  commit. An abbreviated commit is refused: that is the shape `FOUND-02`
+  measured passing an action-pin rule written to refuse floating references.
+- An installed version cites the process output the build printed. A version
+  read out of a packet capture or a filename is not the build speaking, and the
+  citation is checked to resolve and to be process output.
+- The signature disposition is compared across the two documents. That
+  comparison can fail, which is why it exists where `E-BND-10` was deleted:
+  nothing else forces the run's record and the record's claim into step.
+- A new code silently reused `E-BND-12`, which the capture-instant comparison
+  already held. Two checks under one code is worse than an unclear message, and
+  the manifest coverage test refused the change until the renumbered one had a
+  planted defect.
+- Driving the validators found what the suite could not: the signature
+  diagnostic printed a spelling that appears nowhere in the document it was
+  telling an operator to go and read.
+- Deployment: no data branch, release or capture service was created.
+
 ### 2026-09-04T15:40:00Z
 
 - Closed `FOUND-03`, the last foundation piece before acquisition. A new

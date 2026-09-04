@@ -146,6 +146,26 @@
       "redacted": false
     },
     {
+      "id": "ev-installed-package-manager",
+      "kind": "process_output",
+      "path": "install/package-manager-version.txt",
+      "bytes": 42,
+      "sha256": "sha256:90be06f4dfe471633274524d6c044e64373d041aa401fbd3d05cefd629c727d6",
+      "produced_by": "route-runner",
+      "phase": "installed",
+      "redacted": false
+    },
+    {
+      "id": "ev-installed-vendor-release",
+      "kind": "process_output",
+      "path": "install/vendor-release-version.txt",
+      "bytes": 42,
+      "sha256": "sha256:21bdaffa9da5f6b508c1bf41c2407eb126471e7c33d8537b255e8277ae9569dd",
+      "produced_by": "route-runner",
+      "phase": "installed",
+      "redacted": false
+    },
+    {
       "id": "ev-metainfo",
       "kind": "metainfo",
       "path": "fixture/generated.torrent",

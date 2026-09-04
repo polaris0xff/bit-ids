@@ -12,6 +12,7 @@
 use core::fmt;
 
 use crate::Agreement;
+use crate::acquisition::AcquisitionRoute;
 use crate::agreement::FieldCorroboration;
 use crate::identity::{RecordId, RecordKey};
 use crate::observation::{FieldState, ObservedField, PatternRun};
@@ -237,6 +238,92 @@ fn check_acquisition(profile: &Profile, out: &mut Vec<SchemaError>) {
                     route.id, route.installed_version, profile.build.version
                 ),
             ));
+        }
+        if route.source.form() != route.kind.source_form() {
+            out.push(SchemaError::new(
+                "E-ACQ-05",
+                format!("acquisition[{index}].source"),
+                format!(
+                    "a {} route carries a {} identity, which cannot be resolved again",
+                    route.kind,
+                    route.source.form()
+                ),
+            ));
+        }
+        // ⚠ A short object name is not an immutable reference. `FOUND-02`
+        // measured that on action pins: an abbreviated commit passed a rule
+        // written to refuse floating refs, because it looked like a commit.
+        if let Some(commit) = route.source.commit()
+            && !matches!(commit.len(), 20 | 32)
+        {
+            out.push(SchemaError::new(
+                "E-ACQ-06",
+                format!("acquisition[{index}].source.commit"),
+                format!(
+                    "{} bytes; a git object name is 20 or 32, and an abbreviation is not immutable",
+                    commit.len()
+                ),
+            ));
+        }
+        if !profile
+            .evidence
+            .iter()
+            .any(|entry| entry.id == route.installed_evidence)
+        {
+            out.push(SchemaError::new(
+                "E-ACQ-09",
+                format!("acquisition[{index}].installed_evidence"),
+                format!(
+                    "names {}, which is not an evidence entry in this record",
+                    route.installed_evidence
+                ),
+            ));
+        } else if !profile.evidence.iter().any(|entry| {
+            entry.id == route.installed_evidence && entry.kind == EvidenceKind::ProcessOutput
+        }) {
+            out.push(SchemaError::new(
+                "E-ACQ-10",
+                format!("acquisition[{index}].installed_evidence"),
+                format!(
+                    "{} is not process output; an installed version is what the build said, \
+                     so the evidence for it is what the build printed",
+                    route.installed_evidence
+                ),
+            ));
+        }
+    }
+    check_route_independence(routes, out);
+}
+
+/// ⛔ Two routes are two routes only if nothing they depend on is shared.
+///
+/// `architecture.md` section 7: two package-manager aliases pointing at one
+/// manifest are one route. Counting routes without this makes `E-ACQ-01`
+/// satisfiable by asking the same index twice under two names, which is the
+/// failure the two-route rule exists to prevent rather than a technicality.
+fn check_route_independence(routes: &[AcquisitionRoute], out: &mut Vec<SchemaError>) {
+    for (index, route) in routes.iter().enumerate() {
+        for earlier in &routes[..index] {
+            if earlier.resolver == route.resolver {
+                out.push(SchemaError::new(
+                    "E-ACQ-07",
+                    format!("acquisition[{index}].resolver"),
+                    format!(
+                        "routes {} and {} both resolved through {}, so they are one route",
+                        earlier.id, route.id, route.resolver
+                    ),
+                ));
+            }
+            if earlier.delivery == route.delivery {
+                out.push(SchemaError::new(
+                    "E-ACQ-08",
+                    format!("acquisition[{index}].delivery"),
+                    format!(
+                        "routes {} and {} were both delivered by {}, so they are one route",
+                        earlier.id, route.id, route.delivery
+                    ),
+                ));
+            }
         }
     }
 }
