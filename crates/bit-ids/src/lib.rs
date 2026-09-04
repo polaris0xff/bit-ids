@@ -31,6 +31,7 @@ mod json;
 pub mod manifest;
 pub mod observation;
 pub mod record;
+pub mod sampling;
 pub mod validate;
 
 pub use agreement::publishable;

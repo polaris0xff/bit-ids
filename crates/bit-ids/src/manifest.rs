@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::canonical::{CanonicalError, Instant, Label, RelPath, Sha256Digest, Slug, Url, Version};
 use crate::record::{EvidenceKind, Profile};
+use crate::sampling::SamplingPlan;
 use crate::validate::{SchemaError, Violations, strictly_ascending};
 
 /// Identifier carried by every first-generation run manifest.
@@ -369,6 +370,7 @@ pub(crate) struct RunManifestFields {
     pub(crate) host: Host,
     pub(crate) isolation: Isolation,
     pub(crate) clocks: Clocks,
+    pub(crate) sampling: SamplingPlan,
     pub(crate) tools: Vec<Tool>,
     pub(crate) acquisition: Vec<AcquisitionIdentity>,
     pub(crate) phases: Vec<Phase>,
@@ -389,6 +391,7 @@ impl From<RunManifestFields> for RunManifest {
             host,
             isolation,
             clocks,
+            sampling,
             tools,
             acquisition,
             phases,
@@ -406,6 +409,7 @@ impl From<RunManifestFields> for RunManifest {
             host,
             isolation,
             clocks,
+            sampling,
             tools,
             acquisition,
             phases,
@@ -449,6 +453,9 @@ pub struct RunManifest {
     pub isolation: Isolation,
     /// When, by both clocks.
     pub clocks: Clocks,
+    /// What the run varied between samples. A plan that varied nothing can
+    /// support no claim about how long a value lasts.
+    pub sampling: SamplingPlan,
     /// Every tool that took part, sorted by identifier.
     pub tools: Vec<Tool>,
     /// Every route the build was obtained through, sorted by identifier.
@@ -971,6 +978,39 @@ fn bind_acquisition(manifest: &RunManifest, profile: &Profile, out: &mut Vec<Sch
     }
 }
 
+fn bind_sampling(manifest: &RunManifest, profile: &Profile, out: &mut Vec<SchemaError>) {
+    let plan = &manifest.sampling;
+    for field in &profile.observations {
+        let at = format!("observations {}", field.path);
+        if field.state.claims_variation() && !plan.varies_anything() {
+            out.push(SchemaError::new(
+                "E-BND-20",
+                &at,
+                format!(
+                    "state {} says the value changes, and the run varied nothing: {} session(s), \
+                     {} torrent(s), {} connection(s)",
+                    field.state.as_str(),
+                    plan.sessions,
+                    plan.torrents,
+                    plan.connections
+                ),
+            ));
+        }
+        if let Some(samples) = field.state.samples()
+            && u64::from(samples.get()) > plan.observations()
+        {
+            out.push(SchemaError::new(
+                "E-BND-21",
+                &at,
+                format!(
+                    "rests on {samples} samples and the run could produce at most {}",
+                    plan.observations()
+                ),
+            ));
+        }
+    }
+}
+
 /// Checks that a manifest and a profile describe the same run.
 ///
 /// The two documents overlap by design: a profile has to stand alone for a
@@ -992,5 +1032,6 @@ pub fn bind(manifest: &RunManifest, profile: &Profile) -> Result<(), Violations>
     bind_evidence(manifest, profile, &mut out);
     bind_connectors(manifest, profile, &mut out);
     bind_acquisition(manifest, profile, &mut out);
+    bind_sampling(manifest, profile, &mut out);
     Violations::from_errors(out)
 }

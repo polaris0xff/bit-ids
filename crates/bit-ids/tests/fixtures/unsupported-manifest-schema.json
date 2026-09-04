@@ -23,6 +23,11 @@
     "wall_end": "2026-09-04T13:35:00Z",
     "monotonic_elapsed_ns": 270000000000
   },
+  "sampling": {
+    "sessions": 4,
+    "torrents": 2,
+    "connections": 1
+  },
   "tools": [
     {
       "id": "bit-ids-probe",

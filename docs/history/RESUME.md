@@ -3,9 +3,8 @@
 **Task:** Take the work order in `TODO/PROGRESS.md` in dependency order,
 committing and pushing each green unit to `main`.
 
-**Resume point:** `SCHEMA-01`, `FOUND-02`, `SCHEMA-02` and `SCHEMA-03` are
-closed. The next item is `SCHEMA-04`, the variability and repeated-sampling
-model.
+**Resume point:** The whole `SCHEMA-*` group is closed, along with `FOUND-02`.
+The next item is `FOUND-03`, the deterministic protocol fixture suite.
 
 **In flight:** Nothing. The tree is coherent.
 

@@ -311,6 +311,23 @@ impl FieldState {
         matches!(self, Self::NotObserved | Self::NotSupported)
     }
 
+    /// How many separately initialized samples the state rests on.
+    #[must_use]
+    pub const fn samples(&self) -> Option<NonZeroU32> {
+        match self {
+            Self::Constant(value) => Some(value.samples),
+            Self::Patterned(value) => Some(value.samples),
+            Self::Variable(value) => Some(value.samples),
+            _ => None,
+        }
+    }
+
+    /// Whether the state claims the value changes between samples.
+    #[must_use]
+    pub const fn claims_variation(&self) -> bool {
+        matches!(self, Self::Patterned(_) | Self::Variable(_))
+    }
+
     /// The canonical spelling of the state name.
     #[must_use]
     pub const fn as_str(&self) -> &'static str {

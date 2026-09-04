@@ -443,6 +443,14 @@ const PLANTED_BINDING: &[(&str, Pair)] = &[
     ("E-BND-12", |_, p| {
         p["capture"]["captured_at"] = json!("2026-09-04T20:00:00Z");
     }),
+    ("E-BND-20", |m, _| {
+        // A run that restarted nothing and offered one torrent over one
+        // connection cannot support a field that says the value changes.
+        m["sampling"] = json!({ "sessions": 1, "torrents": 1, "connections": 1 });
+    }),
+    ("E-BND-21", |m, _| {
+        m["sampling"] = json!({ "sessions": 2, "torrents": 1, "connections": 1 });
+    }),
 ];
 
 #[test]

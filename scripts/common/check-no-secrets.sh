@@ -167,6 +167,9 @@ if [ "$PUBLIC" = "1" ]; then
   # SCHEMA. `detail` joined it when SCHEMA-03 gave the corroboration enums an
   # adjacent tag; the value must still be nothing but lowercase hex, so this
   # stays a shape rule rather than a licence for whatever sits under that key.
+  # ⚠ A FIXTURE BUILT BY A NAMED CONSTRUCTOR is the same argument in Rust: a
+  # credential is not passed to a function called peer_id. Excluded by that
+  # name, and the argument must still be nothing but lowercase hex.
   #
   # ⛔ THE ALLOWED ITEM IS DELETED FROM THE LINE, THE LINE IS NOT DROPPED.
   # `grep -v` drops lines, not characters, so an allowed digest sitting beside
@@ -181,7 +184,8 @@ if [ "$PUBLIC" = "1" ]; then
       -e 's#([Pp]inned(Ref|Sha256|Commit|Digest)|PINNED_(REF|SHA256))([^0-9a-f]*)[0-9a-f]{24,}#\1\4ALLOWED#g' \
       -e 's#^(.*Cargo\.lock:[0-9]+:checksum = )"[0-9a-f]{64}"$#\1"ALLOWED"#' \
       -e 's#(record:)?sha256:[0-9a-f]{64}#ALLOWED#g' \
-      -e 's#"(value|bytes|alphabet|detail)": "[0-9a-f]+"#"\1": "ALLOWED"#g' |
+      -e 's#"(value|bytes|alphabet|detail)": "[0-9a-f]+"#"\1": "ALLOWED"#g' \
+      -e 's#(peer_id|HexBytes::parse)\("[0-9a-f]+"#\1("ALLOWED"#g' |
     grep -E '\b[0-9a-f]{24,}\b' || true)
   [ -n "$_hex_out" ] && hit "a long hex identifier" "$_hex_out"
   # ⚠ Narrowed rather than switched off. `/home/linuxbrew/` and `/home/runner/`

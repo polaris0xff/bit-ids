@@ -1,16 +1,16 @@
 # Current progress
 
 State instant: 2026-09-04
-Baseline commit: `c107f67` on `main`
+Baseline commit: `fefbf80` on `main`
 Total: 52
-Open: 47
+Open: 46
 In progress: 0
 Blocked: 0
-Done: 5
+Done: 6
 
 ## Current state
 
-`SCHEMA-01`, `FOUND-02`, `SCHEMA-02` and `SCHEMA-03` are closed.
+The whole `SCHEMA-*` group is closed, along with `FOUND-02`.
 
 The `bit-ids` crate carries the published record shape, the six field states,
 the derived record identifier, the canonical value forms and the publication
@@ -31,6 +31,11 @@ reach is never called agreement. Validity and publishability are separate
 gates: a record carrying a disagreement reads and validates, which is what
 keeps the evidence of one, and `publishable` refuses it.
 
+A lifetime claim is a function of the samples. The manifest records what the
+run varied, the classifier says what those runs prove and `unknown` for
+everything they do not, and `bind` refuses a field claiming variation the run
+could not have produced.
+
 The supply chain is pinned at all three layers and each pin has a check behind
 it. [`../docs/supply-chain.md`](../docs/supply-chain.md) carries the layers and
 the update procedure.
@@ -49,9 +54,9 @@ nothing to check. Both are fixed and both now refuse the shape that shipped.
 
 ## Work order
 
-1. `SCHEMA-04`, then `FOUND-03`. `SCHEMA-04` closes the schema group and the
-   record already carries sample counts for it to constrain; `FOUND-03` gives
-   every later observer the byte-exact fixtures it parses against.
+1. `FOUND-03`, the deterministic protocol fixture suite. Every observer from
+   `OBS-02` onward parses against it, and it is the last foundation piece
+   before acquisition.
 2. `ACQ-01` through `ACQ-04`; do not install proprietary clients earlier.
 3. Split `OBS-01`, then implement `OBS-02` through `OBS-05`.
 4. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical

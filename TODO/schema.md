@@ -224,7 +224,7 @@ an assertion by the capture tool rather than a property this crate verifies.
 ## SCHEMA-04: Variability and repeated-sampling model
 
 Source: bit-cli random peer-ID suffix and tracker key behavior
-Priority: P0 | Effort: M | Status: OPEN
+Priority: P0 | Effort: M | Status: DONE
 
 Problem: One run cannot distinguish stable bytes, per-process randomness,
 per-torrent randomness, and platform-dependent behavior.
@@ -235,5 +235,35 @@ without source inference.
 Approach: Define a sampling plan, observation scope, minimum repeats, and
 confidence-free exact classifications derived only from captured runs.
 
-Prove: fixture tests classify fixed prefixes and changing suffixes correctly
-and reject a variability claim backed by one sample.
+Decision: a classification is a function of the samples, never a confidence. A
+dimension the run did not vary yields `unknown` rather than a best guess, so a
+value that held still inside one process is not called persistent: only a
+restart separates a stored value from a regenerated one.
+
+Decision: the plan lives in the run manifest and the claim lives in the
+profile, and `bind` holds them together. A field claiming variation needs a run
+that varied something, and a field cannot rest on more samples than the plan
+could produce.
+
+Prove: `cargo test --workspace variability` classifies fixed prefixes and
+changing suffixes correctly from fixture samples and rejects a variability
+claim backed by one sample. ⚠ The command is an amendment; the entry named the
+acceptance without one, and the model requires the acceptance to be a command.
+
+Closure evidence: `cargo test --workspace variability` reports 12 passed, 0
+failed on 2026-09-04, and the whole suite is 65 passed, 0 failed.
+`variability_separates_a_fixed_prefix_from_a_changing_suffix` is the first half
+of the acceptance and `variability_refuses_to_call_anything_stable_from_one_sample`
+the second. Each of the four lifetimes is classified from a plan that varied
+the dimension it names, and `variability_will_not_name_a_dimension_the_run_did_not_vary`
+holds the boundary. `cargo fmt --all -- --check`, `cargo check`, `cargo test`
+and `cargo clippy` at `--workspace --locked --all-targets`, `shellcheck`,
+`shfmt -d -i 2 -ci` and `sh scripts/common/check-gate.sh` all exit 0.
+
+`E-BND-20` and `E-BND-21` connect the plan to the record and both are planted
+against; the manifest coverage test refused the change until they were, which
+is the guard working before anyone remembered to.
+
+Residual: the classifier is not yet called by anything that writes a record.
+A capture tool turns samples into a `FieldState` with it, and that tool is
+`OBS-02` onward.

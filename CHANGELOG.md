@@ -5,6 +5,21 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-04T14:47:22Z
+
+- Closed `SCHEMA-04`, and with it the whole schema group. A run records what it
+  varied, and a classifier turns samples into per-byte lifetimes, so a peer ID
+  comes out as the shape it actually has: a fixed prefix and a suffix the build
+  regenerates. Record: [`TODO/schema.md`](TODO/schema.md).
+- Nothing here is a confidence. A dimension the run never varied yields
+  `unknown` rather than a guess, so a value that held still inside one process
+  is not called persistent: only a restart separates a stored value from a
+  regenerated one, and one sample yields `unknown` for everything.
+- `bind` now refuses a field claiming variation from a run that varied nothing,
+  and a field resting on more samples than the plan could produce. The manifest
+  coverage test refused the change until both had a planted defect.
+- Deployment: no data branch, release or capture service was created.
+
 ### 2026-09-04T14:40:23Z
 
 - Closed `SCHEMA-03`. Corroboration now keeps what each connector saw, the
