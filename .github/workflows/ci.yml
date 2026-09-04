@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  linux:
+    name: Linux gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Install pinned Rust toolchain
+        run: rustup show active-toolchain
+      - name: Host report
+        run: sh scripts/doctor/doctor.sh --fast
+      - name: Install pinned shfmt
+        run: |
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          go install mvdan.cc/sh/v3/cmd/shfmt@v3.14.0
+      - name: Shell syntax and style
+        run: |
+          shellcheck scripts/doctor/*.sh scripts/common/*.sh
+          shfmt -d -i 2 -ci scripts/doctor/*.sh scripts/common/*.sh
+      - name: Rust formatting
+        run: cargo fmt --all -- --check
+      - name: Rust check
+        run: cargo check --workspace --locked --all-targets
+      - name: Rust tests
+        run: cargo test --workspace --locked --all-targets
+      - name: Rust lints
+        run: cargo clippy --workspace --locked --all-targets -- -D warnings
+      - name: Repository gate
+        run: sh scripts/common/check-gate.sh --strict
+
+  windows:
+    name: Windows gate
+    runs-on: windows-2025
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Install pinned Rust toolchain
+        shell: pwsh
+        run: rustup show active-toolchain
+      - name: Host report
+        shell: pwsh
+        run: ./scripts/doctor/doctor.ps1 -Fast
+      - name: Rust formatting
+        shell: pwsh
+        run: cargo fmt --all -- --check
+      - name: Rust check
+        shell: pwsh
+        run: cargo check --workspace --locked --all-targets
+      - name: Rust tests
+        shell: pwsh
+        run: cargo test --workspace --locked --all-targets
+      - name: Rust lints
+        shell: pwsh
+        run: cargo clippy --workspace --locked --all-targets -- -D warnings
+      - name: Repository gate
+        shell: pwsh
+        run: ./scripts/common/check-gate.ps1 -Fast

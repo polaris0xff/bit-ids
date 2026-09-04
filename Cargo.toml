@@ -1,0 +1,16 @@
+[workspace]
+members = ["crates/bit-ids"]
+resolver = "3"
+
+[workspace.package]
+edition = "2024"
+license = "0BSD"
+repository = "https://github.com/polaris0xff/bit-ids"
+rust-version = "1.98"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = "warn"
+pedantic = "warn"

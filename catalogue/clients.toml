@@ -1,0 +1,148 @@
+schema = "bit-ids/catalogue/1"
+policy = "latest-stable-only"
+minimum_acquisition_routes = 2
+minimum_observation_connectors = 2
+
+[[targets]]
+id = "qbittorrent"
+display_name = "qBittorrent"
+kind = "client"
+open_source = true
+platforms = ["linux", "windows"]
+upstream = "https://github.com/qbittorrent/qBittorrent"
+candidate_routes = ["github-release", "linux-package-manager", "windows-package-manager"]
+
+[[targets]]
+id = "qbittorrent-enhanced"
+display_name = "qBittorrent Enhanced"
+kind = "client"
+open_source = true
+platforms = ["linux", "windows"]
+upstream = "https://github.com/c0re100/qBittorrent-Enhanced-Edition"
+candidate_routes = ["github-release", "linux-package-manager", "windows-package-manager"]
+
+[[targets]]
+id = "utorrent"
+display_name = "uTorrent"
+kind = "client"
+open_source = false
+platforms = ["windows"]
+upstream = "https://www.utorrent.com/"
+candidate_routes = ["official-download", "windows-package-manager"]
+
+[[targets]]
+id = "bitcomet"
+display_name = "BitComet"
+kind = "client"
+open_source = false
+platforms = ["windows"]
+upstream = "https://www.bitcomet.com/"
+candidate_routes = ["official-download", "windows-package-manager"]
+
+[[targets]]
+id = "aria2"
+display_name = "aria2"
+kind = "client"
+open_source = true
+platforms = ["linux", "windows"]
+upstream = "https://github.com/aria2/aria2"
+candidate_routes = ["github-release", "linux-package-manager", "windows-package-manager"]
+
+[[targets]]
+id = "transmission"
+display_name = "Transmission"
+kind = "client"
+open_source = true
+platforms = ["linux", "windows"]
+upstream = "https://github.com/transmission/transmission"
+candidate_routes = ["github-release", "linux-package-manager", "windows-package-manager"]
+
+[[targets]]
+id = "deluge"
+display_name = "Deluge"
+kind = "client"
+open_source = true
+platforms = ["linux", "windows"]
+upstream = "https://github.com/deluge-torrent/deluge"
+candidate_routes = ["github-release", "linux-package-manager", "windows-package-manager"]
+
+[[targets]]
+id = "bittorrent"
+display_name = "BitTorrent"
+kind = "client"
+open_source = false
+platforms = ["windows"]
+upstream = "https://www.bittorrent.com/"
+candidate_routes = ["official-download", "windows-package-manager"]
+
+[[targets]]
+id = "biglybt"
+display_name = "BiglyBT"
+kind = "client"
+open_source = true
+platforms = ["linux", "windows"]
+upstream = "https://github.com/BiglySoftware/BiglyBT"
+candidate_routes = ["github-release", "linux-package-manager", "windows-package-manager"]
+
+[[targets]]
+id = "tixati"
+display_name = "Tixati"
+kind = "client"
+open_source = false
+platforms = ["linux", "windows"]
+upstream = "https://www.tixati.com/"
+candidate_routes = ["official-download", "linux-package-manager", "windows-package-manager"]
+
+[[targets]]
+id = "ktorrent"
+display_name = "KTorrent"
+kind = "client"
+open_source = true
+platforms = ["linux"]
+upstream = "https://invent.kde.org/network/ktorrent"
+candidate_routes = ["official-release", "linux-package-manager"]
+
+[[targets]]
+id = "fdm"
+display_name = "Free Download Manager"
+kind = "client"
+open_source = false
+platforms = ["linux", "windows"]
+upstream = "https://www.freedownloadmanager.org/"
+candidate_routes = ["official-download", "linux-package-manager", "windows-package-manager"]
+
+[[targets]]
+id = "zona"
+display_name = "Zona"
+kind = "client"
+open_source = false
+platforms = ["windows"]
+upstream = "https://zona.ru/"
+candidate_routes = ["official-download", "windows-package-manager"]
+
+[[targets]]
+id = "libtorrent"
+display_name = "libtorrent"
+kind = "engine"
+open_source = true
+platforms = ["linux", "windows"]
+upstream = "https://github.com/arvidn/libtorrent"
+candidate_routes = ["github-release", "linux-package-manager", "source-build"]
+
+[[targets]]
+id = "anacrolix-torrent"
+display_name = "anacrolix/torrent"
+kind = "engine"
+open_source = true
+platforms = ["linux", "windows"]
+upstream = "https://github.com/anacrolix/torrent"
+candidate_routes = ["go-module", "source-build"]
+
+[[targets]]
+id = "rqbit"
+display_name = "rqbit"
+kind = "engine"
+open_source = true
+platforms = ["linux", "windows"]
+upstream = "https://github.com/ikatson/rqbit"
+candidate_routes = ["github-release", "cargo-install", "source-build"]
