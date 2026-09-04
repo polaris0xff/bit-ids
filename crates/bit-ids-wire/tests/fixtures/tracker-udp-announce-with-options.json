@@ -1,0 +1,20 @@
+{
+  "schema": "bit-ids/wire-fixture/1",
+  "id": "tracker-udp-announce-with-options",
+  "surface": "tracker_udp",
+  "summary": "An announce carrying BEP 41 request-string options past the fixed 98 bytes",
+  "provenance": {
+    "origin": "synthetic",
+    "authored": "2026-09-04T15:20:00Z",
+    "specifications": [
+      "BEP 15",
+      "BEP 41"
+    ]
+  },
+  "frames": [
+    {
+      "offset_ms": 0,
+      "bytes": "1122334455667788000000015a5a000311111111111111111111111111111111111111116269742d6964732d666978747572652d3030303100000000000000000000000000000400000000000000000000000000000000000a0b0c0d000000c81ae102092f616e6e6f756e6365"
+    }
+  ]
+}

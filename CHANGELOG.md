@@ -5,6 +5,43 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-04T15:40:00Z
+
+- Closed `FOUND-03`, the last foundation piece before acquisition. A new
+  `bit-ids-wire` crate carries byte-exact codecs for the HTTP tracker, the UDP
+  tracker and the peer wire, plus a synthetic fixture corpus with a committed
+  digest index. Record: [`TODO/foundation.md`](TODO/foundation.md).
+- The invariant is that decode then encode reproduces the input byte for byte.
+  Every retention rule in `docs/architecture.md` section 5, meaning query and
+  header order, duplicate fields, percent-encoding hex case, all eight reserved
+  bytes and early message order, is destroyed by the convenient implementation, and a
+  round trip catches all of them at once because a decoder that dropped a
+  detail has nothing to write back.
+- The codecs observe rather than impose. Unsorted bencode keys, `i-0e`, a bare
+  newline terminator, an unassigned message id and a non-standard handshake
+  protocol string are recorded, because each is a difference between builds and
+  refusing one turns an observation into a parse failure. Nothing maps a
+  peer-ID prefix or a `v` string to a client name, which would put a refused
+  input inside the component every observer trusts.
+- Nine lossy defects were planted in the codecs one at a time and every one was
+  refused by the fixture corpus alone. Two were not caught on the first attempt
+  and both are fixed here: the corpus never reached `bencode::encode`, because a
+  message re-encodes from payload bytes held verbatim, and no fixture carried a
+  bare newline for a terminator-repairing decoder to fail against.
+- A door sweep found three holes and all three are fixed: `FixtureIndex`
+  derived `Deserialize`, so `serde_json::from_str` skipped the corpus-digest
+  check; `load_directory` filtered for `*.json` over a non-recursive listing, so
+  a fixture in a subdirectory would have been silently skipped rather than
+  refused; and the HTTP head cap only fired when there was no blank line at all,
+  so a head that ended just past the cap parsed in full.
+- The corpus was replayed over real loopback TCP one byte per write and decoded
+  incrementally. Reading the same announce datagram with the wrong direction
+  yields an unassigned action and refuses to be an announce, rather than a
+  plausible wrong answer.
+- No new third-party crate. The lockfile diff is the workspace member and
+  nothing else.
+- Deployment: no data branch, release or capture service was created.
+
 ### 2026-09-04T14:47:22Z
 
 - Closed `SCHEMA-04`, and with it the whole schema group. A run records what it

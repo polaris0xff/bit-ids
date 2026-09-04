@@ -50,6 +50,7 @@ No arrow reads identity values from client source code.
 | component | owns | does not own |
 | --- | --- | --- |
 | `bit-ids` crate | public types, schema identity, validation and eventually embedded/pinned catalogue access | capture, installation or network mutation |
+| `bit-ids-wire` crate | byte-exact codecs for the observed surfaces, and the fixture corpus every observer parses against | sockets, timing, and any mapping from a peer-ID prefix to a client name |
 | `bit-ids-probe` | active Rust tracker/peer/DHT/web-seed endpoints and raw evidence writing | client launch or package installation |
 | acquisition scripts | stable-version discovery, two-route download/install and version equality | identity parsing |
 | client drivers | launch/configure one target against the isolated fixture | deciding whether the observation is valid |
@@ -246,6 +247,52 @@ realistic version of that mistake, and it is refused.
 
 ## 5. Observation surfaces
 
+The codecs live in
+[`../crates/bit-ids-wire/src/`](../crates/bit-ids-wire/src/), one module per
+surface, and they hold one invariant: **decode then encode reproduces the input
+byte for byte**. Every retention requirement below is destroyed by the
+convenient implementation, which is a map of decoded strings, and a round trip
+is the cheapest check that catches all of them at once, because a decoder that
+dropped a detail has nothing to write back.
+
+⛔ **They observe rather than impose.** Unsorted bencode keys, the non-canonical
+integer `i-0e`, a bare `\n` where the grammar says `\r\n`, an unassigned message
+id and a non-standard handshake protocol string are all recorded rather than
+refused: each is a difference between builds, and a decoder that refused one
+would turn an observation into a parse failure. A byte-string length prefix with
+a leading zero is the one deviation refused instead, because it is an artefact
+of an encoder's integer formatter rather than a value the build chose.
+
+⛔ **No codec maps a peer-ID prefix, a user agent or a BEP 10 `v` string to a
+client name.** `capture-methodology.md` lists a decoder table among the inputs
+that may seed a hypothesis and may not populate the catalogue, and a codec that
+answered "this is client X" would put that refused input inside the one
+component every observer trusts.
+
+### The fixture corpus
+
+[`../crates/bit-ids-wire/tests/fixtures/`](../crates/bit-ids-wire/tests/fixtures/)
+holds byte-exact synthetic transcripts, `bit-ids/wire-fixture/1`, one per file
+with its own provenance. `FOUND-03` owns it and
+[its README](../crates/bit-ids-wire/tests/fixtures/README.md) says what each one
+proves survives a decode.
+
+A fixture exists because a live capture cannot separate an observer regression
+from a client behaviour change: both arrive as "the parse looks different this
+week", and both of its inputs moved. Fixture bytes provably did not, so a parse
+that changed against one is the parser.
+
+⛔ **A fixture is never evidence.** Its origin is `synthetic`, there is no
+`captured` origin to blur that, and every fixture carries the peer ID
+`bit-ids-fixture-0001`, checked by pulling it out through the codec rather than
+by scanning the bytes. Every frame is bytes the target emitted; the observer's
+own replies prove nothing about a build and are not fixture material.
+
+`index.json` carries the digest of each fixture and of the corpus, derived the
+same domain-separated, length-prefixed way as a record identifier. That is what
+makes "the digests are identical across two runs" something the suite asserts
+rather than something a person compares by eye.
+
 ### Tracker HTTP
 
 Keep the raw request line and header block before parsing. The parsed view
@@ -341,6 +388,9 @@ consume the same artifact assembled once.
 ## 10. Limits
 
 - There are no measured profiles yet.
+- `dht`, `pex`, `mse` and `web_seed` have no codec and no fixture. A fixture on
+  one of those surfaces is refused with `E-FIX-07` rather than silently passing.
+  `OBS-06` owns them.
 - Windows packet corroboration needs a route that works on hosted runners or a
   disposable self-hosted runner; `OBS-07` owns the independent-control
   decision and `CI-03` owns the runner.

@@ -58,6 +58,15 @@ a new silent-corruption surface in the layer that must not corrupt. The next
 one gets the same argument in its own entry, including what was considered and
 rejected.
 
+⭐ `FOUND-03` added a second workspace member, `bit-ids-wire`, and **no** new
+third-party crate: its lockfile diff is the member and nothing else. A
+`BitTorrent` codec crate off the registry would have been the obvious shortcut
+and the wrong one here, because the decode is the measurement. A dependency that
+normalises what it reads, by sorting dictionary keys, folding header case or
+percent-decoding on arrival, destroys the evidence this project publishes, and
+that behaviour is the sensible default for every library written for a client
+rather than for an observer.
+
 ## Actions
 
 A pin is a 40-character commit followed by a comment naming the tag it was:
@@ -118,9 +127,12 @@ is the whole reason `check-remote-items` exists.
   re-verify the pins already in the tree, so a tag deleted or moved upstream
   after a merge is not currently detected. `CI-04` owns closing that.
 - ⚠ What `check-remote-items` verifies is described here from its own
-  documentation. It needs `gh` and the network, and it has not been run on a
-  session host that had either, so no run of it backs this page. The CI Linux
-  lane runs it on every push.
+  documentation. No run of it backs this page. It needs `gh` **authenticated**:
+  installing the binary is not enough, and on 2026-09-04 a session host with
+  `gh` 2.63.2 present had its environment token rejected by `gh auth status`,
+  while the other GitHub route that host had was scoped to this repository
+  alone and so could not resolve a pin in `actions/checkout`. The CI Linux lane
+  runs it on every push.
 - The `run:` scripts in a workflow are read by nobody. The pin test covers
   `uses:` lines; a tool fetched by a shell line is only as pinned as the fetch
   it uses, which is why the fourth layer above needed an argument rather than

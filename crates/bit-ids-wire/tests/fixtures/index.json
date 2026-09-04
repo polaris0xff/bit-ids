@@ -1,0 +1,34 @@
+{
+  "schema": "bit-ids/wire-fixture-index/1",
+  "corpus": "sha256:ed574f760001ee5d8c79ccd357456ef4f169aebfdbb4a11efafe656da44911db",
+  "entries": [
+    {
+      "id": "peer-wire-early-message-sequence",
+      "digest": "sha256:96a2f45f17ef52cd703f462d92a348988776acbd29408d4a66b6f22e57fe50a0"
+    },
+    {
+      "id": "peer-wire-extended-handshake",
+      "digest": "sha256:8a27c7e2a89269c52ddf4cc8cf1c1034343241e5c8629af349b5a63c6e99ef49"
+    },
+    {
+      "id": "peer-wire-handshake-only",
+      "digest": "sha256:4c508db583c66de13ef6b0f66f4eb23b54cc4ae9e50a6415445c62ead3308262"
+    },
+    {
+      "id": "tracker-http-announce-started",
+      "digest": "sha256:5d3367b7f44831c14c98c1c8d58d519d6a2efb9780f8e20c232872536aa2728d"
+    },
+    {
+      "id": "tracker-http-announce-unusual-encoding",
+      "digest": "sha256:f31c26f145a87bd9b08007cb96f227b1a692db2ea69ed80b332a3b88163d4822"
+    },
+    {
+      "id": "tracker-udp-announce-with-options",
+      "digest": "sha256:dd32b8dce918fbfa8e90897740977e69f7d1e353e25b8fd0d2783a78b5c6e04f"
+    },
+    {
+      "id": "tracker-udp-connect-then-announce",
+      "digest": "sha256:4cee8b5c12cd248fe4d7b6788b5099e7a33babb26f45d80e111015677de7e4ac"
+    }
+  ]
+}

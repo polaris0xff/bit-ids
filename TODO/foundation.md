@@ -87,7 +87,7 @@ needs `gh` and was not run in this session; the CI Linux lane runs it.
 ## FOUND-03: Deterministic protocol fixture suite
 
 Source: bit-cli peer, tracker, and loopback tests; reference sweep
-Priority: P0 | Effort: L | Status: OPEN
+Priority: P0 | Effort: L | Status: DONE
 
 Problem: Live captures alone cannot distinguish an observer regression from a
 client behavior change.
@@ -98,8 +98,110 @@ and message sequences can exercise parsers without external software.
 Approach: Store small generated fixtures with documented provenance and assert
 both parse output and deterministic re-encoding in Rust tests.
 
+Decision: a second crate, `bit-ids-wire`, rather than a `wire` module inside
+`bit-ids`. `bit-ids` is the published record contract that `LIB-01` ships to
+catalogue consumers, and none of them needs a BitTorrent codec; putting the
+codec there would make the consumer library the shared point between the probe
+and the corpus tool, which is backwards. The rejected alternative is cheaper
+today by one manifest and would have to be undone at `LIB-01`. The arrow points
+one way: `bit-ids-wire` depends on `bit-ids` for the canonical value forms and
+nothing depends on it yet. No new third-party crate; the lockfile diff is the
+workspace member and nothing else.
+
+Decision: the fixtures are hex text inside a JSON document, not `.bin` files
+beside one. A literal control byte in a tracked file is skipped by `grep` and
+rendered as "Binary files differ" by `git diff`, which
+[`../scripts/common/check-control-bytes.sh`](../scripts/common/check-control-bytes.sh)
+exists to refuse. Hex is lossless, so byte-exactness gives up nothing for it.
+
+Decision: the codecs observe rather than impose. Unsorted bencode keys, `i-0e`,
+a bare `\n` terminator, an unassigned message id and a non-standard handshake
+protocol string are all recorded rather than refused, because each is a
+difference between builds and refusing one turns an observation into a parse
+failure. One deviation is refused instead: a byte-string length prefix with a
+leading zero, which is an artefact of the encoder's integer formatter rather
+than a value the build chose, and preserving it would put a second spelling on
+every string in the tree.
+
 Prove: `cargo test --workspace fixtures` passes twice with identical fixture
 digests.
+
+Closure evidence: run on 2026-09-04. `cargo test --workspace --locked fixtures`
+passed twice, 17 tests each time, 0 failed. `cargo run -p bit-ids-wire --example
+fixture-digests` produced identical output both times, corpus digest
+`sha256:ed574f760001ee5d8c79ccd357456ef4f169aebfdbb4a11efafe656da44911db`. The
+committed [`../crates/bit-ids-wire/tests/fixtures/index.json`](../crates/bit-ids-wire/tests/fixtures/index.json)
+carries the same digest, so the second half of that acceptance is asserted by
+the suite rather than compared by eye. The whole suite is 118 passed, 0 failed
+at `--workspace --locked --all-targets`, and `sh scripts/common/check-gate.sh`
+is 10 passed, 0 failed, 1 skipped.
+
+Driven pass: the fixture corpus was replayed over real loopback TCP, one byte
+per write so every frame boundary lands mid-message, and decoded incrementally
+the way `OBS-04` will have to. 158 bytes went out and came back identical, the
+handshake, the extension bits, the extended handshake and the message order all
+read correctly off the reassembled stream, and a deliberately short slice
+reported `truncated` rather than inventing a message. ⭐ The one-gated-door
+check was part of it: the same announce datagram read with the wrong
+`Direction` yields `Action::Other(287454020)`, which is the high half of the
+connection id, and `as_announce_request` returns `None` rather than a plausible
+wrong answer.
+
+⭐ Guard mutation: nine lossy defects were planted in the codecs one at a time,
+each restored before the next, and **every one was refused by the fixture corpus
+alone**: repairing a bare `\n` to `\r\n`, percent-decoding on arrival, folding a
+header name, sorting dictionary keys on decode, canonicalising integer text,
+dropping an unassigned message id, dropping keep-alives, truncating the reserved
+block, and dropping the BEP 41 options tail.
+
+⚠ Two of those were not caught on the first attempt, and both are fixed here
+rather than noted:
+
+1. **The corpus did not exercise `bencode::encode` at all.** A message
+   re-encodes from its payload bytes, held verbatim, so the bencode encoder is
+   nowhere on the transcript round-trip path; the canonicalise-integers mutation
+   was planted and the corpus passed. `E-FIX-10` now re-encodes every extension
+   dictionary against its raw bytes, which is the only thing that reaches that
+   encoder. This is the "grep an abstraction's callers before believing it is
+   load-bearing" finding, and it was invisible until a mutation was planted.
+2. **No fixture carried a bare `\n`**, so a terminator-repairing decoder was
+   invisible to the corpus while the unit test caught it. That is the
+   `check-twins` hazard in a different language: a rule that differs only on a
+   defect the tree does not contain is not tested by the tree. The unusual-
+   encoding fixture now mixes one `\n` line among `\r\n` lines.
+
+Two further defects were found by the suite while writing it and fixed:
+`d1:ae` reported "no bencode value starts with 'e'" instead of naming the key
+that lost its value, and the synthetic-identity check scanned raw bytes, so it
+passed six fixtures while missing the one that percent-encodes its peer ID,
+which is the fixture that exists because clients do that.
+
+⭐ Door sweep, three findings, all fixed here:
+
+1. **`FixtureIndex` derived `Deserialize`**, so `serde_json::from_str` was a
+   second and looser door that skipped the corpus-digest check entirely. An
+   index nobody checked certifies whatever it happens to say. It now uses the
+   private field mirror, the same construction `SCHEMA-01` used on `Profile`
+   for the same reason, and a test drives both routes.
+2. **`load_directory` filtered for `*.json` and listing is not recursive**, so a
+   fixture added under `fixtures/peer/` would have been silently skipped: never
+   loaded, never in the index, never failing, while the corpus went on claiming
+   to cover its surface. Everything in the directory is now either loaded or
+   refused with `E-FIX-11`, and a subdirectory and a stray file are both
+   planted against.
+3. **`HttpRequest::MAX_HEAD` was written and did not bind.** It only fired when
+   there was no blank line at all, so a hundred megabytes of headers with a
+   blank line at the end parsed in full. The cap is now on where the head ends.
+
+Residual: `Surface::Dht`, `Pex`, `Mse` and `WebSeed` have no codec, and a
+fixture on one is refused with `E-FIX-07` rather than silently passing.
+`OBS-06` owns those surfaces and their fixtures.
+
+Residual: an incremental reader distinguishes "need more bytes" from "malformed"
+only by `WireError::kind() == "truncated"` plus its own knowledge of whether the
+peer may still send. That is inherent to a stream rather than a gap in the
+codec, it is what the driven pass exercised, and `OBS-04` owns the read loop
+that acts on it.
 
 ## FOUND-04: Third-party licence and redistribution register
 

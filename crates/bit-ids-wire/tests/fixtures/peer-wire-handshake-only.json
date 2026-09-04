@@ -1,0 +1,19 @@
+{
+  "schema": "bit-ids/wire-fixture/1",
+  "id": "peer-wire-handshake-only",
+  "surface": "peer_wire",
+  "summary": "A bare handshake advertising no extension at all, every reserved byte zero",
+  "provenance": {
+    "origin": "synthetic",
+    "authored": "2026-09-04T15:20:00Z",
+    "specifications": [
+      "BEP 3"
+    ]
+  },
+  "frames": [
+    {
+      "offset_ms": 0,
+      "bytes": "13426974546f7272656e742070726f746f636f6c000000000000000011111111111111111111111111111111111111116269742d6964732d666978747572652d30303031"
+    }
+  ]
+}

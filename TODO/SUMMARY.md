@@ -2,7 +2,7 @@
 
 | category | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Foundation | 2 | 0 | 0 | 2 | 4 |
+| Foundation | 1 | 0 | 0 | 3 | 4 |
 | Schema | 0 | 0 | 0 | 4 | 4 |
 | Observer | 7 | 0 | 0 | 0 | 7 |
 | Acquisition | 5 | 0 | 0 | 0 | 5 |
@@ -13,7 +13,7 @@
 | Publishing | 4 | 0 | 0 | 0 | 4 |
 | CI | 4 | 0 | 0 | 0 | 4 |
 | Documentation | 2 | 0 | 0 | 0 | 2 |
-| Total | 46 | 0 | 0 | 6 | 52 |
+| Total | 45 | 0 | 0 | 7 | 52 |
 
 Effort inventory: 9 M, 42 L, 1 XL. The XL observer-lab entry must be split
 before implementation if its acceptance cannot remain atomic.

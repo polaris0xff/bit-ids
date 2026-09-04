@@ -1,0 +1,23 @@
+{
+  "schema": "bit-ids/wire-fixture/1",
+  "id": "tracker-udp-connect-then-announce",
+  "surface": "tracker_udp",
+  "summary": "A connect request followed by a started announce asking for the default peer count",
+  "provenance": {
+    "origin": "synthetic",
+    "authored": "2026-09-04T15:20:00Z",
+    "specifications": [
+      "BEP 15"
+    ]
+  },
+  "frames": [
+    {
+      "offset_ms": 0,
+      "bytes": "0000041727101980000000005a5a0001"
+    },
+    {
+      "offset_ms": 250,
+      "bytes": "1122334455667788000000015a5a000211111111111111111111111111111111111111116269742d6964732d666978747572652d3030303100000000000000000000000000000400000000000000000000000002000000000a0b0c0dffffffff1ae1"
+    }
+  ]
+}

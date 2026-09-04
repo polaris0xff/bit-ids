@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/bit-ids"]
+members = ["crates/bit-ids", "crates/bit-ids-wire"]
 resolver = "3"
 
 [workspace.package]

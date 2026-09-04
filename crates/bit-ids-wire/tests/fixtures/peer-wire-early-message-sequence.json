@@ -1,0 +1,36 @@
+{
+  "schema": "bit-ids/wire-fixture/1",
+  "id": "peer-wire-early-message-sequence",
+  "surface": "peer_wire",
+  "summary": "An unsorted extended handshake with a non-canonical integer, a keep-alive and an unassigned message id",
+  "provenance": {
+    "origin": "synthetic",
+    "authored": "2026-09-04T15:20:00Z",
+    "specifications": [
+      "BEP 3",
+      "BEP 10"
+    ]
+  },
+  "frames": [
+    {
+      "offset_ms": 0,
+      "bytes": "13426974546f7272656e742070726f746f636f6c000000000010000011111111111111111111111111111111111111116269742d6964732d666978747572652d30303031"
+    },
+    {
+      "offset_ms": 8,
+      "bytes": "00000046140064313a7631373a6269742d6964732d666978747572652f30313a6d64363a75745f70657869316531313a75745f6d6574616461746169326565343a72657171692d306565"
+    },
+    {
+      "offset_ms": 30,
+      "bytes": "00000000"
+    },
+    {
+      "offset_ms": 31,
+      "bytes": "0000000102"
+    },
+    {
+      "offset_ms": 44,
+      "bytes": "00000003fadead"
+    }
+  ]
+}
