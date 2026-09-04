@@ -1,17 +1,17 @@
 # Work index
 
 Total: 52
-Open: 43
+Open: 42
 In progress: 0
 Blocked: 0
-Done: 9
+Done: 10
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| P0 | 13 | 0 | 0 | 9 | 22 |
+| P0 | 12 | 0 | 0 | 10 | 22 |
 | P1 | 29 | 0 | 0 | 0 | 29 |
 | P2 | 1 | 0 | 0 | 0 | 1 |
-| Total | 43 | 0 | 0 | 9 | 52 |
+| Total | 42 | 0 | 0 | 10 | 52 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -32,7 +32,7 @@ Done: 9
 | OBS-07 | P1 | M | OPEN | Known-client positive controls |
 | ACQ-01 | P0 | L | DONE | Acquisition route schema |
 | ACQ-02 | P0 | L | DONE | Latest stable release resolver |
-| ACQ-03 | P0 | L | OPEN | Same-version multi-route verifier |
+| ACQ-03 | P0 | L | DONE | Same-version multi-route verifier |
 | ACQ-04 | P0 | L | OPEN | Disposable-host execution boundary |
 | ACQ-05 | P1 | M | OPEN | Artifact cache and authenticity evidence |
 | CLIENT-01 | P1 | L | OPEN | qBittorrent capture adapter |

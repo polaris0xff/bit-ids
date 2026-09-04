@@ -87,6 +87,13 @@ pub struct Capture {
     pub captured_at: Instant,
     /// Digest of the generated torrent metainfo the run used.
     pub fixture: Sha256Digest,
+    /// Which acquisition route's installed build was put on the wire.
+    ///
+    /// ⛔ A run observes **one** installed build. The second route proves the
+    /// version resolves the same; it does not prove the other bytes behave the
+    /// same, and a record that did not say which install was watched let a
+    /// reader assume both were. `ACQ-03` is what acts on the distinction.
+    pub observed_route: Slug,
     /// The connector that is the project's own active observer. It must appear
     /// in `connectors`, because it is one of the two, not a third thing beside
     /// them.

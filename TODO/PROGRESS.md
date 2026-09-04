@@ -1,18 +1,20 @@
 # Current progress
 
 State instant: 2026-09-04
-Baseline commit: `6338a67` on `main`
+Baseline commit: `ec348ec` on `main`
 Total: 52
-Open: 43
+Open: 42
 In progress: 0
 Blocked: 0
-Done: 9
+Done: 10
 
 ## Current state
 
 The whole `SCHEMA-*` group is closed, along with `FOUND-01` through `FOUND-03`,
-`ACQ-01` and `ACQ-02`. Foundations are finished, acquisition has its record
-shape, and something can now decide which version to acquire.
+`ACQ-01` through `ACQ-03`. Foundations are finished, and acquisition has its
+record shape, a resolver that chooses the version, and a verifier that says what
+two routes agreeing is actually worth. `ACQ-04`, the disposable-host boundary,
+is the last thing standing between here and running a real client.
 
 The `bit-ids` crate carries the published record shape, the six field states,
 the derived record identifier, the canonical value forms and the publication
@@ -64,6 +66,15 @@ selected confidently. A candidate published before the winner is settled by that
 second signal rather than by a guess. Every candidate keeps its verdict, and the
 bytes each source answered with are digested into the document.
 
+Equal version labels are the question, not the answer. Every route already has
+to report the version the record declares, so what remained was whether that is
+backed by anything. A run observes one installed build, the record now says
+which, and the executable digest is per route. Two routes that installed the
+same bytes are one build and publish; two that differ with only one of them
+observed are unresolved and do not, because nothing put the other bytes on the
+wire. Reaching a positive verdict over differing bytes takes a capture through
+each route.
+
 The supply chain is pinned at all three layers and each pin has a check behind
 it. [`../docs/supply-chain.md`](../docs/supply-chain.md) carries the layers and
 the update procedure. `FOUND-03` added a workspace member and no new
@@ -79,10 +90,10 @@ anything.
 
 ## Work order
 
-1. `ACQ-03` and `ACQ-04`; do not install proprietary clients earlier.
-   `ACQ-04`'s two disposable-runner guards must exist before any client runs.
-   `ACQ-03` needs a version scheme per target in the catalogue, which `ACQ-02`
-   left to it.
+1. `ACQ-04`, the disposable-host execution boundary. Its two guards must exist
+   before any client runs, proprietary or not. A version scheme per target in
+   the catalogue is still unwritten; `ACQ-05` or `CI-03` is where it lands now
+   that `ACQ-03` is closed without needing it.
 2. Split `OBS-01`, then implement `OBS-02` through `OBS-05`. Each parses
    against the `bit-ids-wire` fixture corpus rather than against a live client.
 3. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical

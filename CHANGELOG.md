@@ -5,6 +5,30 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-04T18:30:00Z
+
+- Closed `ACQ-03`. Every route already had to report the version the record
+  declares, so the labels always agreed; what was missing was whether that
+  agreement was backed by anything. Record:
+  [`TODO/acquisition.md`](TODO/acquisition.md).
+- Two schema changes carry the rest: an executable digest per route rather than
+  one per record, and a capture that says which route's install went on the
+  wire. One digest collapsed the very difference this entry detects, and a
+  record silent about which install was watched let a reader assume both were.
+- ⛔ A single capture of two byte-different installs is unresolved, not
+  equivalent. Nothing put the other bytes on the wire, so nothing can say they
+  behave the same. Reaching a positive verdict over differing bytes takes a
+  capture through each route, which is what the cross-record comparison is for.
+- Two routes that installed identical bytes are one build, and observing one
+  observed it. That is the only case where a single capture settles it.
+- The refusals are two codes, not one: a divergence needs adjudicating and an
+  unresolved record needs a second capture. Both are asked from the existing
+  publication gate rather than beside it.
+- A door sweep found the cross-record comparison guarding against two captures
+  of one route but not against one record passed twice, which would have agreed
+  on every field for the most trivial reason available.
+- Deployment: no data branch, release or capture service was created.
+
 ### 2026-09-04T17:35:00Z
 
 - Closed `ACQ-02`. Something can now decide which version to acquire, and the

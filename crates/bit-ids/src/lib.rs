@@ -27,6 +27,7 @@
 pub mod acquisition;
 pub mod agreement;
 pub mod canonical;
+pub mod equivalence;
 pub mod identity;
 mod json;
 pub mod manifest;
@@ -38,6 +39,7 @@ pub mod validate;
 
 pub use acquisition::{AcquisitionRoute, RouteKind, SignatureStatus, SourceIdentity};
 pub use agreement::publishable;
+pub use equivalence::{Equivalence, classify, classify_across};
 pub use json::DocumentError;
 pub use manifest::{MANIFEST_SCHEMA, RunManifest, bind, validate_manifest};
 pub use record::Profile;

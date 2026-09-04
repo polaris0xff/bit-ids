@@ -450,6 +450,15 @@ const PLANTED: &[(&str, Mutation)] = &[
     ("E-ACQ-10", |document| {
         document["acquisition"][0]["installed_evidence"] = json!("ev-metainfo");
     }),
+    ("E-CAP-05", |document| {
+        document["capture"]["observed_route"] = json!("route-nobody-ran");
+    }),
+    // The record's executable digest naming the install nobody watched, which
+    // would publish observations against bytes that were never on the wire.
+    ("E-CAP-06", |document| {
+        document["acquisition"][0]["installed_executable"] =
+            json!("sha256:1111111111111111111111111111111111111111111111111111111111111111");
+    }),
     ("E-CAP-01", |document| {
         document["capture"]["connectors"]
             .as_array_mut()

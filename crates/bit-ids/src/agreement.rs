@@ -258,5 +258,12 @@ pub fn publishable(profile: &Profile) -> Result<(), Violations> {
             ));
         }
     }
+    // ⛔ One gate per action. The route comparison is `ACQ-03`'s rule and it
+    // lives in its own module, but it is asked here rather than beside here: a
+    // second publication gate a caller has to remember is the shape that lets a
+    // record ship past one of them.
+    if let Err(refused) = crate::equivalence::routes_publishable(profile) {
+        out.extend(refused.errors().iter().cloned());
+    }
     Violations::from_errors(out)
 }

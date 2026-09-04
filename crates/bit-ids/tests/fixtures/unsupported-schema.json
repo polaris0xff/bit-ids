@@ -35,6 +35,7 @@
       "signature": "unsigned",
       "installed_probe": "fixture-client --version",
       "installed_evidence": "ev-installed-package-manager",
+      "installed_executable": "sha256:33331813ba3054d2ded7f37934afbf959f2fa47b75f792b656b4773dd3035e8b",
       "installed_version": "0.0.0-fixture"
     },
     {
@@ -54,6 +55,7 @@
       "signature": "verified",
       "installed_probe": "fixture-client --version",
       "installed_evidence": "ev-installed-vendor-release",
+      "installed_executable": "sha256:33331813ba3054d2ded7f37934afbf959f2fa47b75f792b656b4773dd3035e8b",
       "installed_version": "0.0.0-fixture"
     }
   ],
@@ -61,6 +63,7 @@
     "id": "fixture-capture-0001",
     "captured_at": "2026-09-04T13:31:33Z",
     "fixture": "sha256:2183888ce19959bfead50d70433701f0dc0521aaa98da3fe50fcb29be929331d",
+    "observed_route": "route-package-manager",
     "observer": "bit-ids-probe",
     "connectors": [
       {

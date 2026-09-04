@@ -3,15 +3,15 @@
 **Task:** Take the work order in `TODO/PROGRESS.md` in dependency order,
 committing and pushing each green unit to `main`.
 
-**Resume point:** `FOUND-03`, `ACQ-01` and `ACQ-02` are closed. The next item
-is `ACQ-03`, the same-version multi-route verifier. It needs a version scheme
-per target in the catalogue, which `ACQ-02` deliberately left to it.
+**Resume point:** `FOUND-03` and `ACQ-01` through `ACQ-03` are closed. The next
+item is `ACQ-04`, the disposable-host execution boundary. Its two guards must
+exist before any client is installed or run.
 
 **In flight:** Nothing. The tree is coherent.
 
 **Tree:** Clean and level with `origin/main`, on `main`.
 `sh scripts/common/check-gate.sh` is green: 10 passed, 0 failed, 1 skipped.
-`cargo test --workspace --locked --all-targets` is 144 passed, 0 failed.
+`cargo test --workspace --locked --all-targets` is 157 passed, 0 failed.
 `cargo fmt --all -- --check`, `cargo check`, `cargo clippy` at
 `--workspace --locked --all-targets`, `shellcheck` and `shfmt -d -i 2 -ci` all
 exit 0.

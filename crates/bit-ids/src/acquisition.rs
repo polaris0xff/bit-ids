@@ -274,6 +274,13 @@ pub struct AcquisitionRoute {
     pub installed_probe: Label,
     /// The evidence entry holding what it answered.
     pub installed_evidence: Slug,
+    /// Digest of the executable this route installed.
+    ///
+    /// ⛔ Per route, not per record. Two routes can deliver the same version as
+    /// different bytes, and `architecture.md` section 7 is explicit that those
+    /// are a packaging observation rather than a failure and are never silently
+    /// collapsed. Collapsing them is what a single record-level digest does.
+    pub installed_executable: Sha256Digest,
     /// The version the installed build reported when asked. This is the value
     /// the same-version gate compares, never the requested one.
     pub installed_version: Version,

@@ -72,7 +72,7 @@ types are the schema; there is no separate schema document to drift from them.
 | `target` | canonical ID, display name, kind, edition/engine relationship | `SCHEMA-01` |
 | `build` | exact stable version, platform, architecture, package format and executable digest | `SCHEMA-01` |
 | `acquisition` | at least two independent route records: kind, resolver, delivery, original URL, immutable source identity, artifact digest and signature, and the evidence of the installed version | `ACQ-01` |
-| `capture` | UTC instant, runner image, kernel, isolation mode, fixture digest, observer and connector versions | `SCHEMA-02` |
+| `capture` | UTC instant, runner image, kernel, isolation mode, fixture digest, which route's install was observed, observer and connector versions | `SCHEMA-02`, `ACQ-03` |
 | `observations` | typed surface records, each preserving raw bytes/order and a parsed view | `SCHEMA-01` |
 | `corroboration` | connector identities, overlapping fields, normalization, outcome and disagreement details | `SCHEMA-03` |
 | `normalizations` | every transformation a comparison applied, declared once | `SCHEMA-03` |
@@ -390,6 +390,39 @@ The gate compares the version reported by the installed executable or harness,
 not the requested version. It also records artifact digests. Different bytes
 may still represent the same version and become useful packaging observations;
 they are never silently collapsed.
+
+### What equal version labels are worth
+
+`E-ACQ-04` already forces every route to report the version the record declares,
+so by the time anything compares them the labels agree. That is the easy half
+and worth almost nothing alone: a distribution can patch a build and keep the
+upstream version string.
+[`../crates/bit-ids/src/equivalence.rs`](../crates/bit-ids/src/equivalence.rs)
+is what decides whether the labels are backed by anything, and `ACQ-03` owns it.
+
+⛔ **A run observes one installed build.** The record says which, in
+`capture.observed_route`, and `build.executable` must be that route's install.
+Without it a reader assumes both routes were watched, when only one was. The
+executable digest is recorded **per route** for the same reason.
+
+Four outcomes, and only two publish:
+
+| outcome | means | publishes |
+| --- | --- | --- |
+| `byte_identical` | every route installed the same executable bytes, so there is one build and observing one observed it | yes |
+| `build_equivalent` | the installs differ and each was observed in its own capture, with no overlapping field disagreeing | yes |
+| `divergent` | equal labels over evidence that conflicts | no |
+| `unresolved` | not enough evidence to say | no |
+
+⚠ **A single capture of two byte-different installs is `unresolved`, not
+`build_equivalent`.** Nothing put the other bytes on the wire, so nothing can
+say they behave the same, and calling it equivalent would publish a claim about
+a build this project never ran. Reaching `build_equivalent` needs a capture per
+route, which is what `classify_across` compares.
+
+The two refusals are separate codes because the fix differs: a divergence needs
+adjudicating, and an unresolved record needs a second capture through the other
+route.
 
 ⭐ **An installed version is a measurement, so it cites evidence like one.** A
 route records the command it ran to ask, and the evidence entry holding what the

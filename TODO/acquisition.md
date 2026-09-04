@@ -191,7 +191,7 @@ carries why, and `ACQ-04` owns the Windows runner contract where one is needed.
 ## ACQ-03: Same-version multi-route verifier
 
 Source: operator requirement to install the same build from two or more routes
-Priority: P0 | Effort: L | Status: OPEN
+Priority: P0 | Effort: L | Status: DONE
 
 Problem: Equal display versions can identify repackaged or patched binaries,
 while different version formats can identify the same upstream build.
@@ -203,8 +203,67 @@ Approach: Require at least two independent routes on the same host family;
 classify byte-identical, build-equivalent, divergent, or unresolved and block
 publication for the last two.
 
+Decision: the executable digest moved from the record to the route, and the
+capture now names which route's install was observed. One digest per record
+collapsed exactly the difference this entry exists to detect, and a record that
+did not say which install was watched let a reader assume both were. Everything
+else here follows from those two fields.
+
+Decision: a single capture of two byte-different installs is `unresolved`, not
+`build_equivalent`. That was the fork. Calling it equivalent is what the version
+labels invite, and it publishes a claim about bytes this project never put on
+the wire. Reaching `build_equivalent` needs a capture per route, which is what
+`classify_across` compares, and the rejected alternative would have made the
+whole classification decorative.
+
+Decision: two refusal codes rather than one. A divergence needs adjudicating and
+an unresolved record needs a second capture; collapsing them into "not
+publishable" loses which.
+
+Decision: the rule is asked from `publishable` rather than beside it. A second
+publication gate a caller has to remember is the shape that lets a record ship
+past one of them.
+
 Prove: an end-to-end fixture accepts two equivalent routes and rejects version
 label equality when binary or observed identity evidence conflicts.
+
+Closure evidence: run on 2026-09-04. `cargo test --workspace --locked
+--all-targets` is 157 passed, 0 failed.
+[`../crates/bit-ids/tests/equivalence.rs`](../crates/bit-ids/tests/equivalence.rs)
+accepts the golden pair as `byte_identical` and publishes it, and refuses four
+distinct ways of being wrong: equal labels over installs only one of which was
+observed, a field both captures measured disagreeing, two captures of one route,
+and one record passed twice.
+
+Driven pass: the golden pair validates and publishes. A copy whose second route
+installed different bytes still **validates** and refuses to publish with
+`E-PUB-04`, naming both digests and the route that was watched. That split is
+the point: the difference has to be recordable or there is nowhere to keep the
+evidence of it. A copy whose observed route does not match the record's
+executable digest is refused outright by `E-CAP-06`.
+
+⭐ Door sweep, one finding, fixed: `classify_across` guarded against comparing
+two captures of one **route** and not against comparing two records of one
+**run**. One record passed twice would have agreed on every field for the most
+trivial reason available. It is refused now, and the test that was meant to
+cover the route case was passing through the wrong guard until the capture ids
+were made distinct.
+
+⚠ Found while writing the divergence test: the first version set the field it
+was changing to the value the fixture already carried, so the records agreed and
+the test passed for the wrong reason. An `assert_ne!` against the current value
+now stands in front of the edit. That is the "when a negative test passes
+suspiciously well, doubt the harness" rule firing.
+
+Residual: the manifest carries no `observed_route`, so `bind` covers it only
+transitively, through the route sets already having to match. That is enough
+today because both documents list the same routes; a manifest that recorded
+which install was driven would let `bind` compare it directly, and `CI-03` is
+where a capture matrix would produce one.
+
+Residual: `classify_across` is not yet called by anything that assembles a
+publication. `CORPUS-02` owns the whole-store invariants and is where the
+cross-record comparison becomes a gate rather than a function.
 
 ## ACQ-04: Disposable-host execution boundary
 

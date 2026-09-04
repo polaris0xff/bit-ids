@@ -328,6 +328,37 @@ fn check_route_independence(routes: &[AcquisitionRoute], out: &mut Vec<SchemaErr
     }
 }
 
+fn check_observed_route(profile: &Profile, out: &mut Vec<SchemaError>) {
+    let observed = profile
+        .acquisition
+        .iter()
+        .find(|route| route.id == profile.capture.observed_route);
+    let Some(observed) = observed else {
+        out.push(SchemaError::new(
+            "E-CAP-05",
+            "capture.observed_route",
+            format!(
+                "{} is not one of the acquisition routes",
+                profile.capture.observed_route
+            ),
+        ));
+        return;
+    };
+    // ⛔ The record's executable digest is the one that was watched. Letting it
+    // name the other route's install would publish observations against bytes
+    // nothing put on the wire, which is the whole distinction `ACQ-03` draws.
+    if observed.installed_executable != profile.build.executable {
+        out.push(SchemaError::new(
+            "E-CAP-06",
+            "build.executable",
+            format!(
+                "the build declares {} and the observed route {} installed {}",
+                profile.build.executable, observed.id, observed.installed_executable
+            ),
+        ));
+    }
+}
+
 fn check_capture(profile: &Profile, out: &mut Vec<SchemaError>) {
     let connectors = &profile.capture.connectors;
     if connectors.len() < 2 {
@@ -947,6 +978,7 @@ pub fn validate(profile: &Profile) -> Result<(), Violations> {
     check_display_name(profile, &mut out);
     check_acquisition(profile, &mut out);
     check_capture(profile, &mut out);
+    check_observed_route(profile, &mut out);
     check_evidence(profile, &mut out);
     check_observations(profile, &mut out);
     check_corroboration(profile, &mut out);
