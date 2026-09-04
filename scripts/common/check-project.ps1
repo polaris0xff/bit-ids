@@ -147,13 +147,134 @@ try {
         $failures.Add('Python exists without an approved exception: ' + ($python -join ', '))
     }
 
-    $floating = @()
+    # ⛔ AN ALLOWLIST OF IMMUTABLE FORMS, NOT A DENYLIST OF FLOATING ONES.
+    # This used to name the floating refs it knew: main, master and vN.N.N. A
+    # branch called anything else, or an abbreviated commit, is just as mutable
+    # and passed. ⭐ Inverting it means a form nobody thought of fails closed.
+    #
+    # ⚠ THE VERSION COMMENT IS PART OF THE PIN. A 40-hex ref alone is
+    # unreviewable; check-remote-items.ps1 resolves the comment against the tag
+    # it names, so a pin without one is a pin that check never examines.
+    # ⛔ Keep this identical to the sh twin.
+    #
+    # ⛔ THE SCOPE INCLUDES COMPOSITE ACTIONS, NOT WORKFLOWS ALONE. A composite
+    # action under .github/actions/ carries its own `uses:` lines and runs with
+    # the same permissions, so a rule that read only .github/workflows/ would be
+    # a gate on one of two doors into the same operation.
+    $pinProblems = [System.Collections.Generic.List[string]]::new()
+    $workflows = @()
     if (Test-Path -LiteralPath '.github/workflows') {
-        $floating = @(Get-ChildItem -LiteralPath '.github/workflows' -File |
-            Select-String -Pattern 'uses: +[^ ]+@(main|master|v[0-9]+([.]([0-9]+))*)(?:\s+#.*)?\s*$')
+        $workflows += @(Get-ChildItem -LiteralPath '.github/workflows' -File |
+            Where-Object { $_.Extension -in '.yml', '.yaml' })
     }
-    if ($floating.Count -gt 0) {
-        $failures.Add('workflow action is not pinned to an immutable commit')
+    if (Test-Path -LiteralPath '.github/actions') {
+        $workflows += @(Get-ChildItem -LiteralPath '.github/actions' -File -Recurse |
+            Where-Object { $_.Name -in 'action.yml', 'action.yaml' })
+    }
+    if ($workflows.Count -gt 0) {
+        foreach ($wf in $workflows) {
+            $n = 0
+            foreach ($line in (Get-Content -LiteralPath $wf.FullName)) {
+                $n++
+                if ($line -notmatch '^\s*(-\s+)?uses:\s') { continue }
+                $ref = $line -replace '^[^:]*uses:\s*', ''
+                $comment = ''
+                $split = [regex]::Match($ref, '\s+#')
+                if ($split.Success) {
+                    $comment = $ref.Substring($split.Index)
+                    $ref = $ref.Substring(0, $split.Index)
+                }
+                $ref = ($ref -replace '\s+$', '') -replace '^["'']', '' -replace '["'']$', ''
+
+                # A local action is this repository, reviewed with everything else.
+                if ($ref -like './*') { continue }
+
+                $at = $ref.LastIndexOf('@')
+                if ($at -lt 0) {
+                    $pinProblems.Add("$($wf.Name):$n carries no ref at all: $ref")
+                    continue
+                }
+                $pinned = $ref.Substring($at + 1)
+
+                if ($ref -like 'docker://*') {
+                    if (-not $pinned.StartsWith('sha256:')) {
+                        $pinProblems.Add("$($wf.Name):$n container is not pinned to a digest: $ref")
+                        continue
+                    }
+                    $digest = $pinned.Substring(7)
+                    if ($digest.Length -ne 64 -or $digest -cnotmatch '^[0-9a-f]+$') {
+                        $pinProblems.Add("$($wf.Name):$n container digest is not a sha256: $ref")
+                    }
+                    continue
+                }
+
+                if ($pinned.Length -ne 40 -or $pinned -cnotmatch '^[0-9a-f]+$') {
+                    $pinProblems.Add("$($wf.Name):$n not pinned to a 40-character commit: $ref")
+                    continue
+                }
+                if ($comment -notmatch '#\s*\S') {
+                    $pinProblems.Add("$($wf.Name):$n pin carries no version comment, so nothing can check it: $ref")
+                }
+            }
+        }
+    }
+    if ($pinProblems.Count -gt 0) {
+        $failures.Add('workflow action pin: ' + ($pinProblems -join '; '))
+    }
+
+    # ⛔ A DEPENDENCY THIS PROJECT DID NOT REVIEW CANNOT REACH THE OBSERVER OR
+    # THE PUBLISHER. Cargo.lock is the inventory: a package with no `source` is
+    # a member of this workspace, and every other one must come from the
+    # crates.io registry with a checksum. A git or path dependency appears here
+    # as some other source, so this one test covers the shape whatever the
+    # manifest said.
+    $registry = 'registry+https://github.com/rust-lang/crates.io-index'
+    $packages = [System.Collections.Generic.List[object]]::new()
+    $current = $null
+    foreach ($line in (Get-Content -LiteralPath 'Cargo.lock')) {
+        if ($line -eq '[[package]]') {
+            if ($null -ne $current) { [void]$packages.Add($current) }
+            $current = [pscustomobject]@{ Name = ''; Source = ''; Checksum = $false }
+            continue
+        }
+        if ($null -eq $current) { continue }
+        if ($line -match '^name = "(.*)"$') { $current.Name = $Matches[1]; continue }
+        if ($line -match '^source = "(.*)"$') { $current.Source = $Matches[1]; continue }
+        if ($line -match '^checksum = "(.*)"$') { $current.Checksum = $true; continue }
+    }
+    if ($null -ne $current) { [void]$packages.Add($current) }
+
+    $lockProblems = [System.Collections.Generic.List[string]]::new()
+    foreach ($package in $packages) {
+        if ($package.Name -eq '' -or $package.Source -eq '') { continue }
+        if ($package.Source -ne $registry) {
+            $lockProblems.Add("  $($package.Name) is not from the crates.io registry: $($package.Source)")
+        } elseif (-not $package.Checksum) {
+            $lockProblems.Add("  $($package.Name) has no checksum")
+        }
+    }
+    if ($lockProblems.Count -gt 0) {
+        $failures.Add("unreviewed dependency source:`n" + ($lockProblems -join "`n"))
+    }
+
+    # ⚠ The lockfile test above is the authority; this one fires earlier and
+    # names the manifest line, so the report points at the file somebody edited
+    # rather than at the file cargo generated.
+    $manifests = @(
+        & git ls-files '*Cargo.toml'
+        & git ls-files --others --exclude-standard '*Cargo.toml'
+    ) | Sort-Object -Unique
+    $gitDeps = [System.Collections.Generic.List[string]]::new()
+    foreach ($manifest in $manifests) {
+        if (-not (Test-Path -LiteralPath $manifest -PathType Leaf)) { continue }
+        $k = 0
+        foreach ($line in (Get-Content -LiteralPath $manifest)) {
+            $k++
+            if ($line -match '(^|[{,]\s*)git\s*=') { $gitDeps.Add("${manifest}:${k}:$line") }
+        }
+    }
+    if ($gitDeps.Count -gt 0) {
+        $failures.Add('git dependency in a manifest: ' + ($gitDeps -join '; '))
     }
 
     if ($Json) {

@@ -180,7 +180,7 @@ rm -f "$OUT"
 # stays exit 2, above.
 if [ "$ENTRIES" -eq 0 ]; then
   printf 'changelog check failed: %s has no entries this parser recognises.\n\n' "$FILE" >&2
-  printf 'An entry heading is `### `, a section heading is `## `, and a file of\n' >&2
+  printf 'An entry heading is "### ", a section heading is "## ", and a file of\n' >&2
   printf 'section headings alone passes every per-entry rule by having nothing\n' >&2
   printf 'to check. docs/conventions/docs.md carries the shape.\n' >&2
   exit 1

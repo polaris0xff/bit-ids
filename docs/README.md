@@ -7,6 +7,7 @@
 | [`capture-methodology.md`](capture-methodology.md) | what counts as an observation and corroboration |
 | [`client-matrix.md`](client-matrix.md) | which clients/libraries/platforms and acquisition candidates are in scope |
 | [`publishing.md`](publishing.md) | what the data branch and releases will contain |
+| [`supply-chain.md`](supply-chain.md) | what this repository executes that it did not write, how it is pinned, and how a pin is updated |
 | [`reference-sweeps/bit-cli.md`](reference-sweeps/bit-cli.md) | what bit-cli contributes, contradicts and changes in the plan |
 | [`../catalogue/README.md`](../catalogue/README.md) | how the machine-readable target inventory is governed |
 | [`../TODO/README.md`](../TODO/README.md) | how remaining work and its current order are represented |

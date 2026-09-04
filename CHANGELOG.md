@@ -5,6 +5,22 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-04T14:11:29Z
+
+- Closed `FOUND-02`. The action pin rule is now an allowlist of forms that are
+  immutable by construction rather than a denylist of the floating ones
+  somebody thought of, and the lockfile is checked for a crates.io source and a
+  checksum on every package. Record: [`TODO/foundation.md`](TODO/foundation.md).
+- Three shapes passed the old rule and are refused now: a branch named anything
+  other than `main` or `master`, an abbreviated commit, and a bare commit with
+  no version comment. The comment is load-bearing, because it is what
+  `check-remote-items` resolves against the tag it claims to be.
+- Added [`docs/supply-chain.md`](docs/supply-chain.md) with the three pinned
+  layers and the procedure for updating one. No register of pins was added: the
+  lockfile and the workflow already hold those commits, and a third copy would
+  be the drift the rules exist to prevent.
+- Deployment: no data branch, release or capture service was created.
+
 ### 2026-09-04T14:02:39Z
 
 - Fixed `check-docs.ps1`, which resolved a link going up more than two

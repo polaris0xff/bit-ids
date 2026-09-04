@@ -24,7 +24,7 @@ commands and review findings are recorded in
 ## FOUND-02: Reproducible Rust dependency and action pins
 
 Source: b-ids workflow architecture and template public-CI policy
-Priority: P0 | Effort: L | Status: OPEN
+Priority: P0 | Effort: L | Status: DONE
 
 Problem: Floating dependencies can change the observer or publisher without a
 reviewed repository change.
@@ -35,8 +35,54 @@ themselves prove dependency provenance.
 Approach: Commit the lockfile, deny unreviewed Git dependencies, inventory all
 action SHAs, and add an update procedure with changelog review.
 
+Decision: no separate register of pins. The lockfile is the crate inventory and
+the workflow line is the action inventory, so a register would be a third copy
+of commits that already live in two places with a check between them. The
+inventory requirement is met instead by making both places checkable: a
+lockfile entry must carry a crates.io source and a checksum, and an action pin
+must carry the version comment that `check-remote-items` resolves against the
+tag it names.
+
 Prove: `cargo metadata --locked --format-version 1` succeeds and the project
 checker rejects a workflow action referenced by a tag.
+
+Closure evidence: `cargo metadata --locked --format-version 1` exits 0. The
+pin rule was inverted from a denylist of known floating refs to an allowlist of
+immutable forms, and seven defects were planted against the result on
+2026-09-04, each refused by both halves with the same exit code: a tag, a
+branch name, an abbreviated commit, a pin with no version comment, a lockfile
+entry with a git source, a lockfile entry with no checksum, and a manifest git
+dependency.
+
+⭐ Three of those seven passed the old rule: a branch called anything other
+than `main` or `master`, an abbreviated commit, and a bare commit with no
+comment. That is measured, by running the old expression against each planted
+case, and it is the argument for an allowlist over a denylist.
+
+[`../docs/supply-chain.md`](../docs/supply-chain.md) carries the three layers
+and the update procedure.
+
+Capability note: `pwsh` was absent at session start, so the PowerShell halves
+were unexercised. It was installed from the upstream release tarball, and both
+halves were then compared on every planted case above rather than on a clean
+tree alone. ⚠ `check-twins` compares answers on the tree it runs against, so a
+rule that only differs on a defect is invisible to it; that gap is why the
+comparison was run per mutation.
+
+Door sweep findings, both fixed: the pin rule read `.github/workflows/` only,
+so a composite action under `.github/actions/` would have carried unchecked
+`uses:` lines with the same permissions. The scope now covers both and was
+proven with a throwaway composite action carrying a floating pin, refused by
+both halves. And the enumeration turned up a fourth layer the rule cannot
+reach at all, `go install mvdan.cc/sh/v3/cmd/shfmt@v3.14.0` in a `run:` script;
+it is safe for a reason particular to Go's checksum database rather than by
+the form of the pin, so it is argued in `docs/supply-chain.md` rather than
+waved through.
+
+Residual: `check-remote-items` verifies the pins a pull request proposes, not
+the pins already in the tree, so a tag moved or deleted upstream after a merge
+is not detected. Named in `docs/supply-chain.md` and carried by `CI-04`. ⚠ It
+needs `gh` and was not run in this session; the CI Linux lane runs it.
 
 ## FOUND-03: Deterministic protocol fixture suite
 

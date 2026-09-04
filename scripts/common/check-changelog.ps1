@@ -154,7 +154,7 @@ $problems = $script:problems
 if ($entries -eq 0) {
     [Console]::Error.WriteLine("changelog check failed: $File has no entries this parser recognises.")
     [Console]::Error.WriteLine('')
-    [Console]::Error.WriteLine('An entry heading is `### `, a section heading is `## `, and a file of')
+    [Console]::Error.WriteLine('An entry heading is "### ", a section heading is "## ", and a file of')
     [Console]::Error.WriteLine('section headings alone passes every per-entry rule by having nothing')
     [Console]::Error.WriteLine('to check. docs/conventions/docs.md carries the shape.')
     exit 1

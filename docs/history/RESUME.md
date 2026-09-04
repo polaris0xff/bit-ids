@@ -1,24 +1,28 @@
 # Resume
 
 **Task:** Take the work order in `TODO/PROGRESS.md` in dependency order,
-starting at `SCHEMA-01`, committing and pushing each green unit to `main`.
+committing and pushing each green unit to `main`.
 
-**Resume point:** `SCHEMA-01` is closed and pushed. The next item is
-`FOUND-02`, which `PROGRESS.md` moved ahead of the remaining schema work
-because `SCHEMA-01` introduced the first third-party crates.
+**Resume point:** `SCHEMA-01` and `FOUND-02` are closed. The next item is
+`SCHEMA-02`, then `SCHEMA-03`.
 
 **In flight:** Nothing. The tree is coherent.
 
 **Tree:** Clean and level with `origin/main`, on `main`.
-`sh scripts/common/check-gate.sh` is green: 9 passed, 0 failed, 2 skipped.
-`cargo fmt --all -- --check`, `cargo check`, `cargo test` and `cargo clippy`,
-each `--workspace --locked --all-targets`, exit 0.
+`sh scripts/common/check-gate.sh` is green: 10 passed, 0 failed, 1 skipped.
+`shellcheck`, `shfmt -d -i 2 -ci`, `cargo fmt --all -- --check`, and
+`cargo check`, `cargo test` and `cargo clippy` at
+`--workspace --locked --all-targets` all exit 0.
 
-⚠ The two skips are `check-remote-items` (no `gh` on this host) and
-`check-twins` (no `pwsh`). The PowerShell half of every paired check is
-therefore unexercised here, and `scripts/common/check-no-secrets.ps1` was
-changed in this session alongside its `sh` twin. Only the CI Windows lane has
-run it. Read that pair before trusting it.
+⭐ Install `pwsh`, `shellcheck` and `shfmt` before touching a script.
+`TODO/PROGRESS.md` carries the three commands. Without them this host runs a
+smaller gate than CI does, and that turned CI red twice in the last session.
+The only check that still cannot run locally is `check-remote-items`, which
+needs `gh`.
+
+⚠ `check-twins` compares the two halves' answers on the tree it runs against,
+so a rule that differs only on a defect the tree does not contain is invisible
+to it. Compare a changed pair per planted mutation, not on a clean tree alone.
 
 **Paste:** Read `docs/AGENTS.md` in full, follow its start protocol, and take
 the first unblocked item from `TODO/PROGRESS.md`. Work on `main`. Re-measure

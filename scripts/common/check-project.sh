@@ -148,8 +148,114 @@ PY=$({
 } | sort -u)
 [ -z "$PY" ] || say_fail "Python exists without an approved exception: $PY"
 
-FLOATING=$(grep -R -nE 'uses: +[^ ]+@(main|master|v[0-9]+([.]([0-9]+))*)([[:space:]]+#.*)?[[:space:]]*$' .github/workflows 2>/dev/null || true)
-[ -z "$FLOATING" ] || say_fail "workflow action is not pinned to an immutable commit: $FLOATING"
+# ⛔ AN ALLOWLIST OF IMMUTABLE FORMS, NOT A DENYLIST OF FLOATING ONES.
+# This used to name the floating refs it knew: main, master and vN.N.N. A
+# branch called anything else, or an abbreviated commit, is just as mutable and
+# passed. ⭐ Inverting it means a form nobody thought of fails closed.
+#
+# ⚠ THE VERSION COMMENT IS PART OF THE PIN, not decoration. A 40-hex ref alone
+# is unreviewable: nobody can say what it is without a network call.
+# check-remote-items.sh resolves that comment against the tag it names and
+# refuses a pin whose comment has drifted, so a pin without one is a pin that
+# check never examines.
+#
+# ⛔ THE SCOPE INCLUDES COMPOSITE ACTIONS, NOT WORKFLOWS ALONE. A composite
+# action under .github/actions/ carries its own `uses:` lines and runs with the
+# same permissions, so a rule that read only .github/workflows/ would be a gate
+# on one of two doors into the same operation. There is no composite action
+# here yet, and that is exactly when a scope is easiest to get wrong and
+# hardest to notice.
+PIN_OUT=""
+for wf in .github/workflows/*.yml .github/workflows/*.yaml \
+  .github/actions/*/action.yml .github/actions/*/action.yaml; do
+  [ -f "$wf" ] || continue
+  # ⚠ NO INTERVAL EXPRESSIONS. `{40}` is not portable across every awk this
+  # repository runs on, so lengths are counted rather than matched.
+  PIN_OUT="$PIN_OUT$(awk -v FILE="$wf" '
+    function hex_only(s) { return s !~ /[^0-9a-f]/ }
+    /^[[:space:]]*(-[[:space:]]+)?uses:[[:space:]]/ {
+      ref = $0
+      sub(/^[^:]*uses:[[:space:]]*/, "", ref)
+      comment = ""
+      if (match(ref, /[[:space:]]+#/)) {
+        comment = substr(ref, RSTART)
+        ref = substr(ref, 1, RSTART - 1)
+      }
+      gsub(/[[:space:]]+$/, "", ref)
+      gsub(/^["'"'"']|["'"'"']$/, "", ref)
+
+      # A local action is this repository, reviewed with everything else.
+      if (ref ~ /^\.\//) next
+
+      at = 0
+      for (i = length(ref); i > 0; i--) {
+        if (substr(ref, i, 1) == "@") { at = i; break }
+      }
+      if (at == 0) {
+        printf "%s:%d carries no ref at all: %s\n", FILE, NR, ref
+        next
+      }
+      pinned = substr(ref, at + 1)
+
+      if (ref ~ /^docker:\/\//) {
+        if (pinned !~ /^sha256:/) {
+          printf "%s:%d container is not pinned to a digest: %s\n", FILE, NR, ref
+          next
+        }
+        digest = substr(pinned, 8)
+        if (length(digest) != 64 || !hex_only(digest)) {
+          printf "%s:%d container digest is not a sha256: %s\n", FILE, NR, ref
+        }
+        next
+      }
+
+      if (length(pinned) != 40 || !hex_only(pinned)) {
+        printf "%s:%d not pinned to a 40-character commit: %s\n", FILE, NR, ref
+        next
+      }
+      if (comment !~ /#[[:space:]]*[^[:space:]]/) {
+        printf "%s:%d pin carries no version comment, so nothing can check it: %s\n", FILE, NR, ref
+      }
+    }
+  ' "$wf")"
+done
+[ -z "$PIN_OUT" ] || say_fail "workflow action pin: $PIN_OUT"
+
+# ⛔ A DEPENDENCY THIS PROJECT DID NOT REVIEW CANNOT REACH THE OBSERVER OR THE
+# PUBLISHER. Cargo.lock is the inventory: a package with no `source` is a
+# member of this workspace, and every other one must come from the crates.io
+# registry with a checksum. A git or path dependency appears here as some other
+# source, so this one test covers the shape whatever the manifest said.
+REGISTRY='registry+https://github.com/rust-lang/crates.io-index'
+LOCK_OUT=$(awk -v REG="$REGISTRY" '
+  function flush(   ) {
+    # A package with no source is a member of this workspace, which is
+    # reviewed like everything else in the tree.
+    if (name != "" && source != "") {
+      if (source != REG)
+        printf "  %s is not from the crates.io registry: %s\n", name, source
+      else if (!checksum)
+        printf "  %s has no checksum\n", name
+    }
+    name = ""; source = ""; checksum = 0
+  }
+  /^\[\[package\]\]/ { flush(); next }
+  /^name = "/     { name = $0; sub(/^name = "/, "", name); sub(/"$/, "", name); next }
+  /^source = "/   { source = $0; sub(/^source = "/, "", source); sub(/"$/, "", source); next }
+  /^checksum = "/ { checksum = 1; next }
+  END { flush() }
+' Cargo.lock)
+[ -z "$LOCK_OUT" ] || say_fail "unreviewed dependency source:
+$LOCK_OUT"
+
+# ⚠ The lockfile test above is the authority; this one fires earlier and names
+# the manifest line, so the report points at the file somebody edited rather
+# than at the file cargo generated.
+GIT_DEP=$({
+  git ls-files '*Cargo.toml'
+  git ls-files --others --exclude-standard '*Cargo.toml'
+} | sort -u | xargs grep -nE '(^|[{,][[:space:]]*)git[[:space:]]*=' 2>/dev/null || true)
+[ -z "$GIT_DEP" ] || say_fail "git dependency in a manifest: $GIT_DEP"
 
 if [ "$JSON" = 1 ]; then
   printf '{"schema":"check-project/2","failures":%s,"todo_entries":%s,"open":%s,"in_progress":%s,"blocked":%s,"done":%s}\n' \

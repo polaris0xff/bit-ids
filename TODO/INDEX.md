@@ -1,22 +1,22 @@
 # Work index
 
 Total: 52
-Open: 50
+Open: 49
 In progress: 0
 Blocked: 0
-Done: 2
+Done: 3
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| P0 | 20 | 0 | 0 | 2 | 22 |
+| P0 | 19 | 0 | 0 | 3 | 22 |
 | P1 | 29 | 0 | 0 | 0 | 29 |
 | P2 | 1 | 0 | 0 | 0 | 1 |
-| Total | 50 | 0 | 0 | 2 | 52 |
+| Total | 49 | 0 | 0 | 3 | 52 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
 | FOUND-01 | P0 | L | DONE | Repository workspace and policy skeleton |
-| FOUND-02 | P0 | L | OPEN | Reproducible Rust dependency and action pins |
+| FOUND-02 | P0 | L | DONE | Reproducible Rust dependency and action pins |
 | FOUND-03 | P0 | L | OPEN | Deterministic protocol fixture suite |
 | FOUND-04 | P1 | M | OPEN | Third-party licence and redistribution register |
 | SCHEMA-01 | P0 | L | DONE | Versioned identity profile schema |
