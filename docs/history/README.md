@@ -10,3 +10,9 @@ reconstructed.
 
 [`BOOTSTRAP-REVIEW.md`](BOOTSTRAP-REVIEW.md) records the required structural,
 semantic, and release-readiness reviews of the initial repository.
+
+[`SESSION-2026-09-04-ACQUISITION.md`](SESSION-2026-09-04-ACQUISITION.md) is the
+saved summary of the session that closed `FOUND-03` and the blocking acquisition
+entries, with the defects each review pass found. ⚠ A saved summary, not a
+diary: it is one session's measurements, and the current state lives in
+[`../../TODO/PROGRESS.md`](../../TODO/PROGRESS.md).

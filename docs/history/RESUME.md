@@ -13,7 +13,9 @@ onward, against the `bit-ids-wire` fixture corpus rather than a live client.
 an install on Windows. `CI-03` owns the pair; `docs/capture-host.md` carries
 both contracts.
 
-**In flight:** Nothing. The tree is coherent.
+**In flight:** Nothing. The tree is coherent and the session ended cleanly.
+[`SESSION-2026-09-04-ACQUISITION.md`](SESSION-2026-09-04-ACQUISITION.md) is the
+saved summary of what it did and what each review pass found.
 
 **Tree:** Clean and level with `origin/main`, on `main`.
 `sh scripts/common/check-gate.sh` is green: 11 passed, 0 failed, 1 skipped.
