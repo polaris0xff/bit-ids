@@ -193,18 +193,26 @@ anything.
 
 ## Work order
 
-1. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
+1. `CORPUS-01`, the append-only store. ⛔ **The client entries moved behind it
+   on 2026-09-05, and the reason is a measurement rather than a preference.**
+   Their acceptance needs a capture, a capture needs a host
+   `assert-disposable.sh --egress` does not refuse, and this session's host is
+   refused. The provable prefix was run anyway, and it ran out of somewhere to
+   put its answer: the resolver selected qBittorrent 5.2.3 from a real listing
+   and there is no store to record it in. `CLIENT-01` carries the three routes
+   that were tried and what would unblock them.
+2. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
    captures, on Linux only until `CI-03` provides the Windows guard pair. ⭐ The
-   observer layer no longer blocks them: `OBS-08` and `OBS-09` both closed on
+   observer layer does not block them: `OBS-08` and `OBS-09` both closed on
    2026-09-05, so a client adapter has a torrent to be given and a bundle to
-   write into.
-2. `ACQ-05`, the artifact cache, and `FOUND-04`, the licence register, before
+   write into. `CI-03` and a store are what remain.
+3. `ACQ-05`, the artifact cache, and `FOUND-04`, the licence register, before
    the first proprietary client is acquired.
-3. `CORPUS-01` through `CORPUS-03`, then `PUB-01` through `PUB-03`.
-4. `CI-01` through `CI-04`, followed by remaining client and engine breadth.
-5. `FOUND-04`, the licence and redistribution register, before the first
+4. `CORPUS-02` through `CORPUS-03`, then `PUB-01` through `PUB-03`.
+5. `CI-01` through `CI-04`, followed by remaining client and engine breadth.
+6. `FOUND-04`, the licence and redistribution register, before the first
    proprietary client is acquired.
-6. Consumer library, public documentation, and refinements.
+7. Consumer library, public documentation, and refinements.
 
 ## Pending operator decisions
 

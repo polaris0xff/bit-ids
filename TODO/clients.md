@@ -19,6 +19,49 @@ with package-manager routes, and capture all core observer surfaces.
 Prove: a trusted run publishes agreeing Linux and Windows profiles for the
 same stable version with two verified routes per host.
 
+### What was measured on 2026-09-05, and why the entry stays open
+
+⛔ **The acceptance cannot run on a session host, and three routes were tried
+before saying so.** It is the same shape as `OBS-01`'s: an acceptance naming a
+Windows capture that this repository is not permitted to perform at all.
+
+1. Run it whole. Refused: `sh scripts/acquisition/assert-disposable.sh --egress`
+   exits 1 here, so installing and driving a client would be the capture that
+   boundary exists to refuse, and `docs/capture-host.md`'s guard pair is
+   Linux-only so a Windows capture is not permitted at any host. `CI-03` owns
+   the runner and the Windows guards.
+2. Run the Linux half alone. Refused for the first half of the same reason: a
+   capture on one platform is still a capture, and the boundary does not care
+   how much of the acceptance it satisfies.
+3. Split off the provable prefix and close that. ⭐ **Partly possible, and the
+   part that is was done.** Deciding which version to acquire needs no host, so
+   it was run. What it cannot do is leave a record: `CORPUS-01` owns the
+   append-only store and is open, so a measurement has nowhere durable to go and
+   would be a file nobody can cite. The split is therefore not filed as an entry
+   yet; it becomes one once there is a store to write into.
+
+⭐ **The resolver met a real target for the first time.**
+`sh scripts/acquisition/fetch-releases.sh qbittorrent/qBittorrent <file>`
+answered through `https://api.gh.pkgforge.dev/`, which is the route
+`docs/AGENTS.md` rule 8 names, and
+`cargo run -p bit-ids --example resolve-stable -- qbittorrent release- 3 3 ...`
+selected **5.2.3**, published 2026-07-07, over three superseded candidates with
+every verdict kept and a digest of the bytes that were read. ⚠ One source is not
+two: the resolution is single-sourced and `ACQ-01`'s independence rule is about
+acquiring the artifact, which is a separate requirement this did not touch.
+
+⚠ **The listing answered with four releases, and that is fewer than the project
+has.** Whether the mirror paginates differently or answers a subset was not
+established, and it matters: a resolver that sees a truncated listing selects
+confidently from what it was shown. Nothing here depends on it yet, because the
+newest is the newest either way, but the next entry to use this route measures it
+rather than assuming.
+
+Measured from the same listing, the release offers a Linux `AppImage`, a Windows
+`x64_setup.exe` and a source `tar.xz`, each with a detached `.asc` signature
+beside it. That is two platform routes and a signature disposition to verify, and
+`ACQ-05` owns the authenticity evidence.
+
 ## CLIENT-02: qBittorrent Enhanced capture adapter
 
 Source: operator scope and upstream Enhanced Edition repository

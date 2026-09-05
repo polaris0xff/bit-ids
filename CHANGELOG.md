@@ -5,6 +5,27 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-05T10:55:00Z
+
+- ⛔ Moved the client entries behind `CORPUS-01` in the work order, on a
+  measurement rather than a preference. A client acceptance needs a capture, a
+  capture needs a host `assert-disposable.sh --egress` does not refuse, and a
+  session host is refused; the Windows guard pair does not exist at all. Record:
+  [`TODO/clients.md`](TODO/clients.md).
+- ⭐ The resolver met a real target for the first time.
+  `fetch-releases.sh qbittorrent/qBittorrent` answered through
+  `api.gh.pkgforge.dev` and `resolve-stable` selected 5.2.3, published
+  2026-07-07, over three superseded candidates with every verdict kept and a
+  digest of the bytes read. The release offers a Linux AppImage, a Windows
+  setup.exe and a source tarball, each with a detached signature.
+- ⚠ The run has nowhere durable to be recorded, which is what put `CORPUS-01`
+  first: a measurement with no store is a file nobody can cite.
+- ⚠ The listing answered with four releases, fewer than the project has, and
+  whether the mirror paginates or answers a subset was not established. Nothing
+  depends on it yet; the next entry to use the route measures it.
+- Deployment: nothing deployed. Network: one release listing read, no artifact
+  downloaded and nothing installed.
+
 ### 2026-09-05T10:30:00Z
 
 - Closed `CI-05`. `check-project` and its PowerShell twin now refuse a `cargo

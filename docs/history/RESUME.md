@@ -9,11 +9,18 @@ becomes the content-addressed evidence a manifest cites. **A first vertical
 capture is possible from here** on a host the `ACQ-04` guards permit, and what
 stands between is a client adapter rather than any missing machinery.
 
-The next item is `CLIENT-01`, then `CLIENT-06` and `CLIENT-05`. ⚠ Read that
-entry's own acceptance first: a capture needs a disposable host and
-`sh scripts/acquisition/assert-disposable.sh --egress` exits 1 on a session
-host, so what can close here is the adapter and its fixtures rather than a
-capture. Say which half was done.
+⛔ **The next item is `CORPUS-01`, not a client, and that is a measured
+reordering rather than a preference.** A client entry's acceptance needs a
+capture, a capture needs a host `assert-disposable.sh --egress` does not refuse,
+and a session host is refused. The provable prefix was run anyway on 2026-09-05
+and ran out of somewhere to put its answer: the resolver selected qBittorrent
+5.2.3 from a real release listing, correctly, and there is no store to record it
+in. `CLIENT-01` carries the three routes that were tried, the measurement, and
+what would unblock it.
+
+⭐ `CORPUS-01` is fully provable here: an append-only store and a validator that
+refuses a deletion or a byte change against the prior tree. No host, no network,
+no client.
 
 ⛔ A Windows capture is not permitted yet. The disposable-host guards read
 `/proc/net/route` and `/etc/machine-id`, so there is no boundary to run before
