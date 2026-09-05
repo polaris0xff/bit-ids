@@ -5,6 +5,7 @@
 //! of that from something a person compares by eye into something the suite
 //! asserts, and it is why every test name here carries the word.
 
+use core::fmt::Write as _;
 use std::collections::BTreeSet;
 use std::path::PathBuf;
 
@@ -105,7 +106,10 @@ const TEMPLATE: &str = r#"{
 fn fixtures_accept_a_local_discovery_announce_and_still_refuse_one_with_no_codec() {
     let announce: &[u8] =
         b"BT-SEARCH * HTTP/1.1\r\nHost: 239.192.152.143:6771\r\nPort: 6881\r\n\r\n\r\n";
-    let hex: String = announce.iter().map(|byte| format!("{byte:02x}")).collect();
+    let mut hex = String::with_capacity(announce.len() * 2);
+    for byte in announce {
+        write!(hex, "{byte:02x}").expect("writing to a String cannot fail");
+    }
     // ⚠ Assembled by substitution rather than by `format!`. A doubled brace is
     // how a format string escapes one, and `check-placeholders.sh` reads that
     // shape as a template nobody filled in, which is the right reading

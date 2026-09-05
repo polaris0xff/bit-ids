@@ -82,8 +82,8 @@ name. Measured on this host:
 | `sh scripts/common/check-gate.sh` | 20 checks, 19 passed, 0 failed, 1 skipped, 0 unavailable |
 | `pwsh -File scripts/common/check-gate.ps1` | 20 checks, 11 passed, 0 failed, 1 skipped, 8 unavailable |
 | `sh scripts/ci/check-workflow.sh` | 34 cases, 34 passed, 0 failed |
-| `cargo test --workspace --locked --all-targets` | 38 binaries, 356 passed, 0 failed |
-| `cargo test --workspace --locked --doc` | 2 passed, 0 failed |
+| `cargo test --workspace --locked --all-targets` | 40 binaries, 392 passed, 0 failed |
+| `cargo test --workspace --locked --doc` | 3 passed, 0 failed |
 | `sh scripts/corpus/check-store.sh` | 14 cases, 14 passed, 0 failed |
 | `sh scripts/corpus/check-corpus.sh` | 14 cases, 14 passed, 0 failed |
 | `sh scripts/corpus/check-indexes.sh` | 15 cases, 15 passed, 0 failed |
@@ -92,7 +92,15 @@ name. Measured on this host:
 | `sh scripts/publishing/check-publish.sh` | 15 cases, 15 passed, 0 failed |
 | `sh scripts/common/check-licences.sh` | 16 target rows and 22 dependency rows, all with a disposition |
 | `sh scripts/acquisition/check-cache.sh` | 11 cases, 11 passed, 0 failed |
+| `cargo test -p bit-ids-probe --locked --test adjacent_surfaces` | 7 cases, 7 passed, 0 failed |
 | `cargo fmt`, `cargo clippy --workspace --locked --all-targets -- -D warnings`, `shellcheck`, `shfmt -d -i 2 -ci` | exit 0 |
+
+⛔ **A check run before the last edit is a check that did not run.** `OBS-06`
+put a red `Rust lints` on both CI lanes: clippy was clean, then one more line
+was written, and `cargo fmt --check` was re-run while clippy was not. The lint
+reproduced locally on the first try afterwards, which is the whole point. Run the
+gate after the last edit, and the last edit is the one made while writing the
+record, not the one that felt like the end of the work.
 
 ⛔ **Run the gate with `sh scripts/common/check-gate.sh`, not from memory.** A
 hand-typed subset after a doc edit is what put a red `check-one-home` on both CI
@@ -139,6 +147,26 @@ cache refuses to keep bytes because the register refuses them, and that case
 passes equally over a cache that can never store anything. The harness runs the
 same scenario with a target permitted and asserts the two runs differ on exactly
 one line.
+
+⛔ **Two twins agreeing is not two twins being right.** `FOUND-04` learned to
+compare the halves per planted input rather than on a clean tree. `OBS-06` found
+the other half of that: a planted input needs a declared expected outcome too. A
+new hex allowance written as `{40}` with no trailing anchor blanked the first
+forty characters of a longer run and let the remainder fall under the reporting
+threshold, so a forty-six digit value went unreported by both halves, which
+agreed with each other perfectly.
+
+⚠ **A test's name is a claim and it can be false.** `OBS-06` planted a revert of
+the datagram reply path back to an unguarded send, and the test named for that
+guarantee still passed: it asserted a loopback echo, which works either way. What
+refuses the revert is the source sweep. A mutation pass is what tells a name from
+a check, and a survivor is a question about which of the two is wrong.
+
+⚠ **A needle list of constructors does not cover a method.** The lab's door sweep
+named `TcpListener::bind`, `UdpSocket::bind` and two `connect`s, and every one of
+those makes a socket. A send is a method on a socket that already exists, so the
+sweep was blind to a whole category rather than to one entry, and the unguarded
+reply path survived until `OBS-06` looked for what the list did not name.
 
 ⛔ **`grep -c .` prints 0 and EXITS 1 on an empty file.** A `|| printf 0`
 fallback then fires on the one input that matters and the variable becomes two

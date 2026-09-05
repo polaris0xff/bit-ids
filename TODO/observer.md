@@ -926,6 +926,13 @@ an expectation: the field in both spellings passes, a bare forty-hex string is
 refused, and so are the field at a different length, the field without its space,
 and a token-shaped value sitting beside it.
 
+⛔ This entry put a red `Rust lints` on both CI lanes once. Clippy was clean, a
+last line was written into the fixture test while the record was being written,
+and `cargo fmt --check` was re-run while clippy was not. `format_collect` fired
+on it. It reproduced locally on the first attempt, which is the argument for
+running the whole gate after the last edit rather than after the last edit that
+felt like the work.
+
 Residual: **nothing here proves no packet left the host.** The three checks above
 prove every destination was decided by one guard, that nothing went around it,
 and what actually crossed a socket in one run. A capture on the interface is what
