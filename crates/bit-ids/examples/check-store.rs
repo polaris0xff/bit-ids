@@ -31,92 +31,16 @@ use std::io::Write as _;
 use std::path::Path;
 use std::process::ExitCode;
 
-use bit_ids::canonical::{RelPath, Sha256Digest};
 use bit_ids::store::{
-    Entry, ObjectRef, StoreKey, StoreTree, append_only, check_manifest_placement,
-    check_profile_placement, is_manifest_path, is_profile_path, validate_tree,
+    StoreKey, StoreTree, append_only, check_manifest_placement, check_profile_placement,
+    is_manifest_path, is_profile_path, validate_tree,
 };
 use bit_ids::{Profile, RunManifest};
 
-/// What one walk produced: the tree, and every path it could not put in one.
-struct Walk {
-    tree: StoreTree,
-    refused: Vec<String>,
-}
+#[path = "support/walk.rs"]
+mod support;
 
-/// Reads one directory into a tree, without following a link out of it.
-fn walk(root: &Path) -> Result<Walk, String> {
-    let mut walk = Walk {
-        tree: StoreTree::new(),
-        refused: Vec::new(),
-    };
-    descend(root, "", &mut walk)?;
-    Ok(walk)
-}
-
-fn descend(dir: &Path, prefix: &str, walk: &mut Walk) -> Result<(), String> {
-    let mut names: Vec<_> = std::fs::read_dir(dir)
-        .map_err(|error| format!("{}: {error}", dir.display()))?
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|error| format!("{}: {error}", dir.display()))?
-        .into_iter()
-        .map(|entry| (entry.file_name(), entry.path()))
-        .collect();
-    // Sorted, so two runs over one tree report in one order.
-    names.sort();
-
-    for (name, path) in names {
-        let Some(name) = name.to_str() else {
-            walk.refused.push(format!(
-                "{}: a name that is not UTF-8 cannot be a published path",
-                path.display()
-            ));
-            continue;
-        };
-        let relative = if prefix.is_empty() {
-            name.to_owned()
-        } else {
-            format!("{prefix}/{name}")
-        };
-
-        // ⛔ symlink_metadata, never metadata. The latter follows the link and
-        // would report a link to a directory as a directory, which is how a walk
-        // leaves the tree it was given.
-        let kind = std::fs::symlink_metadata(&path)
-            .map_err(|error| format!("{}: {error}", path.display()))?
-            .file_type();
-
-        if kind.is_dir() {
-            descend(&path, &relative, walk)?;
-            continue;
-        }
-
-        let Ok(rel) = RelPath::parse(&relative) else {
-            walk.refused.push(format!(
-                "{relative}: not a canonical relative path, so it cannot be published"
-            ));
-            continue;
-        };
-
-        let entry = if kind.is_symlink() {
-            Entry::Symlink
-        } else if kind.is_file() {
-            let bytes = std::fs::read(&path).map_err(|error| format!("{relative}: {error}"))?;
-            Entry::Object(ObjectRef {
-                bytes: bytes.len() as u64,
-                sha256: Sha256Digest::of(&bytes),
-            })
-        } else {
-            Entry::Other
-        };
-
-        if walk.tree.insert(rel, entry).is_some() {
-            walk.refused
-                .push(format!("{relative}: read twice from one walk"));
-        }
-    }
-    Ok(())
-}
+use support::walk;
 
 /// Reads every record the successor carries and checks it is filed where its own
 /// identity puts it.

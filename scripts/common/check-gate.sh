@@ -160,20 +160,23 @@ else
   SKIP=$((SKIP + 1))
 fi
 
-# ⛔ NOT IN common/ EITHER, AND IN THE GATE FOR THE SAME REASON. `check-store`
-# mutation-proves the guards that stand between this project and silently
-# deleting or rewriting published evidence, which is the one loss this
-# repository cannot recover from: the record that goes is not anywhere else. It
-# is hermetic and takes no network. ⚠ It needs cargo, so it exits 2 on a host
-# without one, which is a skip and not a pass. It has no PowerShell half;
-# scripts/README.md carries why.
-STORE="$HERE/../corpus/check-store.sh"
-if [ -f "$STORE" ]; then
-  run "check-store" sh "$STORE"
-else
-  row "SKIP  check-store  (not present)"
-  SKIP=$((SKIP + 1))
-fi
+# ⛔ NOT IN common/ EITHER, AND IN THE GATE FOR THE SAME REASON. These two
+# mutation-prove the guards that stand between this project and silently
+# deleting or rewriting published evidence, and between it and publishing a
+# record whose evidence nothing can resolve. Both losses are unrecoverable
+# afterwards: the record that goes is not anywhere else, and a citation with no
+# bytes cannot be re-derived. Both are hermetic and take no network. ⚠ They need
+# cargo, so they exit 2 on a host without one, which is a skip and not a pass.
+# Neither has a PowerShell half; scripts/README.md carries why.
+for c in check-store check-corpus; do
+  STORE="$HERE/../corpus/$c.sh"
+  if [ -f "$STORE" ]; then
+    run "$c" sh "$STORE"
+  else
+    row "SKIP  $c  (not present)"
+    SKIP=$((SKIP + 1))
+  fi
+done
 
 # ⭐ THE SLOW ONE. Measured on one Windows 11 Pro 26200 machine, 2026-08-28:
 # check-twins alone is most of a full run's wall time, because it starts both

@@ -3,13 +3,13 @@
 **Task:** Take the work order in `TODO/PROGRESS.md` in dependency order,
 committing and pushing each green unit to `main`.
 
-**Resume point:** ⭐ **`CORPUS-01` is closed**, so there is somewhere durable to
-put a record and the append rule is checked rather than trusted. The next items
-are `CORPUS-02`, the semantic corpus validator, and `CORPUS-03`, the
-deterministic indexes. Both are fully provable here: no host, no network, no
-client. ⚠ `CORPUS-02`'s `Prove` still carries a `--test <target>` form, which
-skips the library's own tests; rewrite it as `-p <package> --locked
---all-targets` when the entry is taken.
+**Resume point:** ⭐ **`CORPUS-01` and `CORPUS-02` are closed.** There is
+somewhere durable to put a record, the append rule is checked rather than
+trusted, and a whole store is validated rather than one document at a time. The
+next item is `CORPUS-03`, the deterministic indexes and latest views: fully
+provable here, with `publishable_view` as the report it builds on and
+`examples/build-store.rs` writing a store to build indexes over. `PUB-01` follows
+and is what first assembles a tree for the append comparison to run against.
 
 ⛔ The client entries stay behind the corpus work on a measurement rather than a
 preference. A client entry's acceptance needs a capture, a capture needs a host
@@ -21,8 +21,8 @@ preference. A client entry's acceptance needs a capture, a capture needs a host
 an install on Windows. `CI-03` owns the pair; `docs/capture-host.md` carries
 both contracts.
 
-**In flight:** Nothing. `CORPUS-01` landed whole, with its entry, index, summary
-and record updated in the same change. No files half-edited.
+**In flight:** Nothing. Both entries landed whole, each with its entry, index,
+summary and record updated in the same change. No files half-edited.
 
 **Tree:** Clean and level with `origin/main`, on `main`, full clone. ⚠ The
 container started with `main` 15 commits **behind** `origin/main` and the
@@ -31,13 +31,18 @@ re-measure rather than trusting a branch name. Measured on this host:
 
 | command | result |
 | --- | --- |
-| `sh scripts/common/check-gate.sh` | 13 checks, 12 passed, 0 failed, 1 skipped |
-| `pwsh -File scripts/common/check-gate.ps1` | 13 checks, 10 passed, 0 failed, 3 skipped |
-| `cargo test --workspace --locked --all-targets` | 32 binaries, 308 passed, 0 failed |
+| `sh scripts/common/check-gate.sh` | 14 checks, 13 passed, 0 failed, 1 skipped |
+| `pwsh -File scripts/common/check-gate.ps1` | 14 checks, 10 passed, 0 failed, 4 skipped |
+| `cargo test --workspace --locked --all-targets` | 34 binaries, 317 passed, 0 failed |
 | `cargo test --workspace --locked --doc` | 2 passed, 0 failed |
 | `sh scripts/corpus/check-store.sh` | 14 cases, 14 passed, 0 failed |
-| `sh scripts/acquisition/check-runner.sh` | run inside the gate, green |
+| `sh scripts/corpus/check-corpus.sh` | 14 cases, 14 passed, 0 failed |
 | `cargo fmt`, `cargo clippy --workspace --locked --all-targets -- -D warnings`, `shellcheck`, `shfmt -d -i 2 -ci` | exit 0 |
+
+⛔ **Run the gate with `sh scripts/common/check-gate.sh`, not from memory.** A
+hand-typed subset after the last doc edit is what put a red `check-one-home` on
+both CI lanes this session. The gate is one command precisely because a list run
+by hand is run in the order somebody recalls it.
 
 ⭐ `pwsh` 7.4.6, `shellcheck` 0.10.0 and `shfmt` 3.14.0 were installed at session
 start from the commands in `TODO/PROGRESS.md`. Install them before touching a
@@ -65,6 +70,15 @@ own guards.
 unique multi-line literal counts as the sum of its lines and reads as ambiguous.
 Measured on 2026-09-05: it miscounted three `CORPUS-01` plants. It fails safe
 and still leaves those guards unproven.
+
+⛔ **And read a harness exit of 2 as *could not run*, never as *refused*.** A
+review pass counted it as a refusal on one of its two paths and reported a guard
+proved over a plant that had not compiled. Separate the two on every path.
+
+⚠ **`shellcheck` answers differently depending on how the files are grouped on
+its command line.** A script that sources another is clean when both are handed
+to one invocation and warns when checked alone. CI passes every script at once;
+a contributor checking one file does not.
 
 ⛔ **A constant every test reads is a constant no test can check.** Found twice
 last session by two entries, neither looking for it. Pin a specification's

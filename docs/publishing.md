@@ -52,6 +52,12 @@ comparison between a published tree and the successor a run proposes.
 surface, and [`scripts/corpus/check-store.sh`](../scripts/corpus/check-store.sh)
 plants each refusal in a disposable tree and reads the exit code back.
 
+Whether a tree is a coherent corpus at all is the separate question
+[`corpus`](../crates/bit-ids/src/corpus.rs) answers, under `E-CRP-*`, with
+`cargo run -p bit-ids --example validate-corpus -- STORE` as its driving surface
+and [`check-corpus.sh`](../scripts/corpus/check-corpus.sh) as its mutation
+prover. ⭐ `build-store` writes a store for either to be pointed at.
+
 ⚠ **A version is not a path segment and the store is what says so.**
 [`Version`](../crates/bit-ids/src/canonical.rs) accepts whatever the installed
 build printed, `../../etc` included, because imposing a grammar on a measurement

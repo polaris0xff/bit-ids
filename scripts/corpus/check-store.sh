@@ -71,108 +71,23 @@ HERE=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 ROOT=$(CDPATH='' cd -- "$HERE/../.." && pwd)
 FIXTURES="$ROOT/crates/bit-ids/tests/fixtures"
 
-for tool in cargo sha256sum mkfifo; do
-  command -v "$tool" >/dev/null 2>&1 || {
-    printf 'check-store: %s not found\n' "$tool" >&2
-    exit 2
-  }
-done
+# ⚠ ME is set here and read by store-lib.sh, which this sources on the next
+# line. shellcheck cannot see across a source it is not told to follow, so it
+# reads as unused unless every file is handed to one invocation.
+# ⛔ The disables are per file rather than left to that: a lint whose verdict
+# depends on how the arguments were grouped is a lint that answers differently
+# for CI and for the contributor checking one file.
+# shellcheck disable=SC2034
+ME=check-store
+# shellcheck disable=SC1091
+# shellcheck source=scripts/corpus/store-lib.sh
+. "$HERE/store-lib.sh"
 
-BIN="$ROOT/target/debug/examples/check-store"
-if ! cargo build --manifest-path "$ROOT/Cargo.toml" -p bit-ids --locked \
-  --example check-store >/dev/null 2>&1; then
-  printf 'check-store: cannot build the example\n' >&2
-  exit 2
-fi
-[ -x "$BIN" ] || {
-  printf 'check-store: %s is not executable after a successful build\n' "$BIN" >&2
-  exit 2
-}
+store_require cargo sha256sum mkfifo
+BIN=$(store_build "$ROOT" check-store) || exit 2
 
-WORK="${TMPDIR:-/tmp}/.checkstore.$$"
-mkdir -p "$WORK" || {
-  printf 'check-store: cannot write to %s\n' "$WORK" >&2
-  exit 2
-}
+WORK=$(store_workdir checkstore) || exit 2
 trap 'rm -rf "$WORK"' EXIT INT TERM
-
-PASS=0
-FAIL=0
-ROWS=""
-
-row() {
-  ROWS="$ROWS  $1
-"
-}
-
-fail() {
-  row "❌ $1"
-  FAIL=$((FAIL + 1))
-}
-
-pass() {
-  row "✅ $1"
-  PASS=$((PASS + 1))
-}
-
-# ⛔ THE LAYOUT IS ASKED FOR, NEVER SPELLED HERE. A second copy of the path
-# derivation in this file is the drift check-twins.sh exists to catch, and it
-# would drift in the direction that makes every case below pass over a tree the
-# store would never have written.
-place() { # tree record
-  _rel=$("$BIN" --where "$2")
-  [ -n "$_rel" ] || return 1
-  mkdir -p "$1/$(dirname "$_rel")" || return 1
-  cp "$2" "$1/$_rel" || return 1
-  printf '%s\n' "$_rel"
-}
-
-# A digest over every path in a tree and what sits at it, so a plant that did
-# not land is visible as a digest that did not move.
-tree_digest() {
-  (
-    cd "$1" 2>/dev/null || exit 1
-    find . \( -type f -o -type l -o -type p \) | LC_ALL=C sort | while read -r p; do
-      if [ -L "$p" ]; then
-        printf '%s symlink\n' "$p"
-      elif [ -p "$p" ]; then
-        printf '%s fifo\n' "$p"
-      else
-        printf '%s %s\n' "$p" "$(sha256sum "$p" | cut -d' ' -f1)"
-      fi
-    done
-  ) | sha256sum | cut -d' ' -f1
-}
-
-tree_files() {
-  find "$1" \( -type f -o -type l -o -type p \) | wc -l | tr -d ' '
-}
-
-# ⛔ EXACTLY ONCE, OR NOT AT ALL. A literal that matches twice edits something
-# other than what the case names, and one that matches nothing edits nothing
-# while the case still reports a guard that failed to fire.
-#
-# ⚠ SINGLE-LINE LITERALS ONLY, AND THAT IS CHECKED RATHER THAN ASSUMED. grep -F
-# splits a pattern containing a newline into separate alternatives, so a unique
-# multi-line literal counts as the sum of its lines and this function would
-# report it ambiguous. Measured while writing this entry's review pass, where
-# exactly that miscounted three plants as NOT-PLANTED. Refusing one outright is
-# honest; counting one wrongly is the defect this function exists to prevent.
-replace_once() { # file literal replacement
-  case "$2" in
-    *"
-"*)
-      return 1
-      ;;
-  esac
-  _hits=$(grep -o -F -e "$2" "$1" 2>/dev/null | wc -l | tr -d ' ')
-  [ "$_hits" = "1" ] || return 1
-  _before=$(sha256sum "$1" | cut -d' ' -f1)
-  sed -i "s/$2/$3/" "$1" || return 1
-  _after=$(sha256sum "$1" | cut -d' ' -f1)
-  [ "$_before" != "$_after" ] || return 1
-  return 0
-}
 
 # published/ is one record and its manifest. proposed/ adds the correction that
 # supersedes the record, which is the shape the store is for: a correction
@@ -180,10 +95,10 @@ replace_once() { # file literal replacement
 build_trees() {
   rm -rf "$WORK/published" "$WORK/proposed"
   mkdir -p "$WORK/published" "$WORK/proposed"
-  PROFILE_REL=$(place "$WORK/published" "$FIXTURES/valid-profile.json") || return 1
-  place "$WORK/published" "$FIXTURES/valid-manifest.json" >/dev/null || return 1
+  PROFILE_REL=$(place "$BIN" "$WORK/published" "$FIXTURES/valid-profile.json") || return 1
+  place "$BIN" "$WORK/published" "$FIXTURES/valid-manifest.json" >/dev/null || return 1
   cp -R "$WORK/published/." "$WORK/proposed/" || return 1
-  CORRECTION_REL=$(place "$WORK/proposed" "$FIXTURES/valid-correction.json") || return 1
+  CORRECTION_REL=$(place "$BIN" "$WORK/proposed" "$FIXTURES/valid-correction.json") || return 1
   return 0
 }
 
@@ -314,60 +229,10 @@ begin_case "an artifact is a named pipe" "E-STO-15"
 mkfifo "$LEAF/pipe.json"
 end_case $?
 
-# ⭐ The harness's own three guards, exercised. Each must report the plant did
-# not apply; a harness that reports one of these as applied is the harness that
-# reports every guard above as failing to fire.
+# ⭐ The harness's own guards, exercised. A probe's guard is a guard like any
+# other, and a harness that reports a plant it did not make reports every guard
+# above as failing to fire.
 build_trees >/dev/null 2>&1
-PROBE="$WORK/proposed/$PROFILE_REL"
+store_probe_guards "$WORK/proposed/$PROFILE_REL" "Schema Fixture Client" "sha256:"
 
-if replace_once "$PROBE" "a literal this record does not carry" "x"; then
-  fail "probe    an absent literal was reported as planted"
-else
-  pass "probe    an absent literal is refused"
-fi
-
-if replace_once "$PROBE" "sha256:" "x"; then
-  fail "probe    an ambiguous literal was reported as planted"
-else
-  pass "probe    an ambiguous literal is refused"
-fi
-
-if replace_once "$PROBE" "Schema Fixture Client" "Schema Fixture Client"; then
-  fail "probe    a no-op edit was reported as planted"
-else
-  pass "probe    a no-op edit is refused"
-fi
-
-if replace_once "$PROBE" "Schema Fixture Client
-" "x"; then
-  fail "probe    a multi-line literal was reported as planted"
-else
-  pass "probe    a multi-line literal is refused"
-fi
-
-TOTAL=$((PASS + FAIL))
-
-if [ "$PASS" -eq 0 ]; then
-  RC=1
-elif [ "$FAIL" -gt 0 ]; then
-  RC=1
-else
-  RC=0
-fi
-
-if [ "$JSON" = "1" ]; then
-  printf '{"schema":"check-store/1","total":%s,"passed":%s,"failed":%s}\n' \
-    "$TOTAL" "$PASS" "$FAIL"
-  exit "$RC"
-fi
-
-printf '\n%s\n' "$ROWS"
-printf '%s cases: %s passed, %s failed\n' "$TOTAL" "$PASS" "$FAIL"
-if [ "$PASS" -eq 0 ]; then
-  printf -- '❌ NOTHING RAN. Zero cases passed, so this is red whatever else it says.\n'
-elif [ "$FAIL" -gt 0 ]; then
-  printf -- '❌ a store guard did not refuse its defect.\n'
-else
-  printf -- '✅ every planted defect was refused, and the clean tree was not.\n'
-fi
-exit "$RC"
+store_report check-store/1 cases "$JSON"

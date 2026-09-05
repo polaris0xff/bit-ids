@@ -108,7 +108,7 @@ one of its four self-guards.
 ## CORPUS-02: Semantic corpus validator
 
 Source: operator accuracy requirement
-Priority: P0 | Effort: L | Status: OPEN
+Priority: P0 | Effort: L | Status: DONE
 
 Problem: Schema validity alone cannot prove route count, connector independence,
 field provenance, agreement, stable status, or evidence reachability.
@@ -116,8 +116,86 @@ field provenance, agreement, stable status, or evidence reachability.
 Approach: Implement all publication invariants in Rust with stable diagnostic
 codes and adversarial fixtures.
 
-Prove: `cargo test --workspace --locked --test corpus_validator` rejects one fixture for each
-invariant and validates the complete golden corpus.
+Prove: `cargo test -p bit-ids --locked --all-targets` rejects one fixture for
+each invariant and validates the complete golden corpus.
+
+⚠ **The `Prove` was rewritten on 2026-09-05 and the original is recorded here
+rather than silently replaced.** It read
+`cargo test --workspace --locked --test corpus_validator`, which is the second
+half of the class `CI-05` closed: `--test <target>` runs one integration binary
+and skips the library's own tests, so a rule proved in a `#[cfg(test)]` module
+would not have been run by the entry's own acceptance. `CORPUS-01` left the same
+note against this entry when it reordered the work.
+
+### What was actually missing, which is narrower than the Problem reads
+
+Route count, connector independence, field provenance, agreement and stable
+status were already enforced, per record, by `SCHEMA-01`, `SCHEMA-03` and
+`ACQ-01` through `ACQ-03`: `E-ACQ-01` counts routes, `E-ACQ-07` and `E-ACQ-08`
+refuse routes that share a resolver or a delivery, `publishable` refuses a
+disagreement and an uncorroborated measurement, and the channel is type-enforced
+to one variant.
+
+⛔ **Evidence reachability was the one nothing could answer, and the reason is
+structural.** `bind` compares the profile against the manifest, so two documents
+that agree about an artifact nobody wrote satisfy it completely. Only the store
+turns a citation into bytes, so only a store-level pass can refuse one that does
+not. That is `E-CRP-03` through `E-CRP-05`, and it is why this entry needed
+`CORPUS-01` in front of it.
+
+### Decision: a golden corpus is generated, not committed
+
+The `Prove` names a golden corpus and the schema fixtures are not one. They
+declare digests for artifacts that were never written, which is precisely the
+defect `E-CRP-03` refuses, so committing them as a corpus would have made the
+acceptance assert its own failure mode as the passing case.
+
+`examples/build-store.rs` writes one instead: it puts the artifacts on the disk
+first, then rewrites each document to describe the bytes it actually wrote, and
+emits both through `to_json`, which validates. ⚠ Committing generated artifact
+bytes was the alternative and it lost for the reason `OBS-08` already settled for
+the torrent: a committed file can only be trusted, while a generated one is a
+function of its inputs and can be rebuilt and compared.
+
+### Decision: valid and publishable stay separate at store level too
+
+`validate_corpus` refuses only what must hold of any store.
+`publishable_view` separately reports which records may enter a published view.
+A provisional record belongs in the store, because the disagreement it carries is
+the evidence of that disagreement, and a validator that refused it would delete
+exactly what the record model went to trouble to keep. `CORPUS-03` builds the
+views on top of the report.
+
+### Closure evidence, 2026-09-05
+
+| what | measured |
+| --- | --- |
+| `sh scripts/corpus/check-corpus.sh` | 14 cases, 14 passed, 0 failed |
+| `cargo test -p bit-ids --locked --all-targets` | 9 corpus unit tests, 0 failed |
+| `cargo test --workspace --locked --all-targets` | 34 binaries, 317 passed, 0 failed |
+| `cargo test --workspace --locked --doc` | 2 passed, 0 failed |
+| guard mutation over `corpus.rs` | 8 plants, 8 refused |
+| driven pass | `build-store` writes 11 objects; `validate-corpus` reads them back and reports 1 record, 1 run, 1 publishable |
+
+⛔ **One plant reported a refusal that was not one, and the harness is why it was
+caught.** The `E-CRP-03` plant did not compile, so `check-corpus` exited 2, which
+is *could not run* rather than *refused*. The review harness counted any non-zero
+status as a refusal on the filesystem path, having grown that guard only on the
+Rust path. It now separates them, and the plant was rewritten to compile before
+the guard could be called proved.
+
+### Residuals
+
+- ⚠ Placement is only asked of a path this build recognises as a record. A
+  document filed outside `profiles/v1/` or `raw/v1/` is not read at all, so a
+  record hidden under another root would not be placement-checked. Which roots
+  a published tree may carry is `CORPUS-03`'s and `PUB-01`'s.
+- ⚠ `bind` walks the profile's citations into the manifest and not the reverse,
+  so a manifest artifact no profile cites is not compared. `E-CRP-06` catches the
+  file-level version of that against the store; the document-level one is
+  `SCHEMA-02`'s and is left where it is.
+- ⚠ `check-corpus.sh` has no PowerShell half, for the reason `check-store.sh`
+  does not; both are named skips on that lane.
 
 ## CORPUS-03: Deterministic indexes and latest views
 

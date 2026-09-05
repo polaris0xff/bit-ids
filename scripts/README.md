@@ -10,6 +10,11 @@ from any working directory.
 - [`corpus/check-store.sh`](corpus/check-store.sh) plants, in a disposable tree,
   every defect the append-only store exists to refuse, and reads each exit code
   from the process that produced it.
+- [`corpus/check-corpus.sh`](corpus/check-corpus.sh) does the same for the
+  store-level invariants, against a store `build-store` wrote.
+- [`corpus/store-lib.sh`](corpus/store-lib.sh) is sourced by both and is never
+  run. It holds what a mutation harness needs: build an example, make a scratch
+  tree, digest a directory, verify a plant landed, count a row.
 - [`common/check-gate.sh`](common/check-gate.sh) and
   [`common/check-gate.ps1`](common/check-gate.ps1) run the local gate.
 - `common/check-project.sh` and `common/check-project.ps1` validate bit-ids
@@ -33,13 +38,19 @@ Windows capture host will need a PowerShell fetcher; `ACQ-04` owns the runner
 contract and is where that lands, rather than a second implementation written
 now with nothing exercising it.
 
-`acquisition/check-runner.sh` and `corpus/check-store.sh` are the two mutation
-provers, and neither has a twin. Both run in the `sh` gate and are reported as
-named skips in the PowerShell one. `check-runner` proves guards that read
-`/proc/net/route`, so it has nothing to prove on Windows until `CI-03` writes
-the Windows pair. `check-store` proves rules that are not platform-specific at
-all, and the Rust suite exercises every one of them on both CI lanes; ⚠ what it
-plants is a symbolic link and a named pipe against a real filesystem, and
-neither is available to an unprivileged Windows session. A second
+`acquisition/check-runner.sh`, `corpus/check-store.sh` and
+`corpus/check-corpus.sh` are the mutation provers, and none has a twin. All
+three run in the `sh` gate and are reported as named skips in the PowerShell
+one. `check-runner` proves guards that read `/proc/net/route`, so it has nothing
+to prove on Windows until `CI-03` writes the Windows pair. The two corpus
+provers hold rules that are not platform-specific at all, and the Rust suite
+exercises every one of them on both CI lanes; ⚠ what they plant includes a
+symbolic link and a named pipe against a real filesystem, and neither is
+available to an unprivileged Windows session. A second
 implementation that skipped those two plants would report a smaller pass under
 the same name, which is the shape `check-twins.sh` calls invisible drift.
+
+⚠ A script that sources another is clean to `shellcheck` only when both are
+handed to one invocation, because it will not follow a source it was not given.
+CI passes every script at once and a contributor checking one file does not, so
+the directives live in each file rather than in how it is called.

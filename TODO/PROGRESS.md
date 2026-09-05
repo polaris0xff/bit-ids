@@ -1,12 +1,12 @@
 # Current progress
 
 State instant: 2026-09-05
-Baseline commit: `5a21e32` on `main`
+Baseline commit: `bdfeb8f` on `main`
 Total: 56
-Open: 36
+Open: 35
 In progress: 0
 Blocked: 0
-Done: 20
+Done: 21
 
 ## Current state
 
@@ -17,8 +17,9 @@ routes agreeing is worth, and a boundary that runs before anything is installed.
 All four core observer surfaces are done: both trackers, the peer handshake and
 BEP 10. ⭐ `OBS-08` and `OBS-09` are closed too, so the observer layer is
 complete: there is a torrent to point a client at, and a run's transcript now
-becomes the content-addressed evidence a manifest cites. ⭐ `CORPUS-01` is closed
-as well, so there is somewhere durable to put the answer. **A first vertical
+becomes the content-addressed evidence a manifest cites. ⭐ `CORPUS-01` and
+`CORPUS-02` are closed as well, so there is somewhere durable to put the answer
+and something that checks a whole store rather than one record. **A first vertical
 capture is possible from here**, on a host the `ACQ-04` guards permit, and what
 stands between is a client adapter rather than any missing machinery.
 
@@ -134,11 +135,30 @@ and they are checked against a whole tree rather than at derivation.
 [`../docs/architecture.md`](../docs/architecture.md) section 4 says which and
 why.
 
-⭐ `scripts/corpus/check-store.sh` plants each refusal against a real filesystem
-and is in the `sh` gate. ⚠ It is a named skip on the PowerShell half: what it
-plants is a symbolic link and a named pipe, neither of which an unprivileged
-Windows session can create. The rules themselves are not platform-specific and
-the Rust suite exercises every one of them on both CI lanes.
+`CORPUS-02` is the store-level pass. ⛔ **Most of what its Problem names was
+already enforced per record**, by `SCHEMA-01`, `SCHEMA-03` and `ACQ-01` through
+`ACQ-03`. What nothing could answer was whether a citation resolves to bytes,
+and the reason is structural: `bind` compares the two documents, so a run that
+agreed with itself about an artifact nobody wrote passed everything this project
+had. Only a store turns a citation into bytes.
+
+⚠ Valid and publishable stay separate at store level too. `validate_corpus`
+refuses what must hold of any store; `publishable_view` reports which records may
+enter a published view, and a store of provisional records is a correct store.
+`CORPUS-03` builds the views on that report.
+
+⭐ The acceptance needed a corpus and the schema fixtures are not one: they
+declare digests for artifacts nobody wrote, which is the defect `E-CRP-03`
+refuses. `examples/build-store.rs` writes one instead, artifacts first, then each
+document rewritten to describe the bytes actually put down.
+
+⭐ `scripts/corpus/check-store.sh` and `check-corpus.sh` plant each refusal
+against a real filesystem and both are in the `sh` gate. They share
+`store-lib.sh` rather than a copy of it. ⚠ Both are named skips on the PowerShell
+half: the plants include a symbolic link and a named pipe, neither of which an
+unprivileged Windows session can create. The rules themselves are not
+platform-specific and the Rust suite exercises every one of them on both CI
+lanes.
 
 The `bit-ids` crate carries the published record shape, the six field states,
 the derived record identifier, the canonical value forms and the publication
@@ -227,11 +247,9 @@ anything.
 
 ## Work order
 
-1. `CORPUS-02`, the semantic corpus validator, and `CORPUS-03`, the
-   deterministic indexes. Both are fully provable here: no host, no network, no
-   client. ⚠ `CORPUS-02`'s `Prove` still carries a `--test <target>` form, which
-   skips the library's own tests; rewrite it as
-   `-p <package> --locked --all-targets` when the entry is taken.
+1. `CORPUS-03`, the deterministic indexes and latest views. Fully provable here:
+   no host, no network, no client, and `publishable_view` is the report it builds
+   on. ⭐ `examples/build-store.rs` already writes a store to build indexes over.
 2. `PUB-01`, the deterministic release assembler. It is what first builds a tree
    for `CORPUS-01`'s comparison to run over, and it is where `E-STO-22` becomes
    reachable, because a tree assembled from a manifest carries a declared length
@@ -330,3 +348,15 @@ refuse it outright as `scripts/corpus/check-store.sh` does.
 ⭐ **`check-store` needs `cargo`, `sha256sum` and `mkfifo` and exits 2 without
 them.** The Linux CI lane runs the gate with `--strict`, so that skip would be a
 failure there; all three are present on `ubuntu-24.04`.
+
+⛔ **A harness exit of 2 is *could not run*, never *refused*.** A review pass
+counted it as a refusal on one of its two paths and reported a guard proved over
+a plant that had not compiled. Separate the two statuses on every path, not on
+the one where it first bit.
+
+⚠ **`shellcheck` answers differently depending on how the files were grouped on
+its command line.** A script that sources another is clean when both are handed
+to one invocation and warns when checked alone, because it cannot follow a source
+it was not given. CI passes every script at once and a contributor checking one
+file does not, so the directives belong in each file rather than in the
+invocation.

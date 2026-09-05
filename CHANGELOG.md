@@ -5,6 +5,41 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-05T12:55:00Z
+
+- `CORPUS-02`, the semantic corpus validator. Record:
+  [`TODO/corpus.md`](TODO/corpus.md).
+- ⛔ Evidence reachability was the only invariant in that entry's Problem that
+  nothing could already answer. `bind` compares the profile against the manifest,
+  so two documents agreeing about an artifact nobody wrote satisfied every check
+  this project had. `E-CRP-03` resolves a citation against the store instead, and
+  `E-CRP-04` to `E-CRP-06` compare the stored bytes with what the run declared,
+  in both directions.
+- ⚠ Route count, connector independence, field provenance, agreement and stable
+  status were already enforced per record. The entry says which code holds each,
+  rather than adding a second spelling of it.
+- ⭐ `examples/build-store.rs` generates the golden corpus the acceptance needs,
+  writing the artifacts first and then each document to describe the bytes
+  actually put down, out through `to_json`. The entry says why a committed one
+  could not serve.
+- `validate_corpus` refuses what must hold of any store; `publishable_view`
+  separately reports which records may enter a published view, because a store of
+  provisional records is a correct store.
+- ⛔ The entry's `Prove` selected one integration binary with `--test`, which
+  skips the library's own tests. Rewritten and the original recorded, per the
+  residual `CI-05` left.
+- ⛔ A review plant reported a refusal that was not one: the harness counted a
+  harness exit of 2, *could not run*, as a refusal on its filesystem path. It now
+  separates them and the plant was rewritten to compile.
+- ⚠ `shellcheck` answers differently depending on how the files are grouped on
+  its command line, so the two harnesses carry their own directives rather than
+  depending on CI passing every script at once. The shared helpers moved to
+  `scripts/corpus/store-lib.sh` rather than being copied.
+- Guard mutation: 8 plants over the corpus validator, 8 refused;
+  `check-corpus.sh` plants 9 defects against a real store and refuses all 9, with
+  4 harness self-guards.
+- Deployment: nothing deployed. No capture was taken.
+
 ### 2026-09-05T12:10:00Z
 
 - `CORPUS-01`, the append-only canonical store. Record:

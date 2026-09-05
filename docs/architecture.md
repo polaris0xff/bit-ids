@@ -272,6 +272,29 @@ over a whole tree rather than at derivation, because a tree is read off a disk
 somebody else wrote and a segment can arrive without this crate having derived
 it. The same rule runs at both doors.
 
+### What only a whole store can answer
+
+[`../crates/bit-ids/src/corpus.rs`](../crates/bit-ids/src/corpus.rs) is the
+store-level pass and `CORPUS-02` owns it. Its rules each need more than one
+document, which is why none of them sits in the record validator: a reader with
+one record cannot know whether the bytes it cites exist.
+
+⛔ **A citation is resolved against the store, never against the other
+document.** `bind` above compares the profile and the manifest with each other,
+so two documents agreeing about an artifact nobody wrote satisfy it completely.
+`E-CRP-03` refuses a citation the store cannot resolve, `E-CRP-04` and
+`E-CRP-05` refuse stored bytes that disagree with what the run declared, and
+`E-CRP-06` refuses a file in a run's bundle that the run does not declare, which
+is the same question asked from the other end.
+
+`E-CRP-01` and `E-CRP-02` pair each record with its run in both directions, and
+`E-CRP-07` refuses a correction naming a record the store does not carry.
+
+⚠ **The valid-and-publishable split holds here too.** `validate_corpus` refuses
+what must be true of any store, and `publishable_view` separately reports which
+records may enter a published view. A store of provisional records is a correct
+store, and `CORPUS-03` builds views on that report rather than on a refusal.
+
 ## 5. Observation surfaces
 
 The codecs live in
@@ -702,11 +725,10 @@ comparison in [`section 4`](#where-a-record-is-filed) is what refuses that, and
   content-addressed evidence a manifest cites. There is now somewhere durable to
   put a record as well. What stands between here and a first capture is a client
   adapter and a host the [`capture-host.md`](capture-host.md) guards permit.
-- ⚠ The store answers where a record goes and what a successor may do to it. It
-  does not answer whether a record should be there at all: route count,
-  connector independence, field provenance and evidence reachability across a
-  whole store are `CORPUS-02`'s, and assembling the tree in the first place is
-  `PUB-01`'s.
+- ⚠ Nothing assembles a store yet. `PUB-01` builds the publication tree and
+  `PUB-02` runs the append comparison over the fetched `data` branch; until both
+  exist, the store and corpus checks are pointed at directories by hand or at
+  one written by `build-store`.
 - ⚠ No observer has been driven by a stock `BitTorrent` client. Each was driven
   by an independent client written from the specification, which is a weaker
   control: it shares this project's reading of the protocol. `OBS-07` owns the
