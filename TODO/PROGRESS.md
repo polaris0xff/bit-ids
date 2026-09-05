@@ -129,11 +129,10 @@ segment instead, rather than escaping it, because an escape that is not
 injective merges two measurements into one directory and an injective one needs
 bytes `RelPath` refuses.
 
-⚠ Two paths differing only in case are one file on half of the capture matrix,
-and so is a segment Windows resolves to a device. Those are checked over a whole
-tree rather than at derivation, because a tree is read off a disk somebody else
-wrote and a segment can arrive without this crate having derived it. The same
-rule runs at both doors.
+⚠ Two more hazards make one file out of two paths on half of the capture matrix,
+and they are checked against a whole tree rather than at derivation.
+[`../docs/architecture.md`](../docs/architecture.md) section 4 says which and
+why.
 
 ⭐ `scripts/corpus/check-store.sh` plants each refusal against a real filesystem
 and is in the `sh` gate. ⚠ It is a named skip on the PowerShell half: what it
