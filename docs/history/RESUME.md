@@ -14,8 +14,16 @@ the job-scoped write permission and a concurrency group.
 ⭐ **`CORPUS-04` is closed as well.** A superseded record leaves every view and
 keeps its path and its bytes, the derived document carries the correction chain
 so an old identifier still finds what answers now, and a fork and a cycle are
-each refused. The next item is `PUB-03`, the multi-format publisher, which
-derives its formats from the bundle `PUB-01` assembles rather than beside it.
+each refused.
+
+⭐ **And `PUB-03`**, over four of its five renderings: a combined JSON carrying
+each record's own bytes, one compact document per line, a tabular view that
+publishes what it omits, and deterministic CBOR. ⛔ The SQLite one is split out
+as `PUB-05` and is **blocked on an operator decision** about a dependency, which
+`TODO/PROGRESS.md` carries under pending decisions. The next unblocked item is
+`CLIENT-01`, `CLIENT-06` or `CLIENT-05`, and each of those needs a capture host
+this session does not have, so `ACQ-05` and `FOUND-04` are the next ones that
+can actually move.
 
 ⛔ **Nothing has ever been published.** The publisher has never run against this
 repository's own remote and must not until a measured record exists; everything
@@ -34,8 +42,9 @@ preference. A client entry's acceptance needs a capture, a capture needs a host
 an install on Windows. `CI-03` owns the pair; `docs/capture-host.md` carries
 both contracts.
 
-**In flight:** Nothing. `CI-01` and `CORPUS-04` each landed whole, with entry,
-index, summary and record updated in the same change. No files half-edited.
+**In flight:** Nothing. `CI-01`, `CORPUS-04` and `PUB-03` each landed whole,
+with entry, index, summary and record updated in the same change. No files
+half-edited.
 
 **Tree:** Clean and level with `origin/main`, on `main`, full clone. ⚠ The
 container started on a stale `claude/*` branch whose commits had already been
@@ -45,15 +54,16 @@ name. Measured on this host:
 
 | command | result |
 | --- | --- |
-| `sh scripts/common/check-gate.sh` | 17 checks, 16 passed, 0 failed, 1 skipped, 0 unavailable |
-| `pwsh -File scripts/common/check-gate.ps1` | 17 checks, 10 passed, 0 failed, 1 skipped, 6 unavailable |
+| `sh scripts/common/check-gate.sh` | 18 checks, 17 passed, 0 failed, 1 skipped, 0 unavailable |
+| `pwsh -File scripts/common/check-gate.ps1` | 18 checks, 10 passed, 0 failed, 1 skipped, 7 unavailable |
 | `sh scripts/ci/check-workflow.sh` | 34 cases, 34 passed, 0 failed |
-| `cargo test --workspace --locked --all-targets` | 36 binaries, 343 passed, 0 failed |
+| `cargo test --workspace --locked --all-targets` | 37 binaries, 350 passed, 0 failed |
 | `cargo test --workspace --locked --doc` | 2 passed, 0 failed |
 | `sh scripts/corpus/check-store.sh` | 14 cases, 14 passed, 0 failed |
 | `sh scripts/corpus/check-corpus.sh` | 14 cases, 14 passed, 0 failed |
 | `sh scripts/corpus/check-indexes.sh` | 15 cases, 15 passed, 0 failed |
 | `sh scripts/publishing/check-release.sh` | 13 cases, 13 passed, 0 failed |
+| `sh scripts/publishing/check-formats.sh` | 16 cases, 16 passed, 0 failed |
 | `sh scripts/publishing/check-publish.sh` | 15 cases, 15 passed, 0 failed |
 | `cargo fmt`, `cargo clippy --workspace --locked --all-targets -- -D warnings`, `shellcheck`, `shfmt -d -i 2 -ci` | exit 0 |
 
@@ -96,6 +106,16 @@ is the difference a claim audit exists to find.
 corrected store and finding the original still there proves it was written, not
 that it was left alone. Build the store with and without, and compare the earlier
 record's bytes between them.
+
+⭐ **Two implementations agreeing beats one agreeing with itself.** `PUB-03`'s
+CBOR encoder is checked against `cbor2` 6.1.4, and not by a round trip: that
+reader's own canonical encoding of what it read is byte-identical to ours. A
+third-party reader belongs in an entry's driven pass rather than in the gate,
+which is where `libtorrent` and `torf` sit too.
+
+⚠ **An assertion can fail for the right reason.** A case asserting a corrected
+record's identifier appears nowhere is false by design, because a correction
+names what it corrects. Compare identifiers, not text.
 
 ⚠ A harness that runs CI's commands must read them **out of the workflow**. A
 copy of a build command in a harness proves something about the copy. Ask by job

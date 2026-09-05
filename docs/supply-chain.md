@@ -85,6 +85,22 @@ same torrent, to save one small crate. ⚠ The crate is checked against RFC 3174
 own vectors rather than trusted, in
 [`../crates/bit-ids-lab/src/torrent.rs`](../crates/bit-ids-lab/src/torrent.rs).
 
+`PUB-03` added five published renderings and **no** third-party crate. JSON,
+JSONL and CSV need no encoder the crate does not already have, and the CBOR one
+is written here for the reason the wire codecs are: the published bytes are what
+a digest names. ⚠ The subset is small only because the input is a JSON document,
+so there are no tags, no indefinite lengths and no floats to get wrong. ⭐ It is
+checked against `cbor2` 6.1.4 rather than trusted, and not by a round trip: that
+reader's own canonical encoding of what it read is byte-identical to ours, which
+is two implementations of RFC 8949 section 4.2.1 agreeing rather than one
+agreeing with itself.
+
+⛔ `PUB-05`, the SQLite rendering, is the decision this one did not take.
+`rusqlite` brings a vendored C library and a build script into a workspace whose
+lints say `unsafe_code = "forbid"`, and writing the file format here means new
+unaudited code in the component that publishes evidence. The entry carries both
+routes and a recommendation; it is blocked on the operator rather than on work.
+
 `OBS-09` added `serde_json` 1.0.151 to `bit-ids-lab` as a **dev**-dependency, and
 no new package: `bit-ids` already depends on it, so the lockfile diff is one line
 naming the existing crate against another member. ⭐ **It is a dev-dependency on

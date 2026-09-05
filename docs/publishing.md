@@ -22,9 +22,13 @@ indexes/v1/profiles.json
 formats/bit-ids-v1.json
 formats/bit-ids-v1.jsonl
 formats/bit-ids-v1.csv
+formats/bit-ids-v1.columns.json
 formats/bit-ids-v1.sqlite3
 formats/bit-ids-v1.cbor
 ```
+
+⚠ `bit-ids-v1.sqlite3` is the one path here nothing writes yet. `PUB-05` owns it
+and is blocked on a dependency decision, not on work.
 
 ⛔ **A record's path carries its whole identity tuple, and `<package>` is in it
 because the record identifier digests it.** This layout omitted that segment
@@ -94,6 +98,23 @@ between them each published byte is covered once.
 CSV is a lossy tabular view and names which nested fields it omits. JSON and
 CBOR carry the complete normalized model. SQLite provides indexed tables and
 foreign-key integrity. Raw binary evidence is never embedded into CSV.
+
+[`formats`](../crates/bit-ids/src/formats.rs) renders them and `PUB-03` owns it,
+with `cargo run -p bit-ids --example build-formats -- STORE OUT` as the driving
+surface and [`check-formats.sh`](../scripts/publishing/check-formats.sh) as its
+prover.
+
+⛔ **Every rendering is a function of the canonical document.** The combined
+JSON carries each record's own bytes verbatim, so slicing one out yields exactly
+what was published; the others are produced by reading that document back. A
+rendering cannot then carry a field the published record does not. ⚠ Which
+records are rendered is not decided here either: it is
+[`index`](../crates/bit-ids/src/index.rs)'s answer, so a record a correction
+retracted leaves the tabular view at the same moment it leaves the lookups.
+
+⚠ **`bit-ids-v1.columns.json` is how the tabular view names its omissions.** A
+consumer reading only the CSV would otherwise have no way to learn that the
+acquisition routes and the evidence list exist.
 
 ## Workflow permissions
 

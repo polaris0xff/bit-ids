@@ -161,6 +161,7 @@ Add-Unavailable 'check-store' 'the plants need a POSIX filesystem; CI-03 residua
 Add-Unavailable 'check-corpus' 'shares that harness; CI-03 residual'
 Add-Unavailable 'check-indexes' 'shares that harness; CI-03 residual'
 Add-Unavailable 'check-release' 'shares that harness; CI-03 residual'
+Add-Unavailable 'check-formats' 'shares that harness; CI-03 residual'
 Add-Unavailable 'check-publish' 'shares that harness; CI-03 residual'
 
 # ⭐ THE SLOW ONE, and ⚠ it is the one part of this gate that needs a POSIX

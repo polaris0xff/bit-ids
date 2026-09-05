@@ -5,6 +5,38 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-06T17:05:00Z
+
+- `PUB-03`, the multi-format publisher, closed over four of its five renderings.
+  Record: [`TODO/publishing.md`](TODO/publishing.md).
+- ⛔ The SQLite rendering is split out as `PUB-05` and is blocked on an operator
+  decision rather than on work. Both routes to it cost something this project has
+  been deliberate about; [`docs/supply-chain.md`](docs/supply-chain.md) carries
+  the argument and the entry carries the recommendation. Nothing was dropped and
+  the split is recorded.
+- ⛔ Every rendering is a function of the canonical document. The combined JSON
+  carries each record's own bytes verbatim, so slicing one out yields exactly
+  what was published and digested; JSONL and CBOR are produced by reading that
+  document back; the tabular cells are read out of it by pointer.
+- ⛔ Which records are rendered is `CORPUS-04`'s answer and not a second filter.
+  A renderer that selected on its own would have kept publishing a retracted
+  measurement in the table, which is the rendering a reader is least likely to
+  cross-check.
+- ⭐ The CBOR encoder is written here and checked against `cbor2` 6.1.4 rather
+  than trusted, and not by a round trip: that reader's own canonical encoding of
+  what it read is byte-identical to ours. Two implementations of RFC 8949
+  section 4.2.1 agreeing is a stronger result than one agreeing with itself.
+- ⚠ `formats/bit-ids-v1.columns.json` publishes the columns and the seven record
+  sections no row can hold, so a consumer reading only the CSV can discover what
+  it is not being told.
+- ⛔ A test got something wrong, correctly. It first asserted the corrected
+  record's identifier appears nowhere; that is false by design, because a
+  correction names what it corrects. The rule is that it is not published as a
+  record, so identifiers are compared rather than text searched.
+- `check-formats.sh` joins the `sh` gate as the seventh mutation prover, and the
+  two examples now share one store reader rather than growing a second copy.
+- Deployment: nothing deployed. No capture was taken. Nothing was published.
+
 ### 2026-09-06T14:40:00Z
 
 - `CORPUS-04`, supersession and correction records. Record:

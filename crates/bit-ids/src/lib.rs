@@ -29,6 +29,7 @@ pub mod agreement;
 pub mod canonical;
 pub mod corpus;
 pub mod equivalence;
+pub mod formats;
 pub mod identity;
 pub mod index;
 mod json;

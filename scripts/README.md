@@ -19,6 +19,12 @@ from any working directory.
 - [`publishing/check-release.sh`](publishing/check-release.sh) assembles a
   release twice, compares the bytes, and hands the checksum file to `sha256sum
   -c`, which is a reader this project did not write.
+- [`publishing/check-formats.sh`](publishing/check-formats.sh) renders every
+  published format over a store that carries a correction, compares two renders
+  as bytes, checks that the corrected record is not published as a record in any
+  of them, and hands the assembled checksum file to `sha256sum -c`. ⚠ It does
+  not decode the CBOR: this project has no CBOR reader, and using its own
+  encoder to read it back would be checking the writer against itself.
 - [`publishing/publish-data.sh`](publishing/publish-data.sh) appends an
   assembled bundle to the data branch: the append rule is checked before the
   push, nothing re-enables force, and the branch is read back and verified
@@ -31,8 +37,8 @@ from any working directory.
   catch, and runs the offending workflow step against it. Every command it runs
   is read out of `.github/workflows/ci.yml` by job and step name, so a harness
   that has drifted from CI reports a missing step rather than a pass.
-- [`corpus/store-lib.sh`](corpus/store-lib.sh) is sourced by all five and is
-  never run. ⚠ It sits under `corpus/` because that is where the first harness
+- [`corpus/store-lib.sh`](corpus/store-lib.sh) is sourced by all seven of the
+  harnesses above and is never run. ⚠ It sits under `corpus/` because that is where the first harness
   to need it was, and a publishing check sources it across directories rather
   than growing a second copy. It holds what a mutation harness needs: build an example, make a scratch
   tree, digest a directory, verify a plant landed, count a row.
@@ -60,10 +66,10 @@ contract and is where that lands, rather than a second implementation written
 now with nothing exercising it.
 
 `acquisition/check-runner.sh`, the three `corpus/check-*.sh` harnesses and the
-two `publishing/check-*.sh` ones are the mutation provers, and none has a twin.
-All six run in the `sh` gate and are reported as named skips in the PowerShell
-one. `check-runner` proves guards that read `/proc/net/route`, so it has nothing
-to prove on Windows until `CI-03` writes the Windows pair. The five corpus and publishing
+three `publishing/check-*.sh` ones are the mutation provers, and none has a
+twin. All seven run in the `sh` gate and are reported as declared rows in the
+PowerShell one. `check-runner` proves guards that read `/proc/net/route`, so it has nothing
+to prove on Windows until `CI-03` writes the Windows pair. The six corpus and publishing
 provers hold rules that are not platform-specific at all, and the Rust suite
 exercises every one of them on both CI lanes; ⚠ what they plant includes a
 symbolic link and a named pipe against a real filesystem, and neither is
@@ -71,7 +77,7 @@ available to an unprivileged Windows session. A second
 implementation that skipped those two plants would report a smaller pass under
 the same name, which is the shape `check-twins.sh` calls invisible drift.
 
-`ci/check-workflow.sh` is a seventh mutation prover and the one deliberately
+`ci/check-workflow.sh` is an eighth mutation prover and the one deliberately
 kept **out** of the gate. Two of its cases run the workflow's own *Repository
 gate* step, so a runner listed in the gate that also invokes the gate would
 re-enter itself; `check-gate.sh` keeps `check-twins` out of its pair list for

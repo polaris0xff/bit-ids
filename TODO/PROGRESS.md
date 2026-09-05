@@ -2,11 +2,11 @@
 
 State instant: 2026-09-06
 Baseline commit: `ad0b68f` on `main`
-Total: 56
+Total: 57
 Open: 30
 In progress: 0
 Blocked: 0
-Done: 26
+Done: 27
 
 ## Current state
 
@@ -307,6 +307,14 @@ the concurrency group `PUB-02` left as residuals. ⛔ **It cannot fire on its
 own**, its dry run is the default, and it has never run: its first step wants a
 bundle from a capture run and there are no captures.
 
+⭐ `PUB-03` is closed as well, so the record set has consumer-facing renderings:
+a combined JSON carrying each record's own bytes, one compact document per line,
+a tabular view that publishes what it omits, and deterministic CBOR. ⛔ **Which
+records they carry is `CORPUS-04`'s answer rather than a second filter**, so a
+retracted measurement leaves the table at the moment it leaves the lookups.
+⚠ The SQLite rendering is split out as `PUB-05` and is blocked on a dependency
+decision the operator owns.
+
 ⭐ `CORPUS-04` is closed too, so a correction changes an answer rather than only
 being recordable. A superseded record leaves every view and keeps its path and
 its bytes, and the derived document carries the chain, so a consumer holding an
@@ -316,9 +324,7 @@ publishable, and a superseded one was.
 
 ## Work order
 
-1. `PUB-03`, the multi-format publisher, which derives its formats from the
-   bundle `PUB-01` assembles rather than beside it.
-2. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
+1. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
    captures, on Linux only until `CI-03` provides the Windows guard pair.
    ⛔ **They stay behind the corpus work on a measurement rather than a
    preference:** their acceptance needs a capture, a capture needs a host
@@ -326,15 +332,25 @@ publishable, and a superseded one was.
    refused. `TODO/clients.md` carries the three routes that were tried on
    2026-09-05. ⭐ Neither the observer layer nor the store blocks them any more;
    `CI-03` and a host are what remain.
-3. `ACQ-05`, the artifact cache, and `FOUND-04`, the licence register, before
+2. `ACQ-05`, the artifact cache, and `FOUND-04`, the licence register, before
    the first proprietary client is acquired.
-4. `CI-02` through `CI-04`, then the remaining client and engine breadth.
-5. Consumer library, public documentation, and refinements.
+3. `CI-02` through `CI-04`, then the remaining client and engine breadth.
+4. `PUB-04` and `PUB-05`, then the consumer library, public documentation and
+   refinements. ⚠ `PUB-05` is blocked on the operator decision above.
 
 ## Pending operator decisions
 
-None. Candidate package routes and proprietary-client availability are
-measurements for their acquisition entries, not bootstrap decisions.
+⛔ **One, and `PUB-05` carries it in full: how the SQLite rendering gets
+written.** `rusqlite` brings a vendored C library and a build script into a
+workspace whose lints say `unsafe_code = "forbid"`; writing the file format here
+means new unaudited code producing B-tree pages in the component that publishes
+evidence. The recommendation is the crate, pinned, with the exception recorded
+against that one dependency rather than the workspace lint relaxed. ⚠ Nothing
+is blocked behind the answer except that one rendering: `PUB-03` shipped the
+other four.
+
+Candidate package routes and proprietary-client availability remain measurements
+for their acquisition entries, not bootstrap decisions.
 
 ## Known gaps in the local gate
 

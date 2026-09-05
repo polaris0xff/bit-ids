@@ -21,7 +21,7 @@
 //! [`build`] reports how many it left out, because a count with no denominator
 //! is what makes an omission invisible.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 
 use crate::agreement::publishable;
@@ -620,6 +620,27 @@ impl Indexes {
         Sha256Digest::of(self.to_json().as_bytes())
     }
 
+    /// Every record these views are over, ascending.
+    ///
+    /// ⛔ **THE ONE ANSWER TO "WHICH RECORDS ARE PUBLISHED".** Only publishable
+    /// records enter a view and never one something corrects, and that rule is
+    /// applied in `build`. A caller that re-derived it would hold a second
+    /// spelling of it, and the two would drift in the direction that publishes a
+    /// retracted measurement in one rendering while the lookups had stopped
+    /// naming it. `PUB-03` asks this rather than filtering a store again.
+    ///
+    /// ⚠ Read off the target index, which carries exactly one row per included
+    /// record because every record has a target and nothing else keys on it.
+    /// `the_record_set_is_what_the_views_include` is what pins that.
+    #[must_use]
+    pub fn records(&self) -> BTreeSet<RecordId> {
+        self.indexes
+            .iter()
+            .filter(|index| index.kind == IndexKind::Target)
+            .flat_map(|index| index.rows.iter().map(|row| row.record))
+            .collect()
+    }
+
     /// How many rows the whole set carries, latest included.
     #[must_use]
     pub fn rows(&self) -> usize {
@@ -718,7 +739,7 @@ pub fn rows_resolve(indexes: &Indexes, corpus: &Corpus) -> Result<(), Violations
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::{BEP10_CLIENT_FIELD, INDEX_SCHEMA, IndexKind, PEER_ID_FIELD, build, rows_resolve};
     use crate::canonical::{RelPath, Sha256Digest, Slug, Version};
     use crate::corpus::Corpus;
@@ -736,13 +757,13 @@ mod tests {
         Profile::from_json(PROFILE).expect("the fixture record validates")
     }
 
-    fn slug(text: &str) -> Slug {
+    pub(crate) fn slug(text: &str) -> Slug {
         Slug::parse(text).expect("a canonical slug")
     }
 
     /// Three dotted numbers, which is how most of the catalogue spells a
     /// version.
-    fn schemes() -> BTreeMap<Slug, VersionScheme> {
+    pub(crate) fn schemes() -> BTreeMap<Slug, VersionScheme> {
         BTreeMap::from([(
             slug("fixture-client"),
             VersionScheme {
@@ -761,7 +782,7 @@ mod tests {
     /// every route's reported version moved with it, because `E-ACQ-04` refuses
     /// a route that installed a version the record does not declare, and the
     /// identifier re-derived, because it digests the version.
-    fn record_at(version_text: &str) -> Profile {
+    pub(crate) fn record_at(version_text: &str) -> Profile {
         let mut record = profile();
         let version = Version::parse(version_text).expect("a reported version");
         record.build.version = version.clone();
@@ -814,7 +835,7 @@ mod tests {
     }
 
     /// A store carrying exactly these records, each at its derived path.
-    fn corpus_of(records: Vec<Profile>) -> Corpus {
+    pub(crate) fn corpus_of(records: Vec<Profile>) -> Corpus {
         let mut tree = StoreTree::new();
         let mut placed = Vec::new();
         for record in records {
@@ -844,7 +865,7 @@ mod tests {
     /// different capture, and therefore a different identifier. Passing the
     /// original's own capture reproduces the original's identifier exactly,
     /// which is how the cycle case below is built at all.
-    fn correction_at(version_text: &str, capture: &str, prior: RecordId) -> Profile {
+    pub(crate) fn correction_at(version_text: &str, capture: &str, prior: RecordId) -> Profile {
         let mut record = record_at(version_text);
         record.capture.id = slug(capture);
         record.id = RecordId::derive(&RecordKey {
@@ -874,7 +895,7 @@ mod tests {
     /// ⚠ The observations have to actually differ. `E-COR-14` refuses a claimed
     /// disagreement over observations that are all equal, which is the schema
     /// keeping a conflict honest rather than an obstacle here.
-    fn make_provisional(record: &mut Profile) {
+    pub(crate) fn make_provisional(record: &mut Profile) {
         let entry = record
             .corroboration
             .first_mut()

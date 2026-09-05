@@ -1,17 +1,17 @@
 # Work index
 
-Total: 56
+Total: 57
 Open: 30
 In progress: 0
 Blocked: 0
-Done: 26
+Done: 27
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | P0 | 0 | 0 | 0 | 24 | 24 |
-| P1 | 29 | 0 | 0 | 2 | 31 |
+| P1 | 29 | 0 | 0 | 3 | 32 |
 | P2 | 1 | 0 | 0 | 0 | 1 |
-| Total | 30 | 0 | 0 | 26 | 56 |
+| Total | 30 | 0 | 0 | 27 | 57 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -62,8 +62,9 @@ Done: 26
 | LIB-02 | P1 | L | OPEN | bit-cli integration adapter |
 | PUB-01 | P0 | L | DONE | Deterministic release assembler |
 | PUB-02 | P0 | L | DONE | Protected append-only data branch publisher |
-| PUB-03 | P1 | L | OPEN | Multi-format GitHub release publisher |
+| PUB-03 | P1 | L | DONE | Multi-format GitHub release publisher |
 | PUB-04 | P1 | M | OPEN | Stable raw and index access paths |
+| PUB-05 | P1 | M | OPEN | SQLite rendering of the published records |
 | CI-01 | P0 | L | DONE | Complete cross-platform quality gate |
 | CI-02 | P1 | L | OPEN | Stable-release staleness monitor |
 | CI-03 | P1 | L | OPEN | Trusted capture runner matrix |

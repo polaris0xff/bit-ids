@@ -186,7 +186,7 @@ than one that does neither.
 ## PUB-03: Multi-format GitHub release publisher
 
 Source: operator request for many formats and paths
-Priority: P1 | Effort: L | Status: OPEN
+Priority: P1 | Effort: L | Status: DONE
 
 Problem: JSON alone is inconvenient for streaming, tabular analysis, embedded
 tools, and compact transfer.
@@ -196,6 +196,135 @@ and schema documentation, all derived from the one assembled bundle.
 
 Prove: release asset digests match the assembled manifest and cross-format
 tests reconstruct equivalent normalized records.
+
+⛔ **The SQLite rendering is split out and `PUB-05` carries it**, because it is
+the one format here that cannot be written without a decision the operator owns:
+a new third-party dependency carrying a C library and `unsafe` code, into a
+workspace whose lints say `unsafe_code = "forbid"`. Nothing was dropped. The
+other four are here and the split is recorded rather than the entry being
+quietly narrowed.
+
+### Decision: the encoders are written here, and the argument is not "small"
+
+`docs/supply-chain.md` asks that a dependency be argued for in the entry that
+adds one. This entry adds none. JSON and JSONL and CSV need no encoder beyond
+what the crate already has, and the CBOR encoder is written here for the reason
+the wire codecs are: the published bytes are what a digest names, so the encoder
+has to be one this project can read. ⚠ The subset is small and closed **because
+the input is a JSON document**, not an arbitrary value: no tags, no indefinite
+lengths, no floats.
+
+⭐ **And a hand-written encoder is exactly the thing to check against somebody
+else's.** `cbor2` 6.1.4 does not merely parse the file: re-encoding what it read,
+with its own canonical flag, produces **the same bytes**. Two independent
+implementations of RFC 8949 section 4.2.1 agreeing byte for byte is a much
+stronger result than a round trip through this project's own reader would have
+been.
+
+### Decision: every rendering is a function of the canonical document
+
+⛔ **The combined JSON carries each record's own bytes**, verbatim rather than
+re-indented, so a reader who slices one out has exactly what was published and
+digested. JSONL and CBOR are produced by reading that document back and
+re-emitting it, so neither can carry a field the published JSON does not, and
+the tabular cells are read out of it by pointer rather than off the typed
+record. A second rendering of a value the canonical form already spells is the
+`canonical.rs` hazard applied to documents.
+
+⚠ **The tabular view says what it omits in a file rather than in prose.**
+`formats/bit-ids-v1.columns.json` names the columns and the seven record
+sections no row can hold, so a consumer reading only the CSV can discover what
+it is not being told. `the_omitted_sections_are_ones_no_column_reads` checks
+both directions of that claim.
+
+### ⛔ What the door sweep found: the record set is `CORPUS-04`'s
+
+A renderer that filtered the store on its own would have kept publishing a
+corrected record in the tabular view while the lookups had stopped naming it,
+and the table is the rendering a reader is least likely to cross-check.
+`Indexes::records` is the one answer to which records are published and this
+asks it. ⭐ The driven run shows it working: a store of three records renders
+two, and the one it leaves out is the one a correction retracted.
+
+### Acceptance, all run on 2026-09-06
+
+- `cargo test --workspace --locked --all-targets`
+- `sh scripts/publishing/check-formats.sh`
+- `sh scripts/common/check-gate.sh`
+
+### Closure evidence, 2026-09-06
+
+| what | measured |
+| --- | --- |
+| `sh scripts/publishing/check-formats.sh` | 16 cases, 16 passed, 0 failed |
+| `cargo test --workspace --locked --all-targets` | 37 binaries, 350 passed, 0 failed |
+| driven pass | a three-record store with one correction rendered into five files twice, byte-identical, then assembled into a release whose manifest describes every one |
+| independent verification | `sha256sum -c` agrees with every published digest, and has been seen to refuse a file whose bytes moved |
+| independent verification | `cbor2` 6.1.4 decodes the CBOR to the same value as the JSON, and its own canonical encoding of that value is byte-identical to ours |
+
+⚠ **The suite cannot decode the CBOR and says so.** A test that read it back
+with this project's own encoder would be checking the writer against itself, so
+the Rust case asserts the file is non-empty and the identifiers are compared in
+the two textual renderings. `cbor2` is what closes it, in the driven pass, the
+same way `libtorrent` and `torf` closed `OBS-08`'s.
+
+### ⛔ What a test got wrong, correctly
+
+`a_superseded_record_is_in_no_rendering` first asserted that the corrected
+record's identifier appears nowhere in any rendering, and it failed. That is
+false by design: a correction names what it corrects, so the identifier is in
+the published bytes as the value of `supersedes`. The rule is that the record is
+not **published as a record**, so the case compares identifiers rather than
+searching text, and `check-formats.sh` carries a case asserting the correction
+still names what it corrects, because a version of this that weakened the
+assertion the wrong way would pass over a correction that had forgotten to.
+
+### Residuals
+
+- ⚠ `PUB-05` owns the SQLite rendering and the dependency decision behind it.
+  Until it lands, `docs/publishing.md`'s layout lists a file nothing writes, and
+  it says so.
+- ⚠ The CBOR encoder covers what a JSON document contains and refuses anything
+  else under `E-FMT-03`. A float is the case that would need the one rule this
+  subset does not hold, and the record model has no float today.
+
+## PUB-05: SQLite rendering of the published records
+
+Source: split out of `PUB-03` on 2026-09-06
+Priority: P1 | Effort: M | Status: OPEN
+
+Problem: `docs/publishing.md` promises `formats/bit-ids-v1.sqlite3`, with
+indexed tables and foreign-key integrity, and nothing writes it. A consumer who
+wants to query the catalogue rather than parse it has no route.
+
+Premise: measured while closing `PUB-03`, not read. The other four renderings
+need no dependency at all. This one needs either a third-party crate or a
+hand-written encoder for a file format that is genuinely hard to get right.
+
+⛔ **It is blocked on an operator decision rather than on work.** Both routes
+cost something this project has been deliberate about:
+
+- `rusqlite` brings `libsqlite3-sys`, a vendored C library and a build script,
+  into a workspace whose lints say `unsafe_code = "forbid"`. It is the largest
+  dependency this repository would have taken, and `docs/supply-chain.md` asks
+  for that argument in the entry rather than in a commit message.
+- Writing the file format here means new unaudited code producing B-tree pages
+  and varints in the component that publishes evidence, to avoid one crate. That
+  is the argument `OBS-08` rejected for SHA-1, and it is stronger here because
+  the format is larger.
+
+Recommendation: take `rusqlite` with the bundled feature, pinned and checked
+against a database a reader this project did not write can open, and record the
+`unsafe` exception against this one dependency rather than relaxing the
+workspace lint. ⚠ `sqlite3` is not installed on a session host, so the
+independent reader has to be provisioned the way `cbor2` was.
+
+Approach: once decided, derive the tables from the same canonical documents the
+other renderings use, so no rendering can carry a field another does not.
+
+Prove: the database opens in a reader this project did not write, every record
+in it round-trips to the same normalized record as the JSON rendering, and two
+builds over one store produce byte-identical files.
 
 ## PUB-04: Stable raw and index access paths
 
