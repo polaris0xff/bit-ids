@@ -384,6 +384,12 @@ impl Bundle {
             // artifact somewhere else, with the manifest citing a path that
             // reads as inside the bundle. Two gates on one action is the shape
             // `docs/methodology/reviews.md` names, and this is the second.
+            //
+            // ⚠ The root is resolved in `create` for the other half of this:
+            // compared against an unresolved root, the test below refuses every
+            // write when the root is itself reached through a symlink. The
+            // acceptance suite builds exactly that case rather than arguing
+            // about which platforms have one.
             if !fs::canonicalize(parent)?.starts_with(&self.root) {
                 return Err(BundleError::Outside(path));
             }

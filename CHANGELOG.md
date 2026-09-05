@@ -5,6 +5,35 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-05T11:20:00Z
+
+- The session's four closing reviews. Record:
+  [`docs/history/SESSION-2026-09-05-EVIDENCE.md`](docs/history/SESSION-2026-09-05-EVIDENCE.md).
+- ⛔ The door sweep found the capture path untested as a whole. Each leg was
+  covered and nothing drove a torrent through an observer into a bundle, which
+  is the composition class `gate.md` names.
+  `crates/bit-ids-probe/tests/generated_torrent.rs` closes it, and the two
+  plants written for it are refused.
+- `REDACTED` was public with no reader outside its own module. The acceptance
+  suite now asserts the constant and its literal, so the placeholder a bundle
+  reader recognises cannot drift and the constant is not surface with no
+  consumer.
+- ⭐ The claim audit's fourth lens paid: the qBittorrent release listing
+  answered with four releases and that is the source's own shape, not
+  truncation. Page two is empty and `tags` answers with at least a hundred, so
+  a resolution reading only `releases` selects from a much smaller population
+  than the target's versions. Recorded in [`TODO/clients.md`](TODO/clients.md).
+- `TODO/RULES.md` now states that `Closure evidence` is a dated measurement and
+  a `Prove` is a live command, which is the distinction `CI-05`'s check encodes
+  and nothing had written down.
+- One code comment argued from platform folklore where the acceptance suite
+  builds the case; it now points at the test.
+- ⛔ The Windows CI lane is red on `f9239a5` at *Install pinned Rust toolchain*,
+  a TCP connect timeout to `static.rust-lang.org` before any repository code
+  ran, with every later step skipped and the Linux lane green. Not a defect in
+  the change, and not evidence about the tree either.
+- Deployment: nothing deployed. No capture was taken.
+
 ### 2026-09-05T10:55:00Z
 
 - ⛔ Moved the client entries behind `CORPUS-01` in the work order, on a
@@ -72,8 +101,9 @@ Nothing is released yet. Entries accumulate here until the first
   must resolve under it; a path already held by a symlink, a file or a directory
   is refused rather than followed or overwritten.
 - ⭐ That check has a second half that is easy to miss: without resolving the
-  root, it refuses **every** write on a host whose root is itself behind a
-  symlink, which is `/tmp` on macOS and a bind mount anywhere.
+  root, it refuses **every** write on a host whose root is itself reached
+  through a symlink. The acceptance suite builds that case rather than arguing
+  from platform folklore, and the mutation dropping it is refused by that test.
 - ⛔ A transcript is never scrubbed and the type has no argument for it: the
   bytes a build put on the wire are the measurement. Scrubbing belongs to text a
   host produced, with every removal declared and counted, and the scrubber

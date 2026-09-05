@@ -19,12 +19,16 @@
 //! reads back off a real connection, at both surfaces a capture uses to
 //! identify a torrent.
 
+use std::collections::BTreeMap;
 use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::time::Duration;
 
+use bit_ids::canonical::{Sha256Digest, Slug};
+use bit_ids::manifest::PhaseName;
+use bit_ids::record::EvidenceKind;
 use bit_ids_lab::torrent::PIECE_HASH_LEN;
-use bit_ids_lab::{Lab, SyntheticTorrent, TorrentSpec};
+use bit_ids_lab::{Bundle, Lab, SyntheticTorrent, TorrentSpec, TranscriptOf};
 use bit_ids_probe::HttpTracker;
 use bit_ids_probe::peer_wire::{PeerIdentity, PeerWire};
 use bit_ids_wire::peer_wire::{INFO_HASH_LEN, RESERVED_LEN};
@@ -151,5 +155,121 @@ fn the_generated_info_hash_survives_the_announce_the_tracker_observer_records() 
         decoded,
         torrent.info_hash(),
         "the info hash the tracker observer decoded is not the generated one"
+    );
+}
+
+/// ⛔ The whole path a capture walks, end to end: a torrent, an observer that
+/// records what a client said about it, and the evidence a manifest will cite.
+///
+/// Each leg is covered on its own. Nothing covered the assembly, and that is the
+/// class `docs/methodology/gate.md` names: each part correct, the composition
+/// wrong. This crate is the only one that depends on both halves, so it is the
+/// only place the test can live.
+#[test]
+fn an_announce_about_the_generated_torrent_reaches_the_evidence_a_manifest_cites() {
+    let torrent = generated();
+    let tracker = HttpTracker::default();
+    let lab = Lab::builder()
+        .deadline(Duration::from_secs(60))
+        .stream("tracker-http", tracker.responder())
+        .expect("a canonical endpoint name")
+        .start()
+        .expect("loopback binds");
+
+    let head = format!(
+        "GET /announce?info_hash={}&peer_id=-qB5000-abcdefghijkl&port=6881 HTTP/1.1\r\n\r\n",
+        percent_encode(torrent.info_hash())
+    );
+    let address = lab.endpoint("tracker-http").expect("added").address();
+    let mut client = TcpStream::connect(address).expect("the endpoint accepts");
+    client
+        .set_read_timeout(Some(Duration::from_secs(10)))
+        .expect("a read timeout is settable");
+    client.write_all(head.as_bytes()).expect("write");
+    client.flush().expect("flush");
+    let mut answer = [0_u8; 16];
+    let _ = client.read(&mut answer).expect("the endpoint answers");
+    drop(client);
+    let journal = lab.shutdown();
+
+    let root = std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join("capture-path");
+    let _ = std::fs::remove_dir_all(&root);
+    let mut bundle = Bundle::create(
+        &root,
+        Slug::parse("bit-ids-probe").expect("a slug"),
+        PhaseName::Observed,
+    )
+    .expect("the bundle root is creatable");
+    bundle
+        .transcripts(
+            &journal,
+            &BTreeMap::from([(
+                Slug::parse("tracker-http").expect("a slug"),
+                TranscriptOf {
+                    id: Slug::parse("ev-tracker-capture").expect("a slug"),
+                    kind: EvidenceKind::TrackerCapture,
+                },
+            )]),
+        )
+        .expect("the plan names the endpoint");
+    bundle
+        .transcript(
+            Slug::parse("ev-metainfo").expect("a slug"),
+            EvidenceKind::Metainfo,
+            "fixture/generated.torrent",
+            torrent.metainfo(),
+        )
+        .expect("the metainfo is written");
+    bundle.verify().expect("the bundle verifies");
+
+    // ⭐ The identity the observer decoded is the identity the artifact carries.
+    // A capture that recorded the announce and wrote a transcript of some other
+    // exchange would pass every test either half has on its own.
+    let capture = bundle
+        .evidence()
+        .iter()
+        .find(|record| record.kind == EvidenceKind::TrackerCapture)
+        .expect("the run wrote a tracker capture");
+    let written = std::fs::read_to_string(root.join(capture.path.as_str()))
+        .expect("the transcript is on disk");
+    // ⚠ The transcript holds the raw wire bytes as lowercase hex, so what to
+    // look for is the hex of the request's ASCII, not the request itself. The
+    // two encodings are easy to conflate and the first version of this
+    // assertion did.
+    let on_the_wire = head.as_bytes().iter().fold(String::new(), |mut out, byte| {
+        use core::fmt::Write as _;
+        write!(out, "{byte:02x}").expect("a String cannot fail");
+        out
+    });
+    assert!(
+        written.contains(&on_the_wire),
+        "the transcript does not carry the announce this client sent"
+    );
+    assert_eq!(
+        tracker.announces()[0]
+            .decoded(b"info_hash")
+            .expect("present")
+            .expect("decodes"),
+        torrent.info_hash(),
+        "the observer decoded an info hash the torrent does not have"
+    );
+    assert_eq!(torrent.info_hash().len(), PIECE_HASH_LEN);
+
+    // And the metainfo the client was handed is in the bundle beside it, so a
+    // reader can re-derive the info hash the announce carried.
+    let metainfo = bundle
+        .evidence()
+        .iter()
+        .find(|record| record.kind == EvidenceKind::Metainfo)
+        .expect("the run wrote a metainfo");
+    assert_eq!(metainfo.sha256, torrent.digest());
+    assert_eq!(
+        std::fs::read(root.join(metainfo.path.as_str())).expect("on disk"),
+        torrent.metainfo()
+    );
+    assert_eq!(
+        Sha256Digest::of(torrent.metainfo()),
+        torrent.digest(),
+        "capture.fixture does not name the file the bundle carries"
     );
 }

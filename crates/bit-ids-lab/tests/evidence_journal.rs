@@ -23,7 +23,7 @@ use bit_ids::canonical::{Sha256Digest, Slug};
 use bit_ids::manifest::{PhaseName, RedactionRule};
 use bit_ids::record::EvidenceKind;
 use bit_ids::{Profile, RunManifest, bind};
-use bit_ids_lab::evidence::TRANSCRIPT_SCHEMA;
+use bit_ids_lab::evidence::{REDACTED, TRANSCRIPT_SCHEMA};
 use bit_ids_lab::{Bundle, BundleError, Journal, Lab, Scrub, StreamReply, TranscriptOf};
 use bit_ids_wire::tracker_udp::Direction;
 use serde_json::{Value, json};
@@ -766,7 +766,13 @@ fn a_scrub_declares_what_it_removed_and_a_transcript_is_never_marked_redacted() 
         !text.contains("/home/runner/"),
         "an absolute path survived the scrub"
     );
-    assert_eq!(text.matches("[redacted]").count(), 4);
+    // ⛔ The literal and the constant. The literal is what a reader of a
+    // published bundle recognises, so a drift in it is a format change; the
+    // constant is the module's claim about that literal, and asserting only one
+    // of the two leaves the other free to move. `REDACTED` had no reader
+    // outside its own module until this line.
+    assert_eq!(REDACTED, "[redacted]");
+    assert_eq!(text.matches(REDACTED).count(), 4);
 
     // ⛔ And the transcripts are untouched: scrubbing the bytes a build put on
     // the wire would edit the measurement.

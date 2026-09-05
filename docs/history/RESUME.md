@@ -33,8 +33,8 @@ both contracts.
 | --- | --- |
 | `sh scripts/common/check-gate.sh` | 12 checks, 11 passed, 0 failed, 1 skipped |
 | `pwsh -File scripts/common/check-gate.ps1` | 12 checks, 10 passed, 0 failed, 2 skipped |
-| `cargo test --workspace --locked --all-targets` | 30 binaries, 288 passed, 0 failed |
-| `sh` and `pwsh` `check-project`, 21 planted cases | 21 correct, 0 twin disagreements |
+| `cargo test --workspace --locked --all-targets` | 30 binaries, 289 passed, 0 failed |
+| guard mutation, 4 passes | 94 plants, 91 refused, 3 named in the record |
 | `cargo test --workspace --locked --doc` | 2 passed, 0 failed |
 | `cargo fmt --all -- --check` | exit 0 |
 | `cargo clippy --workspace --locked --all-targets -- -D warnings` | exit 0 |
@@ -55,6 +55,14 @@ and needs no disposable host; running a client still does.
 on the wire, so a transcript is checked against what actually happened rather
 than against what the lab believed happened. A reader that only re-computes
 digests is checking the writer against itself.
+
+⛔ **The Windows CI lane is red on `f9239a5` and it is not this repository's
+defect.** Run 27 failed at *Install pinned Rust toolchain*, before any code ran,
+with a TCP connect timeout to `static.rust-lang.org` (`os error 10060`); every
+later step reports `skipped` and the Linux lane of the same commit is green
+including the strict repository gate. ⚠ Read the next run's conclusion on both
+lanes before doing anything about it: a toolchain download is not something a
+change here can fix, and it is not evidence about the tree either.
 
 ⛔ `check-remote-items` cannot be made to run here and installing `gh` does not
 fix it. ⭐ **That it runs in CI is verified rather than assumed:** the Linux lane
@@ -107,6 +115,11 @@ every `cargo test` acceptance as `-p <package> --locked --all-targets`.
 a session host: `sh scripts/acquisition/assert-disposable.sh --egress` exits 1
 here, so running one would be the capture that boundary refuses. `OBS-07` owns
 the stock-client controls and `CI-03` owns the runner.
+
+⭐ **The last session's record is
+[`SESSION-2026-09-05-EVIDENCE.md`](SESSION-2026-09-05-EVIDENCE.md).** It carries
+the three guards that are not refuted and what would have to be true for each to
+fire, so a later pass does not mistake an unreached guard for a proven one.
 
 **Paste:** Read `docs/AGENTS.md` in full, follow its start protocol, and take
 the first unblocked item from `TODO/PROGRESS.md`. Work on `main`. Re-measure

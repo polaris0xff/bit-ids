@@ -10,6 +10,13 @@ evidence is recorded in that entry in place.
 A blocker does not close work. Record what was tried, the exact external fact
 that prevents progress, and the event that would unblock it.
 
+⚠ **`Closure evidence` is a dated measurement of the tree at closure, not a
+claim about the tree now.** Counts in it go stale the moment the next entry
+lands and that is correct: rewriting one to match today would falsify what was
+run. A `Prove` is the opposite and must stay runnable against the current tree,
+which is why `CI-05`'s check reads `Prove` paragraphs and leaves closure
+evidence alone.
+
 ## Priority and effort
 
 - `P0`: foundational correctness, evidence integrity, or publication safety.

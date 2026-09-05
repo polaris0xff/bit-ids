@@ -50,12 +50,24 @@ every verdict kept and a digest of the bytes that were read. ⚠ One source is n
 two: the resolution is single-sourced and `ACQ-01`'s independence rule is about
 acquiring the artifact, which is a separate requirement this did not touch.
 
-⚠ **The listing answered with four releases, and that is fewer than the project
-has.** Whether the mirror paginates differently or answers a subset was not
-established, and it matters: a resolver that sees a truncated listing selects
-confidently from what it was shown. Nothing here depends on it yet, because the
-newest is the newest either way, but the next entry to use this route measures it
-rather than assuming.
+⛔ **The listing answered with four releases, and that is a property of the
+source rather than of the mirror.** It looked like truncation and it is not:
+page two of the same endpoint is empty, so four is the whole answer, while the
+`tags` endpoint on the same route answers with at least a hundred, beginning
+`release-5.2.3`, `release-5.2.2`, `release-5.2.1`, `release-5.2.0`,
+`release-5.1.4`. The project tags far more versions than it publishes as
+releases.
+
+⭐ **That matters to every future resolution and it is not a defect in the
+resolver.** `resolve` decides from the candidates it is handed, and the caller
+chooses the endpoint; a caller that reads only `releases` is selecting from a
+different and much smaller population than the project's versions, and a
+resolution saying `candidates: 4` is a claim about that endpoint rather than
+about the target. It changed nothing here because `5.2.3` leads both
+populations, and it would change the answer for a target that stops minting
+release objects. ⚠ A second source for a resolution has to be a different
+endpoint or a different index, not the same one asked twice, which is the
+independence rule `ACQ-01` already states for routes.
 
 Measured from the same listing, the release offers a Linux `AppImage`, a Windows
 `x64_setup.exe` and a source `tar.xz`, each with a detached `.asc` signature
