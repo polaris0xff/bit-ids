@@ -3,10 +3,10 @@
 State instant: 2026-09-06
 Baseline commit: `ad0b68f` on `main`
 Total: 57
-Open: 29
+Open: 28
 In progress: 0
 Blocked: 0
-Done: 28
+Done: 29
 
 ## Current state
 
@@ -307,6 +307,12 @@ the concurrency group `PUB-02` left as residuals. ⛔ **It cannot fire on its
 own**, its dry run is the default, and it has never run: its first step wants a
 bundle from a capture run and there are no captures.
 
+⭐ `ACQ-05` is closed as well, so an artifact survives a source that moved: the
+identity is the digest, a new location is a retrieval against the artifact
+already known, and the cache keeps bytes only where the register permits, which
+today is nowhere. ⚠ Nothing writes a cache document yet, because the first one
+worth writing is a real acquisition's.
+
 ⭐ `FOUND-04` is closed, so every catalogue target and every third-party package
 has a recorded licence disposition. ⛔ **Six of the nine targets with a GitHub
 upstream have no licence a detector can name**, and those rows say `unverified`
@@ -339,9 +345,8 @@ publishable, and a superseded one was.
    refused. `TODO/clients.md` carries the three routes that were tried on
    2026-09-05. ⭐ Neither the observer layer nor the store blocks them any more;
    `CI-03` and a host are what remain.
-2. `ACQ-05`, the artifact cache, which the licence register `FOUND-04` landed
-   is what it enforces, before the first proprietary client is acquired.
-3. `CI-02` through `CI-04`, then the remaining client and engine breadth.
+2. `CI-02` through `CI-04`, of which `CI-03` is what a capture host needs.
+3. The remaining client and engine breadth, behind the same capture host.
 4. `PUB-04` and `PUB-05`, then the consumer library, public documentation and
    refinements. ⚠ `PUB-05` is blocked on the operator decision above.
 

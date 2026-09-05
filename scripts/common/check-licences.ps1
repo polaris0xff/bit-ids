@@ -15,8 +15,11 @@
 #
 # ⛔ BOTH DIRECTIONS, ALWAYS. A row nothing names and a name nothing has a row
 # for are different defects and each is silent on its own.
+#
+# -Permitted prints the target ids whose row permits keeping the bytes, and
+# nothing else, so a caller can ask this file's meaning rather than parse it.
 [CmdletBinding(PositionalBinding = $false)]
-param([switch]$Json)
+param([switch]$Json, [switch]$Permitted)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -68,6 +71,20 @@ try {
         if ($text -cmatch '^notice = "(.*)"$') { $row['notice'] = $Matches[1]; continue }
     }
     Close-Block
+
+    # ⭐ THE REGISTER HAS ONE PARSER PER HALF AND THIS IS IT. ACQ-05's cache has
+    # to know which targets may have their bytes kept; a second reader of this
+    # file would be a second answer to what it permits. ⚠ Reported before any
+    # rule runs, because a caller asking what is permitted is asking about the
+    # file as written rather than about whether it is coherent.
+    if ($Permitted) {
+        foreach ($entry in ($targets | Sort-Object { $_['id'] })) {
+            if ($entry.ContainsKey('redistribute') -and $entry['redistribute'] -eq 'permitted') {
+                Write-Output $entry['id']
+            }
+        }
+        exit 0
+    }
 
     $registerText = Get-Content -Raw -LiteralPath $register
     if ($registerText -notmatch '(?m)^schema = "bit-ids/licences/1"$') {

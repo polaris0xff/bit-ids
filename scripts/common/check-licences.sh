@@ -29,6 +29,7 @@
 # Usage:
 #   sh scripts/common/check-licences.sh
 #   sh scripts/common/check-licences.sh --json
+#   sh scripts/common/check-licences.sh --permitted   # the ids that may be kept
 #
 # Exit codes: 0 clean, 1 invalid, 2 could not run.
 #
@@ -37,9 +38,15 @@
 set -u
 
 JSON=0
+PERMITTED=0
 case "${1:-}" in
   "") ;;
   --json) JSON=1 ;;
+  # ⭐ THE REGISTER HAS ONE PARSER AND THIS IS IT. ACQ-05's cache has to know
+  # which targets may have their bytes kept, and a second reader of this file
+  # would be a second answer to what it permits. --permitted prints the ids and
+  # nothing else, so a caller can ask rather than parse.
+  --permitted) PERMITTED=1 ;;
   -h | --help)
     awk 'NR>1 { if (/^#/) { sub(/^# ?/, ""); print } else exit }' "$0"
     exit 0
@@ -110,6 +117,13 @@ awk -v T="$TMP/reg-targets" -v D="$TMP/reg-deps" '
 
 sort -o "$TMP/reg-targets" "$TMP/reg-targets" 2>/dev/null || : >"$TMP/reg-targets"
 sort -o "$TMP/reg-deps" "$TMP/reg-deps" 2>/dev/null || : >"$TMP/reg-deps"
+
+# ⚠ Reported before any rule runs, because a caller asking what is permitted is
+# asking about the file as written rather than about whether it is coherent.
+if [ "$PERMITTED" = 1 ]; then
+  awk -F '\t' '$4 == "permitted" { print $1 }' "$TMP/reg-targets"
+  exit 0
+fi
 
 grep -q '^schema = "bit-ids/licences/1"$' "$REGISTER" ||
   say_fail "$REGISTER does not declare the licences schema"

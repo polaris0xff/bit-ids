@@ -26,6 +26,7 @@
 
 pub mod acquisition;
 pub mod agreement;
+pub mod cache;
 pub mod canonical;
 pub mod corpus;
 pub mod equivalence;

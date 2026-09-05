@@ -158,6 +158,7 @@ Add-Unavailable 'check-runner' 'the guards are Linux-only; ACQ-04 residual'
 # not Linux-only and the Rust suite exercises every one of them on both lanes;
 # what this lane does not do is plant them against a real filesystem. CI-03
 # owns the Windows runner.
+Add-Unavailable 'check-cache' 'shares that harness; CI-03 residual'
 Add-Unavailable 'check-store' 'the plants need a POSIX filesystem; CI-03 residual'
 Add-Unavailable 'check-corpus' 'shares that harness; CI-03 residual'
 Add-Unavailable 'check-indexes' 'shares that harness; CI-03 residual'

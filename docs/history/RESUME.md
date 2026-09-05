@@ -27,9 +27,17 @@ this session does not have.
 ⭐ **And `FOUND-04`**, the licence register: every catalogue target and every
 third-party package now has a recorded disposition, and six of the nine targets
 with a GitHub upstream turn out to have no licence a detector can name, so those
-rows say `unverified` rather than inventing one. `ACQ-05`, the artifact cache, is
-the next item that can actually move, and it is what the register exists to
-enforce.
+rows say `unverified` rather than inventing one.
+
+⭐ **And `ACQ-05`**, the artifact cache: the identity is the digest, so a source
+that moved adds a retrieval rather than an artifact, and the bytes are kept only
+where the register permits, which today is nowhere.
+
+⛔ **Everything the work order still lists needs a capture host this session
+cannot provide.** `CLIENT-01`, `CLIENT-06` and `CLIENT-05` need one directly;
+`CI-03` is what would supply it. `PUB-05` is blocked on the operator decision
+below. The next session should read `TODO/PROGRESS.md`'s work order rather than
+assuming this list.
 
 ⛔ **Nothing has ever been published.** The publisher has never run against this
 repository's own remote and must not until a measured record exists; everything
@@ -48,10 +56,9 @@ preference. A client entry's acceptance needs a capture, a capture needs a host
 an install on Windows. `CI-03` owns the pair; `docs/capture-host.md` carries
 both contracts.
 
-**In flight:** Nothing. `CI-01`, `CORPUS-04`, `PUB-03` and `FOUND-04` each
-landed whole,
-with entry, index, summary and record updated in the same change. No files
-half-edited.
+**In flight:** Nothing. `CI-01`, `CORPUS-04`, `PUB-03`, `FOUND-04` and `ACQ-05`
+each landed whole, with entry, index, summary and record updated in the same
+change. No files half-edited.
 
 **Tree:** Clean and level with `origin/main`, on `main`, full clone. ⚠ The
 container started on a stale `claude/*` branch whose commits had already been
@@ -61,10 +68,10 @@ name. Measured on this host:
 
 | command | result |
 | --- | --- |
-| `sh scripts/common/check-gate.sh` | 19 checks, 18 passed, 0 failed, 1 skipped, 0 unavailable |
-| `pwsh -File scripts/common/check-gate.ps1` | 19 checks, 11 passed, 0 failed, 1 skipped, 7 unavailable |
+| `sh scripts/common/check-gate.sh` | 20 checks, 19 passed, 0 failed, 1 skipped, 0 unavailable |
+| `pwsh -File scripts/common/check-gate.ps1` | 20 checks, 11 passed, 0 failed, 1 skipped, 8 unavailable |
 | `sh scripts/ci/check-workflow.sh` | 34 cases, 34 passed, 0 failed |
-| `cargo test --workspace --locked --all-targets` | 37 binaries, 350 passed, 0 failed |
+| `cargo test --workspace --locked --all-targets` | 38 binaries, 356 passed, 0 failed |
 | `cargo test --workspace --locked --doc` | 2 passed, 0 failed |
 | `sh scripts/corpus/check-store.sh` | 14 cases, 14 passed, 0 failed |
 | `sh scripts/corpus/check-corpus.sh` | 14 cases, 14 passed, 0 failed |
@@ -73,6 +80,7 @@ name. Measured on this host:
 | `sh scripts/publishing/check-formats.sh` | 16 cases, 16 passed, 0 failed |
 | `sh scripts/publishing/check-publish.sh` | 15 cases, 15 passed, 0 failed |
 | `sh scripts/common/check-licences.sh` | 16 target rows and 22 dependency rows, all with a disposition |
+| `sh scripts/acquisition/check-cache.sh` | 11 cases, 11 passed, 0 failed |
 | `cargo fmt`, `cargo clippy --workspace --locked --all-targets -- -D warnings`, `shellcheck`, `shfmt -d -i 2 -ci` | exit 0 |
 
 ⛔ **Run the gate with `sh scripts/common/check-gate.sh`, not from memory.** A
@@ -114,6 +122,12 @@ is the difference a claim audit exists to find.
 corrected store and finding the original still there proves it was written, not
 that it was left alone. Build the store with and without, and compare the earlier
 record's bytes between them.
+
+⚠ **A refusal case needs a control that shows the thing can succeed.** `ACQ-05`'s
+cache refuses to keep bytes because the register refuses them, and that case
+passes equally over a cache that can never store anything. The harness runs the
+same scenario with a target permitted and asserts the two runs differ on exactly
+one line.
 
 ⛔ **`grep -c .` prints 0 and EXITS 1 on an empty file.** A `|| printf 0`
 fallback then fires on the one input that matters and the variable becomes two

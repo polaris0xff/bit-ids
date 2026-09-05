@@ -361,7 +361,7 @@ is what is relied on.
 ## ACQ-05: Artifact cache and authenticity evidence
 
 Source: repeatability and upstream availability risk
-Priority: P1 | Effort: M | Status: OPEN
+Priority: P1 | Effort: M | Status: DONE
 
 Problem: Upstream URLs and package indexes change, but storing installers may
 be disallowed.
@@ -374,3 +374,73 @@ and otherwise stores sufficient authenticity and retrieval evidence.
 
 Prove: cache tests enforce the licence register and reproduce artifact
 identity after a simulated source URL change.
+
+### ⭐ The second half of the Prove asks for less than it sounds like
+
+"Reproduce artifact identity after a source URL change" needs no reproduction at
+all once the identity is the digest. A URL is where bytes were found, which is a
+fact about a moment; the digest is what they were. So a retrieval from a new
+location is recorded against the artifact the digest already names, and the
+lookup that finds it never mentions a URL. ⛔ **A cache keyed on the location
+would stop answering the moment a vendor reorganised a download page**, which is
+exactly the failure this entry exists to survive.
+
+⚠ Repeating a retrieval is not a second retrieval either. A cache that grew a
+row every time somebody re-ran an acquisition would report a popularity contest
+rather than a provenance, so `observe` reports `Unchanged` and adds nothing.
+
+### Decision: the register is asked, never re-read
+
+⛔ `catalogue/licences.toml` has one parser per twin and it is `check-licences`.
+The Rust cache takes a disposition map, the way the store rules take a tree a
+caller has already read; the driving example takes `--permitted TARGET` flags;
+and `check-cache.sh` fills them from `check-licences --permitted`. A second
+reader of that file would be a second answer to what it permits.
+
+⭐ `--permitted` was added to **both** halves and both were run against a
+register with a planted `permitted` row: both printed `aria2` and both still
+agreed on `--json`. ⚠ That matters because the flag's normal answer is empty,
+which is also what a broken parser prints.
+
+### ⛔ The refusal case needed a control, and the harness carries it
+
+`FOUND-04`'s register refuses every target, so the scenario's storage attempt is
+refused. On its own that case passes equally over a cache that can never store
+anything, which is a different program. The harness runs the same scenario with
+a target explicitly permitted, watches the same cache accept it, and asserts the
+two runs differ on exactly the one line. ⚠ Without that, the whole policy half
+would be theatre.
+
+### Acceptance, all run on 2026-09-06
+
+- `cargo test -p bit-ids --locked --all-targets`
+- `sh scripts/acquisition/check-cache.sh`
+- `sh scripts/common/check-gate.sh`
+
+### Closure evidence, 2026-09-06
+
+| what | measured |
+| --- | --- |
+| `sh scripts/acquisition/check-cache.sh` | 11 cases, 11 passed, 0 failed |
+| `cargo test --workspace --locked --all-targets` | 38 binaries, 356 passed, 0 failed, six of them new here |
+| guard mutation | 9 plants over `cache.rs`, 9 refused, each verified to compile first |
+| driven pass | one artifact observed from two locations: one artifact, two retrievals, the digest still resolving, keeping nothing accepted and keeping the bytes refused as `E-CAC-01` |
+| register tie | the permitted set came from `check-licences --permitted`, which answers nothing today, and both halves were separately shown to report a planted `permitted` row |
+
+⚠ **Nothing here fetches anything.** The scenario is about identity and
+permission, and a real download would make the run depend on a vendor's uptime
+to answer a question about this project's own rules. The bytes are generated in
+the example and are nobody's installer.
+
+### Residuals
+
+- ⚠ The cache has no on-disk document yet. `CACHE_SCHEMA` is declared and
+  nothing writes one, because the first thing worth writing is a real
+  acquisition's cache and no acquisition has run. The rules are pure over a
+  cache a caller holds, which is what let this close without one.
+- ⚠ `check-cache.sh` does not plant in the register, because that file is
+  tracked and a gate check that edits one leaves a dirty tree when it is
+  interrupted. The planted-register measurement is in the table above instead.
+- ⚠ Certificate metadata and package receipts from the Premise are not modelled.
+  `SignatureStatus` records what was done about a signature and the manifest
+  carries the rest; a receipt has no producer until a real acquisition runs.

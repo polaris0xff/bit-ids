@@ -5,6 +5,32 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-06T21:45:00Z
+
+- `ACQ-05`, the artifact cache and its authenticity evidence. Record:
+  [`TODO/acquisition.md`](TODO/acquisition.md).
+- ⭐ The second half of the Prove asks for less than it sounds like. Reproducing
+  an artifact's identity after a source URL change needs no reproduction once the
+  identity is the digest: a retrieval from a new location is recorded against the
+  artifact the digest already names, and the lookup never mentions a URL.
+- ⚠ A repeated retrieval adds nothing. A cache that grew a row every time
+  somebody re-ran an acquisition would report a popularity contest rather than a
+  provenance.
+- ⛔ Keeping the bytes is a permission and not a capability. `E-CAC-01` refuses
+  stored bytes where the register refuses them, and `E-CAC-02` refuses a target
+  the register does not mention rather than defaulting to permitted.
+- ⛔ The register is asked, never re-read. `check-licences` gained `--permitted`
+  on both halves, the Rust cache takes a disposition map, and `check-cache.sh`
+  fills it from that call, so the tie is one parser rather than two readings.
+- ⛔ The refusal case needed a control and the harness carries it: the same
+  scenario is run with a target explicitly permitted, and the two runs are
+  asserted to differ on exactly one line. Without it the policy half would pass
+  equally over a cache that can never store anything.
+- Nine plants over `cache.rs`, all refused, each verified to compile first.
+- Deployment: nothing deployed. No capture was taken. Nothing was published, and
+  nothing was fetched: the scenario's bytes are generated and are nobody's
+  installer.
+
 ### 2026-09-06T19:30:00Z
 
 - `FOUND-04`, the third-party licence and redistribution register. Record:

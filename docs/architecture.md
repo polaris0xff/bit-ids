@@ -676,6 +676,31 @@ not the requested version. It also records artifact digests. Different bytes
 may still represent the same version and become useful packaging observations;
 they are never silently collapsed.
 
+### Keeping the artifact, and what may be kept
+
+An upstream URL moves and a package index drops an old version, so an artifact
+this project measured may stop being retrievable from where it came from.
+[`cache`](../crates/bit-ids/src/cache.rs) is what survives that, and `ACQ-05`
+owns it.
+
+⛔ **The identity is the digest and never the location.** A retrieval from a new
+URL is recorded against the artifact the digest already names, so nothing has to
+be reproduced when a source moves: the lookup that finds it never mentions a URL.
+⚠ A repeated retrieval adds nothing, because a cache that grew a row per
+re-run would report a popularity contest rather than a provenance.
+
+⛔ **Keeping the bytes is a permission and not a capability.** `FOUND-04`'s
+register in [`../catalogue/licences.toml`](../catalogue/licences.toml) carries a
+disposition per target, `E-CAC-01` refuses stored bytes where it says refused,
+and `E-CAC-02` refuses a target it does not mention at all rather than defaulting
+to permitted. ⚠ Every row says refused today, so the cache stores nothing and
+keeps the digest, the size, the signature status and every place the bytes were
+found.
+
+⚠ The disposition is passed in and never read from a file by this crate. Its
+rules are pure over data a caller has already read, and the register has one
+parser: `check-licences`, which reports the permitted set through `--permitted`.
+
 ### What equal version labels are worth
 
 `E-ACQ-04` already forces every route to report the version the record declares,
