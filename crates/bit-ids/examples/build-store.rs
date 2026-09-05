@@ -1,8 +1,14 @@
 //! Write a coherent synthetic store into a directory.
 //!
 //! ```text
-//! cargo run -p bit-ids --example build-store -- DIR
+//! cargo run -p bit-ids --example build-store -- [--version V]... DIR
 //! ```
+//!
+//! ⚠ **`--version` writes the record at a version of your choosing**, with each
+//! route's reported version moved with it and the identifier re-derived, because
+//! it digests the version. The fixture's own `0.0.0-fixture` is deliberately not
+//! a version any scheme can order, so a store meant for `CORPUS-03`'s latest
+//! view has to be written at one that is.
 //!
 //! `CORPUS-02` needs a store whose citations resolve, and the schema fixtures
 //! are not one: they declare digests for artifacts that were never written,
@@ -27,7 +33,8 @@ use std::io::Write as _;
 use std::path::Path;
 use std::process::ExitCode;
 
-use bit_ids::canonical::Sha256Digest;
+use bit_ids::canonical::{Sha256Digest, Slug, Version};
+use bit_ids::identity::{RecordId, RecordKey};
 use bit_ids::store::StoreKey;
 use bit_ids::{Profile, RunManifest};
 
@@ -57,9 +64,56 @@ fn write_file(root: &Path, relative: &str, bytes: &[u8]) -> Result<(), String> {
     std::fs::write(&path, bytes).map_err(|error| format!("{}: {error}", path.display()))
 }
 
-fn build(root: &Path) -> Result<(usize, usize), String> {
+/// Moves a record and its run onto one version.
+///
+/// ⛔ Every route's reported version moves with it, because `E-ACQ-04` refuses a
+/// route that installed a version the record does not declare, and the
+/// identifier is re-derived, because it digests the version. A record whose
+/// version was edited and whose identifier was not is refused by `E-ID-01`,
+/// which is the check doing its job rather than an obstacle.
+fn set_version(
+    profile: &mut Profile,
+    manifest: &mut RunManifest,
+    version_text: &str,
+) -> Result<(), String> {
+    let version = Version::parse(version_text).map_err(|error| error.to_string())?;
+    let capture = Slug::parse(&format!("cap-{}", version_text.replace('.', "-")))
+        .map_err(|error| error.to_string())?;
+
+    profile.build.version = version.clone();
+    for route in &mut profile.acquisition {
+        route.installed_version = version.clone();
+        route.resolved_version = version.clone();
+    }
+    profile.capture.id = capture.clone();
+    profile.id = RecordId::derive(&RecordKey {
+        schema: &profile.schema,
+        target: &profile.target.id,
+        version: &profile.build.version,
+        platform: &profile.build.platform,
+        arch: &profile.build.arch,
+        package: &profile.build.package,
+        capture: &profile.capture.id,
+    });
+
+    manifest.version = version.clone();
+    manifest.capture = capture;
+    // ⛔ The run's own acquisition rows carry the installed version too, and
+    // E-MAN-12 compares them against the run's. Moving one document's version
+    // and not the other's produces a manifest that refuses itself, which is the
+    // value-in-two-places row doing its job.
+    for route in &mut manifest.acquisition {
+        route.installed_version = version.clone();
+    }
+    Ok(())
+}
+
+fn build(root: &Path, version: Option<&str>) -> Result<(usize, usize), String> {
     let mut profile = Profile::from_json(PROFILE).map_err(|error| error.to_string())?;
     let mut manifest = RunManifest::from_json(MANIFEST).map_err(|error| error.to_string())?;
+    if let Some(text) = version {
+        set_version(&mut profile, &mut manifest, text)?;
+    }
 
     // The paths are resolved before the documents are touched, because the key
     // borrows the manifest that the loop below rewrites.
@@ -105,11 +159,24 @@ fn build(root: &Path) -> Result<(usize, usize), String> {
 }
 
 fn main() -> ExitCode {
+    let mut versions: Vec<String> = Vec::new();
+    let mut positional: Vec<std::ffi::OsString> = Vec::new();
     let mut args = std::env::args_os().skip(1);
-    let (Some(root_arg), None) = (args.next(), args.next()) else {
+    while let Some(arg) = args.next() {
+        if arg != *"--version" {
+            positional.push(arg);
+            continue;
+        }
+        let Some(text) = args.next().and_then(|value| value.into_string().ok()) else {
+            let _ = writeln!(std::io::stderr(), "--version needs a version string");
+            return ExitCode::from(2);
+        };
+        versions.push(text);
+    }
+    let [root_arg] = positional.as_slice() else {
         let _ = writeln!(
             std::io::stderr(),
-            "usage: build-store DIR\n\
+            "usage: build-store [--version V]... DIR\n\
              writes one coherent synthetic store: a record, its run, and the artifacts it cites"
         );
         return ExitCode::from(2);
@@ -125,18 +192,29 @@ fn main() -> ExitCode {
         return ExitCode::from(2);
     }
 
-    match build(root) {
-        Ok((artifacts, documents)) => {
-            let _ = writeln!(
-                std::io::stdout(),
-                "wrote {documents} document(s) and {artifacts} artifact(s) into {}",
-                root.display()
-            );
-            ExitCode::SUCCESS
-        }
-        Err(error) => {
-            let _ = writeln!(std::io::stderr(), "cannot build the store: {error}");
-            ExitCode::from(1)
+    let wanted: Vec<Option<&str>> = if versions.is_empty() {
+        vec![None]
+    } else {
+        versions.iter().map(|text| Some(text.as_str())).collect()
+    };
+    let mut artifacts = 0_usize;
+    let mut documents = 0_usize;
+    for version in wanted {
+        match build(root, version) {
+            Ok((wrote_artifacts, wrote_documents)) => {
+                artifacts += wrote_artifacts;
+                documents += wrote_documents;
+            }
+            Err(error) => {
+                let _ = writeln!(std::io::stderr(), "cannot build the store: {error}");
+                return ExitCode::from(1);
+            }
         }
     }
+    let _ = writeln!(
+        std::io::stdout(),
+        "wrote {documents} document(s) and {artifacts} artifact(s) into {}",
+        root.display()
+    );
+    ExitCode::SUCCESS
 }

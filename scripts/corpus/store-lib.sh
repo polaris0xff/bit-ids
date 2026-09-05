@@ -58,23 +58,31 @@ store_workdir() { # tag
   printf '%s\n' "$_dir"
 }
 
-PASS=0
-FAIL=0
-ROWS=""
+# ⛔ PREFIXED, BECAUSE A SOURCED LIBRARY SHARES ONE NAMESPACE WITH ITS CALLER.
+# These were PASS, FAIL and ROWS, and check-indexes.sh assigned its own ROWS for
+# a row count. The accumulator was overwritten, two rows vanished from the
+# report, and the run still printed "10 passed" over eight lines: a report that
+# lies about itself, produced by nothing more than a variable name.
+#
+# ⭐ The prefix makes the collision unlikely and store_report makes it visible,
+# which is the half that matters: a naming convention is a rule nobody checks.
+STORE_PASS=0
+STORE_FAIL=0
+STORE_ROWS=""
 
 row() {
-  ROWS="$ROWS  $1
+  STORE_ROWS="$STORE_ROWS  $1
 "
 }
 
 fail() {
   row "❌ $1"
-  FAIL=$((FAIL + 1))
+  STORE_FAIL=$((STORE_FAIL + 1))
 }
 
 pass() {
   row "✅ $1"
-  PASS=$((PASS + 1))
+  STORE_PASS=$((STORE_PASS + 1))
 }
 
 # ⛔ THE LAYOUT IS ASKED FOR, NEVER SPELLED IN SHELL. A second copy of the path
@@ -174,8 +182,21 @@ store_probe_guards() { # file present-literal ambiguous-literal
 # caller. Ambient state across a source boundary is invisible to shellcheck, and
 # silencing the resulting diagnostic teaches the next reader to silence it again.
 store_report() { # schema noun json
-  _total=$((PASS + FAIL))
-  if [ "$PASS" -eq 0 ] || [ "$FAIL" -gt 0 ]; then
+  _total=$((STORE_PASS + STORE_FAIL))
+
+  # ⛔ THE REPORT CHECKS ITSELF. The row list and the counters are two records of
+  # one fact, and a value in two places with nothing comparing them is the copy
+  # a reader trusts being the wrong one. Measured: a caller's own variable
+  # overwrote the accumulator and the summary went on claiming a count the rows
+  # did not support.
+  _rows=$(printf '%s' "$STORE_ROWS" | grep -c .)
+  if [ "$_rows" != "$_total" ]; then
+    printf '%s: %s rows recorded, %s counted; the report does not describe itself\n' \
+      "$ME" "$_rows" "$_total" >&2
+    return 1
+  fi
+
+  if [ "$STORE_PASS" -eq 0 ] || [ "$STORE_FAIL" -gt 0 ]; then
     _rc=1
   else
     _rc=0
@@ -183,15 +204,15 @@ store_report() { # schema noun json
 
   if [ "${3:-0}" = "1" ]; then
     printf '{"schema":"%s","total":%s,"passed":%s,"failed":%s}\n' \
-      "$1" "$_total" "$PASS" "$FAIL"
+      "$1" "$_total" "$STORE_PASS" "$STORE_FAIL"
     return "$_rc"
   fi
 
-  printf '\n%s\n' "$ROWS"
-  printf '%s %s: %s passed, %s failed\n' "$_total" "$2" "$PASS" "$FAIL"
-  if [ "$PASS" -eq 0 ]; then
+  printf '\n%s\n' "$STORE_ROWS"
+  printf '%s %s: %s passed, %s failed\n' "$_total" "$2" "$STORE_PASS" "$STORE_FAIL"
+  if [ "$STORE_PASS" -eq 0 ]; then
     printf -- '❌ NOTHING RAN. Zero cases passed, so this is red whatever else it says.\n'
-  elif [ "$FAIL" -gt 0 ]; then
+  elif [ "$STORE_FAIL" -gt 0 ]; then
     printf -- '❌ a guard did not refuse its defect.\n'
   else
     printf -- '✅ every planted defect was refused, and the clean tree was not.\n'

@@ -12,6 +12,9 @@ from any working directory.
   from the process that produced it.
 - [`corpus/check-corpus.sh`](corpus/check-corpus.sh) does the same for the
   store-level invariants, against a store `build-store` wrote.
+- [`corpus/check-indexes.sh`](corpus/check-indexes.sh) proves the two things a
+  derived file owes: byte-identical clean builds, and rows that resolve back to
+  the records they came from.
 - [`corpus/store-lib.sh`](corpus/store-lib.sh) is sourced by both and is never
   run. It holds what a mutation harness needs: build an example, make a scratch
   tree, digest a directory, verify a plant landed, count a row.
@@ -38,11 +41,10 @@ Windows capture host will need a PowerShell fetcher; `ACQ-04` owns the runner
 contract and is where that lands, rather than a second implementation written
 now with nothing exercising it.
 
-`acquisition/check-runner.sh`, `corpus/check-store.sh` and
-`corpus/check-corpus.sh` are the mutation provers, and none has a twin. All
-three run in the `sh` gate and are reported as named skips in the PowerShell
+`acquisition/check-runner.sh` and the three `corpus/check-*.sh` harnesses are
+the mutation provers, and none has a twin. All four run in the `sh` gate and are reported as named skips in the PowerShell
 one. `check-runner` proves guards that read `/proc/net/route`, so it has nothing
-to prove on Windows until `CI-03` writes the Windows pair. The two corpus
+to prove on Windows until `CI-03` writes the Windows pair. The three corpus
 provers hold rules that are not platform-specific at all, and the Rust suite
 exercises every one of them on both CI lanes; ⚠ what they plant includes a
 symbolic link and a named pipe against a real filesystem, and neither is

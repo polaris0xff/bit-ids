@@ -135,6 +135,8 @@ Add-Row 'SKIP  check-store  (the plants need a POSIX filesystem; CI-03 residual)
 $skip++
 Add-Row 'SKIP  check-corpus  (shares that harness; CI-03 residual)'
 $skip++
+Add-Row 'SKIP  check-indexes  (shares that harness; CI-03 residual)'
+$skip++
 
 # ⭐ THE SLOW ONE, and ⚠ it is the one part of this gate that needs a POSIX
 # shell: check-twins runs the sh half of every pair, so it cannot run on a host

@@ -200,7 +200,7 @@ the guard could be called proved.
 ## CORPUS-03: Deterministic indexes and latest views
 
 Source: b-ids consumer-oriented indexes
-Priority: P0 | Effort: L | Status: OPEN
+Priority: P0 | Effort: L | Status: DONE
 
 Problem: Consumers need convenient latest and lookup views without making
 those derived files authoritative.
@@ -210,6 +210,82 @@ platform, version, and capture instant from canonical records only.
 
 Prove: two clean builds have identical digests and every index row resolves to
 one canonical profile.
+
+Acceptance, both run on 2026-09-05:
+
+- `cargo test -p bit-ids --locked --all-targets`
+- `sh scripts/corpus/check-indexes.sh`
+
+### Decision: one version ordering, exposed rather than re-implemented
+
+A latest view has to order versions and `Version` is deliberately not orderable:
+it is what the installed build printed. `ACQ-02` already solved this, so
+`VersionScheme::components` became public and both callers use it. `resolve`
+picks the newest release to acquire and this picks the newest record to point
+at, which are different questions over one comparison, and a second
+implementation would answer one of them differently on the day it drifted.
+
+⛔ **The scheme is supplied, never defaulted.** `catalogue/clients.toml` does
+not carry one today, and filling in a three-component shape for a target that
+never declared it is the guess `ACQ-02` refuses. `build-indexes` takes
+`--scheme TARGET:PREFIX:MIN:MAX` exactly as `resolve-stable` does, and a record
+whose target has no scheme blocks the latest view under `E-VIW-01`. ⚠ Moving the
+scheme into the catalogue is worth doing and is not this entry's: it changes a
+document `check-project` validates, and `ACQ-02` owns the shape.
+
+### Decision: the peer-prefix index is a measurement, not a decoder table
+
+`docs/architecture.md` section 5 forbids a codec that maps a peer-ID prefix to a
+client name. This index is the opposite of that rule rather than an exception to
+it: the key is the fixed span of a peer ID **this project measured**, and the
+row resolves to the record that measured it. A patterned value whose first span
+varies has no prefix and produces no row, because a row keyed on an empty string
+would answer every lookup.
+
+### Closure evidence, 2026-09-05
+
+| what | measured |
+| --- | --- |
+| `sh scripts/corpus/check-indexes.sh` | 10 cases, 10 passed, 0 failed |
+| `cargo test -p bit-ids --locked --all-targets` | 10 index unit tests, 0 failed |
+| `cargo test --workspace --locked --all-targets` | 35 binaries, 329 passed, 0 failed |
+| `cargo test --workspace --locked --doc` | 2 passed, 0 failed |
+| guard mutation over `index.rs` | 8 plants; 7 refused, 1 named below as unrefuted |
+| driven pass | a three-version store indexes to 18 lookup rows and 1 latest row, byte-identical across two builds, latest `1.2.10` |
+
+⛔ **The first mutation round refused two plants of eight, and six of the
+survivors were not equivalent mutants.** Two were bad plants: one keyed the
+ranking on the version's *length*, which happens to select `1.2.10` anyway, and
+one fell back to a scheme map that was empty in the case it was aimed at. The
+other four were real gaps, and each is now closed:
+
+- rows were sorted and nothing could tell, because the corpus was read in one
+  order both times. `the_document_does_not_depend_on_the_order_records_were_read_in`
+  builds the same store from two insertion orders.
+- nothing excluded a provisional record from a view. Removing the filter left
+  every test green, because the only record in the fixtures is publishable.
+- the peer-prefix rule for a varying first span was never reached, because the
+  fixture's peer ID begins with a fixed run.
+- `E-VIW-10` was asserted only where it could not fire.
+
+⭐ **A bug the acceptance caught before the mutation pass did.** The ranking
+carried a `Version` comparison beside the numeric one, and `Version` is `Ord` as
+text, so `1.2.9 >= 1.2.10` held and the latest view answered `1.2.9`. One total
+key replaced it.
+
+### The guard that is not refuted
+
+| guard | why nothing refutes it | what would have to be true |
+| --- | --- | --- |
+| `latest.sort()` | `best` is a `BTreeMap` keyed by the build line and `LatestRow` orders on those same four fields first, so removing it changes no output that can be produced today | `best` stops being an ordered map, or the row's ordering stops agreeing with the key's |
+
+### Residuals
+
+- ⚠ The version scheme belongs in `catalogue/clients.toml` and is passed on the
+  command line instead. Named above with why it is not this entry's.
+- ⚠ `captured_at` rows in a store written by `build-store` all carry one instant,
+  because the fixture's capture instant does not move with `--version`. It makes
+  that index's rows share a key, which is correct behaviour and a thin test.
 
 ## CORPUS-04: Supersession and correction records
 

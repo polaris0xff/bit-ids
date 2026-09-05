@@ -295,6 +295,35 @@ what must be true of any store, and `publishable_view` separately reports which
 records may enter a published view. A store of provisional records is a correct
 store, and `CORPUS-03` builds views on that report rather than on a refusal.
 
+### The views a consumer reads instead of the records
+
+[`../crates/bit-ids/src/index.rs`](../crates/bit-ids/src/index.rs) derives the
+lookups and the latest view, and `CORPUS-03` owns it. Six lookups: by target, by
+measured peer prefix, by measured client string, by platform, by version and by
+capture instant, plus one latest row per target, platform, architecture and
+package.
+
+⛔ **Derived and never authoritative.** Every row names the record it came from,
+so a reader who doubts a row opens the measurement. `rows_resolve` checks each
+row against the store rather than against the builder that emitted it, because a
+builder compared with its own output agrees with itself.
+
+⛔ **The peer-prefix lookup is section 5's rule inverted, not waived.** No codec
+may map a peer-ID prefix to a client name, and this maps a prefix *this project
+measured* to the record that measured it. A patterned value whose first span
+varies has no prefix and produces no row, because a row keyed on an empty string
+answers every lookup.
+
+⚠ **A latest view needs an ordering, and a version string has none.** The
+resolver's `VersionScheme` comparison is the project's only one and both callers
+share it. A target with no declared scheme, or a version the scheme cannot order,
+blocks the view under `E-VIW-01` or `E-VIW-02` rather than being skipped, for the
+reason section 7 gives about resolution: a skip yields an older answer delivered
+confidently.
+
+⚠ Only publishable records enter a view, and how many were left out is reported
+rather than inferred.
+
 ## 5. Observation surfaces
 
 The codecs live in

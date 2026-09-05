@@ -5,6 +5,37 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-05T13:40:00Z
+
+- `CORPUS-03`, the deterministic indexes and latest views. Record:
+  [`TODO/corpus.md`](TODO/corpus.md).
+- Six lookups and one latest row per build line, every row naming the record it
+  came from. `rows_resolve` checks them against the store rather than against the
+  builder that emitted them.
+- ⭐ The peer-prefix lookup inverts the rule the codecs hold rather than waiving
+  it: its key is the fixed span of a peer ID this project measured.
+- ⚠ `VersionScheme::components` is now public, so the resolver and the latest
+  view share one version ordering. A target with no declared scheme blocks the
+  view rather than being ordered under an assumed shape.
+- ⭐ The acceptance caught a real defect before the mutation pass did: the
+  ranking carried a `Version` comparison beside the numeric one, and `Version` is
+  ordered as text, so `1.2.9` beat `1.2.10` and the view answered a superseded
+  build. One total key replaced it.
+- ⛔ The first mutation round refused two plants of eight. Two survivors were bad
+  plants; four were real gaps, now closed: the sort was invisible because the
+  store was read in one order, nothing excluded a provisional record, the
+  varying-first peer-ID rule was never reached, and `E-VIW-10` was asserted where
+  it could not fire.
+- ⛔ A harness overwrote the shared library's row accumulator with its own
+  variable and printed ten passes over eight lines. The globals are prefixed and
+  `store_report` now compares the rows it holds against the count it prints.
+- ⛔ `validate_corpus` reported a store of nine orphan artifacts as valid: the
+  bundle sweep ran per manifest and there was no manifest to run it. It sweeps
+  the whole tree now, and `E-CRP-08` covers the record root.
+- `build-store` takes `--version`, so a store can be written at a version a
+  scheme can order; the fixture's own is deliberately not one.
+- Deployment: nothing deployed. No capture was taken.
+
 ### 2026-09-05T12:55:00Z
 
 - `CORPUS-02`, the semantic corpus validator. Record:

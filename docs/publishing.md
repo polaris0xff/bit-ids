@@ -39,6 +39,12 @@ path is composed.
 
 `latest` selects the newest validated stable version only. It is a generated
 pointer, not a profile, and a prerelease can never move it.
+[`index`](../crates/bit-ids/src/index.rs) derives it and the lookup indexes
+beside it, with `cargo run -p bit-ids --example build-indexes -- STORE OUT` as
+the driving surface and
+[`check-indexes.sh`](../scripts/corpus/check-indexes.sh) as its prover. ⚠ It
+selects nothing at all for a target whose version scheme is not declared, rather
+than ordering under an assumed one.
 
 ## Append-only, and what checks it
 

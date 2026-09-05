@@ -26,7 +26,8 @@ use crate::identity::RecordId;
 use crate::manifest::{RunManifest, bind, validate_manifest};
 use crate::record::Profile;
 use crate::store::{
-    MANIFEST_FILE, StoreKey, StoreTree, check_manifest_placement, check_profile_placement,
+    MANIFEST_FILE, PROFILE_ROOT, RAW_ROOT, STORE_LAYOUT, StoreKey, StoreTree,
+    check_manifest_placement, check_profile_placement,
 };
 use crate::validate::{SchemaError, Violations, validate};
 
@@ -115,17 +116,15 @@ fn manifest_for<'a>(
 }
 
 /// Checks one run's declared artifacts against the bytes the store actually
-/// holds, in both directions.
-fn check_bundle(corpus: &Corpus, stored: &StoredManifest, out: &mut Vec<SchemaError>) {
+/// holds, and reports every path that run accounts for.
+fn check_bundle(
+    corpus: &Corpus,
+    stored: &StoredManifest,
+    accounted: &mut BTreeSet<RelPath>,
+    out: &mut Vec<SchemaError>,
+) {
     let key = StoreKey::of_manifest(&stored.manifest);
-    let Ok(bundle) = key.bundle_dir() else {
-        // The placement check reports the derivation's own refusal; resolving
-        // artifacts against a path that does not exist would repeat it per row.
-        return;
-    };
-
-    let mut declared: BTreeSet<RelPath> = BTreeSet::new();
-    declared.insert(stored.path.clone());
+    accounted.insert(stored.path.clone());
 
     for artifact in &stored.manifest.evidence {
         let Ok(resolved) = key.evidence_path(&artifact.path) else {
@@ -136,7 +135,7 @@ fn check_bundle(corpus: &Corpus, stored: &StoredManifest, out: &mut Vec<SchemaEr
             ));
             continue;
         };
-        declared.insert(resolved.clone());
+        accounted.insert(resolved.clone());
 
         let Some(object) = corpus.tree.get(&resolved).and_then(|entry| entry.object()) else {
             out.push(SchemaError::new(
@@ -167,21 +166,43 @@ fn check_bundle(corpus: &Corpus, stored: &StoredManifest, out: &mut Vec<SchemaEr
             ));
         }
     }
+}
 
-    // ⛔ The other direction, and it is not symmetry for its own sake. An
-    // artifact in a run's bundle that the run does not declare is either a file
-    // nobody meant to publish or a citation that was dropped, and the manifest's
-    // redaction declarations say nothing about it either way.
-    let prefix = format!("{bundle}/");
-    for path in corpus.tree.paths() {
-        if path.as_str().starts_with(&prefix) && !declared.contains(path) {
+/// Every object under a known root that no document in the corpus accounts for.
+///
+/// ⛔ **Swept over the whole tree, not per document, and that distinction is a
+/// defect this had.** The sweep used to run inside the per-manifest check and
+/// was scoped to that manifest's own bundle, so a store carrying evidence and
+/// no manifest at all had nothing to sweep with: nine orphan artifacts, no
+/// records, no runs, and a verdict of valid. A check that only fires when the
+/// thing it checks is present is a check that passes vacuously on the case that
+/// matters most.
+///
+/// ⚠ An artifact in a run's bundle that the run does not declare is either a
+/// file nobody meant to publish or a citation that was dropped, and the
+/// manifest's redaction declarations say nothing about it either way.
+fn sweep_unaccounted(corpus: &Corpus, accounted: &BTreeSet<RelPath>, out: &mut Vec<SchemaError>) {
+    let raw = format!("{RAW_ROOT}/{STORE_LAYOUT}/");
+    let profiles = format!("{PROFILE_ROOT}/{STORE_LAYOUT}/");
+    let filed: BTreeSet<&RelPath> = corpus.profiles.iter().map(|stored| &stored.path).collect();
+
+    for (path, entry) in corpus.tree.iter() {
+        if entry.object().is_none() {
+            continue;
+        }
+        let text = path.as_str();
+        if text.starts_with(&raw) && !accounted.contains(path) {
             out.push(SchemaError::new(
                 "E-CRP-06",
-                path.as_str(),
-                format!(
-                    "sits in the bundle for capture {} and the run declares no artifact there",
-                    stored.manifest.capture
-                ),
+                text,
+                "sits under the evidence root and no run in this store declares it",
+            ));
+        }
+        if text.starts_with(&profiles) && !filed.contains(path) {
+            out.push(SchemaError::new(
+                "E-CRP-08",
+                text,
+                "sits under the record root and this store carries no record read from it",
             ));
         }
     }
@@ -207,12 +228,14 @@ fn check_bundle(corpus: &Corpus, stored: &StoredManifest, out: &mut Vec<SchemaEr
 /// | `E-CRP-05` | an artifact whose stored digest disagrees with the run |
 /// | `E-CRP-06` | a file in a run's bundle that the run does not declare |
 /// | `E-CRP-07` | a correction naming a record the store does not carry |
+/// | `E-CRP-08` | an object under the record root that is not a record here |
 ///
 /// Refusals from [`validate`], [`validate_manifest`], [`bind`] and the store's
 /// own placement rules are returned under their own codes, because a caller
 /// acting on the class should not have to learn a second spelling of it.
 pub fn validate_corpus(corpus: &Corpus) -> Result<(), Violations> {
     let mut out = Vec::new();
+    let mut accounted: BTreeSet<RelPath> = BTreeSet::new();
 
     let mut known: BTreeMap<RecordId, &RelPath> = BTreeMap::new();
     for stored in &corpus.profiles {
@@ -281,8 +304,10 @@ pub fn validate_corpus(corpus: &Corpus) -> Result<(), Violations> {
                 ),
             ));
         }
-        check_bundle(corpus, stored, &mut out);
+        check_bundle(corpus, stored, &mut accounted, &mut out);
     }
+
+    sweep_unaccounted(corpus, &accounted, &mut out);
 
     Violations::from_errors(out)
 }
@@ -500,6 +525,51 @@ mod tests {
 
         let violations = validate_corpus(&corpus).expect_err("a correction with no original");
         assert!(violations.has("E-CRP-07"), "{violations}");
+    }
+
+    /// ⛔ The case the per-manifest sweep could not see: evidence in the store
+    /// with no run to sweep it against. It reported a store of nine orphan
+    /// artifacts as valid, which a driven pass found and no unit test had.
+    #[test]
+    fn evidence_with_no_run_at_all_is_refused() {
+        let full = complete();
+        let manifest_path = full.manifests()[0].path.clone();
+        let profile_path = full.profiles()[0].path.clone();
+
+        let mut tree = StoreTree::new();
+        for (path, entry) in full.tree() {
+            if path != &manifest_path && path != &profile_path {
+                tree.insert(path.clone(), *entry);
+            }
+        }
+        // Nothing is inserted into the corpus: no records, no runs, nine
+        // artifacts, and the sweep is the only thing that can refuse it.
+        let corpus = Corpus::new(tree);
+        let violations = validate_corpus(&corpus).expect_err("evidence nothing declares");
+        assert!(violations.has("E-CRP-06"), "{violations}");
+        assert_eq!(
+            violations.errors().len(),
+            9,
+            "one refusal per orphan artifact"
+        );
+    }
+
+    /// The same sweep from the record side: a file under the record root that
+    /// the corpus did not read is a record nothing validated.
+    #[test]
+    fn an_object_under_the_record_root_that_is_not_a_record_is_refused() {
+        let full = complete();
+        let mut tree = full.tree().clone();
+        tree.insert(
+            RelPath::parse("profiles/v1/stray.json").expect("a canonical path"),
+            object(2, Sha256Digest::of(b"{}")),
+        );
+        let mut corpus = Corpus::new(tree);
+        corpus.insert_profile(full.profiles()[0].path.clone(), profile());
+        corpus.insert_manifest(full.manifests()[0].path.clone(), manifest());
+
+        let violations = validate_corpus(&corpus).expect_err("an unread record file");
+        assert!(violations.has("E-CRP-08"), "{violations}");
     }
 
     #[test]

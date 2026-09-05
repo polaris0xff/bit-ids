@@ -3,13 +3,14 @@
 **Task:** Take the work order in `TODO/PROGRESS.md` in dependency order,
 committing and pushing each green unit to `main`.
 
-**Resume point:** ⭐ **`CORPUS-01` and `CORPUS-02` are closed.** There is
-somewhere durable to put a record, the append rule is checked rather than
-trusted, and a whole store is validated rather than one document at a time. The
-next item is `CORPUS-03`, the deterministic indexes and latest views: fully
-provable here, with `publishable_view` as the report it builds on and
-`examples/build-store.rs` writing a store to build indexes over. `PUB-01` follows
-and is what first assembles a tree for the append comparison to run against.
+**Resume point:** ⭐ **`CORPUS-01` through `CORPUS-03` are closed.** There is
+somewhere durable to put a record, the append rule and the store-level
+invariants are checked rather than trusted, and the consumer-facing views are
+derived and proved. The next item is `PUB-01`, the deterministic release
+assembler: it is what first builds a publication tree for `CORPUS-01`'s
+comparison to run over, and `build-store` and `build-indexes` already write the
+two halves it has to assemble. `CORPUS-04` follows, because a superseded record
+cannot drop out of the latest view until supersession chains exist.
 
 ⛔ The client entries stay behind the corpus work on a measurement rather than a
 preference. A client entry's acceptance needs a capture, a capture needs a host
@@ -21,7 +22,7 @@ preference. A client entry's acceptance needs a capture, a capture needs a host
 an install on Windows. `CI-03` owns the pair; `docs/capture-host.md` carries
 both contracts.
 
-**In flight:** Nothing. Both entries landed whole, each with its entry, index,
+**In flight:** Nothing. Three entries landed whole, each with its entry, index,
 summary and record updated in the same change. No files half-edited.
 
 **Tree:** Clean and level with `origin/main`, on `main`, full clone. ⚠ The
@@ -31,12 +32,13 @@ re-measure rather than trusting a branch name. Measured on this host:
 
 | command | result |
 | --- | --- |
-| `sh scripts/common/check-gate.sh` | 14 checks, 13 passed, 0 failed, 1 skipped |
-| `pwsh -File scripts/common/check-gate.ps1` | 14 checks, 10 passed, 0 failed, 4 skipped |
-| `cargo test --workspace --locked --all-targets` | 34 binaries, 317 passed, 0 failed |
+| `sh scripts/common/check-gate.sh` | 15 checks, 14 passed, 0 failed, 1 skipped |
+| `pwsh -File scripts/common/check-gate.ps1` | 15 checks, 10 passed, 0 failed, 5 skipped |
+| `cargo test --workspace --locked --all-targets` | 35 binaries, 329 passed, 0 failed |
 | `cargo test --workspace --locked --doc` | 2 passed, 0 failed |
 | `sh scripts/corpus/check-store.sh` | 14 cases, 14 passed, 0 failed |
 | `sh scripts/corpus/check-corpus.sh` | 14 cases, 14 passed, 0 failed |
+| `sh scripts/corpus/check-indexes.sh` | 10 cases, 10 passed, 0 failed |
 | `cargo fmt`, `cargo clippy --workspace --locked --all-targets -- -D warnings`, `shellcheck`, `shfmt -d -i 2 -ci` | exit 0 |
 
 ⛔ **Run the gate with `sh scripts/common/check-gate.sh`, not from memory.** A
@@ -79,6 +81,17 @@ proved over a plant that had not compiled. Separate the two on every path.
 its command line.** A script that sources another is clean when both are handed
 to one invocation and warns when checked alone. CI passes every script at once;
 a contributor checking one file does not.
+
+⛔ **A sourced shell library shares one namespace with its caller.** A harness
+assigned its own `ROWS`, overwrote the accumulator, and printed ten passes over
+eight lines. `store_report` now compares the rows it holds against the count it
+prints, because a naming convention is a rule nobody checks.
+
+⛔ **Read what a plant actually changed before believing it either way.** Of
+eight over the index builder, two survived because the mutation was equivalent
+on the fixture data rather than because a guard was missing, and four survived
+because the tests really were thin. A surviving plant is a question, not a
+verdict.
 
 ⛔ **A constant every test reads is a constant no test can check.** Found twice
 last session by two entries, neither looking for it. Pin a specification's

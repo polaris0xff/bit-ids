@@ -125,8 +125,21 @@ impl VersionScheme {
         }
     }
 
-    /// The numeric components, when the text is orderable under this scheme.
-    fn components(&self, text: &str) -> Option<Vec<u64>> {
+    /// The numeric components, when the text is orderable under this scheme,
+    /// padded to the scheme's width so two spellings of one release compare
+    /// equal.
+    ///
+    /// ⛔ **This is the project's only version ordering and both callers use
+    /// it.** `resolve` picks the newest release to acquire and `CORPUS-03`
+    /// picks the newest record to point at, which are different questions over
+    /// the same comparison. A second implementation of it would answer one of
+    /// them differently on the day it drifted, and the version that reads
+    /// wrongly is the one a consumer follows.
+    ///
+    /// Returns `None` for text this scheme cannot order, which is what lets a
+    /// caller block rather than guess.
+    #[must_use]
+    pub fn components(&self, text: &str) -> Option<Vec<u64>> {
         let parts: Vec<&str> = text.split('.').collect();
         let count = u8::try_from(parts.len()).ok()?;
         if count < self.min_components || count > self.max_components {

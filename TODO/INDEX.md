@@ -1,17 +1,17 @@
 # Work index
 
 Total: 56
-Open: 35
+Open: 34
 In progress: 0
 Blocked: 0
-Done: 21
+Done: 22
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| P0 | 4 | 0 | 0 | 20 | 24 |
+| P0 | 3 | 0 | 0 | 21 | 24 |
 | P1 | 30 | 0 | 0 | 1 | 31 |
 | P2 | 1 | 0 | 0 | 0 | 1 |
-| Total | 35 | 0 | 0 | 21 | 56 |
+| Total | 34 | 0 | 0 | 22 | 56 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -56,7 +56,7 @@ Done: 21
 | ENGINE-03 | P1 | L | OPEN | rqbit engine matrix |
 | CORPUS-01 | P0 | L | DONE | Append-only canonical store |
 | CORPUS-02 | P0 | L | DONE | Semantic corpus validator |
-| CORPUS-03 | P0 | L | OPEN | Deterministic indexes and latest views |
+| CORPUS-03 | P0 | L | DONE | Deterministic indexes and latest views |
 | CORPUS-04 | P1 | M | OPEN | Supersession and correction records |
 | LIB-01 | P1 | L | OPEN | Rust consumer library |
 | LIB-02 | P1 | L | OPEN | bit-cli integration adapter |

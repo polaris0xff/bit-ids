@@ -1,12 +1,12 @@
 # Current progress
 
 State instant: 2026-09-05
-Baseline commit: `bdfeb8f` on `main`
+Baseline commit: `f9b6dd3` on `main`
 Total: 56
-Open: 35
+Open: 34
 In progress: 0
 Blocked: 0
-Done: 21
+Done: 22
 
 ## Current state
 
@@ -17,9 +17,10 @@ routes agreeing is worth, and a boundary that runs before anything is installed.
 All four core observer surfaces are done: both trackers, the peer handshake and
 BEP 10. ⭐ `OBS-08` and `OBS-09` are closed too, so the observer layer is
 complete: there is a torrent to point a client at, and a run's transcript now
-becomes the content-addressed evidence a manifest cites. ⭐ `CORPUS-01` and
-`CORPUS-02` are closed as well, so there is somewhere durable to put the answer
-and something that checks a whole store rather than one record. **A first vertical
+becomes the content-addressed evidence a manifest cites. ⭐ `CORPUS-01`
+through `CORPUS-03` are closed as well, so there is somewhere durable to put the
+answer, something that checks a whole store rather than one record, and the
+consumer-facing views over it. **A first vertical
 capture is possible from here**, on a host the `ACQ-04` guards permit, and what
 stands between is a client adapter rather than any missing machinery.
 
@@ -245,15 +246,30 @@ describe a target that does not exist, and the wire fixtures under
 which were written by hand from published BEPs. Neither is evidence about
 anything.
 
+`CORPUS-03` is the consumer's side: lookups by target, measured peer prefix,
+measured client string, platform, version and capture instant, plus a latest view
+per build line. ⛔ **Every row names the record it came from**, so a reader who
+doubts one opens the measurement; a derived file that answered a question the
+records could not is a file that invented one.
+
+⛔ **The peer-prefix lookup is the opposite of the decoder table the codecs
+refuse, not an exception to it.** Its key is the fixed span of a peer ID this
+project measured, and it resolves to the record that measured it.
+
+⚠ A latest view needs an ordering and `Version` deliberately has none, so
+`ACQ-02`'s scheme comparison became public and both callers share it. The scheme
+is supplied on the command line rather than defaulted; moving it into
+`catalogue/clients.toml` is worth doing and belongs to `ACQ-02`.
+
 ## Work order
 
-1. `CORPUS-03`, the deterministic indexes and latest views. Fully provable here:
-   no host, no network, no client, and `publishable_view` is the report it builds
-   on. ⭐ `examples/build-store.rs` already writes a store to build indexes over.
-2. `PUB-01`, the deterministic release assembler. It is what first builds a tree
-   for `CORPUS-01`'s comparison to run over, and it is where `E-STO-22` becomes
-   reachable, because a tree assembled from a manifest carries a declared length
-   beside a digest.
+1. `PUB-01`, the deterministic release assembler. It is what first builds a
+   publication tree for `CORPUS-01`'s comparison to run over, and it is where
+   `E-STO-22` becomes reachable, because a tree assembled from a manifest carries
+   a declared length beside a digest. ⭐ `build-store` and `build-indexes`
+   already write the two halves it has to assemble.
+2. `CORPUS-04`, supersession and correction records, which is what the latest
+   view needs before a superseded record can drop out of it.
 3. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
    captures, on Linux only until `CI-03` provides the Windows guard pair.
    ⛔ **They stay behind the corpus work on a measurement rather than a
@@ -345,9 +361,22 @@ three plants. It fails safe, and it still costs the guards it silently declines
 to prove. Count a multi-line literal with something that understands one, or
 refuse it outright as `scripts/corpus/check-store.sh` does.
 
-⭐ **`check-store` needs `cargo`, `sha256sum` and `mkfifo` and exits 2 without
-them.** The Linux CI lane runs the gate with `--strict`, so that skip would be a
-failure there; all three are present on `ubuntu-24.04`.
+⭐ **The corpus harnesses need `cargo`, `sha256sum` and, for `check-store`,
+`mkfifo`, and exit 2 without them.** The Linux CI lane runs the gate with
+`--strict`, so such a skip would be a failure there; all three are present on
+`ubuntu-24.04`.
+
+⛔ **A sourced shell library shares one namespace with its caller.** A harness
+assigned its own `ROWS` for a row count, overwrote the library's accumulator, and
+printed ten passes over eight lines. The globals are prefixed now and
+`store_report` compares the rows it holds against the count it is about to
+print, because a naming convention is a rule nobody checks.
+
+⛔ **A plant that survives is not automatically a gap, and a plant that is
+refused is not automatically proof.** Of eight over the index builder, two
+survived because the mutation was equivalent on the fixture data and one
+"refusal" on an earlier pass was a harness exit of 2. Read what the plant
+actually changed before believing either answer.
 
 ⛔ **A harness exit of 2 is *could not run*, never *refused*.** A review pass
 counted it as a refusal on one of its two paths and reported a guard proved over

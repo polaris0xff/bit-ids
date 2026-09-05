@@ -30,6 +30,7 @@ pub mod canonical;
 pub mod corpus;
 pub mod equivalence;
 pub mod identity;
+pub mod index;
 mod json;
 pub mod manifest;
 pub mod observation;
@@ -43,6 +44,7 @@ pub use acquisition::{AcquisitionRoute, RouteKind, SignatureStatus, SourceIdenti
 pub use agreement::publishable;
 pub use corpus::{Corpus, publishable_view, validate_corpus};
 pub use equivalence::{Equivalence, classify, classify_across};
+pub use index::{INDEX_SCHEMA, Indexes, rows_resolve};
 pub use json::DocumentError;
 pub use manifest::{MANIFEST_SCHEMA, RunManifest, bind, validate_manifest};
 pub use record::Profile;

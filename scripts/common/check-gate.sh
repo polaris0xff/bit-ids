@@ -160,15 +160,15 @@ else
   SKIP=$((SKIP + 1))
 fi
 
-# ⛔ NOT IN common/ EITHER, AND IN THE GATE FOR THE SAME REASON. These two
-# mutation-prove the guards that stand between this project and silently
-# deleting or rewriting published evidence, and between it and publishing a
-# record whose evidence nothing can resolve. Both losses are unrecoverable
-# afterwards: the record that goes is not anywhere else, and a citation with no
-# bytes cannot be re-derived. Both are hermetic and take no network. ⚠ They need
-# cargo, so they exit 2 on a host without one, which is a skip and not a pass.
-# Neither has a PowerShell half; scripts/README.md carries why.
-for c in check-store check-corpus; do
+# ⛔ NOT IN common/ EITHER, AND IN THE GATE FOR THE SAME REASON. These three
+# mutation-prove the guards standing between this project and silently deleting
+# or rewriting published evidence, publishing a record whose evidence nothing
+# can resolve, and pointing a consumer at a superseded build. The first two
+# losses are unrecoverable afterwards and the third is worse than an error,
+# because it answers confidently. All three are hermetic and take no network.
+# ⚠ They need cargo, so they exit 2 on a host without one, which is a skip and
+# not a pass. None has a PowerShell half; scripts/README.md carries why.
+for c in check-store check-corpus check-indexes; do
   STORE="$HERE/../corpus/$c.sh"
   if [ -f "$STORE" ]; then
     run "$c" sh "$STORE"
