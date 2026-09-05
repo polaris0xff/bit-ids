@@ -5,6 +5,38 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-06T14:40:00Z
+
+- `CORPUS-04`, supersession and correction records. Record:
+  [`TODO/corpus.md`](TODO/corpus.md).
+- ⚠ Half the Approach already existed: `supersedes`, `adjudication` and
+  `E-CRP-07` were all in place. What none of them did was change an answer, so a
+  corrected record was still in every lookup and could still be the latest view's
+  reply.
+- ⛔ A superseded record now leaves every view and stays in the store, and the
+  two counts are kept apart: an excluded record was never publishable, a
+  superseded one was.
+- The `corrections` list carries the superseded identifier, the record that
+  directly corrects it, and the end of the chain. ⚠ The last two differ exactly
+  when a correction was itself corrected, which is the case a single-step row
+  answers wrongly while looking right.
+- ⚠ Only a publishable correction retracts anything. A provisional one would
+  otherwise leave the build line answering nothing at all.
+- ⛔ A fork is refused rather than resolved, and the chain walk is bounded
+  because a cycle is constructible: a record identifier digests the identity
+  tuple and not `supersedes`, so two records can name each other while neither
+  supersedes itself.
+- ⭐ The retention half needed two stores rather than one. Finding the original
+  still there proves it was written, not that it was left alone, so
+  `build-store --correct V` writes the correction beside it and the harness
+  compares that record's bytes between a store built with the correction and one
+  built without.
+- ⛔ The claim audit corrected this entry's own draft. It was about to record
+  that a cycle is a store the corpus validator accepts; asserting that instead
+  of writing it down showed the validator refusing the store for an unrelated
+  reason. The residual is real and the reason was wrong.
+- Deployment: nothing deployed. No capture was taken. Nothing was published.
+
 ### 2026-09-06T12:15:00Z
 
 - `CI-01` closed, the complete cross-platform quality gate, and with it the last

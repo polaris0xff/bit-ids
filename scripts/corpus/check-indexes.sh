@@ -129,6 +129,77 @@ else
   fail "ordering  the latest view did not answer 1.2.10: $(grep -o '"version": "[^"]*"' "$WORK/first.json" | tail -1)"
 fi
 
+# -- CORPUS-04, driven against two real stores --------------------------------
+#
+# ⛔ THE RETENTION HALF NEEDS TWO STORES, NOT ONE. Reading the corrected store
+# and finding the original still there proves it was written, not that it was
+# left alone. The same store is built with and without the correction and the
+# earlier record's bytes are compared between them, which is the only comparison
+# that can see a correction that edited what it corrects.
+#
+# ⚠ The two file names are build-store's own capture convention and are found
+# rather than composed, so a layout change moves them together with the store.
+PLAIN="$WORK/plain"
+CORRECTED="$WORK/corrected"
+rm -rf "$PLAIN" "$CORRECTED"
+mkdir -p "$PLAIN" "$CORRECTED"
+"$BUILDER" --version 1.2.3 --version 1.2.10 "$PLAIN" >/dev/null 2>&1
+PLAIN_RC=$?
+"$BUILDER" --version 1.2.3 --version 1.2.10 --correct 1.2.10 "$CORRECTED" >/dev/null 2>&1
+CORRECTED_RC=$?
+
+BEFORE=$(find "$PLAIN/profiles" -name 'cap-1-2-10.json' | head -1)
+AFTER=$(find "$CORRECTED/profiles" -name 'cap-1-2-10.json' | head -1)
+FIX=$(find "$CORRECTED/profiles" -name 'cap-1-2-10-fix.json' | head -1)
+
+if [ "$PLAIN_RC" != "0" ] || [ "$CORRECTED_RC" != "0" ]; then
+  fail "correction  a store could not be built ($PLAIN_RC, $CORRECTED_RC)"
+elif [ -z "$BEFORE" ] || [ -z "$AFTER" ] || [ -z "$FIX" ]; then
+  fail "correction  the corrected store does not carry both records"
+elif cmp -s "$BEFORE" "$AFTER"; then
+  pass "correction  the corrected record's bytes are untouched, and it is still filed"
+else
+  fail "correction  writing the correction changed the record it corrects"
+fi
+
+"$INDEXER" --scheme "$SCHEME" "$CORRECTED" "$WORK/corrected.json" >"$WORK/corrected.out" 2>&1
+CORRECTED_INDEX_RC=$?
+if [ "$CORRECTED_INDEX_RC" != "0" ]; then
+  fail "correction  the corrected store would not index (exit $CORRECTED_INDEX_RC)"
+else
+  ORIGINAL_ID=$(grep -o '"id": "record:sha256:[0-9a-f]*"' "$AFTER" | head -1 |
+    sed 's/.*"\(record:sha256:[0-9a-f]*\)"/\1/')
+  FIX_NAME=${FIX##*/}
+
+  if grep -q '"superseded": 1' "$WORK/corrected.json"; then
+    pass "correction  the document counts one superseded record"
+  else
+    fail "correction  the document does not count the superseded record"
+  fi
+
+  # ⛔ The latest row must name the correction's file and not the original's.
+  # Checking only that a latest row exists would pass over a view still pointing
+  # at the record that was retracted, which is the whole defect.
+  if sed -n '/"latest": \[/,/^  \]/p' "$WORK/corrected.json" | grep -q -F -e "$FIX_NAME"; then
+    pass "correction  the latest view answers with the correction"
+  else
+    fail "correction  the latest view does not name $FIX_NAME"
+  fi
+  if sed -n '/"latest": \[/,/^  \]/p' "$WORK/corrected.json" | grep -q -F -e "$ORIGINAL_ID"; then
+    fail "correction  the latest view still names the corrected record"
+  else
+    pass "correction  and no longer names the record it corrects"
+  fi
+
+  if [ -n "$ORIGINAL_ID" ] &&
+    sed -n '/"corrections": \[/,/^  \]/p' "$WORK/corrected.json" |
+    grep -q -F -e "\"superseded\": \"$ORIGINAL_ID\""; then
+    pass "correction  the chain names the record a reader may still hold"
+  else
+    fail "correction  the chain does not carry $ORIGINAL_ID"
+  fi
+fi
+
 SETUP_OK=0
 
 begin_case() { # name expected-code

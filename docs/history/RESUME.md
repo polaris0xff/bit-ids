@@ -9,9 +9,13 @@ lanes run strictly and the Windows lane reports zero skipped;
 `scripts/ci/check-workflow.sh` plants eight classes of defect and runs the
 offending workflow step against each; the workflow declares per-job permissions
 and timeouts and caches by lockfile; and the publisher has a workflow carrying
-the job-scoped write permission and a concurrency group. The next item is
-`CORPUS-04`, supersession and correction records, which the latest view needs
-before a superseded record can drop out of it. `PUB-03` follows.
+the job-scoped write permission and a concurrency group.
+
+⭐ **`CORPUS-04` is closed as well.** A superseded record leaves every view and
+keeps its path and its bytes, the derived document carries the correction chain
+so an old identifier still finds what answers now, and a fork and a cycle are
+each refused. The next item is `PUB-03`, the multi-format publisher, which
+derives its formats from the bundle `PUB-01` assembles rather than beside it.
 
 ⛔ **Nothing has ever been published.** The publisher has never run against this
 repository's own remote and must not until a measured record exists; everything
@@ -30,8 +34,8 @@ preference. A client entry's acceptance needs a capture, a capture needs a host
 an install on Windows. `CI-03` owns the pair; `docs/capture-host.md` carries
 both contracts.
 
-**In flight:** Nothing. `CI-01` landed whole, with its entry, index, summary
-and record updated in the same change. No files half-edited.
+**In flight:** Nothing. `CI-01` and `CORPUS-04` each landed whole, with entry,
+index, summary and record updated in the same change. No files half-edited.
 
 **Tree:** Clean and level with `origin/main`, on `main`, full clone. ⚠ The
 container started on a stale `claude/*` branch whose commits had already been
@@ -44,11 +48,11 @@ name. Measured on this host:
 | `sh scripts/common/check-gate.sh` | 17 checks, 16 passed, 0 failed, 1 skipped, 0 unavailable |
 | `pwsh -File scripts/common/check-gate.ps1` | 17 checks, 10 passed, 0 failed, 1 skipped, 6 unavailable |
 | `sh scripts/ci/check-workflow.sh` | 34 cases, 34 passed, 0 failed |
-| `cargo test --workspace --locked --all-targets` | 36 binaries, 337 passed, 0 failed |
+| `cargo test --workspace --locked --all-targets` | 36 binaries, 343 passed, 0 failed |
 | `cargo test --workspace --locked --doc` | 2 passed, 0 failed |
 | `sh scripts/corpus/check-store.sh` | 14 cases, 14 passed, 0 failed |
 | `sh scripts/corpus/check-corpus.sh` | 14 cases, 14 passed, 0 failed |
-| `sh scripts/corpus/check-indexes.sh` | 10 cases, 10 passed, 0 failed |
+| `sh scripts/corpus/check-indexes.sh` | 15 cases, 15 passed, 0 failed |
 | `sh scripts/publishing/check-release.sh` | 13 cases, 13 passed, 0 failed |
 | `sh scripts/publishing/check-publish.sh` | 15 cases, 15 passed, 0 failed |
 | `cargo fmt`, `cargo clippy --workspace --locked --all-targets -- -D warnings`, `shellcheck`, `shfmt -d -i 2 -ci` | exit 0 |
@@ -81,6 +85,17 @@ rewritten to `exit 2` left that lane green. Measured on 2026-09-06.
 places composed an example's path as `target/debug/examples` while cargo obeys
 the variable, so each harness exited 2, which the gate reads as a skip. Fixing
 one left the other, which is the door sweep working exactly as intended.
+
+⭐ **Assert a residual instead of writing it down, and it may not survive.**
+`CORPUS-04`'s entry was about to record that a cycle is a store the corpus
+validator accepts; the assertion showed the validator refusing that store for an
+entirely unrelated reason. The residual was real and the reason was wrong, which
+is the difference a claim audit exists to find.
+
+⚠ **The retention half of a correction needs two stores, not one.** Reading the
+corrected store and finding the original still there proves it was written, not
+that it was left alone. Build the store with and without, and compare the earlier
+record's bytes between them.
 
 ⚠ A harness that runs CI's commands must read them **out of the workflow**. A
 copy of a build command in a harness proves something about the copy. Ask by job

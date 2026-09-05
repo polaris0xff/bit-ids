@@ -12,9 +12,10 @@ from any working directory.
   from the process that produced it.
 - [`corpus/check-corpus.sh`](corpus/check-corpus.sh) does the same for the
   store-level invariants, against a store `build-store` wrote.
-- [`corpus/check-indexes.sh`](corpus/check-indexes.sh) proves the two things a
-  derived file owes: byte-identical clean builds, and rows that resolve back to
-  the records they came from.
+- [`corpus/check-indexes.sh`](corpus/check-indexes.sh) proves the three things a
+  derived file owes: byte-identical clean builds, rows that resolve back to the
+  records they came from, and a corrected record that has left the views while
+  its bytes are still filed where they were.
 - [`publishing/check-release.sh`](publishing/check-release.sh) assembles a
   release twice, compares the bytes, and hands the checksum file to `sha256sum
   -c`, which is a reader this project did not write.

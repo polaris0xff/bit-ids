@@ -138,6 +138,30 @@ type BuildLine = (Slug, Slug, Slug, Slug);
 /// order the store was read in.
 type Ranking = (Vec<u64>, Instant, RecordId);
 
+/// One step of the correction chain, and where it ends.
+///
+/// ⛔ **A superseded record is dropped from the views and never from the store.**
+/// The append-only rule keeps its bytes and its evidence; what a correction
+/// changes is which record answers a question asked now. A consumer holding an
+/// identifier from last month has no other way to discover that, so the chain is
+/// published rather than left to be inferred from `supersedes` fields the
+/// consumer would have to fetch one at a time.
+///
+/// ⚠ `by` is the immediate successor and `current` is the end of the walk. They
+/// differ exactly when a correction was itself corrected, which is the case a
+/// single-step row would answer wrongly while looking right.
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub struct CorrectionRow {
+    /// The record that no longer answers.
+    pub superseded: RecordId,
+    /// The record that supersedes it directly.
+    pub by: RecordId,
+    /// The record at the end of the chain, which is what answers now.
+    pub current: RecordId,
+    /// Where `current` is filed.
+    pub path: RelPath,
+}
+
 /// Everything a build produces, and what it left out.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Indexes {
@@ -145,11 +169,19 @@ pub struct Indexes {
     pub indexes: Vec<Index>,
     /// The latest view, ascending by build line.
     pub latest: Vec<LatestRow>,
+    /// Every superseded record, and what answers in its place.
+    pub corrections: Vec<CorrectionRow>,
     /// How many records were in the store and not in any view.
     ///
     /// ⚠ Reported rather than inferred. A consumer comparing a row count with a
     /// store's record count would otherwise read an exclusion as a defect.
     pub excluded: usize,
+    /// How many records were left out because something corrects them.
+    ///
+    /// ⚠ Counted apart from `excluded` because the two mean opposite things
+    /// about a measurement. An excluded record was never publishable; a
+    /// superseded one was, and a later run says it is no longer current.
+    pub superseded: usize,
 }
 
 /// The leading fixed span of a measured peer ID, as a lookup key.
@@ -193,6 +225,167 @@ fn field<'a>(profile: &'a Profile, path: &str) -> Option<&'a FieldState> {
     profile.field(&path).map(|observed| &observed.state)
 }
 
+/// The correction graph over a store.
+struct Chains {
+    /// Each superseded record, and the record that directly corrects it.
+    succeeds: BTreeMap<RecordId, RecordId>,
+    /// Each superseded record, and the record at the end of its chain.
+    current_of: BTreeMap<RecordId, RecordId>,
+    /// Every record the store carries, and where it is filed.
+    filed: BTreeMap<RecordId, RelPath>,
+}
+
+/// Reads the correction graph, refusing a fork and a cycle.
+///
+/// ⛔ **A PASS OF ITS OWN, BECAUSE A RECORD CANNOT KNOW IT HAS BEEN CORRECTED.**
+/// The `supersedes` field points backwards, so the successor of a record is only
+/// discoverable by reading every other record first. Deciding whether to index a
+/// record in the same pass that discovers the correction would get it wrong in
+/// whichever direction the store happened to be read in.
+fn chains(corpus: &Corpus, errors: &mut Vec<SchemaError>) -> Chains {
+    // ⚠ ONLY A PUBLISHABLE CORRECTION RETRACTS ANYTHING. A correction carrying
+    // its own disagreement is provisional, and letting it drop the record it
+    // corrects would leave the build line answering nothing at all: the views
+    // would lose a measurement to a record that is not fit to replace it.
+    let mut successors: BTreeMap<RecordId, Vec<(RecordId, RelPath)>> = BTreeMap::new();
+    let mut filed: BTreeMap<RecordId, RelPath> = BTreeMap::new();
+    for stored in corpus.profiles() {
+        let profile = &stored.profile;
+        filed.insert(profile.id, stored.path.clone());
+        if publishable(profile).is_err() {
+            continue;
+        }
+        if let Some(prior) = profile.supersedes {
+            successors
+                .entry(prior)
+                .or_default()
+                .push((profile.id, stored.path.clone()));
+        }
+    }
+
+    // ⛔ A FORK HAS NO ANSWER AND MUST NOT GET ONE BY ACCIDENT. Two records
+    // correcting the same measurement is a real thing to discover and not a
+    // thing to resolve here: picking the lower identifier would publish one
+    // adjudication and silently discard the other.
+    let mut succeeds: BTreeMap<RecordId, RecordId> = BTreeMap::new();
+    for (prior, mut found) in successors {
+        found.sort();
+        if let [(first, _), rest @ ..] = found.as_slice()
+            && !rest.is_empty()
+        {
+            let others = rest
+                .iter()
+                .map(|(id, _)| id.to_string())
+                .collect::<Vec<_>>()
+                .join(", ");
+            errors.push(SchemaError::new(
+                "E-VIW-03",
+                filed.get(&prior).map_or("<absent>", RelPath::as_str),
+                format!("{prior} is corrected by {first} and also by {others}"),
+            ));
+            continue;
+        }
+        if let Some((only, _)) = found.first() {
+            succeeds.insert(prior, *only);
+        }
+    }
+
+    // ⛔ BOUNDED, BECAUSE A CYCLE IS CONSTRUCTIBLE. A record identifier digests
+    // the identity tuple and not `supersedes`, so two records can each name the
+    // other and neither is self-superseding, which is the only shape the record
+    // validator refuses. An unbounded walk here would hang rather than report.
+    let mut current_of: BTreeMap<RecordId, RecordId> = BTreeMap::new();
+    for start in succeeds.keys().copied() {
+        let mut at = start;
+        let mut steps = 0_usize;
+        let end = loop {
+            match succeeds.get(&at) {
+                None => break Some(at),
+                Some(next) => {
+                    at = *next;
+                    steps += 1;
+                    if steps > succeeds.len() {
+                        break None;
+                    }
+                }
+            }
+        };
+        match end {
+            Some(end) => {
+                current_of.insert(start, end);
+            }
+            None => errors.push(SchemaError::new(
+                "E-VIW-04",
+                filed.get(&start).map_or("<absent>", RelPath::as_str),
+                format!("the correction chain from {start} returns to where it started"),
+            )),
+        }
+    }
+
+    Chains {
+        succeeds,
+        current_of,
+        filed,
+    }
+}
+
+impl Chains {
+    /// The published correction rows, ascending.
+    ///
+    /// ⚠ Only a chain whose ends the store actually carries becomes a row. A
+    /// `supersedes` naming a record nobody has is `E-CRP-07`'s refusal at corpus
+    /// level, and emitting a row for it here would put an identifier in a
+    /// derived file that `rows_resolve` then could not resolve, which is the
+    /// defect that check exists to catch rather than one to feed it.
+    fn rows(&self) -> Vec<CorrectionRow> {
+        let mut rows: Vec<CorrectionRow> = self
+            .succeeds
+            .iter()
+            .filter_map(|(superseded, by)| {
+                let current = *self.current_of.get(superseded)?;
+                Some(CorrectionRow {
+                    superseded: *superseded,
+                    by: *by,
+                    current,
+                    path: self.filed.get(&current)?.clone(),
+                })
+            })
+            .collect();
+        rows.sort();
+        rows
+    }
+}
+
+/// The lookup rows one record contributes.
+///
+/// ⚠ Two of the six are conditional and the other four are not. A record always
+/// has a target, a platform, a version and a capture instant; a measured peer
+/// prefix and a measured client string are values a build may not have produced,
+/// and a row keyed on their absence would answer every lookup.
+fn push_lookups(profile: &Profile, path: &RelPath, rows: &mut BTreeMap<IndexKind, Vec<IndexRow>>) {
+    let mut push = |kind: IndexKind, key: String| {
+        rows.entry(kind).or_default().push(IndexRow {
+            key,
+            record: profile.id,
+            path: path.clone(),
+        });
+    };
+
+    push(IndexKind::Target, profile.target.id.to_string());
+    push(IndexKind::Platform, profile.build.platform.to_string());
+    push(IndexKind::Version, profile.build.version.to_string());
+    push(
+        IndexKind::CapturedAt,
+        profile.capture.captured_at.to_string(),
+    );
+    if let Some(key) = field(profile, PEER_ID_FIELD).and_then(peer_prefix) {
+        push(IndexKind::PeerPrefix, key);
+    }
+    if let Some(key) = field(profile, BEP10_CLIENT_FIELD).and_then(client_string) {
+        push(IndexKind::Bep10Client, key);
+    }
+}
+
 /// Builds every index and the latest view over a store.
 ///
 /// `schemes` says how each target spells its versions, which is what makes a
@@ -206,10 +399,13 @@ fn field<'a>(profile: &'a Profile, path: &str) -> Option<&'a FieldState> {
 /// | --- | --- |
 /// | `E-VIW-01` | a publishable record whose target declares no version scheme |
 /// | `E-VIW-02` | a publishable record whose version its own scheme cannot order |
+/// | `E-VIW-03` | two publishable records correcting the same record |
+/// | `E-VIW-04` | a correction chain that returns to where it started |
 ///
-/// ⚠ Both are refusals about the **latest view only**. The lookup indexes carry
-/// the record regardless, because finding a measurement does not require
-/// ordering it.
+/// ⚠ The first two are refusals about the **latest view only**. The lookup
+/// indexes carry the record regardless, because finding a measurement does not
+/// require ordering it. The last two are about the whole document: a fork leaves
+/// no answer to "what replaces this", and a cycle has no end to walk to.
 pub fn build(
     corpus: &Corpus,
     schemes: &BTreeMap<Slug, VersionScheme>,
@@ -219,33 +415,23 @@ pub fn build(
     let mut best: BTreeMap<BuildLine, (Ranking, LatestRow)> = BTreeMap::new();
     let mut excluded = 0_usize;
 
+    let graph = chains(corpus, &mut errors);
+    let mut superseded = 0_usize;
+
     for stored in corpus.profiles() {
         let profile = &stored.profile;
         if publishable(profile).is_err() {
             excluded += 1;
             continue;
         }
-        let mut push = |kind: IndexKind, key: String| {
-            rows.entry(kind).or_default().push(IndexRow {
-                key,
-                record: profile.id,
-                path: stored.path.clone(),
-            });
-        };
-
-        push(IndexKind::Target, profile.target.id.to_string());
-        push(IndexKind::Platform, profile.build.platform.to_string());
-        push(IndexKind::Version, profile.build.version.to_string());
-        push(
-            IndexKind::CapturedAt,
-            profile.capture.captured_at.to_string(),
-        );
-        if let Some(key) = field(profile, PEER_ID_FIELD).and_then(peer_prefix) {
-            push(IndexKind::PeerPrefix, key);
+        // ⛔ Out of every view, and still in the store. A consumer asking a
+        // question now is answered by the record that corrects this one; the
+        // corrections list below is how they find that from an old identifier.
+        if graph.succeeds.contains_key(&profile.id) {
+            superseded += 1;
+            continue;
         }
-        if let Some(key) = field(profile, BEP10_CLIENT_FIELD).and_then(client_string) {
-            push(IndexKind::Bep10Client, key);
-        }
+        push_lookups(profile, &stored.path, &mut rows);
 
         // ⛔ The latest view fails closed. An unorderable version blocks the
         // build line rather than being skipped, because a skip yields an older
@@ -335,10 +521,14 @@ pub fn build(
     // for a proven one.
     latest.sort();
 
+    let corrections = graph.rows();
+
     Ok(Indexes {
         indexes,
         latest,
+        corrections,
         excluded,
+        superseded,
     })
 }
 
@@ -356,6 +546,8 @@ impl Indexes {
         out.push_str(INDEX_SCHEMA);
         out.push_str("\",\n  \"excluded\": ");
         let _ = write!(out, "{}", self.excluded);
+        out.push_str(",\n  \"superseded\": ");
+        let _ = write!(out, "{}", self.superseded);
         out.push_str(",\n  \"indexes\": [\n");
         for (index, entry) in self.indexes.iter().enumerate() {
             out.push_str("    {\n      \"kind\": \"");
@@ -402,6 +594,22 @@ impl Indexes {
             }
             out.push('\n');
         }
+        out.push_str("  ],\n  \"corrections\": [\n");
+        for (index, row) in self.corrections.iter().enumerate() {
+            out.push_str("    {\"superseded\": \"");
+            let _ = write!(out, "{}", row.superseded);
+            out.push_str("\", \"by\": \"");
+            let _ = write!(out, "{}", row.by);
+            out.push_str("\", \"current\": \"");
+            let _ = write!(out, "{}", row.current);
+            out.push_str("\", \"path\": \"");
+            out.push_str(row.path.as_str());
+            out.push_str("\"}");
+            if index + 1 < self.corrections.len() {
+                out.push(',');
+            }
+            out.push('\n');
+        }
         out.push_str("  ]\n}\n");
         out
     }
@@ -420,6 +628,7 @@ impl Indexes {
             .map(|index| index.rows.len())
             .sum::<usize>()
             + self.latest.len()
+            + self.corrections.len()
     }
 }
 
@@ -474,6 +683,36 @@ pub fn rows_resolve(indexes: &Indexes, corpus: &Corpus) -> Result<(), Violations
             &row.path,
         );
     }
+    // ⛔ ALL THREE IDENTIFIERS, NOT ONLY THE ONE CARRYING A PATH. A correction
+    // row is the one place a derived file names a record it is *not* pointing a
+    // reader at, and a superseded identifier that resolves to nothing would make
+    // the chain unwalkable in exactly the case it exists for. `current` is
+    // checked against its path; the other two only have to be records the store
+    // carries.
+    for row in &indexes.corrections {
+        check(
+            format!("corrections[{}]", row.superseded),
+            row.current,
+            &row.path,
+        );
+    }
+
+    // ⛔ ALL THREE IDENTIFIERS, NOT ONLY THE ONE CARRYING A PATH. A correction
+    // row is the one place a derived file names records it is *not* pointing a
+    // reader at, and a superseded identifier resolving to nothing would make the
+    // chain unwalkable in exactly the case it exists for. `current` is checked
+    // against its path above; these two only have to be records the store has.
+    for row in &indexes.corrections {
+        for (label, id) in [("superseded", row.superseded), ("by", row.by)] {
+            if !known.contains_key(&id) {
+                errors.push(SchemaError::new(
+                    "E-VIW-10",
+                    format!("corrections[{}].{label}", row.superseded),
+                    format!("names {id}, which this store does not carry"),
+                ));
+            }
+        }
+    }
 
     Violations::from_errors(errors)
 }
@@ -491,6 +730,7 @@ mod tests {
 
     const PROFILE: &str = include_str!("../tests/fixtures/valid-profile.json");
     const MANIFEST: &str = include_str!("../tests/fixtures/valid-manifest.json");
+    const CORRECTION: &str = include_str!("../tests/fixtures/valid-correction.json");
 
     fn profile() -> Profile {
         Profile::from_json(PROFILE).expect("the fixture record validates")
@@ -573,6 +813,87 @@ mod tests {
         corpus_at(&["1.2.3"])
     }
 
+    /// A store carrying exactly these records, each at its derived path.
+    fn corpus_of(records: Vec<Profile>) -> Corpus {
+        let mut tree = StoreTree::new();
+        let mut placed = Vec::new();
+        for record in records {
+            let path = StoreKey::of_profile(&record)
+                .profile_path()
+                .expect("a publishable path");
+            tree.insert(
+                path.clone(),
+                Entry::Object(ObjectRef {
+                    bytes: PROFILE.len() as u64,
+                    sha256: Sha256Digest::of(PROFILE.as_bytes()),
+                }),
+            );
+            placed.push((path, record));
+        }
+        let mut corpus = Corpus::new(tree);
+        for (path, record) in placed {
+            corpus.insert_profile(path, record);
+        }
+        corpus
+    }
+
+    /// A record on the fixture's build line that corrects `prior`.
+    ///
+    /// ⚠ The capture is a parameter rather than derived from the version,
+    /// because a correction of one build is a second run of it: same version,
+    /// different capture, and therefore a different identifier. Passing the
+    /// original's own capture reproduces the original's identifier exactly,
+    /// which is how the cycle case below is built at all.
+    fn correction_at(version_text: &str, capture: &str, prior: RecordId) -> Profile {
+        let mut record = record_at(version_text);
+        record.capture.id = slug(capture);
+        record.id = RecordId::derive(&RecordKey {
+            schema: &record.schema,
+            target: &record.target.id,
+            version: &record.build.version,
+            platform: &record.build.platform,
+            arch: &record.build.arch,
+            package: &record.build.package,
+            capture: &record.capture.id,
+        });
+        record.supersedes = Some(prior);
+        // The fixture correction's adjudication cites `ev-connector-report` and
+        // `ev-packet-capture`, which the base record also carries, so `E-ADJ-04`
+        // is satisfied without inventing evidence.
+        record.adjudication = Profile::from_json(CORRECTION)
+            .expect("the fixture correction validates")
+            .adjudication;
+        crate::validate::validate(&record).expect("a correction of the fixture record validates");
+        record
+    }
+
+    /// Makes a record provisional, which is what `publishable` refuses.
+    ///
+    /// A disagreement is what does it, and the record model keeps one on
+    /// purpose: `validate` accepts it and `publishable` refuses it.
+    /// ⚠ The observations have to actually differ. `E-COR-14` refuses a claimed
+    /// disagreement over observations that are all equal, which is the schema
+    /// keeping a conflict honest rather than an obstacle here.
+    fn make_provisional(record: &mut Profile) {
+        let entry = record
+            .corroboration
+            .first_mut()
+            .expect("the fixture record carries corroboration");
+        entry.observations[0].seen = crate::agreement::SeenValue::Bytes(
+            crate::canonical::HexBytes::parse("00112233").expect("observed bytes"),
+        );
+        entry.agreement = crate::Agreement::Disagrees;
+        entry.conflict = Some(
+            crate::canonical::Label::parse("the two connectors read different bytes")
+                .expect("a recorded fact"),
+        );
+        crate::validate::validate(record).expect("a record carrying a conflict still validates");
+        assert!(
+            crate::agreement::publishable(record).is_err(),
+            "a disagreement is not publishable"
+        );
+    }
+
     /// The store as the fixtures ship it, whose version no scheme orders.
     fn fixture_corpus() -> Corpus {
         let record = profile();
@@ -646,29 +967,7 @@ mod tests {
     #[test]
     fn a_provisional_record_is_left_out_of_every_view() {
         let mut record = record_at("1.2.3");
-        // A disagreement is what makes a record provisional, and the record
-        // model keeps it on purpose: `validate` accepts it and `publishable`
-        // refuses it.
-        // ⚠ The observations have to actually differ. `E-COR-14` refuses a
-        // claimed disagreement over observations that are all equal, which is
-        // the schema keeping a conflict honest rather than an obstacle here.
-        let entry = record
-            .corroboration
-            .first_mut()
-            .expect("the fixture record carries corroboration");
-        entry.observations[0].seen = crate::agreement::SeenValue::Bytes(
-            crate::canonical::HexBytes::parse("00112233").expect("observed bytes"),
-        );
-        entry.agreement = crate::Agreement::Disagrees;
-        entry.conflict = Some(
-            crate::canonical::Label::parse("the two connectors read different bytes")
-                .expect("a recorded fact"),
-        );
-        crate::validate::validate(&record).expect("a record carrying a conflict still validates");
-        assert!(
-            crate::agreement::publishable(&record).is_err(),
-            "a disagreement is not publishable"
-        );
+        make_provisional(&mut record);
 
         let path = StoreKey::of_profile(&record)
             .profile_path()
@@ -680,6 +979,172 @@ mod tests {
         assert_eq!(indexes.excluded, 1);
         assert_eq!(indexes.latest.len(), 0, "no latest row");
         assert_eq!(indexes.rows(), 0, "and no lookup row either");
+    }
+
+    /// ⛔ A corrected record answers nothing and is still in the store. This is
+    /// the whole of `CORPUS-04`: the append-only rule keeps the bytes, and the
+    /// views stop pointing at them.
+    #[test]
+    fn a_superseded_record_leaves_every_view() {
+        let original = record_at("1.2.3");
+        let fix = correction_at("1.2.3", "cap-re-run", original.id);
+        assert_ne!(original.id, fix.id, "a re-capture is a different record");
+
+        let corpus = corpus_of(vec![original.clone(), fix.clone()]);
+        let indexes = build(&corpus, &schemes()).expect("a store with one correction");
+
+        assert_eq!(
+            indexes.superseded, 1,
+            "the original is counted as corrected"
+        );
+        assert_eq!(indexes.excluded, 0, "and it was publishable, not excluded");
+
+        assert_eq!(indexes.latest.len(), 1, "one build line, one row");
+        assert_eq!(
+            indexes.latest[0].record, fix.id,
+            "the latest view names the correction"
+        );
+
+        for index in &indexes.indexes {
+            for row in &index.rows {
+                assert_ne!(
+                    row.record,
+                    original.id,
+                    "{} still points at the corrected record",
+                    index.kind.as_str()
+                );
+            }
+        }
+
+        assert_eq!(indexes.corrections.len(), 1);
+        let row = &indexes.corrections[0];
+        assert_eq!(row.superseded, original.id);
+        assert_eq!(row.by, fix.id);
+        assert_eq!(row.current, fix.id);
+        rows_resolve(&indexes, &corpus).expect("every correction row resolves");
+    }
+
+    /// ⛔ A correction can itself be corrected, and a row that stopped at the
+    /// first step would answer with a record that no longer answers. `by` and
+    /// `current` are two facts and this is the case that tells them apart.
+    #[test]
+    fn a_corrected_correction_names_the_end_of_the_chain() {
+        let original = record_at("1.2.3");
+        let first = correction_at("1.2.3", "cap-re-run", original.id);
+        let second = correction_at("1.2.3", "cap-third-run", first.id);
+
+        let corpus = corpus_of(vec![original.clone(), first.clone(), second.clone()]);
+        let indexes = build(&corpus, &schemes()).expect("a store with a two-step chain");
+
+        assert_eq!(indexes.superseded, 2, "both earlier records are corrected");
+        assert_eq!(indexes.latest.len(), 1);
+        assert_eq!(indexes.latest[0].record, second.id);
+
+        let from_original = indexes
+            .corrections
+            .iter()
+            .find(|row| row.superseded == original.id)
+            .expect("the original has a correction row");
+        assert_eq!(
+            from_original.by, first.id,
+            "the immediate successor is the first correction"
+        );
+        assert_eq!(
+            from_original.current, second.id,
+            "and the end of the chain is the second"
+        );
+        rows_resolve(&indexes, &corpus).expect("every correction row resolves");
+    }
+
+    /// ⛔ Two corrections of one record leave no answer to "what replaces this",
+    /// and choosing one would discard the other's adjudication silently.
+    #[test]
+    fn two_records_correcting_one_are_refused() {
+        let original = record_at("1.2.3");
+        let one = correction_at("1.2.3", "cap-re-run", original.id);
+        let two = correction_at("1.2.3", "cap-other-run", original.id);
+        assert_ne!(one.id, two.id);
+
+        let corpus = corpus_of(vec![original, one, two]);
+        let violations = build(&corpus, &schemes()).expect_err("a fork has no answer");
+        assert!(violations.has("E-VIW-03"), "{violations}");
+    }
+
+    /// ⛔ A cycle is constructible, which is the reason the walk is bounded. A
+    /// record identifier digests the identity tuple and not `supersedes`, so
+    /// two records can each name the other while neither supersedes itself,
+    /// and self-supersession is the only shape `validate` refuses.
+    #[test]
+    fn a_correction_chain_that_returns_to_its_start_is_refused() {
+        let original = record_at("1.2.3");
+        let other = correction_at("1.2.4", "cap-1-2-4", original.id);
+        // Rebuilt at the original's own version and capture, so this carries the
+        // original's identifier exactly and closes the loop.
+        let back = correction_at("1.2.3", "cap-1-2-3", other.id);
+        assert_eq!(back.id, original.id, "the loop is actually closed");
+
+        let corpus = corpus_of(vec![back, other]);
+        let violations = build(&corpus, &schemes()).expect_err("a cycle has no end");
+        assert!(violations.has("E-VIW-04"), "{violations}");
+
+        // ⚠ MEASURED, NOT ASSUMED, because it is the residual this leaves, and
+        // the first version of this assertion was wrong. `validate_corpus` does
+        // refuse this store, on `E-CRP-01`: it carries no run manifests, which
+        // has nothing to do with the cycle. What it does not report is
+        // `E-CRP-07`, whose whole question is whether the record a correction
+        // names exists, and in a cycle both do. So nothing at corpus level sees
+        // a cycle; it is caught when a view is derived over the store, which is
+        // before anything can be published and after a caller who never derives
+        // one would have noticed nothing.
+        let at_corpus = crate::corpus::validate_corpus(&corpus)
+            .expect_err("this store carries no run manifests either");
+        assert!(
+            !at_corpus.has("E-CRP-07"),
+            "the cycle's own records both exist, so the supersession rule is satisfied: \
+             {at_corpus}"
+        );
+    }
+
+    /// ⛔ A correction that is not itself publishable retracts nothing. Letting
+    /// it would leave the build line answering with no record at all, which is
+    /// losing a measurement to one that is not fit to replace it.
+    #[test]
+    fn a_provisional_correction_retracts_nothing() {
+        let original = record_at("1.2.3");
+        let mut fix = correction_at("1.2.3", "cap-re-run", original.id);
+        make_provisional(&mut fix);
+
+        let corpus = corpus_of(vec![original.clone(), fix]);
+        let indexes = build(&corpus, &schemes()).expect("a store with a provisional correction");
+
+        assert_eq!(indexes.superseded, 0, "nothing was retracted");
+        assert_eq!(indexes.excluded, 1, "the correction itself is left out");
+        assert_eq!(
+            indexes.corrections.len(),
+            0,
+            "and there is no chain to walk"
+        );
+        assert_eq!(indexes.latest.len(), 1);
+        assert_eq!(
+            indexes.latest[0].record, original.id,
+            "the original still answers"
+        );
+    }
+
+    /// ⛔ A correction row names two records it is not pointing a reader at, and
+    /// `rows_resolve` has to check those too. A superseded identifier resolving
+    /// to nothing makes the chain unwalkable in exactly the case it exists for.
+    #[test]
+    fn a_correction_row_naming_an_absent_record_is_refused() {
+        let original = record_at("1.2.3");
+        let fix = correction_at("1.2.3", "cap-re-run", original.id);
+        let corpus = corpus_of(vec![original.clone(), fix]);
+        let mut indexes = build(&corpus, &schemes()).expect("a store with one correction");
+
+        indexes.corrections[0].superseded = record_at("9.9.9").id;
+        let violations =
+            rows_resolve(&indexes, &corpus).expect_err("the superseded record is not in the store");
+        assert!(violations.has("E-VIW-10"), "{violations}");
     }
 
     /// ⚠ A peer ID whose first span varies has no prefix to key on, and a row

@@ -216,14 +216,20 @@ fn main() -> ExitCode {
         return ExitCode::from(2);
     }
 
+    // ⚠ The lookup count is the total minus the two views that are not lookups.
+    // Leaving corrections in it would have made the line quietly change meaning
+    // the day `CORPUS-04` added them, which is the shape of a number nobody can
+    // check.
     let mut stdout = std::io::stdout();
     let _ = writeln!(
         stdout,
-        "{} {} row(s), {} latest, {} excluded",
+        "{} {} row(s), {} latest, {} correction(s), {} excluded, {} superseded",
         indexes.digest(),
-        indexes.rows() - indexes.latest.len(),
+        indexes.rows() - indexes.latest.len() - indexes.corrections.len(),
         indexes.latest.len(),
-        indexes.excluded
+        indexes.corrections.len(),
+        indexes.excluded,
+        indexes.superseded
     );
     ExitCode::SUCCESS
 }

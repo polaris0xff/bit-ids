@@ -3,10 +3,10 @@
 State instant: 2026-09-06
 Baseline commit: `ad0b68f` on `main`
 Total: 56
-Open: 31
+Open: 30
 In progress: 0
 Blocked: 0
-Done: 25
+Done: 26
 
 ## Current state
 
@@ -307,13 +307,18 @@ the concurrency group `PUB-02` left as residuals. ⛔ **It cannot fire on its
 own**, its dry run is the default, and it has never run: its first step wants a
 bundle from a capture run and there are no captures.
 
+⭐ `CORPUS-04` is closed too, so a correction changes an answer rather than only
+being recordable. A superseded record leaves every view and keeps its path and
+its bytes, and the derived document carries the chain, so a consumer holding an
+identifier from last month can find what answers now. ⚠ Two counts are kept
+apart because they mean opposite things: an excluded record was never
+publishable, and a superseded one was.
+
 ## Work order
 
-1. `CORPUS-04`, supersession and correction records, which is what the latest
-   view needs before a superseded record can drop out of it.
-2. `PUB-03`, the multi-format publisher, which derives its formats from the
+1. `PUB-03`, the multi-format publisher, which derives its formats from the
    bundle `PUB-01` assembles rather than beside it.
-3. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
+2. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
    captures, on Linux only until `CI-03` provides the Windows guard pair.
    ⛔ **They stay behind the corpus work on a measurement rather than a
    preference:** their acceptance needs a capture, a capture needs a host
@@ -321,10 +326,10 @@ bundle from a capture run and there are no captures.
    refused. `TODO/clients.md` carries the three routes that were tried on
    2026-09-05. ⭐ Neither the observer layer nor the store blocks them any more;
    `CI-03` and a host are what remain.
-4. `ACQ-05`, the artifact cache, and `FOUND-04`, the licence register, before
+3. `ACQ-05`, the artifact cache, and `FOUND-04`, the licence register, before
    the first proprietary client is acquired.
-5. `CI-02` through `CI-04`, then the remaining client and engine breadth.
-6. Consumer library, public documentation, and refinements.
+4. `CI-02` through `CI-04`, then the remaining client and engine breadth.
+5. Consumer library, public documentation, and refinements.
 
 ## Pending operator decisions
 

@@ -1,7 +1,7 @@
 //! Write a coherent synthetic store into a directory.
 //!
 //! ```text
-//! cargo run -p bit-ids --example build-store -- [--version V]... DIR
+//! cargo run -p bit-ids --example build-store -- [--version V]... [--correct V]... DIR
 //! ```
 //!
 //! ⚠ **`--version` writes the record at a version of your choosing**, with each
@@ -9,6 +9,14 @@
 //! it digests the version. The fixture's own `0.0.0-fixture` is deliberately not
 //! a version any scheme can order, so a store meant for `CORPUS-03`'s latest
 //! view has to be written at one that is.
+//!
+//! ⚠ **`--correct V` writes a second record at that version, on its own
+//! capture, superseding the first.** It is what `CORPUS-04` needs a store for,
+//! and it is written beside the record it corrects rather than over it: the
+//! append-only rule keeps both, and the views are what stop naming the earlier
+//! one. Pass `--version V` first, or the correction supersedes a record the
+//! store does not carry and `E-CRP-07` refuses the result, which is that check
+//! doing its job.
 //!
 //! `CORPUS-02` needs a store whose citations resolve, and the schema fixtures
 //! are not one: they declare digests for artifacts that were never written,
@@ -40,6 +48,7 @@ use bit_ids::{Profile, RunManifest};
 
 const PROFILE: &str = include_str!("../tests/fixtures/valid-profile.json");
 const MANIFEST: &str = include_str!("../tests/fixtures/valid-manifest.json");
+const CORRECTION: &str = include_str!("../tests/fixtures/valid-correction.json");
 
 /// Bytes for one artifact, a function of its identifier so two runs of this
 /// example write the same store.
@@ -108,11 +117,51 @@ fn set_version(
     Ok(())
 }
 
-fn build(root: &Path, version: Option<&str>) -> Result<(usize, usize), String> {
+/// Turns the record `set_version` just produced into a correction of itself.
+///
+/// ⛔ The prior identifier is read off the record rather than recomputed, so the
+/// two can never disagree about what is being corrected. The capture moves in
+/// both documents, because a profile and its run are paired by capture and a
+/// correction is a second run of the same build.
+fn set_correction(
+    profile: &mut Profile,
+    manifest: &mut RunManifest,
+    version_text: &str,
+) -> Result<(), String> {
+    let prior = profile.id;
+    let capture = Slug::parse(&format!("cap-{}-fix", version_text.replace('.', "-")))
+        .map_err(|error| error.to_string())?;
+    profile.capture.id = capture.clone();
+    manifest.capture = capture;
+    profile.id = RecordId::derive(&RecordKey {
+        schema: &profile.schema,
+        target: &profile.target.id,
+        version: &profile.build.version,
+        platform: &profile.build.platform,
+        arch: &profile.build.arch,
+        package: &profile.build.package,
+        capture: &profile.capture.id,
+    });
+    profile.supersedes = Some(prior);
+    // ⚠ Taken from the correction fixture, whose cited evidence the base record
+    // also carries. `E-ADJ-04` refuses an adjudication citing evidence the
+    // record does not have, so inventing one here would be refused.
+    profile.adjudication = Profile::from_json(CORRECTION)
+        .map_err(|error| error.to_string())?
+        .adjudication;
+    Ok(())
+}
+
+fn build(root: &Path, version: Option<&str>, correct: bool) -> Result<(usize, usize), String> {
     let mut profile = Profile::from_json(PROFILE).map_err(|error| error.to_string())?;
     let mut manifest = RunManifest::from_json(MANIFEST).map_err(|error| error.to_string())?;
     if let Some(text) = version {
         set_version(&mut profile, &mut manifest, text)?;
+        if correct {
+            set_correction(&mut profile, &mut manifest, text)?;
+        }
+    } else if correct {
+        return Err("--correct needs a version to correct at".to_owned());
     }
 
     // The paths are resolved before the documents are touched, because the key
@@ -159,24 +208,32 @@ fn build(root: &Path, version: Option<&str>) -> Result<(usize, usize), String> {
 }
 
 fn main() -> ExitCode {
-    let mut versions: Vec<String> = Vec::new();
+    // ⚠ Order is preserved across both flags, because a correction has to be
+    // written after the record it supersedes for the result to be a store the
+    // corpus validator accepts.
+    let mut jobs: Vec<(String, bool)> = Vec::new();
     let mut positional: Vec<std::ffi::OsString> = Vec::new();
     let mut args = std::env::args_os().skip(1);
     while let Some(arg) = args.next() {
-        if arg != *"--version" {
+        let correcting = arg == *"--correct";
+        if arg != *"--version" && !correcting {
             positional.push(arg);
             continue;
         }
         let Some(text) = args.next().and_then(|value| value.into_string().ok()) else {
-            let _ = writeln!(std::io::stderr(), "--version needs a version string");
+            let _ = writeln!(
+                std::io::stderr(),
+                "{} needs a version string",
+                if correcting { "--correct" } else { "--version" }
+            );
             return ExitCode::from(2);
         };
-        versions.push(text);
+        jobs.push((text, correcting));
     }
     let [root_arg] = positional.as_slice() else {
         let _ = writeln!(
             std::io::stderr(),
-            "usage: build-store [--version V]... DIR\n\
+            "usage: build-store [--version V]... [--correct V]... DIR\n\
              writes one coherent synthetic store: a record, its run, and the artifacts it cites"
         );
         return ExitCode::from(2);
@@ -192,15 +249,17 @@ fn main() -> ExitCode {
         return ExitCode::from(2);
     }
 
-    let wanted: Vec<Option<&str>> = if versions.is_empty() {
-        vec![None]
+    let wanted: Vec<(Option<&str>, bool)> = if jobs.is_empty() {
+        vec![(None, false)]
     } else {
-        versions.iter().map(|text| Some(text.as_str())).collect()
+        jobs.iter()
+            .map(|(text, correct)| (Some(text.as_str()), *correct))
+            .collect()
     };
     let mut artifacts = 0_usize;
     let mut documents = 0_usize;
-    for version in wanted {
-        match build(root, version) {
+    for (version, correct) in wanted {
+        match build(root, version, correct) {
             Ok((wrote_artifacts, wrote_documents)) => {
                 artifacts += wrote_artifacts;
                 documents += wrote_documents;

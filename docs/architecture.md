@@ -324,6 +324,27 @@ confidently.
 ⚠ Only publishable records enter a view, and how many were left out is reported
 rather than inferred.
 
+⛔ **A corrected record leaves every view and stays in the store.** `CORPUS-04`
+owns that, and the two counts are kept apart because they mean opposite things
+about a measurement: an excluded record was never publishable, and a superseded
+one was, until a later run said it is no longer current. The `corrections` list
+carries each superseded identifier, the record that directly corrects it, and
+the record at the end of the chain, so a consumer holding an old identifier can
+find what answers now without fetching every record to read its `supersedes`.
+
+⚠ **`by` and `current` are two facts.** They differ exactly when a correction
+was itself corrected, and a row that stopped at the first step would hand a
+reader a record that no longer answers either. The walk is bounded, because a
+record identifier digests the identity tuple and not `supersedes`, so two
+records can name each other and neither supersedes itself.
+
+⛔ **A fork is refused rather than resolved**, under `E-VIW-03`. Two records
+correcting one measurement has no answer to what replaces it, and choosing
+between them would publish one adjudication and discard the other in silence.
+⚠ Neither that nor the cycle refusal has a counterpart in
+[`corpus.rs`](../crates/bit-ids/src/corpus.rs): both are caught when a view is
+derived, which is before publication and after a caller who derives none.
+
 ## 5. Observation surfaces
 
 The codecs live in

@@ -290,7 +290,7 @@ key replaced it.
 ## CORPUS-04: Supersession and correction records
 
 Source: append-only publication constraint
-Priority: P1 | Effort: M | Status: OPEN
+Priority: P1 | Effort: M | Status: DONE
 
 Problem: A proven bad record must stop appearing in current views without
 deleting the historical evidence.
@@ -300,3 +300,86 @@ replacement, and review evidence; derive current views accordingly.
 
 Prove: fixtures retain the original bytes, exclude a superseded record from
 latest views, and expose the full correction chain.
+
+⚠ **Half the Approach was already built and the entry does not re-do it.**
+`SCHEMA-01` gave a record `supersedes`, `SCHEMA-03` gave it `adjudication` with
+its reason and cited evidence, `E-ADJ-01` through `E-ADJ-05` hold the pair
+together, and `E-CRP-07` refuses a correction naming a record the store does not
+carry. What none of that did was change any answer: a corrected record was still
+in every lookup and could still be the latest view's reply.
+
+### The three things a correction changes, and the one it must not
+
+⛔ **A superseded record leaves every view and stays in the store.** The
+append-only rule keeps its bytes, its evidence and its path forever; what a
+correction changes is which record answers a question asked now.
+
+⛔ **The chain is published rather than left to be inferred.** A consumer
+holding an identifier from last month has no other way to discover that it was
+corrected, so `corrections` carries the superseded identifier, the record that
+directly corrects it, and the record at the end of the chain. ⚠ `by` and
+`current` differ exactly when a correction was itself corrected, which is the
+case a single-step row answers wrongly while looking right.
+
+⚠ **Only a publishable correction retracts anything.** A correction carrying its
+own disagreement is provisional, and letting it drop the record it corrects
+would leave the build line answering nothing at all: a measurement lost to a
+record that is not fit to replace it.
+
+### Decision: two refusals rather than a resolution
+
+⛔ **A fork is refused, not resolved.** Two records correcting one measurement
+has no answer to "what replaces this", and picking the lower identifier would
+publish one adjudication and silently discard the other. `E-VIW-03`.
+
+⛔ **A cycle is constructible, so the walk is bounded.** A record identifier
+digests the identity tuple and not `supersedes`, so two records can each name
+the other while neither supersedes itself, which is the only shape `validate`
+refuses. An unbounded walk would hang rather than report. `E-VIW-04`.
+
+### Acceptance, all run on 2026-09-06
+
+- `cargo test --workspace --locked --all-targets`
+- `sh scripts/corpus/check-indexes.sh`
+- `sh scripts/common/check-gate.sh`
+
+### Closure evidence, 2026-09-06
+
+| what | measured |
+| --- | --- |
+| `cargo test --workspace --locked --all-targets` | 36 binaries, 343 passed, 0 failed, six of them new here |
+| `sh scripts/corpus/check-indexes.sh` | 15 cases, 15 passed, 0 failed, five of them new here |
+| `sh scripts/common/check-gate.sh` | 17 checks, 16 passed, 0 failed, 1 skipped, 0 unavailable |
+| guard mutation | 6 plants over the new guards, 6 refused |
+| driven pass | one store built with the correction and one without; the corrected record byte-identical between them, the latest view answering the correction's path, and the chain naming the identifier a reader may still hold |
+
+⭐ **The retention half needed two stores rather than one.** Reading the
+corrected store and finding the original still there proves it was written, not
+that it was left alone. `build-store --correct V` writes the correction beside
+the record it corrects, and `check-indexes.sh` compares that record's bytes
+between the two stores, which is the only comparison that can see a correction
+that edited what it corrected.
+
+### ⛔ What the claim audit corrected in its own first draft
+
+This entry was about to record, as a residual, that a cycle is a coherent store
+the corpus validator accepts. Asserting it instead of writing it down showed
+`validate_corpus` refusing that store outright, on `E-CRP-01`, because the
+fixture carries no run manifests. The residual is real and the reason was wrong:
+what the validator does not report is `E-CRP-07`, whose question is whether the
+record a correction names exists, and in a cycle both do.
+
+### Residuals
+
+- ⚠ Nothing at corpus level refuses a fork or a cycle. Both are caught when a
+  view is derived, which is before anything can be published, and a caller who
+  never derives one sees neither. `crates/bit-ids/src/index.rs` holds both
+  codes; moving them beside `E-CRP-07` would put one rule behind two doors and
+  is worth doing only with a check comparing the two.
+- ⚠ `publishable_view` still reports a superseded record as publishable, and
+  that is correct rather than an oversight: it is a valid measurement and it is
+  no longer current, which are different questions. The driven run reports three
+  of three publishable beside one superseded.
+- ⚠ `bit-ids/index/1` gained two fields and a list, so every digest a consumer
+  had recorded moves. Nothing has ever been published, so there is no consumer
+  and no generation to bump; a later change to this document is not free.

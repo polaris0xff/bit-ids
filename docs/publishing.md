@@ -37,6 +37,11 @@ rule nothing states or checks. The derivation is
 [`store::StoreKey`](../crates/bit-ids/src/store.rs) and it is the only place a
 path is composed.
 
+⛔ **A correction appends and never edits.** The record it corrects keeps its
+path and its bytes; `indexes/v1/profiles.json` is where it stops being the
+answer, and that document's `corrections` list is how a consumer holding the old
+identifier finds the one that answers now. `CORPUS-04` owns it.
+
 `latest` selects the newest validated stable version only. It is a generated
 pointer, not a profile, and a prerelease can never move it.
 [`index`](../crates/bit-ids/src/index.rs) derives it and the lookup indexes
