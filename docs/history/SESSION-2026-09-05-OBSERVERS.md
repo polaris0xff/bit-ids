@@ -11,11 +11,12 @@ that follows it.
 | --- | --- |
 | Commits | 6 closing work over `2fb8548..39b6fa7`, all pushed and read back from `origin/main`, then one checkpoint commit |
 | Work | 6 entries completed, 1 checkpointed in flight, 0 failed. 1 new entry filed |
-| Changes | 36 files over `2fb8548..39b6fa7`, +7622 / -99, before the checkpoint |
+| Changes | 41 files over `2fb8548..5887270`, +8209 / -112 |
+| Size | 39,998 tracked lines over 169 files at `5887270`, from 31,901 over 147 at `2fb8548`. Delta +8,097. ⚠ Measured from the committed trees, not the working copy: a size read from the working copy changes when this file is written |
 | Checks | gate 12 checks, 11 passed, 0 failed, 1 skipped, both halves |
 | Suite | 25 binaries, 250 passed, 0 failed, plus 2 doctests |
 | Mutation | 93 defects planted across 7 guards, 1 not refused and named below |
-| CI | every pushed commit green on both the Linux and Windows lanes |
+| CI | the six work commits green on both the Linux and Windows lanes, read back from the API; the checkpoint commit's run confirmed separately |
 | Cost | no money. Network: one crate added from the registry, plus three tool downloads |
 | Health | tree clean, level with `origin/main`, nothing deployed |
 
@@ -70,8 +71,8 @@ dictionary, and a component row saying the probe crate writes evidence. The
 **What was measured but never verified.** The eight older test files' function
 count was taken by grep and is now confirmed by the runner's own counts. That
 `check-remote-items` runs in CI was documentation until this session: the Linux
-lane runs the gate with `--strict`, which makes a skip a failure, and every push
-went green.
+lane runs the gate with `--strict`, which makes a skip a failure, and the six
+work commits went green on both lanes.
 
 **Writing the tests.** A test wrote a fixed byte budget and asserted a socket
 close had arrived by then, which is a scheduling outcome it does not control. It
