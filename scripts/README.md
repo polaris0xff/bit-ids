@@ -15,8 +15,13 @@ from any working directory.
 - [`corpus/check-indexes.sh`](corpus/check-indexes.sh) proves the two things a
   derived file owes: byte-identical clean builds, and rows that resolve back to
   the records they came from.
-- [`corpus/store-lib.sh`](corpus/store-lib.sh) is sourced by both and is never
-  run. It holds what a mutation harness needs: build an example, make a scratch
+- [`publishing/check-release.sh`](publishing/check-release.sh) assembles a
+  release twice, compares the bytes, and hands the checksum file to `sha256sum
+  -c`, which is a reader this project did not write.
+- [`corpus/store-lib.sh`](corpus/store-lib.sh) is sourced by all four and is
+  never run. ⚠ It sits under `corpus/` because that is where the first harness
+  to need it was, and a publishing check sources it across directories rather
+  than growing a second copy. It holds what a mutation harness needs: build an example, make a scratch
   tree, digest a directory, verify a plant landed, count a row.
 - [`common/check-gate.sh`](common/check-gate.sh) and
   [`common/check-gate.ps1`](common/check-gate.ps1) run the local gate.
@@ -41,10 +46,11 @@ Windows capture host will need a PowerShell fetcher; `ACQ-04` owns the runner
 contract and is where that lands, rather than a second implementation written
 now with nothing exercising it.
 
-`acquisition/check-runner.sh` and the three `corpus/check-*.sh` harnesses are
-the mutation provers, and none has a twin. All four run in the `sh` gate and are reported as named skips in the PowerShell
+`acquisition/check-runner.sh`, the three `corpus/check-*.sh` harnesses and
+`publishing/check-release.sh` are the mutation provers, and none has a twin. All
+five run in the `sh` gate and are reported as named skips in the PowerShell
 one. `check-runner` proves guards that read `/proc/net/route`, so it has nothing
-to prove on Windows until `CI-03` writes the Windows pair. The three corpus
+to prove on Windows until `CI-03` writes the Windows pair. The four corpus and publishing
 provers hold rules that are not platform-specific at all, and the Rust suite
 exercises every one of them on both CI lanes; ⚠ what they plant includes a
 symbolic link and a named pipe against a real filesystem, and neither is

@@ -76,8 +76,15 @@ directory.
 
 One Rust assembler consumes checked capture artifacts, builds the publication
 tree once, and reads no wall clock. The data-branch job and release job consume
-the same uploaded tree. `MANIFEST.json` describes every file, media type,
-schema and SHA-256 digest. `SHA256SUMS` permits ordinary transport checks.
+the same uploaded tree. [`release`](../crates/bit-ids/src/release.rs) is that
+assembler, with `cargo run -p bit-ids --example assemble-release -- DIR` as its
+driving surface and
+[`check-release.sh`](../scripts/publishing/check-release.sh) as its prover.
+
+⚠ `MANIFEST.json` describes every file's media type, schema and SHA-256 digest
+except its own and the checksum file's, and `SHA256SUMS` covers every file
+except its own, the manifest included. Neither can state its own digest, so
+between them each published byte is covered once.
 
 CSV is a lossy tabular view and names which nested fields it omits. JSON and
 CBOR carry the complete normalized model. SQLite provides indexed tables and

@@ -160,20 +160,23 @@ else
   SKIP=$((SKIP + 1))
 fi
 
-# ⛔ NOT IN common/ EITHER, AND IN THE GATE FOR THE SAME REASON. These three
+# ⛔ NOT IN common/ EITHER, AND IN THE GATE FOR THE SAME REASON. These four
 # mutation-prove the guards standing between this project and silently deleting
 # or rewriting published evidence, publishing a record whose evidence nothing
-# can resolve, and pointing a consumer at a superseded build. The first two
-# losses are unrecoverable afterwards and the third is worse than an error,
-# because it answers confidently. All three are hermetic and take no network.
-# ⚠ They need cargo, so they exit 2 on a host without one, which is a skip and
-# not a pass. None has a PowerShell half; scripts/README.md carries why.
-for c in check-store check-corpus check-indexes; do
-  STORE="$HERE/../corpus/$c.sh"
-  if [ -f "$STORE" ]; then
-    run "$c" sh "$STORE"
+# can resolve, pointing a consumer at a superseded build, and shipping two
+# different byte sets under one release label. The first is unrecoverable
+# afterwards and the rest are worse than errors, because each answers
+# confidently. All four are hermetic and take no network. ⚠ They need cargo, so
+# they exit 2 on a host without one, which is a skip and not a pass. None has a
+# PowerShell half; scripts/README.md carries why.
+for spec in corpus/check-store corpus/check-corpus corpus/check-indexes \
+  publishing/check-release; do
+  PROVER="$HERE/../$spec.sh"
+  NAME=${spec#*/}
+  if [ -f "$PROVER" ]; then
+    run "$NAME" sh "$PROVER"
   else
-    row "SKIP  $c  (not present)"
+    row "SKIP  $NAME  (not present)"
     SKIP=$((SKIP + 1))
   fi
 done

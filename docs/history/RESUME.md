@@ -3,16 +3,18 @@
 **Task:** Take the work order in `TODO/PROGRESS.md` in dependency order,
 committing and pushing each green unit to `main`.
 
-**Resume point:** ⭐ **`CORPUS-01` through `CORPUS-03` are closed.** There is
-somewhere durable to put a record, the append rule and the store-level
-invariants are checked rather than trusted, and the consumer-facing views are
-derived and proved. The next item is `PUB-01`, the deterministic release
-assembler: it is what first builds a publication tree for `CORPUS-01`'s
-comparison to run over, and `build-store` and `build-indexes` already write the
-two halves it has to assemble. `CORPUS-04` follows, because a superseded record
-cannot drop out of the latest view until supersession chains exist.
+**Resume point:** ⭐ **`CORPUS-01` through `CORPUS-03` and `PUB-01` are
+closed.** There is somewhere durable to put a record, the append rule and the
+store-level invariants are checked rather than trusted, the consumer-facing
+views are derived and proved, and a release assembles once and describes itself.
+The next item is `PUB-02`, the append-only data branch publisher: everything it
+needs exists now, since `assemble-release` writes the bundle and `check-store`
+compares it against the branch it would append to. ⭐ It is also where `E-STO-22`
+and `E-REL-11` become reachable, because it reads a tree it did not assemble.
+`CORPUS-04` follows, because a superseded record cannot drop out of the latest
+view until supersession chains exist.
 
-⛔ The client entries stay behind the corpus work on a measurement rather than a
+⛔ The client entries stay behind this work on a measurement rather than a
 preference. A client entry's acceptance needs a capture, a capture needs a host
 `assert-disposable.sh --egress` does not refuse, and a session host is refused.
 `TODO/clients.md` carries the three routes that were tried on 2026-09-05.
@@ -22,7 +24,7 @@ preference. A client entry's acceptance needs a capture, a capture needs a host
 an install on Windows. `CI-03` owns the pair; `docs/capture-host.md` carries
 both contracts.
 
-**In flight:** Nothing. Three entries landed whole, each with its entry, index,
+**In flight:** Nothing. Four entries landed whole, each with its entry, index,
 summary and record updated in the same change. No files half-edited.
 
 **Tree:** Clean and level with `origin/main`, on `main`, full clone. ⚠ The
@@ -32,13 +34,14 @@ re-measure rather than trusting a branch name. Measured on this host:
 
 | command | result |
 | --- | --- |
-| `sh scripts/common/check-gate.sh` | 15 checks, 14 passed, 0 failed, 1 skipped |
-| `pwsh -File scripts/common/check-gate.ps1` | 15 checks, 10 passed, 0 failed, 5 skipped |
-| `cargo test --workspace --locked --all-targets` | 35 binaries, 329 passed, 0 failed |
+| `sh scripts/common/check-gate.sh` | 16 checks, 15 passed, 0 failed, 1 skipped |
+| `pwsh -File scripts/common/check-gate.ps1` | 16 checks, 10 passed, 0 failed, 6 skipped |
+| `cargo test --workspace --locked --all-targets` | 36 binaries, 336 passed, 0 failed |
 | `cargo test --workspace --locked --doc` | 2 passed, 0 failed |
 | `sh scripts/corpus/check-store.sh` | 14 cases, 14 passed, 0 failed |
 | `sh scripts/corpus/check-corpus.sh` | 14 cases, 14 passed, 0 failed |
 | `sh scripts/corpus/check-indexes.sh` | 10 cases, 10 passed, 0 failed |
+| `sh scripts/publishing/check-release.sh` | 13 cases, 13 passed, 0 failed |
 | `cargo fmt`, `cargo clippy --workspace --locked --all-targets -- -D warnings`, `shellcheck`, `shfmt -d -i 2 -ci` | exit 0 |
 
 ⛔ **Run the gate with `sh scripts/common/check-gate.sh`, not from memory.** A
@@ -92,6 +95,11 @@ eight over the index builder, two survived because the mutation was equivalent
 on the fixture data rather than because a guard was missing, and four survived
 because the tests really were thin. A surviving plant is a question, not a
 verdict.
+
+⭐ **The strongest control available here is a reader this project did not
+write.** `sha256sum -c` verifies a release's checksum file, and `libtorrent` and
+`torf` read a generated `.torrent`. A run comparing two of its own summaries is
+checking the writer against itself.
 
 ⛔ **A constant every test reads is a constant no test can check.** Found twice
 last session by two entries, neither looking for it. Pin a specification's

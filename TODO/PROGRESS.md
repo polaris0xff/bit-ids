@@ -1,12 +1,12 @@
 # Current progress
 
 State instant: 2026-09-05
-Baseline commit: `f9b6dd3` on `main`
+Baseline commit: `b63c26d` on `main`
 Total: 56
-Open: 34
+Open: 33
 In progress: 0
 Blocked: 0
-Done: 22
+Done: 23
 
 ## Current state
 
@@ -18,9 +18,10 @@ All four core observer surfaces are done: both trackers, the peer handshake and
 BEP 10. ⭐ `OBS-08` and `OBS-09` are closed too, so the observer layer is
 complete: there is a torrent to point a client at, and a run's transcript now
 becomes the content-addressed evidence a manifest cites. ⭐ `CORPUS-01`
-through `CORPUS-03` are closed as well, so there is somewhere durable to put the
-answer, something that checks a whole store rather than one record, and the
-consumer-facing views over it. **A first vertical
+through `CORPUS-03` and `PUB-01` are closed as well, so there is somewhere
+durable to put the answer, something that checks a whole store rather than one
+record, the consumer-facing views over it, and a bundle assembled once and
+described by itself. **A first vertical
 capture is possible from here**, on a host the `ACQ-04` guards permit, and what
 stands between is a client adapter rather than any missing machinery.
 
@@ -261,13 +262,23 @@ project measured, and it resolves to the record that measured it.
 is supplied on the command line rather than defaulted; moving it into
 `catalogue/clients.toml` is worth doing and belongs to `ACQ-02`.
 
+`PUB-01` assembles the bundle. Two documents describe it and they cover
+different sets on purpose: the manifest cannot state its own digest, so the
+checksums cover the manifest and the manifest covers everything else. ⭐ **A
+media type is looked up and never guessed**, and that rule paid on its first
+driven run by refusing a real evidence bundle over a file type the table did not
+carry.
+
+⭐ The strongest control on that bundle is not this project's code:
+`sha256sum -c` reads the checksum file back, so a run that agreed with itself
+about what it wrote is still caught.
+
 ## Work order
 
-1. `PUB-01`, the deterministic release assembler. It is what first builds a
-   publication tree for `CORPUS-01`'s comparison to run over, and it is where
-   `E-STO-22` becomes reachable, because a tree assembled from a manifest carries
-   a declared length beside a digest. ⭐ `build-store` and `build-indexes`
-   already write the two halves it has to assemble.
+1. `PUB-02`, the append-only data branch publisher. Everything it needs now
+   exists: `assemble-release` writes the bundle and `check-store` compares it
+   against the branch it is about to append to. ⭐ It is also where `E-STO-22`
+   and `E-REL-11` become reachable, because it reads a tree it did not assemble.
 2. `CORPUS-04`, supersession and correction records, which is what the latest
    view needs before a superseded record can drop out of it.
 3. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical

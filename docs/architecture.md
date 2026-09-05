@@ -738,7 +738,19 @@ assembles. A separate publisher with job-scoped `contents: write` appends a
 commit without force and reads the branch back.
 
 A pushed `v1.*` tag is the only release trigger. Releases and the data branch
-consume the same artifact assembled once.
+consume the same artifact assembled once, and
+[`../crates/bit-ids/src/release.rs`](../crates/bit-ids/src/release.rs) is what
+assembles it. `PUB-01` owns it.
+
+⛔ **Two documents describe the bundle and they cover different sets.** A
+document cannot state its own digest, so `MANIFEST.json` describes everything
+except itself and `SHA256SUMS`, and `SHA256SUMS` covers everything except
+itself. Between them every published byte is covered exactly once.
+
+⚠ **A media type is looked up and never defaulted.** An extension this build
+does not know blocks the assembly rather than shipping as opaque bytes, because
+a consumer handed the wrong type mis-parses silently and the failure lands on
+the reader.
 
 ⛔ **The append rule is checked before the push, not trusted to the push.** A
 branch protection setting refuses a force-push and says nothing about a commit

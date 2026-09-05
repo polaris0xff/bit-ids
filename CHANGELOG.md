@@ -5,6 +5,27 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-05T14:20:00Z
+
+- `PUB-01`, the deterministic release assembler. Record:
+  [`TODO/publishing.md`](TODO/publishing.md).
+- Two documents describe the bundle and cover different sets, because neither
+  can state its own digest: `MANIFEST.json` describes everything except itself
+  and `SHA256SUMS`, and `SHA256SUMS` covers everything except itself.
+- ⭐ The media-type rule paid on its first driven run, refusing a real evidence
+  bundle over `fixture/generated.torrent`, which every capture writes and the
+  table did not carry. A default would have shipped it as opaque bytes.
+- ⭐ The strongest control is a reader this project did not write: `sha256sum -c`
+  agrees with every row, so a run that agreed with itself about what it wrote is
+  still caught.
+- ⚠ The archives and databases in that entry's Prove are `PUB-03`'s. This
+  assembles the tree once and describes it; the renderings inherit the
+  determinism rather than each recomputing it.
+- Guard mutation: 10 plants over the assembler, 9 refused. `entries.sort()` is
+  recorded as unrefuted with what would have to change for it to fire, the same
+  shape and the same treatment as `CORPUS-03`'s `latest.sort()`.
+- Deployment: nothing deployed. No capture was taken.
+
 ### 2026-09-05T13:40:00Z
 
 - `CORPUS-03`, the deterministic indexes and latest views. Record:
