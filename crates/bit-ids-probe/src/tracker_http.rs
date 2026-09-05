@@ -257,8 +257,12 @@ impl TrackerResponse {
 }
 
 /// The bencoded body a tracker returns when it refuses a request.
-#[must_use]
-pub fn failure_body(reason: &str) -> Vec<u8> {
+///
+/// ⚠ Private. The door sweep found six response encoders public with one
+/// internal caller each and no external one, which is API surface with no
+/// consumer. The tests build their expected bytes by hand on purpose: a test
+/// that used this encoder would prove it agrees with itself.
+fn failure_body(reason: &str) -> Vec<u8> {
     bencode::encode(&Value::Dictionary(vec![(
         b"failure reason".to_vec(),
         Value::bytes(reason.as_bytes().to_vec()),
@@ -270,8 +274,7 @@ pub fn failure_body(reason: &str) -> Vec<u8> {
 /// ⚠ The header set is deliberately small. Every header a tracker sends is
 /// something a client may react to, and a reaction to this code is not a
 /// measurement of the build.
-#[must_use]
-pub fn http_response(status: &str, body: &[u8]) -> Vec<u8> {
+fn http_response(status: &str, body: &[u8]) -> Vec<u8> {
     let mut out = format!(
         "HTTP/1.1 {status}\r\nContent-Type: text/plain\r\nContent-Length: {}\r\n\r\n",
         body.len()

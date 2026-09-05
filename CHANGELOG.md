@@ -5,6 +5,29 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-05T07:20:00Z
+
+- Checkpointed `OBS-08`, which stays OPEN. The synthetic torrent generator and
+  its unit tests are in `crates/bit-ids-lab/src/torrent.rs`; the acceptance
+  suite, the guard-mutation pass and the driven pass are not done and the entry
+  names all three. Record: [`TODO/observer.md`](TODO/observer.md).
+- Added `sha1` 0.11.0, the first third-party crate since `SCHEMA-01`. The info
+  hash is SHA-1 by BEP 3, and the lockfile diff is one package because `sha2`
+  already brought the same RustCrypto tree.
+  [`docs/supply-chain.md`](docs/supply-chain.md) carries the argument.
+- ⚠ `check-no-secrets --public` refused RFC 3174's test vectors as long hex, and
+  was right to: forty lowercase hex digits is what a token looks like. Narrowed
+  rather than switched off, and proven with a credential beside an allowed
+  vector on one line.
+- The door sweep made six response encoders private: one internal caller each
+  and no external one is API surface with no consumer.
+- ⛔ The session's guard-mutation pass found a defect in its own probe for the
+  third time: one script never received the checksum guard the first two were
+  given, and reported the twins agreeing over source it had not mutated.
+- The session record is saved at
+  [`docs/history/SESSION-2026-09-05-OBSERVERS.md`](docs/history/SESSION-2026-09-05-OBSERVERS.md).
+- Deployment: no data branch, release or capture service was created.
+
 ### 2026-09-05T06:30:00Z
 
 - Closed `OBS-05`, the BEP 10 and early-message observer, which completes all

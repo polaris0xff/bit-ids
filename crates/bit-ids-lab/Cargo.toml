@@ -13,3 +13,5 @@ workspace = true
 [dependencies]
 bit-ids = { path = "../bit-ids" }
 bit-ids-wire = { path = "../bit-ids-wire" }
+sha1 = "0.11.0"
+

@@ -239,8 +239,9 @@ impl Default for UdpTracker {
 }
 
 /// The connect response of BEP 15: action, transaction id, connection id.
-#[must_use]
-pub fn connect_response(transaction_id: u32, connection_id: u64) -> Vec<u8> {
+///
+/// ⚠ Private, with the three below it, for the reason `tracker_http` gives.
+fn connect_response(transaction_id: u32, connection_id: u64) -> Vec<u8> {
     let mut out = Action::Connect.code().to_be_bytes().to_vec();
     out.extend_from_slice(&transaction_id.to_be_bytes());
     out.extend_from_slice(&connection_id.to_be_bytes());
@@ -248,8 +249,7 @@ pub fn connect_response(transaction_id: u32, connection_id: u64) -> Vec<u8> {
 }
 
 /// The announce response of BEP 15, with six bytes per peer.
-#[must_use]
-pub fn announce_response(transaction_id: u32, response: &UdpTrackerResponse) -> Vec<u8> {
+fn announce_response(transaction_id: u32, response: &UdpTrackerResponse) -> Vec<u8> {
     let mut out = Action::Announce.code().to_be_bytes().to_vec();
     out.extend_from_slice(&transaction_id.to_be_bytes());
     out.extend_from_slice(&response.interval.to_be_bytes());
@@ -263,12 +263,7 @@ pub fn announce_response(transaction_id: u32, response: &UdpTrackerResponse) -> 
 }
 
 /// The scrape response of BEP 15, with twelve bytes per info hash.
-#[must_use]
-pub fn scrape_response(
-    transaction_id: u32,
-    response: &UdpTrackerResponse,
-    hashes: usize,
-) -> Vec<u8> {
+fn scrape_response(transaction_id: u32, response: &UdpTrackerResponse, hashes: usize) -> Vec<u8> {
     let mut out = Action::Scrape.code().to_be_bytes().to_vec();
     out.extend_from_slice(&transaction_id.to_be_bytes());
     for _ in 0..hashes {
@@ -280,8 +275,7 @@ pub fn scrape_response(
 }
 
 /// The error response of BEP 15: action three, the transaction id, a message.
-#[must_use]
-pub fn error_response(transaction_id: u32, message: &str) -> Vec<u8> {
+fn error_response(transaction_id: u32, message: &str) -> Vec<u8> {
     let mut out = Action::Error.code().to_be_bytes().to_vec();
     out.extend_from_slice(&transaction_id.to_be_bytes());
     out.extend_from_slice(message.as_bytes());

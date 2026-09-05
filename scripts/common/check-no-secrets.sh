@@ -170,6 +170,12 @@ if [ "$PUBLIC" = "1" ]; then
   # ⚠ A FIXTURE BUILT BY A NAMED CONSTRUCTOR is the same argument in Rust: a
   # credential is not passed to a function called peer_id. Excluded by that
   # name, and the argument must still be nothing but lowercase hex.
+  # ⚠ A PUBLISHED TEST VECTOR is the fifth. A cryptographic specification's own
+  # expected digest is public by construction, and a project that computes one
+  # has to be able to write the number the specification gives. Anchored to a
+  # constant named for its RFC and to exactly forty hex digits, which is a
+  # SHA-1: it cannot cover a token, and it cannot cover hex under any other
+  # name. OBS-08 added it for RFC 3174, whose vectors verify the info hash.
   #
   # ⛔ THE ALLOWED ITEM IS DELETED FROM THE LINE, THE LINE IS NOT DROPPED.
   # `grep -v` drops lines, not characters, so an allowed digest sitting beside
@@ -185,7 +191,8 @@ if [ "$PUBLIC" = "1" ]; then
       -e 's#^(.*Cargo\.lock:[0-9]+:checksum = )"[0-9a-f]{64}"$#\1"ALLOWED"#' \
       -e 's#(record:)?sha256:[0-9a-f]{64}#ALLOWED#g' \
       -e 's#"(value|bytes|alphabet|detail)": "[0-9a-f]+"#"\1": "ALLOWED"#g' \
-      -e 's#(peer_id|HexBytes::parse)\("[0-9a-f]+"#\1("ALLOWED"#g' |
+      -e 's#(peer_id|HexBytes::parse)\("[0-9a-f]+"#\1("ALLOWED"#g' \
+      -e 's#(RFC[0-9]+_[A-Z0-9_]+: &str = )"[0-9a-f]{40}"#\1"ALLOWED"#g' |
     grep -E '\b[0-9a-f]{24,}\b' || true)
   [ -n "$_hex_out" ] && hit "a long hex identifier" "$_hex_out"
   # ⚠ Narrowed rather than switched off. `/home/linuxbrew/` and `/home/runner/`

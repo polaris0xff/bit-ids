@@ -193,6 +193,9 @@ if ($Public) {
             $line = $line -creplace '(record:)?sha256:[0-9a-f]{64}', 'ALLOWED'
             $line = $line -creplace '"(value|bytes|alphabet|detail)": "[0-9a-f]+"', '"$1": "ALLOWED"'
             $line = $line -creplace '(peer_id|HexBytes::parse)\("[0-9a-f]+"', '$1("ALLOWED"'
+            # ⛔ Keep identical to the sh twin: a published test vector, anchored
+            # to a constant named for its RFC and to exactly forty hex digits.
+            $line = $line -creplace '(RFC[0-9]+_[A-Z0-9_]+: &str = )"[0-9a-f]{40}"', '$1"ALLOWED"'
             $line
         } |
         Where-Object { $_ -cmatch '\b[0-9a-f]{24,}\b' })

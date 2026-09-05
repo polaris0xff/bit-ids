@@ -28,7 +28,5 @@ pub mod tracker_udp;
 pub use peer_wire::{
     ExtendedOffer, ExtensionProtocol, Offer, PeerIdentity, PeerWire, Role, Stream,
 };
-pub use tracker_http::{
-    Announce, HttpTracker, OfferedPeer, TrackerResponse, failure_body, http_response,
-};
+pub use tracker_http::{Announce, HttpTracker, OfferedPeer, TrackerResponse};
 pub use tracker_udp::{Observed, Refusal, UdpTracker, UdpTrackerResponse};

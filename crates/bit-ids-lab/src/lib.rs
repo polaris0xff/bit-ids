@@ -21,9 +21,13 @@
 //! is what lets one deadline, one loopback guard and one journal serve every
 //! surface rather than each observer growing its own.
 //!
-//! It also holds no torrent. `OBS-08` generates the one a client is handed, and
 //! `OBS-09` writes the journal out as the content-addressed evidence a run
-//! manifest cites. What is here is the supervisor those plug into.
+//! manifest cites, and it does not exist yet. What is here is the supervisor
+//! the observers plug into, plus the synthetic torrent a capture hands a client.
+//!
+//! ⚠ [`torrent`] is `OBS-08` and is **in flight**: the generator and its unit
+//! tests are here, and the entry's acceptance suite, guard-mutation pass and
+//! driven pass are not. `TODO/observer.md` says what remains.
 //!
 //! # Starting one
 //!
@@ -56,6 +60,7 @@ pub mod bind;
 pub mod endpoint;
 pub mod journal;
 mod lab;
+pub mod torrent;
 
 pub use bind::BindError;
 pub use endpoint::{
@@ -66,3 +71,4 @@ pub use lab::{
     DEFAULT_DEADLINE, DEFAULT_DIAL_TIMEOUT, DEFAULT_MAX_CONNECTIONS, DEFAULT_POLL, Endpoint, Lab,
     LabBuilder, LabError, Transport,
 };
+pub use torrent::{SyntheticTorrent, TorrentError, TorrentSpec};

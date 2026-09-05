@@ -1,7 +1,7 @@
 # Current progress
 
-State instant: 2026-09-04
-Baseline commit: `2fb8548` on `main`
+State instant: 2026-09-05
+Baseline commit: `39b6fa7` on `main`
 Total: 56
 Open: 40
 In progress: 0
@@ -146,8 +146,9 @@ yet.
 
 The supply chain is pinned at all three layers and each pin has a check behind
 it. [`../docs/supply-chain.md`](../docs/supply-chain.md) carries the layers and
-the update procedure. `FOUND-03` added a workspace member and no new
-third-party crate.
+the update procedure. The observers added two workspace members and no new
+third-party crate; `OBS-08` added `sha1`, whose lockfile diff is one package
+because `sha2` already brought the same RustCrypto tree.
 
 No identity profile has been captured. The only records in the tree are
 synthetic: the schema fixtures under
@@ -159,11 +160,13 @@ anything.
 
 ## Work order
 
-1. `OBS-08`, the synthetic torrent, which is what a client needs before it will
-   announce about anything, and then `OBS-09`, which writes a run's transcript
-   out as the content-addressed evidence a manifest cites. After those two a
-   first vertical capture becomes possible on a host the `ACQ-04` guards
-   permit.
+1. Finish `OBS-08`, the synthetic torrent. ⚠ It is **in flight**: the generator
+   and its unit tests are in `crates/bit-ids-lab/src/torrent.rs` and pass, and
+   the acceptance suite, the guard-mutation pass and the driven pass are not
+   done. The entry names all three. Then `OBS-09`, which writes a run's
+   transcript out as the content-addressed evidence a manifest cites. After
+   those two a first vertical capture becomes possible on a host the `ACQ-04`
+   guards permit.
 2. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
    captures, on Linux only until `CI-03` provides the Windows guard pair.
 3. `ACQ-05`, the artifact cache, and `FOUND-04`, the licence register, before

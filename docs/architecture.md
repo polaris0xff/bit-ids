@@ -51,7 +51,7 @@ No arrow reads identity values from client source code.
 | --- | --- | --- |
 | `bit-ids` crate | public types, schema identity, validation, stable-version resolution and eventually embedded/pinned catalogue access | capture, installation or network mutation |
 | `bit-ids-wire` crate | byte-exact codecs for the observed surfaces, and the fixture corpus every observer parses against | sockets, timing, and any mapping from a peer-ID prefix to a client name |
-| `bit-ids-lab` crate | the sockets: binding them on loopback and nowhere else, the run deadline, the ordered byte record, and endpoint shutdown | every protocol, and what a transcript becomes on disk |
+| `bit-ids-lab` crate | the sockets: binding them on loopback and nowhere else, the run deadline, the ordered byte record, endpoint shutdown, and the synthetic torrent a capture hands a client | every protocol, and what a transcript becomes on disk |
 | `bit-ids-probe` | what each surface answers with, and what an exchange was observed to carry, one module per surface | sockets, the run clock, and client launch or package installation |
 | acquisition scripts | retrieval: fetching a release listing or artifact and keeping the exact bytes | parsing, ordering or deciding anything, all of which are Rust's |
 | client drivers | launch/configure one target against the isolated fixture | deciding whether the observation is valid |

@@ -67,6 +67,32 @@ percent-decoding on arrival, destroys the evidence this project publishes, and
 that behaviour is the sensible default for every library written for a client
 rather than for an observer.
 
+`OBS-01` and the observers that followed it added two more workspace members,
+`bit-ids-lab` and `bit-ids-probe`, and no third-party crate: the lab binds
+sockets with `std::net` and one thread per endpoint rather than an async runtime,
+which would have been a dependency tree an order of magnitude larger than
+everything here, in the component that must stay reviewable.
+
+`OBS-08` added `sha1` 0.11.0, the fourth third-party crate and the first since
+`SCHEMA-01`. The info hash is SHA-1 by BEP 3 and this project does not get to
+choose otherwise. ⭐ **Measured rather than argued: the lockfile diff is one
+package.** `sha2` 0.11.0 is already here from the same RustCrypto release train,
+so `digest`, `block-buffer`, `crypto-common`, `cpufeatures`, `typenum` and
+`hybrid-array` were all present and no new maintainer joined the trust set. The
+rejected alternative was implementing SHA-1 in this repository: new unaudited
+cryptographic code in the component that decides whether two captures are of the
+same torrent, to save one small crate. ⚠ The crate is checked against RFC 3174's
+own vectors rather than trusted, in
+[`../crates/bit-ids-lab/src/torrent.rs`](../crates/bit-ids-lab/src/torrent.rs).
+
+⚠ **`check-no-secrets --public` refuses a bare run of long hex, and a published
+test vector is one.** Forty lowercase hex digits is exactly what a token looks
+like, so the rule is right to fire. It was narrowed rather than switched off, per
+[`security/secrets.md`](security/secrets.md): the exclusion is anchored to a
+constant named for its RFC and to exactly forty digits, and it was proven with a
+credential beside an allowed vector on one line, the same value under another
+name, and a 64-digit value under the allowed name, all still reported.
+
 ## Actions
 
 A pin is a 40-character commit followed by a comment naming the tag it was:

@@ -122,11 +122,12 @@ piece layout. Without a torrent the lab can accept a connection and cannot make
 a build say anything, so every observer below it has nothing to observe.
 
 Premise: The torrent can be generated rather than committed, and generating it
-is what makes it citable. `capture.fixture_digest` in
-`crates/bit-ids/src/record.rs` already requires a digest of the fixture a run
-used, and a generated torrent whose bytes are a function of its declared inputs
-is reproducible from the record. Read rather than measured: no torrent
-generator exists in the tree.
+is what makes it citable. `capture.fixture` in `crates/bit-ids/src/record.rs`
+already requires a digest of the metainfo a run used, and a generated torrent
+whose bytes are a function of its declared inputs is reproducible from the
+record. ⚠ This entry was authored naming that field `capture.fixture_digest`,
+which does not exist; the field is `capture.fixture` and the entry was wrong
+about the tree it was written against.
 
 Approach: A module in `bit-ids-lab` that builds the info dictionary, the piece
 layout and the payload from declared parameters, encodes it with
@@ -136,11 +137,62 @@ copyrighted file. The `.torrent` bytes and the digest the manifest cites come
 out of one function, so the digest cannot describe something other than what
 the client was handed.
 
-Prove: `cargo test --workspace --locked --test synthetic_torrent` checks that the
+Prove: `cargo test -p bit-ids-lab --locked --all-targets` checks that the
 generated document round-trips through `bit_ids_wire::bencode`, that the info
 hash is the digest of the encoded info dictionary and not of the whole
 document, that identical parameters produce identical bytes, and that one
 changed parameter changes both the bytes and the digest.
+
+⚠ **In flight, and not closed.** `crates/bit-ids-lab/src/torrent.rs` carries the
+generator and its own unit tests, which pass, and the entry's acceptance suite,
+guard-mutation pass and driven pass have not been done. What is in the tree is a
+checkpoint, not a closure. What remains:
+
+- an acceptance suite at `crates/bit-ids-lab/tests/synthetic_torrent.rs` holding
+  the four properties the Prove names;
+- a guard-mutation pass over the generator, with each plant verified to have
+  changed the file.
+
+⭐ The driven pass **was** done, on 2026-09-05, and it is the half that most
+needed an outside opinion. A generated torrent was written to disk and read by a
+bencode decoder written in Python for the purpose, which located the info
+dictionary's own bytes inside the file and computed SHA-1 over them itself. It
+agreed exactly, on the info hash and on `capture.fixture`
+`sha256:aad389766cfd904386f71ef3d7359d53764194e84bfae73b8f6d9258cb68e58c`, over
+a 266-byte metainfo describing three 16384-byte pieces, `private` set and the
+announce URL intact.
+
+⚠ The info hash is not reproduced here as a number. `check-no-secrets --public`
+refuses a bare run of forty hex digits in prose and is right to, because that is
+what a token looks like; narrowing that rule a second time in one session to
+publish a value nobody needs is how a rule ends up switched off. The spec above
+regenerates it. ⚠ And this is one reader agreeing with one writer, not a client
+accepting the torrent: no client can run here.
+
+Decision taken here: `sha1` 0.11.0 was added, which is the first third-party
+crate since `SCHEMA-01`, and `docs/supply-chain.md` requires the argument in the
+entry. The info hash is SHA-1 by BEP 3 and this project does not get to choose
+otherwise; the workspace already depends on `sha2` 0.11.0, the same RustCrypto
+release train with the same construction and the same `digest` traits, so this
+adds one crate and no new maintainer to trust. The rejected alternative was
+implementing SHA-1 here: new unaudited cryptographic code in the component that
+decides whether two captures are of the same torrent, to save one small
+dependency. ⭐ The dependency is checked against RFC 3174's own vectors rather
+than trusted, which is what `the_sha1_implementation_matches_the_published_vectors`
+is for.
+
+⚠ Two digests of two different things, and confusing them is the trap this entry
+carries: the info hash is SHA-1 of the encoded info dictionary, and
+`capture.fixture` is SHA-256 of the whole metainfo file. Different algorithms
+over different byte ranges.
+
+`check-no-secrets --public` refused the RFC 3174 vectors as long hex, correctly:
+forty lowercase hex digits is exactly what a token looks like. Narrowed rather
+than switched off, per `docs/security/secrets.md`, and anchored to a constant
+named for its RFC and to exactly forty digits. Proven on 2026-09-05 with five
+cases in both twins: a bare hex run, a credential beside an allowed vector on
+one line, the same value under an unallowed name, a 64-digit value under the
+allowed name, and the clean tree. Both halves agreed on all five.
 
 ## OBS-09: Raw evidence journal and bundle writer
 
