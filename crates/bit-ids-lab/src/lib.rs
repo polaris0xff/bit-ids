@@ -25,9 +25,10 @@
 //! manifest cites, and it does not exist yet. What is here is the supervisor
 //! the observers plug into, plus the synthetic torrent a capture hands a client.
 //!
-//! ⚠ [`torrent`] is `OBS-08` and is **in flight**: the generator and its unit
-//! tests are here, and the entry's acceptance suite, guard-mutation pass and
-//! driven pass are not. `TODO/observer.md` says what remains.
+//! [`torrent`] is `OBS-08` and is closed. ⚠ Its bytes are a function of its
+//! declared spec, which is what lets a record cite the fixture it used and have
+//! that be checkable, so the payload's byte stream is part of the contract
+//! rather than an implementation detail.
 //!
 //! # Starting one
 //!

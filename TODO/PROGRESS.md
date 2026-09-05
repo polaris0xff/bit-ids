@@ -1,12 +1,12 @@
 # Current progress
 
 State instant: 2026-09-05
-Baseline commit: `39b6fa7` on `main`
+Baseline commit: `f7580d0` on `main`
 Total: 56
-Open: 40
+Open: 39
 In progress: 0
 Blocked: 0
-Done: 16
+Done: 17
 
 ## Current state
 
@@ -15,9 +15,10 @@ The whole `SCHEMA-*` group is closed, along with `FOUND-01` through `FOUND-03`,
 record shape, a resolver that chooses the version, a verifier that says what two
 routes agreeing is worth, and a boundary that runs before anything is installed.
 All four core observer surfaces are done: both trackers, the peer handshake and
-BEP 10. ⚠ No capture is possible yet regardless, because `OBS-08` owns the
-torrent that makes a client announce about anything at all, and `OBS-09` owns
-what a run's transcript becomes on disk. Those two are the critical path now.
+BEP 10. `OBS-08` is closed too, so there is now a torrent to point a client at.
+⚠ No capture is possible yet regardless, because `OBS-09` owns what a run's
+transcript becomes on disk and nothing writes the content-addressed evidence a
+manifest cites. That one entry is the critical path now.
 
 `OBS-01` was the one XL entry and was split, which is what its own approach line
 asked for if the acceptance could not stay atomic. It could not: the Prove named
@@ -37,6 +38,22 @@ travelled, and releases every port on shutdown or on drop. It speaks no
 protocol: the observers supply a responder per surface, which is what lets one
 deadline, one loopback guard and one journal serve every surface rather than
 each observer growing its own.
+
+⭐ The lab also generates the torrent a capture hands a client, and generating it
+rather than committing it is what makes it citable: the bytes are a function of
+the declared spec, so `capture.fixture` in a record can be re-derived and
+checked. Two digests of two different things live there and confusing them is
+the trap: the info hash is SHA-1 of the encoded info dictionary, which is the
+value a client announces and the one algorithm this project does not choose, and
+`capture.fixture` is SHA-256 of the whole metainfo file.
+
+⚠ **A generated fixture is only citable while its byte stream holds still.** The
+payload comes from `SplitMix64` seeded by the spec, and a drift in that
+arithmetic silently invalidates every fixture digest already recorded while
+staying reproducible, seed-dependent and prefix-stable, which is everything a
+naive test asserts. The acceptance suite compares the stream against the
+algorithm restated from its specification and anchored to the published
+reference's own first words for seed zero.
 
 The `bit-ids-probe` crate is where those responders live, one module per surface.
 Both tracker surfaces and the peer wire are done. The HTTP one keeps the exact head bytes and
@@ -160,13 +177,10 @@ anything.
 
 ## Work order
 
-1. Finish `OBS-08`, the synthetic torrent. ⚠ It is **in flight**: the generator
-   and its unit tests are in `crates/bit-ids-lab/src/torrent.rs` and pass, and
-   the acceptance suite, the guard-mutation pass and the driven pass are not
-   done. The entry names all three. Then `OBS-09`, which writes a run's
-   transcript out as the content-addressed evidence a manifest cites. After
-   those two a first vertical capture becomes possible on a host the `ACQ-04`
-   guards permit.
+1. `OBS-09`, which writes a run's transcript out as the content-addressed
+   evidence a manifest cites. It is the last thing between here and a first
+   vertical capture on a host the `ACQ-04` guards permit. `OBS-08` closed on
+   2026-09-05 and is no longer in the way.
 2. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
    captures, on Linux only until `CI-03` provides the Windows guard pair.
 3. `ACQ-05`, the artifact cache, and `FOUND-04`, the licence register, before
@@ -225,3 +239,17 @@ nine lossy defects in the Rust codecs and two were missed on the first pass,
 each because the corpus lacked the shape that would have failed: no fixture used
 a bare newline, and no path reached the bencode encoder at all. A corpus only
 tests the defects it contains an example of.
+
+⚠ **A constant every test reads is a constant no test can check.** `OBS-08`
+found two of that shape before planting against them: nothing pinned
+`PIECE_HASH_LEN`, so narrowing it re-chunked the `pieces` string and the
+comparison against it together, and the test spec was built at
+`MIN_PIECE_LENGTH`, which made the declared piece length and the floor
+indistinguishable. Pin a specification's own values to their literals, and build
+a fixture at a value no default or bound also has.
+
+⭐ **Third-party readers are installable here and are a much stronger driven
+pass than a decoder written for the purpose.** `libtorrent` 2.1.1.0 and `torf`
+4.3.1 install into a virtualenv from the package index in seconds and read a
+`.torrent` without touching the network. Parsing a file is not a capture and
+needs no disposable host; running a client still does.

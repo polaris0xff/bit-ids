@@ -31,6 +31,16 @@
 //! torrent or their records cite different fixtures for the same experiment. The
 //! generator is `SplitMix64`, which is fully specified in a few lines, so the
 //! bytes are reproducible from the seed by anything that reads this file.
+//!
+//! ⛔ **The stream below is a published contract, not an implementation
+//! detail.** A record's `capture.fixture` names bytes this function produced,
+//! so changing the arithmetic silently invalidates every digest already
+//! recorded. Reproducibility, seed-dependence and prefix-stability all survive
+//! such a change, so none of them can catch it;
+//! `tests/synthetic_torrent.rs` compares the stream against `SplitMix64`
+//! restated from its specification and anchored to the published reference's
+//! own first words for seed zero. Change it only by superseding the records
+//! that cite it.
 
 use bit_ids::canonical::Sha256Digest;
 use bit_ids_wire::bencode::{self, Value};
@@ -231,11 +241,20 @@ impl SyntheticTorrent {
     }
 
     /// One piece of the payload.
+    ///
+    /// ⚠ Both halves of the offset are checked, not just the multiplication. On
+    /// a 64-bit host neither can overflow, because a piece length is at most
+    /// `2^31` and an index at most `2^32`; on a 32-bit one the multiplication
+    /// can succeed and the addition still wrap, which panics in a debug build
+    /// rather than answering `None`. A guard on one of two arithmetic steps is
+    /// the shape `docs/methodology/reviews.md` names, and the second step cost
+    /// one line.
     #[must_use]
     pub fn piece(&self, index: u32) -> Option<&[u8]> {
         let length = self.spec.piece_length as usize;
         let start = (index as usize).checked_mul(length)?;
-        self.payload.get(start..start + length)
+        let end = start.checked_add(length)?;
+        self.payload.get(start..end)
     }
 
     /// The info dictionary, as a decoded document.

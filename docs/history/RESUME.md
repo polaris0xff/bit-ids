@@ -3,32 +3,26 @@
 **Task:** Take the work order in `TODO/PROGRESS.md` in dependency order,
 committing and pushing each green unit to `main`.
 
-**Resume point:** All four core observer surfaces are closed: both trackers, the
-peer handshake and BEP 10. ⚠ No capture is possible yet regardless. `OBS-08`
-generates the torrent a client needs before it will announce about anything, and
-`OBS-09` writes a run's transcript out as the evidence a manifest cites.
-
-⛔ **`OBS-08` is in flight and is the first thing to pick up.**
-`crates/bit-ids-lab/src/torrent.rs` carries the generator and its own unit
-tests, which pass. Its entry names exactly what is missing: an acceptance suite
-at `crates/bit-ids-lab/tests/synthetic_torrent.rs`, a guard-mutation pass over
-the generator, and a driven pass that reads the generated `.torrent` with
-something that is not this code. Nothing is half-edited; the tree is green and
-the checkpoint is deliberate.
+**Resume point:** `OBS-08` is closed, so there is now a torrent to point a
+client at. ⚠ No capture is possible yet regardless. `OBS-09` writes a run's
+transcript out as the content-addressed evidence a manifest cites, nothing does
+that today, and it is the only entry between here and a first vertical capture
+on a host the `ACQ-04` guards permit. It is the next item and nothing blocks it:
+`crates/bit-ids/src/manifest.rs` already specifies the artifact shape, so the
+entry writes to a contract that exists.
 
 ⛔ A Windows capture is not permitted yet. The disposable-host guards read
 `/proc/net/route` and `/etc/machine-id`, so there is no boundary to run before
 an install on Windows. `CI-03` owns the pair; `docs/capture-host.md` carries
 both contracts.
 
-**Tree:** Clean and level with `origin/main`, on `main`. Measured on this host
-at the end of the session:
+**Tree:** Clean and level with `origin/main`, on `main`. Measured on this host:
 
 | command | result |
 | --- | --- |
 | `sh scripts/common/check-gate.sh` | 12 checks, 11 passed, 0 failed, 1 skipped |
 | `pwsh -File scripts/common/check-gate.ps1` | 12 checks, 10 passed, 0 failed, 2 skipped |
-| `cargo test --workspace --locked --all-targets` | 25 binaries, 250 passed, 0 failed |
+| `cargo test --workspace --locked --all-targets` | 28 binaries, 270 passed, 0 failed |
 | `cargo test --workspace --locked --doc` | 2 passed, 0 failed |
 | `cargo fmt --all -- --check` | exit 0 |
 | `cargo clippy --workspace --locked --all-targets -- -D warnings` | exit 0 |
@@ -38,31 +32,44 @@ at the end of the session:
 `TODO/PROGRESS.md` carries the commands, including the `chmod +x` the
 PowerShell tarball needs on this image. All three installed cleanly here.
 
+⭐ **A third-party torrent reader is installable on a session host and is a much
+stronger driven pass than a decoder written for the purpose.** `libtorrent`
+2.1.1.0 and `torf` 4.3.1 install into a virtualenv from the package index and
+read a `.torrent` without touching the network. Parsing a file is not a capture
+and needs no disposable host; running a client still does. `OBS-08`'s driven
+pass used both, and `OBS-09` can drive an evidence bundle the same way.
+
 ⛔ `check-remote-items` cannot be made to run here and installing `gh` does not
-fix it. ⭐ **That it runs in CI is now verified rather than assumed:** the Linux
-lane runs the gate with `--strict`, which turns a skip into a failure, and every
-push this session that ran to completion went green on both lanes. ⚠ One did
-not run to completion: the workflow sets `cancel-in-progress`, so a push that
-lands while the previous run is still going cancels it. Read each run's
-conclusion rather than counting runs: `cancelled` is not `failure`, and it is
-not evidence of a pass either.
+fix it. ⭐ **That it runs in CI is verified rather than assumed:** the Linux lane
+runs the gate with `--strict`, which turns a skip into a failure. ⚠ Read each
+run's conclusion rather than counting runs: the workflow sets
+`cancel-in-progress`, so a push landing while the previous run is still going
+leaves it `cancelled`, which is not a pass and not a failure either.
 
 ⚠ `check-twins` compares the two halves' answers on the tree it runs against,
 so a rule that differs only on a defect the tree does not contain is invisible
 to it. Compare a changed pair per planted mutation, not on a clean tree alone.
 
 ⛔ **A mutation script that does not check its own edits applied reports guards
-failing to fire over unmutated source.** That happened three times this session,
-the third in the one script that never got the guard after the first two were
-fixed. Compare the file's checksum either side of every plant, prefer literal
-string replacement to a regular expression, and ⚠ **re-check a probe's patterns
-after the code moves**: two of them silently stopped matching when counts and
-signatures changed.
+failing to fire over unmutated source.** That happened three times two sessions
+ago. `OBS-08`'s harness requires the literal to match exactly once, compares the
+file's SHA-256 either side of every plant, and reports a plant that did not
+apply as `NOT-PLANTED` rather than counting it. ⭐ Those three guards were
+themselves exercised, with an absent literal, an ambiguous one and a no-op edit,
+because a probe's guard is a guard like any other.
 
-⭐ A corpus only tests the defects it contains an example of. It cost four
-misses here: a datagram buffer shrunk below any fixture, a head framer shortened
-by a byte with no head terminated in bare newlines, and twice a send-once flag
-cleared with nothing reading again to notice.
+⭐ **A constant every test reads is a constant no test can check.** `OBS-08`
+found two: nothing pinned `PIECE_HASH_LEN`, so narrowing it re-chunked the
+`pieces` string and the comparison against it together, and a test spec built at
+`MIN_PIECE_LENGTH` made a declared piece length and the floor indistinguishable.
+Pin a specification's values to their literals, and build a fixture at a value
+no default or bound also has.
+
+⭐ **A corpus only tests the defects it contains an example of.** `OBS-08`'s
+payload stream had nothing pinning it: reproducibility, seed-dependence and
+prefix-stability all survive any change to the arithmetic, so the module's own
+unit tests could not see a drift that would invalidate every fixture digest
+already recorded.
 
 ⚠ An acceptance command that names a bare test filter can exit 0 having run
 nothing, and `--test <target>` skips the library's own tests. `CI-05` is the

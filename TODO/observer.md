@@ -115,7 +115,7 @@ journal will find it.
 ## OBS-08: Synthetic torrent for the observation lab
 
 Source: split out of `OBS-01` on 2026-09-04
-Priority: P0 | Effort: M | Status: OPEN
+Priority: P0 | Effort: M | Status: DONE
 
 Problem: A client announces about an info hash and requests pieces of a real
 piece layout. Without a torrent the lab can accept a connection and cannot make
@@ -143,31 +143,121 @@ hash is the digest of the encoded info dictionary and not of the whole
 document, that identical parameters produce identical bytes, and that one
 changed parameter changes both the bytes and the digest.
 
-⚠ **In flight, and not closed.** `crates/bit-ids-lab/src/torrent.rs` carries the
-generator and its own unit tests, which pass, and the entry's acceptance suite,
-guard-mutation pass and driven pass have not been done. What is in the tree is a
-checkpoint, not a closure. What remains:
+Closure evidence: run on 2026-09-05.
+`cargo test -p bit-ids-lab --locked --all-targets` reports 53 passed, 0 failed
+over 5 binaries: 14 library tests, 21 in `lab_supervisor`, 18 in
+`synthetic_torrent`, which holds the four properties the Prove names and the
+layout a client would refuse the torrent over, and two examples carrying none.
+`cargo test --workspace --locked --all-targets` reports 28 binaries and 270
+passed, 0 failed, up from 25 and 250, and `--doc` reports 2 passed. `cargo fmt --all -- --check`,
+`cargo clippy --workspace --locked --all-targets -- -D warnings`,
+`sh scripts/common/check-gate.sh` and `pwsh -File scripts/common/check-gate.ps1`
+all exit 0.
 
-- an acceptance suite at `crates/bit-ids-lab/tests/synthetic_torrent.rs` holding
-  the four properties the Prove names;
-- a guard-mutation pass over the generator, with each plant verified to have
-  changed the file.
+⭐ **The acceptance suite reads the info hash out of the file rather than out of
+the generator.** Comparing `encode(torrent.info())` against the same encoder's
+output cannot see an info hash naming a dictionary the file does not contain,
+because both halves move together. So the suite walks the raw metainfo, cuts out
+the byte range the `info` key maps to, and hashes that. The guard-mutation pass
+below is what proves the distinction is load-bearing: an info dictionary given
+one extra key on its way into the file, with the hash still over the original,
+is refused by that test and by nothing else.
 
-⭐ The driven pass **was** done, on 2026-09-05, and it is the half that most
-needed an outside opinion. A generated torrent was written to disk and read by a
-bencode decoder written in Python for the purpose, which located the info
-dictionary's own bytes inside the file and computed SHA-1 over them itself. It
-agreed exactly, on the info hash and on `capture.fixture`
-`sha256:aad389766cfd904386f71ef3d7359d53764194e84bfae73b8f6d9258cb68e58c`, over
-a 266-byte metainfo describing three 16384-byte pieces, `private` set and the
-announce URL intact.
+⭐ **Two gaps in the suite were found by asking what each planted defect would
+have to survive, before planting it.** Nothing pinned `PIECE_HASH_LEN`,
+`MIN_PIECE_LENGTH` or `MAX_PAYLOAD_BYTES`: every test reads them, so each moves
+with them and none can see one drift, and a piece hash narrowed to sixteen bytes
+would re-chunk the `pieces` string and the comparison against it in one step.
+And the test spec was built at `MIN_PIECE_LENGTH`, which makes `piece length`
+and the floor indistinguishable, so a generator writing the constant instead of
+the declared value read as correct. Both are closed and both plants are refused.
+
+Guard mutation: 33 defects planted one at a time over
+`crates/bit-ids-lab/src/torrent.rs`, each by literal replacement required to
+match exactly once, each verified to have changed the file by comparing its
+SHA-256 either side, each acceptance exit code read unpiped, and the tree
+restored and re-run clean afterwards. 31 refused. The two that are not are one
+defect in two halves and are named below.
+
+⛔ **The payload's byte stream had nothing pinning it, and the module's own unit
+tests cannot pin it.** They assert reproducibility and seed-dependence, and both
+survive any change to the arithmetic: a flipped endianness, a drifted constant
+or a halved word still produce a stream that is reproducible, seed-dependent and
+prefix-stable. A generated torrent is citable only while its bytes are a function
+of its declared inputs, so a silent drift there invalidates every
+`capture.fixture` already recorded. The suite now compares the payload against
+`SplitMix64` restated from the specification, anchored to the first five words
+the public-domain reference emits for seed zero. Four plants that nothing else
+catches are refused by it.
+
+Driven on 2026-09-05 by two third-party implementations, neither of which shares
+this project's reading of BEP 3:
+`cargo run -p bit-ids-lab --example synthetic-torrent -- <path>` writes the file
+and prints what the generator derived from it, and `libtorrent` 2.1.1.0, the
+engine `ENGINE-01` targets, and `torf` 4.3.1 each read it back. ⚠ Which clients
+embed libtorrent is not asserted here: this session measured a version and a
+parse, not a client population, and `docs/client-matrix.md` carries what the
+project actually knows about engine relationships. 26 comparisons, 26 agree:
+the info hash, name,
+piece length, piece count, total size, the `private` flag, the announce URL, the
+creation date, `capture.fixture` over the file on disk, and every piece hash
+against a payload regenerated from the declared seed alone. ⭐ libtorrent hands
+back the info dictionary's own bytes, so the info hash was recomputed over the
+range **it** located rather than the one this project's decoder did, and the two
+ranges agree.
+
+⛔ **Four negative controls, because a reader that agrees with everything has
+agreed with nothing.** One flipped bit in a piece hash changes the info hash for
+both readers, and a truncated file is refused by both. The agreement above is
+therefore a result rather than a property of the readers.
+
+⭐ **The door sweep found the one thing neither the suite nor the driven pass
+could: nothing joined the generator to the observers.** The info hash is
+declared twenty bytes wide in two crates, as `PIECE_HASH_LEN` here and as
+`INFO_HASH_LEN` in `bit-ids-wire`, and no code passed one to the other, so
+neither the widths nor the bytes were checked against each other. That is the
+composition class `docs/methodology/gate.md` names: each part correct, the
+assembly untested. `crates/bit-ids-probe/tests/generated_torrent.rs` closes it,
+in the probe crate because that is the only one that depends on both. It hands
+the generated array to `PeerWire`, which makes the compiler check the width, and
+drives the value over a real socket at both surfaces a capture uses to identify
+a torrent: the peer handshake, where the observer must answer about the same
+torrent or a client drops it, and the announce query, where the twenty raw bytes
+go through percent-encoding. Covered by the workspace command above rather than
+by this entry's `-p bit-ids-lab` one. Three plants, all refused: an observer
+answering with a zeroed info hash, a handshake decoded one byte off, and a
+percent decoder dropping the low nibble.
 
 ⚠ The info hash is not reproduced here as a number. `check-no-secrets --public`
 refuses a bare run of forty hex digits in prose and is right to, because that is
-what a token looks like; narrowing that rule a second time in one session to
-publish a value nobody needs is how a rule ends up switched off. The spec above
-regenerates it. ⚠ And this is one reader agreeing with one writer, not a client
-accepting the torrent: no client can run here.
+what a token looks like; narrowing that rule a second time to publish a value
+nobody needs is how a rule ends up switched off. The example above prints it and
+the spec regenerates it.
+
+⚠ **What the driven pass still is not.** These are libraries reading a file, not
+a client downloading a torrent. libtorrent accepting the metainfo and agreeing on
+every piece hash is strong evidence the layout is one a client will verify
+against, and it is not the same as a build announcing about it. `OBS-07` owns the
+stock-client controls and they need a host the `docs/capture-host.md` guards
+permit, which a session host is not.
+
+The one guard that is not refuted: `piece()` computes its offset with
+`checked_mul` and `checked_add`, and replacing either with the unchecked
+operator is refused by nothing. It is an equivalent mutant on every 64-bit
+target and both CI lanes are 64-bit: a piece length is a power of two of at most
+`2^31` and an index at most `2^32`, so the product is at most `2^63 - 2^31` and
+the sum at most `2^63`, both far below `usize::MAX`. What would have to be true
+for it to fire is a 32-bit target, where the multiplication can succeed and the
+addition still wrap. ⭐ The `checked_add` is there **because** the mutation was
+equivalent: asking why exposed a checked multiplication next to an unchecked
+addition, which is a guard on one of two arithmetic steps, and the second step
+cost one line.
+
+Residual: the generator produces a single-file torrent only. A multi-file
+`info` dictionary is a different shape, with a `files` list instead of `length`,
+and a build can behave differently on one. Nothing needs it yet, because a
+capture makes a client announce and request a piece, and one file does that.
+`OBS-06` or a client entry files it if a target turns out to differ.
 
 Decision taken here: `sha1` 0.11.0 was added, which is the first third-party
 crate since `SCHEMA-01`, and `docs/supply-chain.md` requires the argument in the

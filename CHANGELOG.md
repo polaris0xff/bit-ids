@@ -5,6 +5,44 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-05T08:30:00Z
+
+- Closed `OBS-08`, the synthetic torrent. The generator was checkpointed in the
+  tree last session; what landed now is the acceptance suite at
+  `crates/bit-ids-lab/tests/synthetic_torrent.rs`, the guard-mutation pass and a
+  driven pass. Record: [`TODO/observer.md`](TODO/observer.md).
+- ⭐ The acceptance suite reads the info hash out of the **file**, by walking the
+  raw metainfo and cutting out the byte range the `info` key maps to. Comparing
+  a re-encode of the value the generator kept cannot see an info hash naming a
+  dictionary the file does not contain, because both halves move together; the
+  mutation pass plants exactly that and it is refused by this test alone.
+- ⛔ Pinned the payload's byte stream, which nothing was checking. A generated
+  torrent is citable only while its bytes are a function of its declared inputs,
+  and a drift in the `SplitMix64` arithmetic invalidates every
+  `capture.fixture` already recorded while staying reproducible, seed-dependent
+  and prefix-stable, which is all a naive test asserts. Four plants that nothing
+  else catches are now refused.
+- ⚠ Pinned `PIECE_HASH_LEN`, `MIN_PIECE_LENGTH` and `MAX_PAYLOAD_BYTES` to their
+  literals, and moved the test spec off the piece-length floor. A constant every
+  test reads is a constant no test can check: narrowing the piece hash re-chunked
+  the `pieces` string and the comparison against it in one step, and a spec built
+  at the floor made the declared piece length and the constant indistinguishable.
+- `piece()` now checks both halves of its offset. The unchecked addition beside a
+  checked multiplication is a guard on one of two arithmetic steps; it is
+  unreachable on a 64-bit target, which is why the mutation for it is the one
+  this entry could not refute.
+- Guard mutation: 33 plants, 31 refused. Each was a literal replacement required
+  to match exactly once, verified against the file's SHA-256 either side, with
+  the acceptance exit code read unpiped.
+- Driven by `libtorrent` 2.1.1.0, the engine `ENGINE-01` targets, and `torf`
+  4.3.1, neither of which shares this project's reading of BEP 3, over a file
+  written by a new
+  `cargo run -p bit-ids-lab --example synthetic-torrent`. 26 comparisons, 26
+  agree, including four negative controls: a reader that agrees with everything
+  has agreed with nothing.
+- Deployment: nothing deployed. No capture was taken and none is possible until
+  `OBS-09` writes the evidence a manifest cites.
+
 ### 2026-09-05T07:50:00Z
 
 - ⚠ Corrected the session record's CI row. It reported the seventh run as

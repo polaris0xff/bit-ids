@@ -1,17 +1,17 @@
 # Work index
 
 Total: 56
-Open: 40
+Open: 39
 In progress: 0
 Blocked: 0
-Done: 16
+Done: 17
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| P0 | 8 | 0 | 0 | 16 | 24 |
+| P0 | 7 | 0 | 0 | 17 | 24 |
 | P1 | 31 | 0 | 0 | 0 | 31 |
 | P2 | 1 | 0 | 0 | 0 | 1 |
-| Total | 40 | 0 | 0 | 16 | 56 |
+| Total | 39 | 0 | 0 | 17 | 56 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -30,7 +30,7 @@ Done: 16
 | OBS-05 | P0 | L | DONE | BEP 10 and early-message observer |
 | OBS-06 | P1 | M | OPEN | Adjacent protocol observer suite |
 | OBS-07 | P1 | M | OPEN | Known-client positive controls |
-| OBS-08 | P0 | M | OPEN | Synthetic torrent for the observation lab |
+| OBS-08 | P0 | M | DONE | Synthetic torrent for the observation lab |
 | OBS-09 | P0 | M | OPEN | Raw evidence journal and bundle writer |
 | OBS-10 | P1 | M | OPEN | Cross-platform normalized-event equality |
 | ACQ-01 | P0 | L | DONE | Acquisition route schema |
