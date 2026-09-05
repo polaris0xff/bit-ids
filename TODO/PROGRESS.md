@@ -1,10 +1,10 @@
 # Current progress
 
-State instant: 2026-09-05
-Baseline commit: `0b7536e` on `main`
+State instant: 2026-09-06
+Baseline commit: `ad0b68f` on `main`
 Total: 56
-Open: 32
-In progress: 0
+Open: 31
+In progress: 1
 Blocked: 0
 Done: 24
 
@@ -287,17 +287,29 @@ second publication changes `MANIFEST.json`, `SHA256SUMS` and the indexes by
 design, and treating every published path as immutable made a correct second
 publication impossible. `CANONICAL_ROOTS` names the roots the rule is about.
 
+`CI-01` is the entry in flight. ⛔ **Its Problem was largely overtaken before it
+started**, because the Linux lane already delegates to the gate and the Rust
+suite already covers the schema and the fixtures on both lanes. Its Prove was
+not: no lane could see a check that had stopped running, and nothing anywhere
+established that an injected defect turns the pipeline red. Both are answered
+now, the first by counting a declared gap apart from an observed skip so that
+`--strict` became usable on the lane that needed it, and the second by
+`scripts/ci/check-workflow.sh`. ⚠ The publish workflow those residuals ask for
+is what remains.
+
 ## Work order
 
-1. `CI-01`, the complete cross-platform quality gate. It is what wires the
-   publisher into a workflow with the job-scoped `contents: write` and the
-   concurrency group `PUB-02` leaves as residuals, and the local gate it would
-   mirror is already sixteen checks.
+1. `CI-01`, the complete cross-platform quality gate, IN_PROGRESS. Both lanes
+   ask strictly now and the workflow acceptance harness is driven and green;
+   what is left is the publish workflow carrying the job-scoped
+   `contents: write` and the concurrency group `PUB-02` leaves as residuals.
+   ⛔ It has to be unable to fire on its own, because nothing may be published
+   until a measured record exists.
 2. `CORPUS-04`, supersession and correction records, which is what the latest
    view needs before a superseded record can drop out of it.
 3. `PUB-03`, the multi-format publisher, which derives its formats from the
    bundle `PUB-01` assembles rather than beside it.
-3. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
+4. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
    captures, on Linux only until `CI-03` provides the Windows guard pair.
    ⛔ **They stay behind the corpus work on a measurement rather than a
    preference:** their acceptance needs a capture, a capture needs a host
@@ -305,11 +317,10 @@ publication impossible. `CANONICAL_ROOTS` names the roots the rule is about.
    refused. `TODO/clients.md` carries the three routes that were tried on
    2026-09-05. ⭐ Neither the observer layer nor the store blocks them any more;
    `CI-03` and a host are what remain.
-4. `ACQ-05`, the artifact cache, and `FOUND-04`, the licence register, before
+5. `ACQ-05`, the artifact cache, and `FOUND-04`, the licence register, before
    the first proprietary client is acquired.
-5. `PUB-02` and `PUB-03`, then `CI-01` through `CI-04`, followed by remaining
-   client and engine breadth.
-6. Consumer library, public documentation, and refinements.
+6. `CI-02` through `CI-04`, then the remaining client and engine breadth.
+7. Consumer library, public documentation, and refinements.
 
 ## Pending operator decisions
 
@@ -348,6 +359,15 @@ the check exits 2 with `gh is not authenticated` rather than with `gh not
 found`. The other GitHub route this harness has is scoped to this repository
 alone, so a pin in `actions/checkout` cannot be resolved through it either. A
 skip is not a pass; the CI Linux lane is what runs this check.
+
+⛔ **A prover that could not run reported nothing, and the gate read that as a
+skip.** Exporting `CARGO_TARGET_DIR`, which a great many Rust developers do, put
+every built example somewhere the harnesses did not look, so all five corpus and
+publishing provers exited 2 and the whole tier silently stopped proving
+anything. Two places composed that path and fixing one left the other; `CI-01`
+carries both. ⚠ The lesson is about the status rather than the path: exit 2 is
+the honest answer for a harness that cannot run, and a tier of them answering it
+at once still looked like a green gate.
 
 ⚠ `check-twins` compares the two halves' answers on the tree it runs against.
 A rule that differs only on a defect the tree does not contain is invisible to

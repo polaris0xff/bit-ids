@@ -7,6 +7,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# The workflow-wide floor. Every job below narrows it again rather than
+# inheriting it, because a job that states nothing is a job whose token nobody
+# reviewed when the next one was added.
 permissions:
   contents: read
 
@@ -22,7 +25,9 @@ jobs:
   linux:
     name: Linux gate
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
+    permissions:
+      contents: read
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -30,6 +35,25 @@ jobs:
           fetch-depth: 0
       - name: Install pinned Rust toolchain
         run: rustup show active-toolchain
+      # Two caches rather than one, because they want different keys. Downloaded
+      # crates are inert bytes and a near-miss is still useful, so that one falls
+      # back. Build artifacts are not: restoring a target directory built against
+      # a different dependency set is how a stale artifact survives a lockfile
+      # change, so that one is exact-match or nothing.
+      - name: Cache downloaded crates
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: ${{ runner.os }}-crates-${{ hashFiles('Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-crates-
+      - name: Cache build artifacts
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: target
+          key: ${{ runner.os }}-target-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
       - name: Host report
         run: sh scripts/doctor/doctor.sh --fast
       - name: Install pinned shfmt
@@ -54,11 +78,19 @@ jobs:
         run: cargo clippy --workspace --locked --all-targets -- -D warnings
       - name: Repository gate
         run: sh scripts/common/check-gate.sh --strict
+      # Last, and only on this lane. It plants a defect of each class the gate
+      # exists to catch and runs the steps above against it, so it needs every
+      # one of them working first. It is deliberately absent from check-gate.sh:
+      # a runner inside the gate that also runs the gate recurses.
+      - name: Workflow acceptance
+        run: sh scripts/ci/check-workflow.sh
 
   windows:
     name: Windows gate
     runs-on: windows-2025
     timeout-minutes: 25
+    permissions:
+      contents: read
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -67,6 +99,20 @@ jobs:
       - name: Install pinned Rust toolchain
         shell: pwsh
         run: rustup show active-toolchain
+      - name: Cache downloaded crates
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: ${{ runner.os }}-crates-${{ hashFiles('Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-crates-
+      - name: Cache build artifacts
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: target
+          key: ${{ runner.os }}-target-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
       - name: Host report
         shell: pwsh
         run: ./scripts/doctor/doctor.ps1 -Fast
@@ -82,6 +128,10 @@ jobs:
       - name: Rust lints
         shell: pwsh
         run: cargo clippy --workspace --locked --all-targets -- -D warnings
+      # -Strict is what makes this lane able to see a check that stopped
+      # running. It is possible here only because the runner counts a declared
+      # unavailability apart from an observed skip: six of its rows are checks
+      # Windows cannot run, and refusing those would refuse every correct tree.
       - name: Repository gate
         shell: pwsh
-        run: ./scripts/common/check-gate.ps1 -Fast
+        run: ./scripts/common/check-gate.ps1 -Fast -Strict

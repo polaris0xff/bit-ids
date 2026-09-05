@@ -3,7 +3,7 @@
 ## CI-01: Complete cross-platform quality gate
 
 Source: template gate method and operator best-in-class CI requirement
-Priority: P0 | Effort: L | Status: OPEN
+Priority: P0 | Effort: L | Status: IN_PROGRESS
 
 Problem: The bootstrap CI verifies code and documents but not future schema,
 fixtures, corpus determinism, or publication invariants.
@@ -13,6 +13,58 @@ permissions, concurrency, timeouts, caching by lockfile, and strict local gates.
 
 Prove: every required check appears as a non-skipped CI result, and injected
 failures in docs, schema, fixtures, and Rust each turn the workflow red.
+
+⚠ **Most of the Problem was overtaken before this entry was started.** The
+Linux lane already delegates to `check-gate.sh --strict`, which runs the corpus
+and publishing provers, and the Rust suite already covers the schema and the
+fixtures on both lanes. What was actually missing was the two halves of the
+Prove, and neither was a matter of adding jobs.
+
+### What the first half turned out to be: a flag nobody could use
+
+⛔ **The Windows lane ran without `--strict`, and it had to.** Six of that
+runner's rows are checks Windows genuinely cannot run, so the flag would have
+refused every correct tree. ⚠ The consequence is the one that matters: a check
+that *stopped* running there was counted as a skip beside those six, and the
+lane stayed green. Measured on 2026-09-06 by rewriting `check-project.ps1` to
+`exit 2`; that lane's own invocation exited 0.
+
+⭐ The runner now counts a **declared** unavailability apart from an **observed**
+skip. A declared row is written into the runner with its reason and the entry
+that owns it and prints as `n/a`; an observed one is a check that answered 2 or
+whose file has gone. `--strict` refuses only the second, so both lanes ask
+strictly and the six documented gaps stay documented.
+
+### What the second half turned out to be: a harness that cannot drift
+
+`scripts/ci/check-workflow.sh` copies the working tree into a scratch
+repository, plants a defect of each class, and runs the offending step against
+it. ⛔ **Every command it runs is read out of the workflow by job and step
+name.** A harness holding its own copy of a build command proves that command
+refuses a defect and says nothing about the one CI runs, and a step this file
+names and the workflow no longer has is reported rather than passed over.
+
+⛔ **It is kept out of `check-gate.sh` and that is a shared contract.** Two of
+its cases run the workflow's *Repository gate* step, so a runner inside the gate
+that also runs the gate would re-enter itself. The workflow calls it as a step
+of its own instead.
+
+⚠ **The gate cases needed a control the exit code could not give.** The
+workflow runs the gate with `--strict`, and a developer host with no
+authenticated `gh` has an observed skip of its own, so the clean tree exits 1
+here and 0 on the lane. The control reads the runner's failure count and records
+which host it is on; the plants still read the exit code unpiped.
+
+### ⛔ The door sweep found the same assumption behind two doors
+
+`store_build` composed an example's path as `root/target/debug/examples`, and
+cargo obeys `CARGO_TARGET_DIR`. With that variable set the build succeeded, the
+binary landed elsewhere, and the check for it fired: exit 2, which the gate
+reads as a **skip**. ⚠ All five corpus and publishing provers therefore proved
+nothing at all on such a host and reported it nowhere. Fixing that one exposed
+the second door: `publish-data.sh` composes the same path itself, so the
+publisher exited 2 saying its own append checker was missing. Both resolve the
+variable now. Found by driving this entry, whose harness sets it.
 
 ## CI-02: Stable-release staleness monitor
 

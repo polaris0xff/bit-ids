@@ -5,6 +5,36 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-06T10:30:00Z
+
+- `CI-01` in progress, the cross-platform quality gate. Record:
+  [`TODO/ci.md`](TODO/ci.md).
+- ⛔ The Windows lane ran without `--strict` and could not do otherwise: six of
+  its rows are checks that platform cannot run, so the flag would have refused
+  every correct tree. A check that stopped running was therefore counted beside
+  them and the lane stayed green. Measured by rewriting `check-project.ps1` to
+  `exit 2`, which that lane's own invocation exited 0 over.
+- Both gate runners now count a declared unavailability apart from an observed
+  skip. A declared row carries its reason and prints as `n/a`; `--strict`
+  refuses only the observed kind, so both lanes ask strictly now.
+- `scripts/ci/check-workflow.sh` plants a defect of each class into a scratch
+  copy of the working tree and runs the offending workflow step against it.
+  ⭐ Every command it runs is read out of the workflow by job and step name, so
+  it cannot drift from CI and a step that has gone is reported rather than
+  passed over.
+- ⛔ It is deliberately absent from `check-gate.sh`: two of its cases run the
+  gate, and a runner listed in the gate that also runs the gate re-enters
+  itself. The workflow calls it as a step of its own.
+- ⛔ The door sweep found one assumption behind two doors. `store_build` and
+  `publish-data.sh` each composed an example path as `target/debug/examples`
+  while cargo obeys `CARGO_TARGET_DIR`, so on a host exporting that variable all
+  five corpus and publishing provers exited 2 and the publisher refused to run.
+  Exit 2 is a skip to the gate, so the tier proved nothing and said so nowhere.
+- The workflow declares per-job permissions and timeouts, caches downloaded
+  crates and build artifacts under separate keys, and pins `actions/cache`.
+- Deployment: nothing deployed. No capture was taken. No remote was written
+  other than this repository's `main`.
+
 ### 2026-09-05T15:00:00Z
 
 - `PUB-02`, the append-only data branch publisher. Record:

@@ -138,7 +138,14 @@ case "$BRANCH" in
     ;;
 esac
 
-CHECKER="$ROOT/target/debug/examples/check-store"
+# ⛔ CARGO_TARGET_DIR IS ASKED FOR HERE TOO, AND THAT IS THE SECOND DOOR. The
+# same assumption lived in store-lib.sh's store_build, and fixing one left this
+# one composing root/target while cargo obeyed the environment: the build
+# succeeded, the binary was elsewhere, and the publisher exited 2 saying its own
+# append checker was not executable. It fails closed, which is the right
+# direction, and it is still a publisher that cannot run on a machine whose only
+# oddity is a variable many Rust developers set.
+CHECKER="${CARGO_TARGET_DIR:-$ROOT/target}/debug/examples/check-store"
 if ! cargo build --manifest-path "$ROOT/Cargo.toml" -p bit-ids --locked \
   --example check-store >/dev/null 2>&1; then
   printf 'publish-data: cannot build the append checker\n' >&2

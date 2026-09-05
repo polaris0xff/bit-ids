@@ -25,6 +25,11 @@ from any working directory.
 - [`publishing/check-publish.sh`](publishing/check-publish.sh) drives that
   publisher against a bare repository it creates in a scratch directory, so the
   push path runs for real with no network and no credential.
+- [`ci/check-workflow.sh`](ci/check-workflow.sh) copies the working tree into a
+  scratch repository, plants a defect of each class the pipeline exists to
+  catch, and runs the offending workflow step against it. Every command it runs
+  is read out of `.github/workflows/ci.yml` by job and step name, so a harness
+  that has drifted from CI reports a missing step rather than a pass.
 - [`corpus/store-lib.sh`](corpus/store-lib.sh) is sourced by all five and is
   never run. ⚠ It sits under `corpus/` because that is where the first harness
   to need it was, and a publishing check sources it across directories rather
@@ -65,7 +70,20 @@ available to an unprivileged Windows session. A second
 implementation that skipped those two plants would report a smaller pass under
 the same name, which is the shape `check-twins.sh` calls invisible drift.
 
+`ci/check-workflow.sh` is a seventh mutation prover and the one deliberately
+kept **out** of the gate. Two of its cases run the workflow's own *Repository
+gate* step, so a runner listed in the gate that also invokes the gate would
+re-enter itself; `check-gate.sh` keeps `check-twins` out of its pair list for
+that reason and this is the same contract. The workflow runs it as a step of its
+own instead, after every other step has passed, so it still runs on every push.
+
 ⚠ A script that sources another is clean to `shellcheck` only when both are
 handed to one invocation, because it will not follow a source it was not given.
 CI passes every script at once and a contributor checking one file does not, so
 the directives live in each file rather than in how it is called.
+
+⚠ A prover that builds an example resolves it through `CARGO_TARGET_DIR` when
+that is set. Composing the path as `target/debug/examples` instead was measured
+on 2026-09-06 to make all five corpus and publishing provers exit 2 on a host
+with that variable exported, which the gate reads as a skip rather than as a
+failure, so a whole tier of guards stopped proving anything and said so nowhere.

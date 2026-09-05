@@ -35,6 +35,14 @@ its subject was verified. `--strict` turns a skip into a failure, which is what
 a CI job should pass, because there the tools are installed on purpose and a
 skip means the install broke.
 
+⭐ **A gap the runner declares and a check that stopped working are different
+rows.** The first is written into the runner with a reason and the entry that
+owns it, and prints as `n/a`; the second is a check that answered 2, or one
+whose file has gone, and prints as `SKIP`. `--strict` refuses only the second.
+Without that split the flag was unusable on any lane with a documented gap, so
+the lane ran without it and a check that quietly stopped running kept the lane
+green. Read both numbers: a run cannot claim a strictness it did not have.
+
 Two disciplines that catch what a naive pass count hides:
 
 ⛔ **Count the test files the runner reports against the files on disk.** A

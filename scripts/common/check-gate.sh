@@ -23,6 +23,26 @@
 # --strict to make a skip a failure, which is what a CI job should do, since
 # there the tools are installed on purpose and a skip means the install broke.
 #
+# -- ⛔ AND A CHECK THIS HOST CANNOT RUN IS NOT A CHECK THAT BROKE ------------
+#
+# Those are two different facts and --strict could not tell them apart, which
+# made it unusable on the lane that needed it most. Measured on 2026-09-06:
+# with check-project rewritten to exit 2, the Windows lane's own invocation
+# still exited 0, because it ran without --strict; and it ran without --strict
+# because six of its rows are checks Windows genuinely cannot run, so the flag
+# would have refused every green tree.
+#
+# ⭐ So a row is one of two kinds. A DECLARED unavailability is written in the
+# runner, with a reason and the entry that owns it, and prints as `n/a`. An
+# OBSERVED skip is a check that ran and answered 2, or one whose file is gone,
+# and prints as `SKIP`. --strict refuses the second and permits the first, so
+# both lanes run strict and a check that quietly stops running turns a lane red
+# wherever it happens.
+#
+# ⚠ --fast counts as declared, because the caller asked for it rather than the
+# host failing to supply it. The summary names the two totals separately so a
+# run cannot claim a strictness it did not have.
+#
 # -- ⛔ IT DOES NOT RUN ITSELF, AND THAT IS NOT THEORETICAL ------------------
 #
 # This runs check-twins.sh, which runs both halves of every pair. ⚠ A version
@@ -79,10 +99,21 @@ HERE=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 PASS=0
 FAIL=0
 SKIP=0
+NA=0
 ROWS=""
 
 row() { ROWS="$ROWS  $1
 "; }
+
+# ⛔ DECLARED HERE, WITH A REASON, OR IT IS NOT DECLARED. The reason is the
+# whole difference between this row and an observed skip: one is a fact about
+# the platform that somebody wrote down and can be argued with, and the other
+# is a check that stopped working. A row added here without a reason turns
+# --strict back into the flag that could not be used.
+unavailable() { # name reason
+  row "n/a   $1  ($2)"
+  NA=$((NA + 1))
+}
 
 # ⛔ THE EXIT CODE IS TAKEN FROM THE PROCESS, UNPIPED. Output goes to a file
 # and $? is read on the next line. `run ... | tee` would report tee's status,
@@ -186,8 +217,7 @@ done
 # check-twins alone is most of a full run's wall time, because it starts both
 # halves of every pair. --fast drops it and nothing else.
 if [ "$FAST" = "1" ]; then
-  row "SKIP  check-twins  (--fast)"
-  SKIP=$((SKIP + 1))
+  unavailable "check-twins" "--fast"
 elif [ -f "$HERE/check-twins.sh" ]; then
   run "check-twins" sh "$HERE/check-twins.sh"
 else
@@ -201,12 +231,15 @@ fi
 # all, check-twins reports that itself.
 [ "$have_pwsh" = "1" ] || row "note  pwsh absent; the PowerShell halves were not exercised"
 
-TOTAL=$((PASS + FAIL + SKIP))
+TOTAL=$((PASS + FAIL + SKIP + NA))
 
 # ⛔ A RUN THAT PASSED NOTHING IS NOT A GREEN RUN. Zero failures out of zero
 # checks executed is the shape this script exists to refuse, and it produced
 # exactly that on its own first run through a broken presence test. Nothing
 # passing is a failure of the gate regardless of --strict.
+#
+# ⚠ --strict reads SKIP and never NA. A declared row is a documented gap and
+# refusing it would refuse every correct tree on the lane that declared it.
 if [ "$PASS" -eq 0 ]; then
   RC=1
 elif [ "$STRICT" = "1" ] && [ "$SKIP" -gt 0 ]; then
@@ -218,17 +251,22 @@ else
 fi
 
 if [ "$JSON" = "1" ]; then
-  printf '{"schema":"check-gate/1","total":%s,"passed":%s,"failed":%s,"skipped":%s,"strict":%s}\n' \
-    "$TOTAL" "$PASS" "$FAIL" "$SKIP" "$([ "$STRICT" = "1" ] && printf true || printf false)"
+  printf '{"schema":"check-gate/2","total":%s,"passed":%s,"failed":%s,"skipped":%s,"unavailable":%s,"strict":%s}\n' \
+    "$TOTAL" "$PASS" "$FAIL" "$SKIP" "$NA" "$([ "$STRICT" = "1" ] && printf true || printf false)"
   exit "$RC"
 fi
 
 printf '\n%s\n' "$ROWS"
-printf '%s checks: %s passed, %s failed, %s skipped\n' "$TOTAL" "$PASS" "$FAIL" "$SKIP"
+printf '%s checks: %s passed, %s failed, %s skipped, %s unavailable\n' \
+  "$TOTAL" "$PASS" "$FAIL" "$SKIP" "$NA"
 
 if [ "$SKIP" -gt 0 ]; then
   printf -- '⚠ A SKIP IS NOT A PASS. Those checks did not run and nothing about\n'
   printf 'their subject was verified. Pass --strict to make a skip a failure.\n'
+fi
+if [ "$NA" -gt 0 ]; then
+  printf -- '⚠ An n/a row is a gap this runner declares, with the reason beside it.\n'
+  printf -- '--strict permits those and refuses a SKIP, so read both numbers.\n'
 fi
 if [ "$PASS" -eq 0 ]; then
   printf -- '❌ NOTHING RAN. Zero checks passed, so this is red whatever the skips say.\n'

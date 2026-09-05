@@ -32,13 +32,21 @@ store_require() { # tool...
 # ⛔ It checks the binary is there afterwards. A build that exits 0 having
 # produced nothing is the "step that exits 0 having done nothing" row, and every
 # case downstream of it would report a guard that failed to fire.
+#
+# ⛔ CARGO_TARGET_DIR IS ASKED FOR RATHER THAN ASSUMED AWAY, and that was a real
+# hole. This composed the path as root/target and cargo obeys the environment,
+# so with that variable set the build succeeded, the binary landed somewhere
+# else, and the check above fired: exit 2, which the gate reads as a skip. All
+# five provers then reported nothing at all, on a machine whose only oddity was
+# a variable a great many Rust developers set. Measured on 2026-09-06 while
+# driving CI-01, whose harness sets it.
 store_build() { # root example
   if ! cargo build --manifest-path "$1/Cargo.toml" -p bit-ids --locked \
     --example "$2" >/dev/null 2>&1; then
     printf '%s: cannot build the %s example\n' "$ME" "$2" >&2
     exit 2
   fi
-  _bin="$1/target/debug/examples/$2"
+  _bin="${CARGO_TARGET_DIR:-$1/target}/debug/examples/$2"
   [ -x "$_bin" ] || {
     printf '%s: %s is not executable after a successful build\n' "$ME" "$_bin" >&2
     exit 2
