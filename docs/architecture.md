@@ -476,6 +476,50 @@ That is what lets one deadline, one loopback guard and one journal serve every
 surface instead of each observer growing its own, and it is why the codecs in
 section 5 have no sockets in them.
 
+### Where the lab may send, and which surfaces are switched on
+
+⛔ **A bind guard is half the containment, and for a while it was the whole of
+it.** Where a socket listens and where it sends are different questions, and the
+second one had no answer: a datagram endpoint replied on its bound socket
+directly, to an address the sender had chosen.
+[`../TODO/observer.md`](../TODO/observer.md) carries what that made possible.
+`bind::send_to` is the one place an outbound datagram is addressed now, and it
+refuses any destination outside loopback.
+
+⚠ **That guard checks before the syscall and cannot check after.** A bind reports
+`local_addr` and a dial reports `peer_addr`, so both read back what the kernel
+did. A datagram socket reports nothing about the packet it just sent. There is no
+after-the-fact reading of where a datagram went, so the destination is decided in
+one place or nowhere.
+
+⚠ **The sweep's needle list was the reason the hole lasted.** Every needle on it
+named a constructor, and a send is a method on a socket that already exists, so
+the whole category was missing rather than one entry.
+
+Some surfaces a client reaches for without being asked: it multicasts a local
+discovery announce, gossips peers over `ut_pex`, and queries a DHT bootstrap
+node. Each carries identity, and each also names a destination of its own, which
+is what makes them different from the core surfaces a client only ever reaches
+where the lab pointed it. `OBS-06` calls them adjacent, and
+[`../crates/bit-ids-lab/src/adjacent.rs`](../crates/bit-ids-lab/src/adjacent.rs)
+holds the switch each one is behind.
+
+⭐ **The switch is a value, not a flag.** `Capability::enable(surface)` is the
+only way to make a `Capability`, and an adjacent observer takes one. A boolean
+defaulting to false is turned on by a later `..Default::default()` in a struct
+nobody re-read; a type with no `Default` and one constructor is turned on only by
+somebody writing the line, and the line names the surface. ⚠ The switch records
+that an operator meant to run the surface. It says nothing about where the
+surface sends, which is the guard's job.
+
+⛔ **The surface vocabulary has one home and it is the record's.**
+`bit_ids::observation::Surface` already named `dht`, `pex`, `mse` and `web_seed`,
+because a published field says which surface it was observed on. The lab
+re-exports it and adds only what the lab knows. ⚠ A field path spells a surface
+in lower snake case and a lab endpoint name is a `Slug`, which is hyphenated, so
+`adjacent::endpoint_name` is the only converter and a test holds the two
+spellings together.
+
 ### The torrent a client is handed
 
 A client announces about an info hash and asks for pieces of a real piece
@@ -837,9 +881,13 @@ reports that it happened.
   [`capture-host.md`](capture-host.md) read `/proc/net/route` and
   `/etc/machine-id`, so there is no boundary to run before an install on
   Windows. `CI-03` owns the pair.
-- `dht`, `pex`, `mse` and `web_seed` have no codec and no fixture. A fixture on
-  one of those surfaces is refused with `E-FIX-07` rather than silently passing.
-  `OBS-06` owns them.
+- `dht`, `pex`, `mse` and `web_seed` have no codec in `bit-ids-wire` and no
+  fixture. A fixture on one of those surfaces is refused with `E-FIX-07` rather
+  than silently passing. `OBS-11` owns the three that need one; `pex` rides
+  inside a peer-wire transcript, so a fixture for it is a `peer_wire` fixture and
+  `OBS-06` reads it there. ⚠ `local_discovery` has a codec now, because a BEP 14
+  announce is read by the HTTP codec that already existed, and no fixture: one
+  belongs in the corpus when a real announce has been captured.
 - Windows packet corroboration needs a route that works on hosted runners or a
   disposable self-hosted runner; `OBS-07` owns the independent-control
   decision and `CI-03` owns the runner.

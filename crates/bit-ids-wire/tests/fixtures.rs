@@ -50,7 +50,13 @@ fn fixtures_all_round_trip_byte_for_byte() {
             .unwrap_or_else(|violations| panic!("{}: {violations:?}", fixture.id));
         let bytes = fixture.joined_bytes();
         let re_encoded = match fixture.surface {
-            Surface::TrackerHttp => HttpRequest::parse(&bytes).expect("decodes").encode(),
+            // ⚠ Kept in step with `Fixture::round_trip` deliberately. This is a
+            // second implementation as a control, not a copy to be deduplicated,
+            // so a surface added there and forgotten here panics rather than
+            // being quietly unchecked.
+            Surface::TrackerHttp | Surface::LocalDiscovery => {
+                HttpRequest::parse(&bytes).expect("decodes").encode()
+            }
             Surface::PeerWire => Transcript::parse(&bytes).expect("decodes").encode(),
             Surface::TrackerUdp => fixture
                 .frames
@@ -65,6 +71,65 @@ fn fixtures_all_round_trip_byte_for_byte() {
         };
         assert_eq!(re_encoded, bytes, "{} lost bytes", fixture.id);
     }
+}
+
+/// ⭐ `OBS-06` gave local discovery a codec, so a fixture on it validates
+/// rather than being refused with `E-FIX-07`.
+///
+/// ⚠ Built here rather than committed to the corpus: the corpus index is
+/// `FOUND-03`'s acceptance, and a fixture belongs in it once a real announce has
+/// been captured rather than to prove a dispatch arm exists. The negative half
+/// is the same document on `dht`, which has no codec and is still refused.
+/// The fixture document the case below fills in. Two substitutions, no braces.
+const TEMPLATE: &str = r#"{
+  "schema": "SCHEMA-HERE",
+  "id": "local-discovery-announce",
+  "surface": "local_discovery",
+  "summary": "A BEP 14 announce naming one endpoint",
+  "provenance": {
+    "origin": "synthetic",
+    "authored": "2026-09-06T22:40:00Z",
+    "specifications": [
+      "BEP 14"
+    ]
+  },
+  "frames": [
+    {
+      "offset_ms": 0,
+      "bytes": "BYTES-HERE"
+    }
+  ]
+}"#;
+
+#[test]
+fn fixtures_accept_a_local_discovery_announce_and_still_refuse_one_with_no_codec() {
+    let announce: &[u8] =
+        b"BT-SEARCH * HTTP/1.1\r\nHost: 239.192.152.143:6771\r\nPort: 6881\r\n\r\n\r\n";
+    let hex: String = announce.iter().map(|byte| format!("{byte:02x}")).collect();
+    // ⚠ Assembled by substitution rather than by `format!`. A doubled brace is
+    // how a format string escapes one, and `check-placeholders.sh` reads that
+    // shape as a template nobody filled in, which is the right reading
+    // everywhere else in this tree.
+    let document = TEMPLATE
+        .replace("SCHEMA-HERE", FIXTURE_SCHEMA)
+        .replace("BYTES-HERE", &hex);
+
+    let fixture = Fixture::from_json(&document).expect("it validates");
+    assert_eq!(fixture.surface, Surface::LocalDiscovery);
+    assert_eq!(fixture.joined_bytes(), announce);
+    assert_eq!(
+        HttpRequest::parse(&fixture.joined_bytes())
+            .expect("decodes")
+            .encode(),
+        announce,
+        "the codec the dispatch names does not lose the announce"
+    );
+
+    // ⛔ The control. Without it this passes over a validator that stopped
+    // refusing every surface rather than learning one.
+    let refused = Fixture::from_json(&document.replace("\"local_discovery\"", "\"dht\""))
+        .expect_err("dht has no codec");
+    assert!(format!("{refused:?}").contains("E-FIX-07"), "{refused:?}");
 }
 
 /// The digests are the acceptance. A fixture edited without the index being

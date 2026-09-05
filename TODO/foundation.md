@@ -200,9 +200,12 @@ which is the fixture that exists because clients do that.
    there was no blank line at all, so a hundred megabytes of headers with a
    blank line at the end parsed in full. The cap is now on where the head ends.
 
-Residual: `Surface::Dht`, `Pex`, `Mse` and `WebSeed` have no codec, and a
-fixture on one is refused with `E-FIX-07` rather than silently passing.
-`OBS-06` owns those surfaces and their fixtures.
+Residual: `Surface::Dht`, `Mse` and `WebSeed` have no codec, and a fixture on one
+is refused with `E-FIX-07` rather than silently passing. `OBS-11` owns those
+three. ⚠ Two moved on 2026-09-06: `Pex` rides inside a peer-wire transcript and
+`OBS-06` reads it out of one, so a fixture for it is a `peer_wire` fixture and
+never its own surface; `LocalDiscovery`, added to the vocabulary by the same
+entry, is read by the HTTP codec that already existed and validates.
 
 Residual: an incremental reader distinguishes "need more bytes" from "malformed"
 only by `WireError::kind() == "truncated"` plus its own knowledge of whether the

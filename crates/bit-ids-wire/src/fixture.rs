@@ -384,7 +384,14 @@ impl Fixture {
     fn round_trip(&self) -> Result<(), FixtureViolation> {
         let bytes = self.joined_bytes();
         let re_encoded = match self.surface {
-            Surface::TrackerHttp => HttpRequest::parse(&bytes).map(|request| request.encode()),
+            // ⭐ Local discovery shares the HTTP reader on purpose. A BEP 14
+            // announce is an HTTP request with a different method, and a
+            // second head parser for it would be two readings of one grammar
+            // that disagree first about header case and line terminators,
+            // which is what an announce is identifying by. `OBS-06`.
+            Surface::TrackerHttp | Surface::LocalDiscovery => {
+                HttpRequest::parse(&bytes).map(|request| request.encode())
+            }
             Surface::PeerWire => Transcript::parse(&bytes).map(|transcript| transcript.encode()),
             Surface::TrackerUdp => self.round_trip_datagrams(),
             other => {

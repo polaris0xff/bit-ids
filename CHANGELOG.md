@@ -5,6 +5,36 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-06T23:10:00Z
+
+- `OBS-06`, the adjacent protocol observer suite, over local discovery and peer
+  exchange. Record: [`TODO/observer.md`](TODO/observer.md).
+- ⛔ The lab had no egress guard and a door sweep is what found it. Every socket
+  went through `bind.rs`; every send did not. `endpoint::serve_datagram` answered
+  on the bound socket with the source address the sender wrote on the packet, and
+  nothing verifies a UDP source address. `bind::send_to` is the one door now.
+- ⚠ The sweep's needle list is why it lasted: every needle on it named a
+  constructor, and a send is a method on a socket that already exists, so the
+  whole category was missing rather than one entry.
+- ⚠ A send guard checks before the syscall and cannot check after. A bind reads
+  `local_addr` and a dial reads `peer_addr`; a datagram socket reports nothing
+  about the packet it sent.
+- ⭐ An adjacent surface is behind a value that has to be constructed, not a flag
+  whose default is false. `Capability::enable(surface)` is the only constructor,
+  and a boolean default is what a later `..Default::default()` flips.
+- ⛔ A second `Surface` enum was written for the lab and removed.
+  `bit_ids::observation::Surface` already named four of these, so the lab
+  re-exports the record vocabulary and `local_discovery` was added to it.
+- Three surfaces split out as `OBS-11`: message stream encryption, the DHT and
+  web seeding are each an `L` on their own and `TODO/RULES.md` says to split
+  before execution.
+- Twenty-three plants, twenty-two refused. The two survivors were findings: a
+  test named for a guarantee it did not check, and one guard nothing can refute,
+  which is kept with the reason written where it is.
+- Deployment: nothing deployed. No capture was taken and nothing was published.
+  The lab never joined the multicast group BEP 14 names; the driven run sent
+  three announces to a loopback address from a client on the same host.
+
 ### 2026-09-06T21:45:00Z
 
 - `ACQ-05`, the artifact cache and its authenticity evidence. Record:

@@ -176,6 +176,17 @@ if [ "$PUBLIC" = "1" ]; then
   # constant named for its RFC and to exactly forty hex digits, which is a
   # SHA-1: it cannot cover a token, and it cannot cover hex under any other
   # name. OBS-08 added it for RFC 3174, whose vectors verify the info hash.
+  # OBS-06 added the BEP 14 `Infohash:` field, which is a torrent's own
+  # identifier inside a local-discovery announce and never a credential. Both
+  # are anchored: the field name, a colon and a space, and exactly forty digits.
+  #
+  # ⛔ THE TRAILING CLASS IS THE ANCHOR AND IT IS NOT DECORATION. Without it
+  # `{40}` matches the first forty characters of a LONGER run and blanks them,
+  # leaving a remainder too short to reach the 24-character threshold: a
+  # forty-six digit value after the field name went unreported, and so did a
+  # sixty-three. Both twins agreed, and both were wrong. The per-input twin
+  # comparison in OBS-06's review is what found it, because each input carried
+  # an expected outcome rather than only being compared against the other half.
   #
   # ⛔ THE ALLOWED ITEM IS DELETED FROM THE LINE, THE LINE IS NOT DROPPED.
   # `grep -v` drops lines, not characters, so an allowed digest sitting beside
@@ -192,7 +203,8 @@ if [ "$PUBLIC" = "1" ]; then
       -e 's#(record:)?sha256:[0-9a-f]{64}#ALLOWED#g' \
       -e 's#"(value|bytes|alphabet|detail)": "[0-9a-f]+"#"\1": "ALLOWED"#g' \
       -e 's#(peer_id|HexBytes::parse)\("[0-9a-f]+"#\1("ALLOWED"#g' \
-      -e 's#(RFC[0-9]+_[A-Z0-9_]+: &str = )"[0-9a-f]{40}"#\1"ALLOWED"#g' |
+      -e 's#(RFC[0-9]+_[A-Z0-9_]+: &str = )"[0-9a-f]{40}"#\1"ALLOWED"#g' \
+      -e 's#([Ii]nfohash: )[0-9a-f]{40}([^0-9a-f]|$)#\1ALLOWED\2#g' |
     grep -E '\b[0-9a-f]{24,}\b' || true)
   [ -n "$_hex_out" ] && hit "a long hex identifier" "$_hex_out"
   # ⚠ Narrowed rather than switched off. `/home/linuxbrew/` and `/home/runner/`

@@ -748,7 +748,16 @@ client has driven this.
 ## OBS-06: Adjacent protocol observer suite
 
 Source: bit-cli T-234 MSE and web-seed surfaces
-Priority: P1 | Effort: M | Status: OPEN
+Priority: P1 | Effort: M | Status: DONE
+
+Split on 2026-09-06. The entry named five surfaces at `M`, and three of them are
+not `M`: message stream encryption is a Diffie-Hellman exchange with an
+obfuscated header and an RC4 keystream, a DHT is a Kademlia RPC surface with its
+own routing table, and a web seed is an HTTP server with range requests. Each is
+its own `L`. `TODO/RULES.md` says a cross-cutting item should be split before
+execution rather than after, so the three moved to `OBS-11` with an acceptance of
+their own and nothing was dropped. What is closed here is the containment the
+whole suite needs and the two surfaces that are genuinely bounded.
 
 Problem: MSE choices, web-seed HTTP behavior, DHT, PEX, and local discovery
 can expose stable client identity outside the core flows.
@@ -761,6 +770,221 @@ a disabled-by-default capability, and an egress-negative test.
 
 Prove: each module's focused Rust suite passes and the lab proves no packet
 leaves its allowed address set.
+
+⛔ **The egress guard did not exist and the door sweep is what found it.**
+`bind.rs` opened with "every socket this crate creates is created here", and it
+was true: a bind and a dial both went through it. Where a socket *sends* went
+through nothing. `endpoint::serve_datagram` answered on the bound socket
+directly, with `socket.send_to(&send, from)`, and `from` is the source address
+the sender wrote on the packet. Nothing verifies a UDP source address, so a
+local process able to forge one could have aimed a lab's replies off the host,
+out of a socket the loopback guard had already approved.
+
+⚠ That hole was invisible for as long as the sweep's needle list was. The list
+named `TcpListener::bind`, `UdpSocket::bind`, `TcpStream::connect` and
+`UdpSocket::connect`, and every one of those is a *constructor*. A send is a
+method on a socket that already exists, so the whole category was missing rather
+than one entry. `.send_to(` is on the list now, spelled as a method call so it
+distinguishes `socket.send_to(..)` from `bind::send_to(..)`, which is the door.
+
+⛔ **A `send_to` guard cannot read back and the bind guards can.** A bind reports
+`local_addr` and a dial reports `peer_addr`, so both check what was asked for and
+then what the kernel did. A datagram socket reports nothing about the packet it
+just sent. So the destination is decided before the syscall or not at all, and
+`bind::send_to` is the one place that decides.
+
+⭐ **The switch is a value that has to be constructed, not a flag whose default
+is false.** `Capability::enable(Surface::LocalDiscovery)` is the only way to make
+a `Capability`, and an adjacent observer takes one. A boolean defaulting to
+`false` is turned on by a later `..Default::default()` in a struct nobody
+re-read; a type with no `Default` and one constructor is turned on only by
+somebody writing the line, and the line names the surface.
+
+⚠ **The switch is not the containment and the module says so.** It records that
+an operator meant to run the surface. Where the surface sends is `bind::send_to`,
+and a module that goes around it is caught by the sweep rather than by the
+capability.
+
+⛔ **A second `Surface` enum was written here and it was wrong.**
+`bit_ids::observation::Surface` already named `dht`, `pex`, `mse` and `web_seed`,
+because a published record has to say which surface a field was observed on. A
+copy in the lab would have spelled the same surfaces differently in the
+containment layer and in the record, which is the divergent-copies defect
+`check-one-home` exists for one layer up. `bit_ids_lab::adjacent` re-exports the
+record vocabulary and adds only what the lab knows: which surfaces are adjacent,
+how each reaches out, and the switch. `local_discovery` was added to that
+vocabulary rather than kept as a fifth private name; nothing has ever been
+published, so no consumer held a record whose vocabulary this widens.
+
+⚠ A field path spells a surface in lower snake case and a lab endpoint name is a
+`Slug`, which is hyphenated. Two spellings of one thing is how they drift, so
+`endpoint_name` is the only converter and a test asserts it equals the field-path
+spelling with underscores replaced, for every surface, and that each result
+parses as a `Slug`.
+
+⭐ **Local discovery is parsed by the HTTP codec that already exists.** A BEP 14
+announce is an HTTP request with a different method, and
+`bit_ids_wire::tracker_http::HttpRequest` already preserves header case, header
+order and line terminators. A second head parser in the observer would have been
+two readings of one grammar, and they would have disagreed first about exactly
+the things this observer exists to record.
+
+⛔ **It answers nothing, on any input.** BEP 14 defines no reply. A response
+would be this project inventing a protocol and then recording what a client did
+when it received one, which is a measurement of this code. The driven run shows
+three inbound segments and no outbound one.
+
+⚠ **A refused announce is kept.** `Refusal` says a build sent something BEP 14
+does not describe, which is a finding about the build and not a reason to drop
+evidence. Every check runs rather than stopping at the first, because the set of
+things a build gets wrong is more identifying than whichever one a
+short-circuiting reader stopped at.
+
+⭐ **Peer exchange opens no socket at all.** It reads a `Stream` the peer-wire
+observer already recorded. That needed `Stream::recorded`, which turns bytes back
+into the same reading the live path made; without it an analysis over an evidence
+bundle would re-implement the decode and the copy would disagree first about the
+partial trailing message.
+
+⛔ **`ut_pex` has no reserved id, and reading it as one would be wrong twice.**
+BEP 10 lets the peer choose the id and announce it in the extension map, so the
+observer matches on what the peer offered. It also reserves 0 for the handshake
+and defines mapping an extension to 0 as disabling it, so `ut_pex: 0` means the
+build does not do peer exchange; reading that as "id 0" would attribute every
+extended handshake in the stream to `ut_pex`.
+
+⚠ **A refusal variant that nothing could produce was the finding on the first
+draft.** `BeforeHandshake` was unreachable: a single forward pass cannot know
+message 0 is `ut_pex` until message 1 says so, so a build that gossiped before
+announcing its extension map read as one that never gossiped. The read is two
+passes now, the variant fires, and `gossip_sent_before_the_extended_handshake_is_attributed_and_reported`
+is the case. Deleting the variant would have been the other repair and it would
+have deleted the finding with it.
+
+Prove, run on 2026-09-06: `cargo test -p bit-ids-lab -p bit-ids-probe --locked
+--all-targets` covers the guard, the switch and both modules; the workspace is 40
+binaries and 392 tests. `cargo test -p bit-ids-probe --locked --test
+adjacent_surfaces` is 7 cases.
+
+⛔ **The egress claim is made three ways because no one of them is enough.** A
+unit test on the guard proves it refuses and not that it is reached. The source
+sweep proves nothing went around it and not that it is right. A driven run proves
+what crossed a socket and not what a different input would have done. The
+addresses used are the ones BEP 14 itself fixes, `239.192.152.143:6771` and
+`[ff15::efc0:988f]:6771`, rather than an address chosen to pass. ⚠ And a refusal
+is not the same as an inability to send, so the same socket is shown reaching a
+loopback destination in the same test file.
+
+Driven on 2026-09-06 by a client that is not this project's test harness.
+`cargo run -p bit-ids-probe --example local-discovery -- 6` printed its loopback
+address and a Python client sent three announces to it: one exactly as the
+specification writes it, one from a build that lower-cases its field names,
+reorders them, names two torrents in one announce, sends no cookie and ends with
+a bare newline, and one that is not BEP 14 at all. The run reported 3 announces
+and 3 segments, all inbound; `Host, Port, Infohash, cookie` and `infohash,
+infohash, port, host` as sent; the trailer of the first as `Blank`, the second as
+`None`; both info hashes of the second; and two findings on the third, an info
+hash that is not forty hexadecimal characters and a port of zero. Then it printed
+the guard refusing `239.192.152.143:6771`.
+
+Twenty-three plants over the new guards, each verified to compile first.
+Twenty-two refused and one is not, below. ⚠ **Two of the twenty-three survived
+the first pass and both were findings rather than harness defects.**
+
+⛔ The first was a mis-named test. `the_reply_path_of_any_datagram_endpoint_is_the_guarded_one`
+asserted a loopback echo and nothing about the guard, so reverting
+`serve_datagram` to `socket.send_to(..)` left every assertion in it true.
+Proving that routing behaviourally would need a datagram arriving with a forged
+source address, which needs a raw socket. The plant is refused by
+`no_module_outside_the_bind_guard_reaches_the_network`, which reads the source,
+and the test is renamed to what it checks with the limit written above it.
+
+⛔ The second is the guard nothing refutes. Removing `.filter(|id| *id != 0)`
+from the attribution pass survived, because no candidate message can carry
+extended id 0: `is_handshake` is `extended_id == 0`, so an id-0 message always
+takes the handshake branch and never reaches that loop. The same mistake is
+refuted twice elsewhere, by `offers_peer_exchange` and by the `OfferedDisabled`
+refusal, and both of those are plants that failed as they should. The line is
+kept as defence against a later change to how a handshake is recognised, and the
+source says so where it is written rather than letting it read as a check that
+does work.
+
+`check-no-secrets` gained one narrowed allowance on both twins, for the BEP 14
+`Infohash:` field, which is a torrent's own identifier and never a credential; it
+is anchored to the field name and to exactly forty digits, the way the RFC 3174
+vector allowance is.
+
+⛔ **The first version of that allowance was unsound and both twins agreed it was
+fine.** `{40}` with no trailing anchor matches the first forty characters of a
+longer run and blanks them, and the remainder falls under the twenty-four
+character threshold, so a forty-six digit value written after `Infohash: ` was
+reported by neither half. ⚠ Comparing the twins is what `FOUND-04` learned to do
+per planted input; what found this is the other half of that lesson, which is
+that **each planted input needs a declared expected outcome**. Two halves that
+agree with each other are not two halves that are right. Seven inputs, each with
+an expectation: the field in both spellings passes, a bare forty-hex string is
+refused, and so are the field at a different length, the field without its space,
+and a token-shaped value sitting beside it.
+
+Residual: **nothing here proves no packet left the host.** The three checks above
+prove every destination was decided by one guard, that nothing went around it,
+and what actually crossed a socket in one run. A capture on the interface is what
+would prove the negative, and it needs privileges `docs/capture-host.md` does not
+grant a test runner. `CI-03` owns the host that could.
+
+Residual: a datagram responder does not see the source address of the packet it
+is answering, so the observer cannot compare the port a build claims in its
+`Port:` field with the port the datagram actually came from. That is a real
+identity signal and it needs the lab's `DatagramResponder` to carry the peer.
+`OBS-11` carries it, because a DHT observer needs the same thing for its own
+reasons.
+
+Residual: `Trailer::Other` and `Refusal::NotBtSearch` are reachable and are not
+what any real build is expected to send. They are recorded because the announce
+is kept whole either way, and a build that sends one is a finding rather than a
+parse error.
+
+## OBS-11: Message stream encryption, DHT and web-seed observers
+
+Source: split out of `OBS-06` on 2026-09-06
+Priority: P1 | Effort: L | Status: OPEN
+
+Problem: `OBS-06` named five adjacent surfaces and closed over two. The three
+that remain each carry identity the core flows do not: which cipher and padding
+a build offers before anything is readable, how it words a DHT query and what it
+puts in its own node id, and what it sends as a user agent and a range header
+when it fetches from a web seed.
+
+Premise: The containment is already built and is not per surface. `OBS-06` left
+one guarded door for outbound datagrams, one switch type keyed on the record
+vocabulary, and a source sweep over both crates. What each of these three needs
+is a protocol module and its acceptance, not a new argument about egress.
+
+⛔ **A DHT observer is the one that can leave.** Its first act in a real client
+is a query to a bootstrap node this project does not own, and the lab must be
+what the build talks to instead. `bind::send_to` refuses every destination
+outside loopback, so the work is to make the observer answer well enough that a
+build keeps talking, not to add a guard.
+
+⚠ **A web-seed observer needs the torrent to name it.** BEP 19 puts the URL in
+the torrent's `url-list`, so `OBS-08`'s `TorrentSpec` has to carry a loopback URL
+and the fixture's declared spec has to say so, or the build fetches whatever the
+fixture happened to contain.
+
+⚠ **MSE is the one that has to come first in a stream.** It negotiates before any
+observer can read the peer wire, so a lab offering it changes what `OBS-04` and
+`OBS-05` see. The offer is a condition of the measurement and has to be recorded
+beside the result, the way `Offer` already is for BEP 10.
+
+Approach: One module at a time, in the order DHT, web seed, MSE, each with raw
+evidence and its own capability, and each with the datagram or stream responder
+it needs. Carried over from `OBS-06`: a `DatagramResponder` that sees the source
+address of the packet it answers, which local discovery needs to compare a
+claimed port against an observed one and a DHT needs to answer a query at all.
+
+Prove: each module's focused Rust suite passes, a driven run by a client that is
+not this project's test harness records what it sent, and the lab refuses the
+real bootstrap and multicast addresses each protocol names.
 
 ## OBS-07: Known-client positive controls
 

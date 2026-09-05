@@ -32,6 +32,12 @@ pub enum Surface {
     Dht,
     /// Peer exchange.
     Pex,
+    /// BEP 14 local service discovery.
+    ///
+    /// ⚠ Added by `OBS-06`, which is the entry that modelled it. Nothing had
+    /// ever been published when it was added, so no consumer held a record
+    /// whose vocabulary this widens; a later addition is not free.
+    LocalDiscovery,
     /// Message stream encryption.
     Mse,
     /// HTTP and HTTPS web seeding.
@@ -48,6 +54,7 @@ impl Surface {
             Self::PeerWire => "peer_wire",
             Self::Dht => "dht",
             Self::Pex => "pex",
+            Self::LocalDiscovery => "local_discovery",
             Self::Mse => "mse",
             Self::WebSeed => "web_seed",
         }
@@ -60,6 +67,7 @@ impl Surface {
             "peer_wire" => Self::PeerWire,
             "dht" => Self::Dht,
             "pex" => Self::Pex,
+            "local_discovery" => Self::LocalDiscovery,
             "mse" => Self::Mse,
             "web_seed" => Self::WebSeed,
             _ => return None,

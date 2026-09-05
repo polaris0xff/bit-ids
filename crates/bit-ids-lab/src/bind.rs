@@ -14,6 +14,20 @@
 //! back and refused again. Those are different facts: a bind request is what
 //! was asked for and `local_addr` is what the kernel gave, and only the second
 //! one describes where traffic can reach.
+//!
+//! ⛔ **A bound socket is half the containment.** Where a socket listens and
+//! where it sends are different questions, and [`send_to`] is the answer to the
+//! second: every outbound datagram this crate emits is addressed here, and a
+//! destination outside loopback is refused before the packet exists. `OBS-06`
+//! is what needed it, because the adjacent surfaces are precisely the ones
+//! whose protocols carry a destination of their own.
+//!
+//! ⚠ **Writing to a TCP stream is not a third door, and the reason is worth
+//! stating.** A `TcpStream` has one peer, fixed when it was accepted or
+//! connected, and both of those came through this module. So a write can only
+//! reach an address a guard already approved. A datagram is the exception
+//! because its destination is chosen per packet, which is why it needs a guard
+//! per packet.
 
 use core::fmt;
 use std::io;
@@ -35,6 +49,19 @@ pub enum BindError {
         /// What the kernel reported after binding.
         bound: SocketAddr,
     },
+    /// An outbound datagram was addressed outside the lab's allowed set.
+    ///
+    /// ⛔ **This is the one `OBS-06` needs and the bind guards could not
+    /// give.** A bind says where a socket listens; it says nothing about
+    /// where that socket sends. The adjacent surfaces are exactly the ones
+    /// whose protocols name a destination. Local discovery multicasts to a
+    /// group fixed by BEP 14, and a DHT's first act is to reach a bootstrap
+    /// node, so a lab that guarded only its binds would have contained
+    /// every surface except the ones that leave.
+    NotReachable {
+        /// Where the datagram was addressed.
+        destination: SocketAddr,
+    },
     /// The operating system refused the bind.
     Io(io::Error),
 }
@@ -49,6 +76,10 @@ impl fmt::Display for BindError {
             Self::BoundElsewhere { requested, bound } => write!(
                 f,
                 "asked for {requested} and the socket reports {bound}, which is not loopback"
+            ),
+            Self::NotReachable { destination } => write!(
+                f,
+                "refusing to send to {destination}: a lab packet goes to loopback and nowhere else"
             ),
             Self::Io(error) => write!(f, "the operating system refused the bind: {error}"),
         }
@@ -150,6 +181,40 @@ pub fn dial(address: SocketAddr, timeout: Duration) -> Result<TcpStream, BindErr
     // and what the kernel connected are different facts.
     check_bound(address.ip(), stream.peer_addr()?)?;
     Ok(stream)
+}
+
+/// Sends one datagram, to a destination inside the lab's allowed address set.
+///
+/// ⛔ **The door sweep found this one open.** Every socket went through this
+/// module and the reply path did not: `endpoint::serve_datagram` called
+/// `send_to` on the bound socket directly, with the source address of whatever
+/// had just arrived. A UDP source address is a claim by the sender rather than
+/// a fact the kernel checked, so a local process able to forge one could have
+/// aimed a lab's replies off the host, from a socket the loopback guard had
+/// already approved. That is the shape `docs/methodology/reviews.md` names: a
+/// gate on one of several doors into the same action.
+///
+/// ⚠ **The guard here is the check before the syscall, and that is all it can
+/// be.** A bind and a dial each read back what the kernel actually did, because
+/// a listener has a local address and a connected stream has a peer. A datagram
+/// socket has neither for the packet it just sent: there is no
+/// after-the-fact reading of where a datagram went. So the destination must be
+/// correct before it is passed, and this is the only place that decides.
+///
+/// # Errors
+///
+/// Returns [`BindError::NotReachable`] before the syscall for any destination
+/// outside loopback, and [`BindError::Io`] when the operating system refuses
+/// the send.
+pub fn send_to(
+    socket: &UdpSocket,
+    payload: &[u8],
+    destination: SocketAddr,
+) -> Result<usize, BindError> {
+    if !destination.ip().is_loopback() {
+        return Err(BindError::NotReachable { destination });
+    }
+    Ok(socket.send_to(payload, destination)?)
 }
 
 /// Binds a UDP socket on loopback, on a port the operating system chooses.
@@ -265,6 +330,55 @@ mod tests {
                 .ip()
                 .is_loopback()
         );
+    }
+
+    /// ⛔ The egress-negative case `OBS-06` asks for, over the addresses the
+    /// adjacent protocols actually name.
+    #[test]
+    fn a_datagram_addressed_outside_loopback_never_leaves() {
+        let socket = datagram(v4(127, 0, 0, 1)).expect("loopback binds");
+        // The BEP 14 groups, the ones a local-discovery observer would be
+        // handed by its own specification; 198.51.100.0/24 is TEST-NET-2,
+        // standing in for a DHT bootstrap node without naming somebody's host.
+        let elsewhere = [
+            SocketAddr::new(v4(239, 192, 152, 143), 6771),
+            SocketAddr::new(
+                IpAddr::V6(Ipv6Addr::new(0xff15, 0, 0, 0, 0, 0, 0xefc0, 0x988f)),
+                6771,
+            ),
+            SocketAddr::new(v4(198, 51, 100, 7), 6881),
+            SocketAddr::new(v4(255, 255, 255, 255), 6771),
+            SocketAddr::new(v4(0, 0, 0, 0), 6881),
+        ];
+        for destination in elsewhere {
+            assert!(
+                matches!(
+                    super::send_to(&socket, b"BT-SEARCH * HTTP/1.1\r\n", destination),
+                    Err(BindError::NotReachable { .. })
+                ),
+                "{destination} was not refused"
+            );
+        }
+    }
+
+    #[test]
+    fn a_datagram_addressed_to_loopback_arrives_and_reports_its_length() {
+        let listener = datagram(v4(127, 0, 0, 1)).expect("loopback binds");
+        let address = listener.local_addr().expect("a bound socket has one");
+        let sender = datagram(v4(127, 0, 0, 1)).expect("loopback binds");
+        let payload = b"BT-SEARCH * HTTP/1.1\r\n\r\n\r\n";
+        let sent = super::send_to(&sender, payload, address).expect("loopback is allowed");
+        assert_eq!(sent, payload.len());
+
+        listener
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .expect("a read timeout");
+        let mut buffer = [0_u8; 64];
+        let (read, from) = listener
+            .recv_from(&mut buffer)
+            .expect("the datagram arrives");
+        assert_eq!(&buffer[..read], payload);
+        assert!(from.ip().is_loopback());
     }
 
     #[test]

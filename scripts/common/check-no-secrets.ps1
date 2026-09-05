@@ -196,6 +196,12 @@ if ($Public) {
             # ⛔ Keep identical to the sh twin: a published test vector, anchored
             # to a constant named for its RFC and to exactly forty hex digits.
             $line = $line -creplace '(RFC[0-9]+_[A-Z0-9_]+: &str = )"[0-9a-f]{40}"', '$1"ALLOWED"'
+            # ⛔ Keep identical to the sh twin: the BEP 14 announce field, which
+            # carries a torrent's own identifier and never a credential. The
+            # trailing class anchors it to exactly forty digits; without it a
+            # longer run has its first forty blanked and the remainder falls
+            # under the threshold.
+            $line = $line -creplace '([Ii]nfohash: )[0-9a-f]{40}([^0-9a-f]|$)', '${1}ALLOWED${2}'
             $line
         } |
         Where-Object { $_ -cmatch '\b[0-9a-f]{24,}\b' })

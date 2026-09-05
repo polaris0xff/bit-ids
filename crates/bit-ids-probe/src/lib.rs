@@ -21,6 +21,8 @@
 //! a handshake, changes what it does next, and that change would be recorded as
 //! identity. Each module says what it answers and why.
 
+pub mod local_discovery;
+pub mod peer_exchange;
 pub mod peer_wire;
 pub mod tracker_http;
 pub mod tracker_udp;

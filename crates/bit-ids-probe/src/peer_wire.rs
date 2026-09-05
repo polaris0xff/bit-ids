@@ -72,6 +72,44 @@ pub enum Role {
 }
 
 impl Stream {
+    /// Reads a stream back from bytes that were already recorded.
+    ///
+    /// ⭐ **What a later pass over an evidence bundle gets.** `OBS-09` stores a
+    /// run's segments as bytes; an analysis that wants the same reading the live
+    /// observer made would otherwise re-implement the decode, and the copy would
+    /// disagree first about the partial trailing message. This is that decode,
+    /// called by a caller who has the bytes rather than the socket.
+    ///
+    /// ⚠ `connection` and `role` are passed in because they are capture facts.
+    /// Which side dialled is not in the byte stream, and a reader that guessed
+    /// would be inventing the one field `OBS-04` exists to distinguish.
+    #[must_use]
+    pub fn recorded(connection: ConnectionId, role: Role, raw: &[u8]) -> Self {
+        let mut stream = Self {
+            connection,
+            role,
+            raw: raw.to_vec(),
+            handshake: None,
+            messages: Vec::new(),
+            error: None,
+            answered: false,
+            extended_sent: false,
+        };
+        match Transcript::parse(raw) {
+            Ok(transcript) => {
+                stream.handshake = Some(transcript.handshake().clone());
+                stream.messages = transcript.messages().to_vec();
+            }
+            Err(error) => {
+                // A partial tail does not hide a handshake that already arrived
+                // whole, which is what the live path does with the same bytes.
+                stream.handshake = Handshake::parse_prefix(raw).ok().map(|(one, _)| one);
+                stream.error = Some(error);
+            }
+        }
+        stream
+    }
+
     /// Which connection this was.
     #[must_use]
     pub const fn connection(&self) -> ConnectionId {

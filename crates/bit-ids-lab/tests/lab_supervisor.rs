@@ -559,13 +559,22 @@ fn a_close_reply_ends_the_connection_and_the_client_sees_the_end_of_stream() {
 /// connections, and `OBS-04` is authored to implement an active dial role. A
 /// needle here now means that dial has to be written where the guard is, rather
 /// than being reviewed on the day it is added.
+///
+/// ⛔ **`.send_to(` is on the list because the sweep that did not name it missed
+/// a live one.** `endpoint::serve_datagram` replied on the bound socket
+/// directly, so the loopback guard approved where that socket listened and
+/// nothing decided where it sent. A needle spelled as a method call is what
+/// distinguishes `socket.send_to(..)` from `bind::send_to(..)`, which is the
+/// door rather than a way around it.
 #[test]
 fn no_module_outside_the_bind_guard_reaches_the_network() {
-    const FORBIDDEN: [&str; 4] = [
+    const FORBIDDEN: [&str; 6] = [
         "TcpListener::bind",
         "UdpSocket::bind",
         "TcpStream::connect",
         "UdpSocket::connect",
+        ".send_to(",
+        "UdpSocket::send",
     ];
 
     let source = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");

@@ -112,6 +112,24 @@ impl ConnectionId {
     pub const fn get(self) -> u64 {
         self.0
     }
+
+    /// The identity a connection had, for a reader working from recorded bytes.
+    ///
+    /// ⭐ A journal segment carries the number; an analysis pass reading a
+    /// bundle back needs to turn it into the same type the live path used, or it
+    /// keys its own state by a bare integer and the two views stop lining up.
+    ///
+    /// ⚠ Zero is refused. [`Shared::next_connection`] counts from one, so a zero
+    /// is an identity no capture ever handed out, and accepting it would let a
+    /// reader invent a connection that is not in the evidence.
+    #[must_use]
+    pub const fn recorded(number: u64) -> Option<Self> {
+        if number == 0 {
+            None
+        } else {
+            Some(Self(number))
+        }
+    }
 }
 
 impl core::fmt::Display for ConnectionId {
@@ -446,9 +464,13 @@ pub(crate) fn serve_datagram(
             Err(_) => break,
         };
         shared.record(name, None, Direction::FromTarget, buffer[..read].to_vec());
+        // ⛔ Through the egress guard, not `socket.send_to`. `from` is the
+        // source address the sender put on the packet, which nothing verified,
+        // so the reply destination is target-controlled input and gets checked
+        // like any other. See `bind::send_to`.
         if let Some(send) = responder(&buffer[..read])
             && !send.is_empty()
-            && socket.send_to(&send, from).is_ok()
+            && crate::bind::send_to(&socket, &send, from).is_ok()
         {
             shared.record(name, None, Direction::ToTarget, send);
         }

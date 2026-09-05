@@ -33,11 +33,22 @@ rows say `unverified` rather than inventing one.
 that moved adds a retrieval rather than an artifact, and the bytes are kept only
 where the register permits, which today is nowhere.
 
-⛔ **Everything the work order still lists needs a capture host this session
-cannot provide.** `CLIENT-01`, `CLIENT-06` and `CLIENT-05` need one directly;
-`CI-03` is what would supply it. `PUB-05` is blocked on the operator decision
-below. The next session should read `TODO/PROGRESS.md`'s work order rather than
-assuming this list.
+⭐ **And `OBS-06`**, over local discovery and peer exchange, with message stream
+encryption, the DHT and web seeding split out as `OBS-11`. ⛔ **The lab had no
+egress guard**: every socket went through `bind.rs` and every send did not, so a
+datagram endpoint replied to the source address the sender wrote on the packet.
+`bind::send_to` is the one door now and `.send_to(` is on the sweep's needle
+list. An adjacent surface is behind a capability that has to be constructed.
+
+⭐ **`OBS-11` is the next item that needs no capture host.** The containment, the
+switch and the sweep are built, so each of DHT, web seed and MSE is a protocol
+module and its acceptance. ⚠ Everything else the work order lists is behind a
+capture host or an operator decision: `CLIENT-01`, `CLIENT-06`, `CLIENT-05`,
+`OBS-07` and `OBS-10` need a host, `CI-03` is what would supply one, and `PUB-05`
+is blocked on the decision below. ⚠ `CI-02`'s acceptance is fixture-driven and
+`PUB-04`'s can be driven against a scratch bare repository, so neither is as
+blocked as the ordering suggests. Read `TODO/PROGRESS.md`'s work order rather
+than assuming this list.
 
 ⛔ **Nothing has ever been published.** The publisher has never run against this
 repository's own remote and must not until a measured record exists; everything
@@ -56,9 +67,9 @@ preference. A client entry's acceptance needs a capture, a capture needs a host
 an install on Windows. `CI-03` owns the pair; `docs/capture-host.md` carries
 both contracts.
 
-**In flight:** Nothing. `CI-01`, `CORPUS-04`, `PUB-03`, `FOUND-04` and `ACQ-05`
-each landed whole, with entry, index, summary and record updated in the same
-change. No files half-edited.
+**In flight:** Nothing. `CI-01`, `CORPUS-04`, `PUB-03`, `FOUND-04`, `ACQ-05` and
+`OBS-06` each landed whole, with entry, index, summary and record updated in the
+same change. No files half-edited.
 
 **Tree:** Clean and level with `origin/main`, on `main`, full clone. ⚠ The
 container started on a stale `claude/*` branch whose commits had already been
