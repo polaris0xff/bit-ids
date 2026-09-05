@@ -1,12 +1,12 @@
 # Current progress
 
 State instant: 2026-09-05
-Baseline commit: `b63c26d` on `main`
+Baseline commit: `0b7536e` on `main`
 Total: 56
-Open: 33
+Open: 32
 In progress: 0
 Blocked: 0
-Done: 23
+Done: 24
 
 ## Current state
 
@@ -18,10 +18,10 @@ All four core observer surfaces are done: both trackers, the peer handshake and
 BEP 10. ⭐ `OBS-08` and `OBS-09` are closed too, so the observer layer is
 complete: there is a torrent to point a client at, and a run's transcript now
 becomes the content-addressed evidence a manifest cites. ⭐ `CORPUS-01`
-through `CORPUS-03` and `PUB-01` are closed as well, so there is somewhere
-durable to put the answer, something that checks a whole store rather than one
-record, the consumer-facing views over it, and a bundle assembled once and
-described by itself. **A first vertical
+through `CORPUS-03` and `PUB-01` and `PUB-02` are closed as well, so there is
+somewhere durable to put the answer, something that checks a whole store rather
+than one record, the consumer-facing views over it, a bundle assembled once and
+described by itself, and a publisher that appends it and reads the branch back. **A first vertical
 capture is possible from here**, on a host the `ACQ-04` guards permit, and what
 stands between is a client adapter rather than any missing machinery.
 
@@ -273,14 +273,30 @@ carry.
 `sha256sum -c` reads the checksum file back, so a run that agreed with itself
 about what it wrote is still caught.
 
+`PUB-02` appends that bundle to the data branch. The append rule is checked
+before the push rather than after, because a branch protection setting refuses a
+force and says nothing about a commit that deletes a file. Nothing re-enables
+force: no flag, a branch name carrying `+` or `:` is refused before a refspec
+exists, and the harness reads the publisher's own source for one. ⛔ **The
+publisher has never run against the real remote** and will not until there is a
+measured record to publish; its acceptance runs against a bare repository the
+harness creates and deletes.
+
+⛔ **Driving it found that the append rule and the derived files collided.** A
+second publication changes `MANIFEST.json`, `SHA256SUMS` and the indexes by
+design, and treating every published path as immutable made a correct second
+publication impossible. `CANONICAL_ROOTS` names the roots the rule is about.
+
 ## Work order
 
-1. `PUB-02`, the append-only data branch publisher. Everything it needs now
-   exists: `assemble-release` writes the bundle and `check-store` compares it
-   against the branch it is about to append to. ⭐ It is also where `E-STO-22`
-   and `E-REL-11` become reachable, because it reads a tree it did not assemble.
+1. `CI-01`, the complete cross-platform quality gate. It is what wires the
+   publisher into a workflow with the job-scoped `contents: write` and the
+   concurrency group `PUB-02` leaves as residuals, and the local gate it would
+   mirror is already sixteen checks.
 2. `CORPUS-04`, supersession and correction records, which is what the latest
    view needs before a superseded record can drop out of it.
+3. `PUB-03`, the multi-format publisher, which derives its formats from the
+   bundle `PUB-01` assembles rather than beside it.
 3. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
    captures, on Linux only until `CI-03` provides the Windows guard pair.
    ⛔ **They stay behind the corpus work on a measurement rather than a

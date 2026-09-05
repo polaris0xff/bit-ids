@@ -15,10 +15,10 @@ mapping of its own and the two twins cannot hold different ones.
 | Engines | `ENGINE` | 3 | 0 | 0 | 0 | 3 |
 | Corpus | `CORPUS` | 1 | 0 | 0 | 3 | 4 |
 | Library | `LIB` | 2 | 0 | 0 | 0 | 2 |
-| Publishing | `PUB` | 3 | 0 | 0 | 1 | 4 |
+| Publishing | `PUB` | 2 | 0 | 0 | 2 | 4 |
 | CI | `CI` | 4 | 0 | 0 | 1 | 5 |
 | Documentation | `DOC` | 2 | 0 | 0 | 0 | 2 |
-| Total | | 33 | 0 | 0 | 23 | 56 |
+| Total | | 32 | 0 | 0 | 24 | 56 |
 
 Effort inventory: 1 S, 12 M, 43 L, 0 XL. The observer-lab entry was the XL one and
 was split on 2026-09-04, because its acceptance named a client fixture and a

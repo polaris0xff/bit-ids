@@ -756,7 +756,18 @@ the reader.
 branch protection setting refuses a force-push and says nothing about a commit
 that deletes a file, which is the shape a latest-only regeneration takes. The
 comparison in [`section 4`](#where-a-record-is-filed) is what refuses that, and
-`PUB-02` runs it over the fetched branch.
+[`../scripts/publishing/publish-data.sh`](../scripts/publishing/publish-data.sh)
+runs it over the fetched branch before it commits anything. `PUB-02` owns it.
+
+⛔ **The rule is about the canonical roots and not about every byte.**
+`profiles/` and `raw/` carry measurements and never change; the manifest, the
+checksums and the generated indexes exist in order to change, and an index that
+did not move when a record was appended would be one that had stopped describing
+the store. `store::CANONICAL_ROOTS` is the list.
+
+⚠ A push is not completion. The branch is fetched again, compared against what
+was there, and every digest in its own `SHA256SUMS` verified, before the run
+reports that it happened.
 
 ## 10. Limits
 

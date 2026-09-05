@@ -5,6 +5,30 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-05T15:00:00Z
+
+- `PUB-02`, the append-only data branch publisher. Record:
+  [`TODO/publishing.md`](TODO/publishing.md).
+- ⛔ Driving it found that the append rule and the derived files collided: a
+  correct second publication changes `MANIFEST.json`, `SHA256SUMS` and the
+  indexes by design, and treating every published path as immutable refused it.
+  `store::CANONICAL_ROOTS` now names the roots the rule is about.
+- The append comparison runs before the push, not after, because a branch
+  protection setting refuses a force and says nothing about a commit that deletes
+  a file. A refusal ends the run with nothing pushed and the branch where it was.
+- No force, asserted three ways: no flag, a branch name carrying `+` or `:` is
+  refused before a refspec exists, and the harness reads the publisher's own
+  source with the comments stripped. ⚠ The first version of that source check
+  matched the header sentence explaining the rule and reported the guard broken.
+- ⭐ That git refuses a divergent push under a plain refspec is measured on this
+  host rather than taken from the manual, because the publisher's whole
+  non-fast-forward defence rests on it.
+- ⛔ The acceptance touches no real remote: it creates a bare repository in a
+  scratch directory and deletes it. The publisher has never run against this
+  repository's own remote and will not until a measured record exists.
+- Deployment: nothing deployed. No capture was taken. No remote was written
+  other than this repository's `main`.
+
 ### 2026-09-05T14:20:00Z
 
 - `PUB-01`, the deterministic release assembler. Record:

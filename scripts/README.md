@@ -18,7 +18,14 @@ from any working directory.
 - [`publishing/check-release.sh`](publishing/check-release.sh) assembles a
   release twice, compares the bytes, and hands the checksum file to `sha256sum
   -c`, which is a reader this project did not write.
-- [`corpus/store-lib.sh`](corpus/store-lib.sh) is sourced by all four and is
+- [`publishing/publish-data.sh`](publishing/publish-data.sh) appends an
+  assembled bundle to the data branch: the append rule is checked before the
+  push, nothing re-enables force, and the branch is read back and verified
+  before the run says it happened.
+- [`publishing/check-publish.sh`](publishing/check-publish.sh) drives that
+  publisher against a bare repository it creates in a scratch directory, so the
+  push path runs for real with no network and no credential.
+- [`corpus/store-lib.sh`](corpus/store-lib.sh) is sourced by all five and is
   never run. ⚠ It sits under `corpus/` because that is where the first harness
   to need it was, and a publishing check sources it across directories rather
   than growing a second copy. It holds what a mutation harness needs: build an example, make a scratch
@@ -46,11 +53,11 @@ Windows capture host will need a PowerShell fetcher; `ACQ-04` owns the runner
 contract and is where that lands, rather than a second implementation written
 now with nothing exercising it.
 
-`acquisition/check-runner.sh`, the three `corpus/check-*.sh` harnesses and
-`publishing/check-release.sh` are the mutation provers, and none has a twin. All
-five run in the `sh` gate and are reported as named skips in the PowerShell
+`acquisition/check-runner.sh`, the three `corpus/check-*.sh` harnesses and the
+two `publishing/check-*.sh` ones are the mutation provers, and none has a twin.
+All six run in the `sh` gate and are reported as named skips in the PowerShell
 one. `check-runner` proves guards that read `/proc/net/route`, so it has nothing
-to prove on Windows until `CI-03` writes the Windows pair. The four corpus and publishing
+to prove on Windows until `CI-03` writes the Windows pair. The five corpus and publishing
 provers hold rules that are not platform-specific at all, and the Rust suite
 exercises every one of them on both CI lanes; ⚠ what they plant includes a
 symbolic link and a named pipe against a real filesystem, and neither is

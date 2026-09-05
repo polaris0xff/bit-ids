@@ -3,16 +3,19 @@
 **Task:** Take the work order in `TODO/PROGRESS.md` in dependency order,
 committing and pushing each green unit to `main`.
 
-**Resume point:** ⭐ **`CORPUS-01` through `CORPUS-03` and `PUB-01` are
-closed.** There is somewhere durable to put a record, the append rule and the
-store-level invariants are checked rather than trusted, the consumer-facing
-views are derived and proved, and a release assembles once and describes itself.
-The next item is `PUB-02`, the append-only data branch publisher: everything it
-needs exists now, since `assemble-release` writes the bundle and `check-store`
-compares it against the branch it would append to. ⭐ It is also where `E-STO-22`
-and `E-REL-11` become reachable, because it reads a tree it did not assemble.
-`CORPUS-04` follows, because a superseded record cannot drop out of the latest
-view until supersession chains exist.
+**Resume point:** ⭐ **`CORPUS-01` through `CORPUS-03`, `PUB-01` and `PUB-02`
+are closed.** A record has somewhere durable to go, the append rule and the
+store-level invariants are checked rather than trusted, the consumer views are
+derived and proved, a release assembles once and describes itself, and a
+publisher appends it and reads the branch back. The next item is `CI-01`, the
+complete cross-platform quality gate: it wires the publisher into a workflow
+with the job-scoped write permission and the concurrency group `PUB-02` left as
+residuals, and the local gate it mirrors is already sixteen checks. `CORPUS-04`
+and `PUB-03` follow.
+
+⛔ **Nothing has ever been published.** The publisher has never run against this
+repository's own remote and must not until a measured record exists; everything
+in the tree today is synthetic and says so.
 
 ⛔ The client entries stay behind this work on a measurement rather than a
 preference. A client entry's acceptance needs a capture, a capture needs a host
@@ -24,7 +27,7 @@ preference. A client entry's acceptance needs a capture, a capture needs a host
 an install on Windows. `CI-03` owns the pair; `docs/capture-host.md` carries
 both contracts.
 
-**In flight:** Nothing. Four entries landed whole, each with its entry, index,
+**In flight:** Nothing. Five entries landed whole, each with its entry, index,
 summary and record updated in the same change. No files half-edited.
 
 **Tree:** Clean and level with `origin/main`, on `main`, full clone. ⚠ The
@@ -34,14 +37,15 @@ re-measure rather than trusting a branch name. Measured on this host:
 
 | command | result |
 | --- | --- |
-| `sh scripts/common/check-gate.sh` | 16 checks, 15 passed, 0 failed, 1 skipped |
-| `pwsh -File scripts/common/check-gate.ps1` | 16 checks, 10 passed, 0 failed, 6 skipped |
-| `cargo test --workspace --locked --all-targets` | 36 binaries, 336 passed, 0 failed |
+| `sh scripts/common/check-gate.sh` | 17 checks, 16 passed, 0 failed, 1 skipped |
+| `pwsh -File scripts/common/check-gate.ps1` | 17 checks, 10 passed, 0 failed, 7 skipped |
+| `cargo test --workspace --locked --all-targets` | 36 binaries, 337 passed, 0 failed |
 | `cargo test --workspace --locked --doc` | 2 passed, 0 failed |
 | `sh scripts/corpus/check-store.sh` | 14 cases, 14 passed, 0 failed |
 | `sh scripts/corpus/check-corpus.sh` | 14 cases, 14 passed, 0 failed |
 | `sh scripts/corpus/check-indexes.sh` | 10 cases, 10 passed, 0 failed |
 | `sh scripts/publishing/check-release.sh` | 13 cases, 13 passed, 0 failed |
+| `sh scripts/publishing/check-publish.sh` | 13 cases, 13 passed, 0 failed |
 | `cargo fmt`, `cargo clippy --workspace --locked --all-targets -- -D warnings`, `shellcheck`, `shfmt -d -i 2 -ci` | exit 0 |
 
 ⛔ **Run the gate with `sh scripts/common/check-gate.sh`, not from memory.** A
@@ -100,6 +104,16 @@ verdict.
 write.** `sha256sum -c` verifies a release's checksum file, and `libtorrent` and
 `torf` read a generated `.torrent`. A run comparing two of its own summaries is
 checking the writer against itself.
+
+⛔ **A source check that reads prose fires on the documentation of the rule it
+enforces.** A case grepping the publisher for a force flag matched its own
+header sentence explaining that it uses none. Strip comments first, and exercise
+the stripper against a line that really is code.
+
+⭐ **A push path can be driven for real with no network and no credential.** A
+bare repository in a scratch directory is a remote as far as git is concerned,
+so a publisher's refusals and its read-back are measured rather than reasoned
+about.
 
 ⛔ **A constant every test reads is a constant no test can check.** Found twice
 last session by two entries, neither looking for it. Pin a specification's

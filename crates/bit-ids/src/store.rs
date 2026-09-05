@@ -267,6 +267,34 @@ impl<'a> StoreKey<'a> {
     }
 }
 
+/// The roots whose published paths never change once they are published.
+///
+/// ⛔ **The append rule is about measurements, not about every byte in the
+/// tree.** A record and the evidence it cites cannot be rewritten, because the
+/// bytes that go are not anywhere else. The derived files exist in order to
+/// change: an index or a checksum manifest that did not move when a record was
+/// appended would be one that had stopped describing the store.
+///
+/// ⚠ **This distinction was missing and a driven run found it.** `PUB-02`
+/// appended a second version to a branch and was refused, because
+/// `MANIFEST.json`, `SHA256SUMS` and the generated index had all changed, which
+/// is exactly what they are for. Applying the rule to every path made a correct
+/// second publication impossible.
+///
+/// ⚠ A derived path may also disappear, since the whole derived set is rebuilt
+/// from the canonical one. Whether a consumer-facing path is allowed to vanish
+/// is a different question and `PUB-04` owns it.
+pub const CANONICAL_ROOTS: [&str; 2] = [PROFILE_ROOT, RAW_ROOT];
+
+/// Whether a path carries a measurement rather than something derived from one.
+#[must_use]
+pub fn is_canonical_path(path: &RelPath) -> bool {
+    let text = path.as_str();
+    CANONICAL_ROOTS.iter().any(|root| {
+        text.starts_with(root) && text[root.len()..].starts_with(&format!("/{STORE_LAYOUT}/"))
+    })
+}
+
 /// Whether a path is where this build files a profile record.
 ///
 /// ⛔ **The recogniser lives beside the composer because it decides whether the
@@ -504,7 +532,8 @@ pub fn validate_tree(tree: &StoreTree) -> Result<(), Violations> {
 ///
 /// Additions pass, which is the whole point: a new stable release appends a new
 /// version directory and the old one is untouched. Everything else about an
-/// already-published path is refused.
+/// already-published **canonical** path is refused; a derived one is expected to
+/// move and [`CANONICAL_ROOTS`] says why.
 ///
 /// # Errors
 ///
@@ -519,6 +548,12 @@ pub fn append_only(prior: &StoreTree, next: &StoreTree) -> Result<(), Violations
     let mut out = Vec::new();
 
     for (path, was) in prior.iter() {
+        // ⛔ Only a canonical path is immutable. See [`CANONICAL_ROOTS`]: a
+        // derived file that did not change when a record was appended would be
+        // one that had stopped describing the store.
+        if !is_canonical_path(path) {
+            continue;
+        }
         let Some(now) = next.get(path) else {
             out.push(SchemaError::new(
                 "E-STO-20",
@@ -621,8 +656,8 @@ pub fn check_manifest_placement(path: &RelPath, manifest: &RunManifest) -> Resul
 mod tests {
     use super::{
         Entry, MANIFEST_FILE, ObjectRef, PROFILE_EXT, PROFILE_ROOT, RAW_ROOT, STORE_LAYOUT,
-        StoreKey, StoreTree, append_only, is_manifest_path, is_profile_path, segment_hazard,
-        validate_tree,
+        StoreKey, StoreTree, append_only, is_canonical_path, is_manifest_path, is_profile_path,
+        segment_hazard, validate_tree,
     };
     use crate::PROFILE_SCHEMA;
     use crate::canonical::{RelPath, Sha256Digest, Slug, Version};
@@ -925,6 +960,76 @@ mod tests {
         let relinked: StoreTree = [(published, Entry::Symlink)].into_iter().collect();
         let swapped = append_only(&prior, &relinked).expect_err("a kind change is refused");
         assert!(swapped.has("E-STO-21"), "{swapped}");
+    }
+
+    /// ⛔ The distinction a driven publication found. A second bundle changes
+    /// every derived file by design, and applying the append rule to those made
+    /// a correct second publication impossible.
+    #[test]
+    fn a_derived_file_may_change_and_a_record_may_not() {
+        let record = path("profiles/v1/a/1.0/linux/x86-64/deb/c1.json");
+        let evidence = path("raw/v1/a/1.0/linux/x86-64/deb/c1/observer/events.jsonl");
+        let derived = [
+            path("MANIFEST.json"),
+            path("SHA256SUMS"),
+            path("indexes/v1/profiles.json"),
+            path("routes/v1/a/latest/linux/x86-64.json"),
+            path("formats/bit-ids-v1.csv"),
+        ];
+
+        assert!(is_canonical_path(&record));
+        assert!(is_canonical_path(&evidence));
+        for at in &derived {
+            assert!(!is_canonical_path(at), "{at} is derived");
+        }
+
+        let mut prior = StoreTree::new();
+        prior.insert(record.clone(), object("the measurement"));
+        prior.insert(evidence.clone(), object("the bytes"));
+        for at in &derived {
+            prior.insert(at.clone(), object("built from the first publication"));
+        }
+
+        // Every derived file changes and one record is appended: a correct
+        // second publication.
+        let mut next = StoreTree::new();
+        next.insert(record.clone(), object("the measurement"));
+        next.insert(evidence.clone(), object("the bytes"));
+        next.insert(
+            path("profiles/v1/a/1.1/linux/x86-64/deb/c2.json"),
+            object("a second measurement"),
+        );
+        for at in &derived {
+            next.insert(at.clone(), object("built from the second publication"));
+        }
+        append_only(&prior, &next).expect("a derived file is meant to move");
+
+        // ⛔ And the rule still holds where it matters. Same tree, one record
+        // rewritten.
+        let mut rewritten = next.clone();
+        rewritten.insert(record, object("an edited measurement"));
+        let violations = append_only(&prior, &rewritten).expect_err("a record is immutable");
+        assert!(violations.has("E-STO-21"), "{violations}");
+
+        // A derived file may also disappear; a record may not.
+        let mut dropped = next.clone();
+        for at in &derived {
+            dropped = dropped
+                .iter()
+                .filter(|(had, _)| *had != at)
+                .map(|(had, entry)| (had.clone(), *entry))
+                .collect();
+        }
+        append_only(&prior, &dropped).expect("the derived set is rebuilt whole");
+
+        let without_evidence: StoreTree = next
+            .iter()
+            .filter(|(had, _)| **had != evidence)
+            .map(|(had, entry)| (had.clone(), *entry))
+            .collect();
+        let violations =
+            append_only(&prior, &without_evidence).expect_err("evidence is not deletable");
+        assert!(violations.has("E-STO-20"), "{violations}");
     }
 
     /// The one guard [`append_only`] carries that a walked tree cannot reach.

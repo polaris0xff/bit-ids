@@ -92,6 +92,11 @@ foreign-key integrity. Raw binary evidence is never embedded into CSV.
 
 ## Workflow permissions
 
+[`publish-data.sh`](../scripts/publishing/publish-data.sh) is the publisher and
+[`check-publish.sh`](../scripts/publishing/check-publish.sh) drives it against a
+bare repository created for the run. ⛔ It has never run against this
+repository's own remote and will not until a measured record exists to publish.
+
 - capture lanes: `contents: read`, no secrets, upload artifacts only;
 - collector/validator: `contents: read`, cannot push;
 - data publisher: job-scoped `contents: write`, append-only push without force;

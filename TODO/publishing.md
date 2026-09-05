@@ -85,7 +85,7 @@ the same reason and marked the same way.
 ## PUB-02: Protected append-only data branch publisher
 
 Source: operator request and b-ids data branch
-Priority: P0 | Effort: L | Status: OPEN
+Priority: P0 | Effort: L | Status: DONE
 
 Problem: A branch publisher can accidentally force-push, drop prior records,
 or expose partial output.
@@ -95,6 +95,72 @@ least-privilege permissions, concurrency control, and a single atomic update.
 
 Prove: integration tests refuse non-fast-forward and deletion scenarios, then
 append a fixture release while preserving every prior digest.
+
+Acceptance, run on 2026-09-05:
+
+- `sh scripts/publishing/check-publish.sh`
+
+⛔ **Nothing in that acceptance touches a real remote.** Every case runs against
+a bare repository the harness creates in a scratch directory and deletes on exit,
+so the push path is exercised for real with no network and no credential.
+`SECURITY.md` and `docs/security/remote-ops.md` are why that matters, and it is
+not a weaker test: the publisher's own `git push` runs, and its refusals are read
+from the process that produced them.
+
+### What was found: the append rule and the derived files collided
+
+⛔ **A correct second publication was refused, and driving this entry is what
+surfaced it.** `CORPUS-01`'s `append_only` treated every published path as
+immutable. But `MANIFEST.json`, `SHA256SUMS` and the generated indexes exist in
+order to change: an index that did not move when a record was appended would be
+one that had stopped describing the store. Applying the rule to those made a
+second publication impossible.
+
+`CANONICAL_ROOTS` now names the roots the rule is about, being `profiles/` and
+`raw/`, and a derived path may change and may disappear because the whole
+derived set is rebuilt from the canonical one. ⚠ Whether a consumer-facing path
+is allowed to vanish is a different question and `PUB-04` owns it.
+
+### Decision: no force, asserted three ways rather than omitted once
+
+git refuses a non-fast-forward push by default, so the guard is that nothing
+re-enables it. The publisher passes no force flag, the branch name is refused if
+it carries a `+` or a `:` before any refspec exists, and
+`check-publish.sh` reads the publisher's own source for a forcing flag with the
+comments stripped first.
+
+⚠ **The comment-stripping is not tidiness.** The first version of that case
+matched the publisher's header sentence explaining that it uses no force and
+reported the guard broken, so a source check that reads prose fires on the
+documentation of the rule it enforces. The stripper is itself exercised against
+a line that really is a force flag.
+
+⭐ **That git refuses a divergent push under a plain refspec is measured on this
+host rather than taken from the manual.** The publisher's whole
+non-fast-forward defence rests on it.
+
+### Closure evidence, 2026-09-05
+
+| what | measured |
+| --- | --- |
+| `sh scripts/publishing/check-publish.sh` | 13 cases, 13 passed, 0 failed |
+| driven pass | first publication, a second version appended, an identical bundle pushing nothing, a deletion and a rewrite each refused with the branch left at its prior commit |
+| read-back | every publication fetched again, compared against the prior tree, and its `SHA256SUMS` verified with `sha256sum -c` |
+
+⚠ Every refusal case checks the commit count on the branch as well as the exit
+code, because a publisher that refuses loudly and half-pushes anyway is worse
+than one that does neither.
+
+### Residuals
+
+- ⚠ Concurrency control in the Approach is git's own: two publishers racing make
+  the second push non-fast-forward, which git refuses and the harness measures.
+  A workflow-level concurrency group belongs to `CI-01`.
+- ⚠ Least-privilege permissions are a workflow property, and no workflow calls
+  this yet. `docs/publishing.md` carries the job-scoped `contents: write`
+  contract and `CI-01` wires it.
+- ⚠ The publisher has never run against the real remote and will not until there
+  is a measured record to publish. Everything in the tree today is synthetic.
 
 ## PUB-03: Multi-format GitHub release publisher
 
