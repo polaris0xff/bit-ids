@@ -22,10 +22,13 @@ use std::time::Duration;
 use bit_ids::canonical::Slug;
 use bit_ids_wire::tracker_udp::Direction;
 
+use crate::endpoint::ConnectionId;
+
 /// One contiguous run of bytes, in the direction it travelled.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Segment {
     endpoint: Slug,
+    connection: Option<ConnectionId>,
     offset_ms: u64,
     direction: Direction,
     bytes: Vec<u8>,
@@ -36,12 +39,14 @@ impl Segment {
     /// afterwards so a consumer cannot edit a transcript it was handed.
     pub(crate) fn new(
         endpoint: Slug,
+        connection: Option<ConnectionId>,
         elapsed: Duration,
         direction: Direction,
         bytes: Vec<u8>,
     ) -> Self {
         Self {
             endpoint,
+            connection,
             // A run that outlives `u64::MAX` milliseconds is not a run. The
             // saturating form is here so the conversion cannot panic in a
             // worker thread, where a panic would poison the journal lock.
@@ -55,6 +60,16 @@ impl Segment {
     #[must_use]
     pub const fn endpoint(&self) -> &Slug {
         &self.endpoint
+    }
+
+    /// Which connection moved these bytes, for a stream endpoint.
+    ///
+    /// ⭐ Without it a transcript of two concurrent peer connections cannot be
+    /// separated back into them, and a peer surface routinely carries two. A
+    /// datagram endpoint has none: a datagram is not part of a connection.
+    #[must_use]
+    pub const fn connection(&self) -> Option<ConnectionId> {
+        self.connection
     }
 
     /// Milliseconds from the lab starting to this segment being recorded.
@@ -104,6 +119,15 @@ impl Journal {
             .collect()
     }
 
+    /// The segments one connection moved, in order.
+    #[must_use]
+    pub fn for_connection(&self, connection: ConnectionId) -> Vec<&Segment> {
+        self.segments
+            .iter()
+            .filter(|segment| segment.connection() == Some(connection))
+            .collect()
+    }
+
     /// The bytes the target sent to one endpoint, joined.
     ///
     /// The lab's own replies are excluded, because
@@ -135,6 +159,7 @@ mod tests {
     fn segment(endpoint: &str, ms: u64, direction: Direction, bytes: &[u8]) -> Segment {
         Segment::new(
             slug(endpoint),
+            None,
             Duration::from_millis(ms),
             direction,
             bytes.to_vec(),
@@ -175,7 +200,7 @@ mod tests {
     #[test]
     fn an_elapsed_time_past_the_offset_width_saturates_rather_than_panicking() {
         let long = Duration::from_millis(u64::MAX) + Duration::from_millis(1);
-        let segment = Segment::new(slug("http"), long, Direction::FromTarget, Vec::new());
+        let segment = Segment::new(slug("http"), None, long, Direction::FromTarget, Vec::new());
         assert_eq!(segment.offset_ms(), u64::MAX);
     }
 }

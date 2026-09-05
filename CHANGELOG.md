@@ -5,6 +5,32 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-05T05:10:00Z
+
+- Closed `OBS-04`, the peer-wire handshake observer, in both roles. Record:
+  [`TODO/observer.md`](TODO/observer.md).
+- ⭐ The lab dials now, and the dial went into the loopback guard rather than
+  beside it. `OBS-01`'s door sweep had already put `TcpStream::connect` on the
+  list its own test greps for, so there was nowhere else to put it.
+- The responder signature grew a connection identity. One responder serves every
+  connection an endpoint accepts, so without it a peer observer sends a second
+  handshake down the first connection. The journal carries the connection too,
+  which is what separates a transcript of two concurrent peer connections.
+- Nineteen defects planted one at a time, eighteen refused. The one that is not
+  is `rebuilds_from_raw` returning true unconditionally, and the entry says what
+  would have to be true for it to fire: it is a codec-regression detector, and
+  planting a lossy encoder in `bit-ids-wire` **is** refused.
+- The door sweep found three on the dial path: a stopped lab wrote opening bytes
+  nothing would answer, a role could be attached to the wrong side, and a
+  connection past the observer's cap was left buffering rather than closed.
+- ⚠ A test asserted a scheduling outcome, passed alone, and failed twice in
+  three loaded runs. That is this session's second finding of that shape. The
+  whole workspace suite now runs four times in succession with no failure.
+- Driven with a BEP 3 peer written from the specification, in both roles at
+  once. The two roles produced different reserved blocks and different peer IDs,
+  which is the role dependence the entry exists for.
+- Deployment: no data branch, release or capture service was created.
+
 ### 2026-09-05T03:40:00Z
 
 - Closed `OBS-03`, the UDP tracker observer, which completes both tracker

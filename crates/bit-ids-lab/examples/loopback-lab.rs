@@ -26,7 +26,7 @@ fn main() {
 
     let mut lab = Lab::builder()
         .deadline(Duration::from_secs(seconds))
-        .stream("tracker-http", |received: &[u8]| {
+        .stream("tracker-http", |_connection, received: &[u8]| {
             // A request head ends at a blank line. Anything less is not a
             // request yet, which is what `NeedMore` is for.
             if received.windows(4).any(|window| window == b"\r\n\r\n") {

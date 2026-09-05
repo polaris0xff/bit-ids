@@ -359,6 +359,19 @@ spans two segments and nothing in the bytes distinguishes that from two writes.
 A datagram has no such gap, and its buffer is above the largest a host can
 deliver, so `recv_from` never reports a truncated packet as a whole one.
 
+The lab dials as well as accepts, through the same guard. ⭐ `OBS-04` exists
+because a build can behave differently as the side that dialled and the side that
+accepted, so a lab that could only accept would measure half of the peer surface.
+The dialling side speaks first, so a dial carries opening bytes: a responder is
+only called once something has arrived, and in that role nothing will until the
+observer has introduced itself.
+
+⚠ **A responder is told which connection it is serving.** One responder serves
+every connection an endpoint accepts, so without an identity a peer observer has
+nowhere to keep per-connection state and sends a second handshake down the first
+connection. The journal carries the connection too, so a transcript of two
+concurrent peer connections separates back into them. A datagram has none.
+
 ⛔ **The lab speaks no protocol.** `OBS-02` through `OBS-05` supply a responder
 per surface. That is what lets one deadline, one loopback guard and one journal
 serve every surface instead of each observer growing its own, and it is why the
@@ -576,10 +589,11 @@ consume the same artifact assembled once.
 ## 10. Limits
 
 - There are no measured profiles yet.
-- Only the two tracker surfaces have observers. `OBS-04` and `OBS-05` own the
-  peer wire, and until they exist a capture would see a client announce and
-  nothing else. `OBS-08` owns the torrent that makes a client announce at all,
-  so no capture is possible yet whatever the acquisition side supports.
+- The peer surface has a handshake and a message transcript, and no extension
+  negotiation. `OBS-05` owns BEP 10, so a capture would see what a build offers
+  in its reserved block and not what it says in its extended handshake.
+  `OBS-08` owns the torrent that makes a client announce at all, so no capture
+  is possible yet whatever the acquisition side supports.
 - ⚠ No observer has been driven by a stock `BitTorrent` client. Each was driven
   by an independent client written from the specification, which is a weaker
   control: it shares this project's reading of the protocol. `OBS-07` owns the

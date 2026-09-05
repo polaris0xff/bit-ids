@@ -3,10 +3,10 @@
 State instant: 2026-09-04
 Baseline commit: `2fb8548` on `main`
 Total: 56
-Open: 42
+Open: 41
 In progress: 0
 Blocked: 0
-Done: 14
+Done: 15
 
 ## Current state
 
@@ -14,9 +14,10 @@ The whole `SCHEMA-*` group is closed, along with `FOUND-01` through `FOUND-03`,
 `ACQ-01` through `ACQ-04`. Foundations are finished, and acquisition has its
 record shape, a resolver that chooses the version, a verifier that says what two
 routes agreeing is worth, and a boundary that runs before anything is installed.
-⚠ No capture is possible yet regardless. Both tracker surfaces have observers;
-`OBS-04` and `OBS-05` are what is missing, and `OBS-08` owns the torrent that
-makes a client announce at all. Those are the critical path now.
+⚠ No capture is possible yet regardless. Both tracker surfaces and the peer
+handshake have observers; `OBS-05` is what is missing on the wire, and `OBS-08`
+owns the torrent that makes a client announce at all. Those are the critical
+path now.
 
 `OBS-01` was the one XL entry and was split, which is what its own approach line
 asked for if the acceptance could not stay atomic. It could not: the Prove named
@@ -38,17 +39,26 @@ deadline, one loopback guard and one journal serve every surface rather than
 each observer growing its own.
 
 The `bit-ids-probe` crate is where those responders live, one module per surface.
-Both tracker surfaces are done. The HTTP one keeps the exact head bytes and
+Both tracker surfaces and the peer wire are done. The HTTP one keeps the exact head bytes and
 answers a bencoded response whose shape is read out of the announce, because a
 client that receives the wrong shape reports an error and changes what it does
 next, and that change would be recorded as identity when it is the observer's
 doing. The UDP one holds the BEP 15 exchange: a client connects before it
 announces, so an announce carrying a connection id the tracker never issued means
 the build reused a stale one, invented one, or skipped the connect, and each is
-answered with the protocol's error action and recorded with its reason. Both
-frame with the codec's own reader rather than a second one, keep the bytes of
-what they refuse, and bound every list they grow while counting what they stopped
-keeping.
+answered with the protocol's error action and recorded with its reason. The peer-wire one holds both roles, because a build can behave
+differently as the side that dialled and the side that accepted: driven with one
+external peer in both roles at once, the two sides produced different reserved
+blocks and different peer IDs. All three frame with the codec's own reader rather
+than a second one, keep the bytes of what they refuse, and bound every list they
+grow while counting what they stopped keeping.
+
+The lab grew what the peer wire needed. It dials, through the same loopback guard
+every bind goes through, and a responder is now told which connection it is
+serving: one responder serves every connection an endpoint accepts, so without an
+identity a peer observer would send a second handshake down the first connection.
+The journal carries the connection too, so a transcript of two concurrent peer
+connections can be separated back into them.
 
 ⛔ No observer has been driven by a stock client. Each was driven by an
 independent client written from the specification, which shares this project's
@@ -143,13 +153,10 @@ anything.
 
 ## Work order
 
-1. `OBS-04` and `OBS-05`, each a responder on a `bit-ids-lab` endpoint, parsing
-   against the `bit-ids-wire` fixture corpus rather than against a live client.
-   This is the critical path: the boundary, the acquisition record, the lab and
-   both tracker observers exist, and the peer wire does not. `OBS-08` is needed
-   before the first client capture rather than before the observers, because an
-   observer can be driven with fixture bytes and a client cannot be made to
-   announce without a torrent.
+1. `OBS-05`, the BEP 10 and early-message observer, on the peer-wire endpoint
+   `OBS-04` built. It is the last of the four core surfaces. Then `OBS-08`,
+   which is what a client needs before it will announce about anything at all,
+   and after which a first vertical capture becomes possible.
 2. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
    captures, on Linux only until `CI-03` provides the Windows guard pair.
 3. `ACQ-05`, the artifact cache, and `FOUND-04`, the licence register, before

@@ -8,7 +8,7 @@
 
 use std::io::{ErrorKind, Read, Write};
 use std::net::{Shutdown, TcpListener, TcpStream, UdpSocket};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
@@ -44,6 +44,15 @@ const DATAGRAM_READ_BYTES: usize = 65536;
 /// passed, because no fixture datagram was larger than three: a corpus only
 /// tests the defects it contains an example of.
 const MAX_IPV4_UDP_PAYLOAD: usize = 65507;
+
+/// How many unconsumed bytes one connection may hold before the lab closes it.
+///
+/// ⛔ A responder that keeps answering `NeedMore` never drains the buffer, and
+/// the target is a binary this project installed minutes earlier. Without this
+/// a build that streams and never completes a unit is a memory leak with a
+/// socket attached, which is the same shape the head cap in the HTTP observer
+/// exists for, one layer down.
+pub const DEFAULT_MAX_PENDING_BYTES: usize = 4 * 1024 * 1024;
 
 // ⛔ A datagram larger than the buffer is truncated by `recv_from`, which
 // reports the truncated length and nothing else, so the record would say a
@@ -86,8 +95,33 @@ pub enum StreamReply {
     },
 }
 
+/// Which connection a responder is being called for.
+///
+/// ⭐ **A responder is one function serving every connection an endpoint
+/// accepts, so without this it has nowhere to keep per-connection state.** The
+/// peer wire needs it: a handshake is sent once per connection, and a responder
+/// that could not tell two connections apart would send a second one down the
+/// first. Assigned in the order the lab accepted or dialled, from one, so a
+/// transcript can be separated back into its connections.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct ConnectionId(u64);
+
+impl ConnectionId {
+    /// The number, for a caller keying its own state by it.
+    #[must_use]
+    pub const fn get(self) -> u64 {
+        self.0
+    }
+}
+
+impl core::fmt::Display for ConnectionId {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 /// A stream endpoint's protocol behaviour.
-pub type StreamResponder = dyn Fn(&[u8]) -> StreamReply + Send + Sync + 'static;
+pub type StreamResponder = dyn Fn(ConnectionId, &[u8]) -> StreamReply + Send + Sync + 'static;
 
 /// A datagram endpoint's protocol behaviour: one packet in, at most one out.
 pub type DatagramResponder = dyn Fn(&[u8]) -> Option<Vec<u8>> + Send + Sync + 'static;
@@ -98,26 +132,45 @@ pub(crate) struct Shared {
     deadline: Duration,
     poll: Duration,
     max_connections: usize,
+    max_pending: usize,
+    connections: AtomicU64,
     stop: AtomicBool,
     expired: AtomicBool,
     journal: Mutex<Vec<Segment>>,
 }
 
 impl Shared {
-    pub(crate) fn new(deadline: Duration, poll: Duration, max_connections: usize) -> Self {
+    pub(crate) fn new(
+        deadline: Duration,
+        poll: Duration,
+        max_connections: usize,
+        max_pending: usize,
+    ) -> Self {
         Self {
             started: Instant::now(),
             deadline,
             poll,
             max_connections,
+            max_pending,
+            connections: AtomicU64::new(0),
             stop: AtomicBool::new(false),
             expired: AtomicBool::new(false),
             journal: Mutex::new(Vec::new()),
         }
     }
 
+    /// The next connection identity, counting from one.
+    fn next_connection(&self) -> ConnectionId {
+        ConnectionId(self.connections.fetch_add(1, Ordering::SeqCst) + 1)
+    }
+
     pub(crate) fn request_stop(&self) {
         self.stop.store(true, Ordering::SeqCst);
+    }
+
+    /// Whether the lab has been asked to stop.
+    pub(crate) fn stopped(&self) -> bool {
+        self.stop.load(Ordering::SeqCst)
     }
 
     pub(crate) fn expired(&self) -> bool {
@@ -148,11 +201,23 @@ impl Shared {
     /// some worker panicked, and the bytes recorded before that are still
     /// evidence; throwing a whole run's transcript away because one connection
     /// handler died is a worse failure than the one that caused it.
-    fn record(&self, endpoint: &Slug, direction: Direction, bytes: Vec<u8>) {
+    fn record(
+        &self,
+        endpoint: &Slug,
+        connection: Option<ConnectionId>,
+        direction: Direction,
+        bytes: Vec<u8>,
+    ) {
         if bytes.is_empty() {
             return;
         }
-        let segment = Segment::new(endpoint.clone(), self.started.elapsed(), direction, bytes);
+        let segment = Segment::new(
+            endpoint.clone(),
+            connection,
+            self.started.elapsed(),
+            direction,
+            bytes,
+        );
         self.journal
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
@@ -208,6 +273,7 @@ pub(crate) fn serve_stream(
                     let _ = stream.shutdown(Shutdown::Both);
                     continue;
                 }
+                let connection = shared.next_connection();
                 let shared = Arc::clone(shared);
                 let name = name.clone();
                 let responder = Arc::clone(responder);
@@ -216,7 +282,9 @@ pub(crate) fn serve_stream(
                 // going quiet for the rest of the run.
                 if let Ok(handler) = std::thread::Builder::new()
                     .name(format!("bit-ids-lab-{name}"))
-                    .spawn(move || serve_connection(&shared, &name, stream, responder.as_ref()))
+                    .spawn(move || {
+                        serve_connection(&shared, &name, connection, stream, responder.as_ref());
+                    })
                 {
                     handlers.push(handler);
                 }
@@ -238,9 +306,10 @@ pub(crate) fn serve_stream(
     drop(listener);
 }
 
-fn serve_connection(
+pub(crate) fn serve_connection(
     shared: &Arc<Shared>,
     name: &Slug,
+    connection: ConnectionId,
     mut stream: TcpStream,
     responder: &StreamResponder,
 ) {
@@ -259,8 +328,19 @@ fn serve_connection(
             Err(error) if is_quiet(error.kind()) => continue,
             Err(_) => break,
         };
-        shared.record(name, Direction::FromTarget, buffer[..read].to_vec());
+        shared.record(
+            name,
+            Some(connection),
+            Direction::FromTarget,
+            buffer[..read].to_vec(),
+        );
         pending.extend_from_slice(&buffer[..read]);
+        // ⛔ A responder that keeps answering `NeedMore` never drains this, and
+        // the target is untrusted by construction. Closing is the fail-loud
+        // answer: the bytes so far are already in the journal.
+        if pending.len() > shared.max_pending {
+            break;
+        }
         // ⛔ The responder is offered the buffer until it stops consuming, not
         // once per read. One read can carry two messages, and answering only
         // the first left the second sitting in the buffer until more bytes
@@ -270,7 +350,7 @@ fn serve_connection(
         // in one write.
         let mut done = false;
         loop {
-            match responder(&pending) {
+            match responder(connection, &pending) {
                 StreamReply::NeedMore => break,
                 StreamReply::Answer { consumed, send } => {
                     assert!(
@@ -279,7 +359,7 @@ fn serve_connection(
                         pending.len()
                     );
                     pending.drain(..consumed);
-                    if !write_and_record(shared, name, &mut stream, &send) {
+                    if !write_and_record(shared, name, Some(connection), &mut stream, &send) {
                         done = true;
                         break;
                     }
@@ -292,7 +372,7 @@ fn serve_connection(
                     }
                 }
                 StreamReply::Close { send } => {
-                    write_and_record(shared, name, &mut stream, &send);
+                    write_and_record(shared, name, Some(connection), &mut stream, &send);
                     done = true;
                     break;
                 }
@@ -313,6 +393,7 @@ fn serve_connection(
 fn write_and_record(
     shared: &Arc<Shared>,
     name: &Slug,
+    connection: Option<ConnectionId>,
     stream: &mut TcpStream,
     send: &[u8],
 ) -> bool {
@@ -322,8 +403,29 @@ fn write_and_record(
     if stream.write_all(send).is_err() || stream.flush().is_err() {
         return false;
     }
-    shared.record(name, Direction::ToTarget, send.to_vec());
+    shared.record(name, connection, Direction::ToTarget, send.to_vec());
     true
+}
+
+/// Serves one outbound connection, writing `opening` before reading.
+///
+/// ⭐ The opening bytes exist because a responder is only called once something
+/// has arrived, and the side that dials a peer connection speaks first. Without
+/// them a dialled peer would wait for a handshake it was supposed to send.
+pub(crate) fn serve_dialled(
+    shared: &Arc<Shared>,
+    name: &Slug,
+    mut stream: TcpStream,
+    opening: &[u8],
+    responder: &StreamResponder,
+) {
+    let connection = shared.next_connection();
+    if !opening.is_empty()
+        && !write_and_record(shared, name, Some(connection), &mut stream, opening)
+    {
+        return;
+    }
+    serve_connection(shared, name, connection, stream, responder);
 }
 
 /// Reads datagrams until the lab stops, answering each with the responder.
@@ -343,12 +445,12 @@ pub(crate) fn serve_datagram(
             Err(error) if is_quiet(error.kind()) => continue,
             Err(_) => break,
         };
-        shared.record(name, Direction::FromTarget, buffer[..read].to_vec());
+        shared.record(name, None, Direction::FromTarget, buffer[..read].to_vec());
         if let Some(send) = responder(&buffer[..read])
             && !send.is_empty()
             && socket.send_to(&send, from).is_ok()
         {
-            shared.record(name, Direction::ToTarget, send);
+            shared.record(name, None, Direction::ToTarget, send);
         }
     }
     // Explicit for the reason `serve_stream` gives: this is what frees the port.

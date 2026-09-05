@@ -11,7 +11,7 @@ use std::sync::mpsc;
 use std::time::Duration;
 
 use bit_ids::canonical::Slug;
-use bit_ids_lab::{Lab, LabError, StreamReply};
+use bit_ids_lab::{ConnectionId, Lab, LabError, StreamReply};
 use bit_ids_wire::tracker_udp::Direction;
 
 fn slug(text: &str) -> Slug {
@@ -19,8 +19,10 @@ fn slug(text: &str) -> Slug {
 }
 
 /// A responder that answers every read with one fixed reply and keeps reading.
-fn echo_once(reply: &'static [u8]) -> impl Fn(&[u8]) -> StreamReply + Send + Sync + 'static {
-    move |received: &[u8]| StreamReply::Answer {
+fn echo_once(
+    reply: &'static [u8],
+) -> impl Fn(ConnectionId, &[u8]) -> StreamReply + Send + Sync + 'static {
+    move |_connection, received: &[u8]| StreamReply::Answer {
         consumed: received.len(),
         send: reply.to_vec(),
     }
@@ -130,11 +132,13 @@ fn two_labs_on_one_host_get_distinct_ports() {
 #[test]
 fn a_stream_endpoint_records_what_arrived_and_what_was_sent_in_order() {
     let lab = Lab::builder()
-        .stream("peer-wire", |received: &[u8]| StreamReply::Answer {
-            consumed: received.len(),
-            // The reply is derived from the request so the transcript cannot
-            // pass by recording a constant in the right place.
-            send: received.to_ascii_uppercase(),
+        .stream("peer-wire", |_connection, received: &[u8]| {
+            StreamReply::Answer {
+                consumed: received.len(),
+                // The reply is derived from the request so the transcript cannot
+                // pass by recording a constant in the right place.
+                send: received.to_ascii_uppercase(),
+            }
         })
         .expect("a canonical name")
         .start()
@@ -432,8 +436,8 @@ fn a_partial_read_is_kept_until_the_responder_consumes_it() {
 }
 
 /// A line-framed responder, which is the shape a message surface has.
-fn line_framed() -> impl Fn(&[u8]) -> StreamReply + Send + Sync + 'static {
-    |received: &[u8]| match received.iter().position(|byte| *byte == b'\n') {
+fn line_framed() -> impl Fn(ConnectionId, &[u8]) -> StreamReply + Send + Sync + 'static {
+    |_connection, received: &[u8]| match received.iter().position(|byte| *byte == b'\n') {
         Some(end) => StreamReply::Answer {
             consumed: end + 1,
             send: b"got-line".to_vec(),
@@ -520,7 +524,7 @@ fn a_connection_that_goes_quiet_between_writes_is_not_closed_under_the_client() 
 #[test]
 fn a_close_reply_ends_the_connection_and_the_client_sees_the_end_of_stream() {
     let lab = Lab::builder()
-        .stream("tracker-http", |_: &[u8]| StreamReply::Close {
+        .stream("tracker-http", |_connection, _: &[u8]| StreamReply::Close {
             send: b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n".to_vec(),
         })
         .expect("a canonical name")
@@ -605,4 +609,102 @@ fn an_endpoint_that_can_serve_no_connection_is_refused_rather_than_silently_deaf
         .expect("a canonical name")
         .start();
     assert!(matches!(refused, Err(LabError::NoConnectionsAllowed)));
+}
+
+#[test]
+fn a_stopped_lab_refuses_a_dial_rather_than_writing_bytes_nothing_serves() {
+    // ⛔ The door sweep found this. A dial's opening bytes are written before
+    // the worker's first stop check, so a dial on a stopped lab would put a
+    // handshake on the wire that nothing was ever going to answer.
+    let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).expect("a listener");
+    let address = listener.local_addr().expect("an address");
+
+    let mut lab = Lab::builder()
+        .stream("tracker-http", echo_once(b"ok"))
+        .expect("a canonical name")
+        .start()
+        .expect("loopback binds");
+    lab.stop();
+
+    let refused = lab.dial("peer-dial", address, b"hello".to_vec(), echo_once(b"ok"));
+    assert!(matches!(refused, Err(LabError::Stopped)));
+
+    // Nothing connected, so the listener has nothing waiting.
+    listener
+        .set_nonblocking(true)
+        .expect("a nonblocking listener");
+    assert!(
+        listener.accept().is_err(),
+        "the refused dial opened no connection"
+    );
+}
+
+#[test]
+fn a_dial_goes_through_the_same_loopback_guard_a_bind_does() {
+    let mut lab = Lab::builder()
+        .stream("tracker-http", echo_once(b"ok"))
+        .expect("a canonical name")
+        .start()
+        .expect("loopback binds");
+
+    // ⛔ TEST-NET-2, reserved for documentation. If the guard stopped firing
+    // this would try to reach it, which is the failure being prevented.
+    let elsewhere = std::net::SocketAddr::from(([198, 51, 100, 7], 6881));
+    lab.set_dial_timeout(Duration::from_millis(50));
+    let refused = lab.dial("peer-dial", elsewhere, Vec::new(), echo_once(b"ok"));
+    match refused {
+        Err(LabError::Bind(error)) => assert!(error.to_string().contains("loopback")),
+        other => panic!("expected a loopback refusal, got {other:?}"),
+    }
+    assert_eq!(lab.endpoints().len(), 1, "a refused dial adds no endpoint");
+}
+
+#[test]
+fn a_connection_that_never_completes_a_unit_is_closed_at_the_pending_cap() {
+    // ⛔ A responder that keeps answering `NeedMore` never drains the buffer,
+    // and the target is untrusted by construction.
+    let lab = Lab::builder()
+        .max_pending_bytes(4096)
+        .stream("peer-wire", |_connection, _buffered: &[u8]| {
+            StreamReply::NeedMore
+        })
+        .expect("a canonical name")
+        .start()
+        .expect("loopback binds");
+
+    let address = lab.endpoint("peer-wire").expect("added").address();
+    let mut client = TcpStream::connect(address).expect("the endpoint accepts");
+    client
+        .set_read_timeout(Some(Duration::from_secs(10)))
+        .expect("a read timeout is settable");
+
+    // ⚠ Write until the endpoint closes on us. The first version stopped after
+    // a fixed byte budget and asserted the close had happened by then, which is
+    // a scheduling outcome this test does not control: it passed alone and
+    // failed twice in three loaded workspace runs. The bound below turns a hang
+    // into a failure and is not a measurement of how fast a close arrives.
+    let block = vec![b'x'; 1024];
+    let deadline = std::time::Instant::now() + Duration::from_secs(20);
+    let closed = loop {
+        if client.write_all(&block).is_err() || client.flush().is_err() {
+            break true;
+        }
+        if std::time::Instant::now() >= deadline {
+            break false;
+        }
+    };
+    drop(client);
+    let journal = lab.shutdown();
+
+    assert!(
+        closed,
+        "the endpoint never closed a connection it could not drain"
+    );
+    // ⭐ The deterministic half, which holds however the writes were scheduled:
+    // the lab stops reading one buffer after the cap, whatever the client sent.
+    let recorded = journal.received(&slug("peer-wire")).len();
+    assert!(
+        recorded <= 4096 + 64 * 1024,
+        "it kept reading well past the cap: {recorded} bytes"
+    );
 }

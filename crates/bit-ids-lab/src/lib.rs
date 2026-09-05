@@ -31,7 +31,7 @@
 //! use bit_ids_lab::{Lab, StreamReply};
 //!
 //! let lab = Lab::builder()
-//!     .stream("tracker-http", |received: &[u8]| {
+//!     .stream("tracker-http", |_connection, received: &[u8]| {
 //!         if received.ends_with(b"\r\n\r\n") {
 //!             StreamReply::Close {
 //!                 send: b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n".to_vec(),
@@ -58,9 +58,11 @@ pub mod journal;
 mod lab;
 
 pub use bind::BindError;
-pub use endpoint::{DatagramResponder, StreamReply, StreamResponder};
+pub use endpoint::{
+    ConnectionId, DEFAULT_MAX_PENDING_BYTES, DatagramResponder, StreamReply, StreamResponder,
+};
 pub use journal::{Journal, Segment};
 pub use lab::{
-    DEFAULT_DEADLINE, DEFAULT_MAX_CONNECTIONS, DEFAULT_POLL, Endpoint, Lab, LabBuilder, LabError,
-    Transport,
+    DEFAULT_DEADLINE, DEFAULT_DIAL_TIMEOUT, DEFAULT_MAX_CONNECTIONS, DEFAULT_POLL, Endpoint, Lab,
+    LabBuilder, LabError, Transport,
 };

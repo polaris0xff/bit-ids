@@ -10,7 +10,10 @@ use std::time::Duration;
 use bit_ids::canonical::{CanonicalError, Slug};
 
 use crate::bind::{self, BindError};
-use crate::endpoint::{DatagramResponder, Shared, StreamResponder, serve_datagram, serve_stream};
+use crate::endpoint::{
+    ConnectionId, DatagramResponder, Shared, StreamResponder, serve_datagram, serve_dialled,
+    serve_stream,
+};
 use crate::journal::Journal;
 
 /// How long a lab serves before it stops itself.
@@ -29,13 +32,22 @@ pub const DEFAULT_POLL: Duration = Duration::from_millis(10);
 /// How many connections one stream endpoint serves at once.
 pub const DEFAULT_MAX_CONNECTIONS: usize = 64;
 
+/// How long a dial waits before giving up.
+pub const DEFAULT_DIAL_TIMEOUT: Duration = Duration::from_secs(5);
+
 /// Which kind of socket an endpoint is.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Transport {
-    /// TCP.
+    /// TCP, accepting connections.
     Stream,
     /// UDP.
     Datagram,
+    /// TCP, dialled out to a peer.
+    ///
+    /// A separate variant rather than a flag: a record of what a build did as a
+    /// listener and what it did when something connected to it are different
+    /// observations, and `OBS-04` exists because clients vary by role.
+    Dialled,
 }
 
 /// One bound endpoint, and where a client reaches it.
@@ -80,6 +92,8 @@ pub enum LabError {
     DuplicateEndpoint(Slug),
     /// A lab with no endpoint is a lab nothing can reach.
     NoEndpoints,
+    /// The lab has already stopped, so a new connection would serve nothing.
+    Stopped,
     /// A stream endpoint was capped at zero connections, which accepts every
     /// connection and closes it at once. That reads to a client as a server
     /// that is up and broken, so it is refused rather than served.
@@ -98,6 +112,7 @@ impl fmt::Display for LabError {
                 write!(f, "two endpoints are both called {name:?}")
             }
             Self::NoEndpoints => f.write_str("a lab with no endpoint observes nothing"),
+            Self::Stopped => f.write_str("the lab has stopped, so nothing would serve this dial"),
             Self::NoConnectionsAllowed => {
                 f.write_str("max_connections is zero, so every connection would be closed at once")
             }
@@ -153,6 +168,7 @@ pub struct LabBuilder {
     deadline: Duration,
     poll: Duration,
     max_connections: usize,
+    max_pending: usize,
     specs: Vec<Spec>,
 }
 
@@ -163,6 +179,7 @@ impl Default for LabBuilder {
             deadline: DEFAULT_DEADLINE,
             poll: DEFAULT_POLL,
             max_connections: DEFAULT_MAX_CONNECTIONS,
+            max_pending: crate::endpoint::DEFAULT_MAX_PENDING_BYTES,
             specs: Vec::new(),
         }
     }
@@ -205,6 +222,13 @@ impl LabBuilder {
         self
     }
 
+    /// How many unconsumed bytes one connection may hold before it is closed.
+    #[must_use]
+    pub const fn max_pending_bytes(mut self, max_pending: usize) -> Self {
+        self.max_pending = max_pending;
+        self
+    }
+
     /// Adds a TCP endpoint.
     ///
     /// # Errors
@@ -212,7 +236,7 @@ impl LabBuilder {
     /// Returns [`LabError::Name`] when `name` is not a canonical identifier.
     pub fn stream<R>(mut self, name: &str, responder: R) -> Result<Self, LabError>
     where
-        R: Fn(&[u8]) -> crate::StreamReply + Send + Sync + 'static,
+        R: Fn(ConnectionId, &[u8]) -> crate::StreamReply + Send + Sync + 'static,
     {
         let name = Slug::parse(name).map_err(LabError::Name)?;
         self.specs.push(Spec::Stream(name, Arc::new(responder)));
@@ -298,7 +322,12 @@ impl LabBuilder {
 
         // The clock starts here, so an offset in the journal is measured from
         // the moment the lab began serving rather than from the first bind.
-        let shared = Arc::new(Shared::new(self.deadline, self.poll, self.max_connections));
+        let shared = Arc::new(Shared::new(
+            self.deadline,
+            self.poll,
+            self.max_connections,
+            self.max_pending,
+        ));
         let mut workers: Vec<JoinHandle<()>> = Vec::with_capacity(bound.len());
         for one in bound {
             let worker_shared = Arc::clone(&shared);
@@ -328,6 +357,7 @@ impl LabBuilder {
             shared,
             endpoints,
             workers,
+            dial_timeout: DEFAULT_DIAL_TIMEOUT,
         })
     }
 }
@@ -341,6 +371,7 @@ pub struct Lab {
     shared: Arc<Shared>,
     endpoints: Vec<Endpoint>,
     workers: Vec<JoinHandle<()>>,
+    dial_timeout: Duration,
 }
 
 impl Lab {
@@ -374,6 +405,72 @@ impl Lab {
     #[must_use]
     pub fn journal(&self) -> Journal {
         Journal::from_segments(self.shared.snapshot())
+    }
+
+    /// Dials a loopback address and serves `responder` over the connection.
+    ///
+    /// ⭐ **This is the other role.** `OBS-04` exists because a client can
+    /// behave differently as the side that dialled and the side that accepted,
+    /// so a lab that could only accept would measure half of the peer surface.
+    ///
+    /// `opening` is written as soon as the connection is up, which is what the
+    /// peer wire needs: the side that dials sends its handshake first, and a
+    /// responder is only called once bytes have arrived.
+    ///
+    /// The address goes through the same guard every bound socket does, so a
+    /// dial off loopback is refused before a packet leaves.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`LabError::Name`] for a name that is not canonical,
+    /// [`LabError::DuplicateEndpoint`] when the lab already has one by that
+    /// name, [`LabError::Bind`] when the address is not on loopback or the
+    /// connection is refused, and [`LabError::Thread`] when the host will not
+    /// start a worker.
+    pub fn dial<R>(
+        &mut self,
+        name: &str,
+        address: SocketAddr,
+        opening: Vec<u8>,
+        responder: R,
+    ) -> Result<Endpoint, LabError>
+    where
+        R: Fn(ConnectionId, &[u8]) -> crate::StreamReply + Send + Sync + 'static,
+    {
+        // ⛔ Before the syscall. A stopped lab's worker returns at its first
+        // check, but `serve_dialled` writes the opening before that check, so a
+        // dial on a stopped lab would put a handshake on the wire that nothing
+        // was ever going to answer.
+        if self.shared.stopped() {
+            return Err(LabError::Stopped);
+        }
+        let name = Slug::parse(name).map_err(LabError::Name)?;
+        if self.endpoints.iter().any(|one| one.name() == &name) {
+            return Err(LabError::DuplicateEndpoint(name));
+        }
+        let stream = bind::dial(address, self.dial_timeout)?;
+        let endpoint = Endpoint {
+            name: name.clone(),
+            address,
+            transport: Transport::Dialled,
+        };
+
+        let shared = Arc::clone(&self.shared);
+        let responder: Arc<StreamResponder> = Arc::new(responder);
+        let worker = std::thread::Builder::new()
+            .name(format!("bit-ids-lab-dial-{name}"))
+            .spawn(move || {
+                serve_dialled(&shared, &name, stream, &opening, responder.as_ref());
+            })
+            .map_err(LabError::Thread)?;
+        self.workers.push(worker);
+        self.endpoints.push(endpoint.clone());
+        Ok(endpoint)
+    }
+
+    /// How long a dial waits before giving up.
+    pub const fn set_dial_timeout(&mut self, timeout: Duration) {
+        self.dial_timeout = timeout;
     }
 
     /// Waits until every endpoint has stopped on its own.

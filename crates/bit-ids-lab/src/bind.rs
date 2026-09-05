@@ -17,7 +17,8 @@
 
 use core::fmt;
 use std::io;
-use std::net::{IpAddr, SocketAddr, TcpListener, UdpSocket};
+use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream, UdpSocket};
+use std::time::Duration;
 
 /// Why a socket was not created.
 #[derive(Debug)]
@@ -124,6 +125,33 @@ pub fn stream(requested: IpAddr) -> Result<TcpListener, BindError> {
     Ok(listener)
 }
 
+/// Dials a loopback address, with a bounded wait.
+///
+/// ⛔ **A dial goes through this guard for the reason a bind does.** The module
+/// documentation says every socket this crate creates is created here, and an
+/// outbound connection is a socket: an observer that dialled wherever it was
+/// told would reach off the host from inside a lab whose whole argument is that
+/// it cannot. `tests/lab_supervisor.rs` greps for it.
+///
+/// ⚠ The timeout is not a convenience. `TcpStream::connect` to an address that
+/// drops rather than refuses waits on the operating system's own retry
+/// schedule, which outlasts any capture deadline, and the lab's deadline cannot
+/// interrupt a thread blocked in a syscall.
+///
+/// # Errors
+///
+/// Returns [`BindError::NotLoopback`] before the syscall,
+/// [`BindError::BoundElsewhere`] when the connected peer is not on loopback,
+/// and [`BindError::Io`] when the connection is refused or times out.
+pub fn dial(address: SocketAddr, timeout: Duration) -> Result<TcpStream, BindError> {
+    check_requested(address.ip())?;
+    let stream = TcpStream::connect_timeout(&address, timeout)?;
+    // Read back, for the reason the bind path reads back: what was asked for
+    // and what the kernel connected are different facts.
+    check_bound(address.ip(), stream.peer_addr()?)?;
+    Ok(stream)
+}
+
 /// Binds a UDP socket on loopback, on a port the operating system chooses.
 ///
 /// # Errors
@@ -140,6 +168,7 @@ pub fn datagram(requested: IpAddr) -> Result<UdpSocket, BindError> {
 mod tests {
     use super::{BindError, check_bound, check_requested, datagram, stream};
     use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
+    use std::time::Duration;
 
     fn v4(a: u8, b: u8, c: u8, d: u8) -> IpAddr {
         IpAddr::V4(Ipv4Addr::new(a, b, c, d))
@@ -208,6 +237,47 @@ mod tests {
         assert!(matches!(
             datagram(v4(0, 0, 0, 0)),
             Err(BindError::NotLoopback { .. })
+        ));
+    }
+
+    #[test]
+    fn dialling_off_loopback_is_refused_before_a_packet_leaves() {
+        // ⛔ 198.51.100.0/24 is TEST-NET-2, reserved for documentation. If this
+        // guard ever stopped firing the test would try to reach it, which is
+        // the failure being prevented, so it must be an address that goes
+        // nowhere rather than one that answers.
+        let elsewhere = SocketAddr::new(v4(198, 51, 100, 7), 6881);
+        assert!(matches!(
+            super::dial(elsewhere, Duration::from_millis(50)),
+            Err(BindError::NotLoopback { .. })
+        ));
+    }
+
+    #[test]
+    fn dialling_a_loopback_listener_connects_and_reads_the_peer_back() {
+        let listener = stream(v4(127, 0, 0, 1)).expect("loopback binds");
+        let address = listener.local_addr().expect("a bound listener has one");
+        let dialled = super::dial(address, Duration::from_secs(5)).expect("it connects");
+        assert!(
+            dialled
+                .peer_addr()
+                .expect("a connected stream has a peer")
+                .ip()
+                .is_loopback()
+        );
+    }
+
+    #[test]
+    fn dialling_a_closed_loopback_port_fails_rather_than_hanging() {
+        // The port is released before the dial, so nothing is listening on it.
+        let port = {
+            let listener = stream(v4(127, 0, 0, 1)).expect("loopback binds");
+            listener.local_addr().expect("an address").port()
+        };
+        let address = SocketAddr::new(v4(127, 0, 0, 1), port);
+        assert!(matches!(
+            super::dial(address, Duration::from_secs(5)),
+            Err(BindError::Io(_))
         ));
     }
 }

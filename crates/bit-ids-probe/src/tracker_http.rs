@@ -28,7 +28,7 @@
 
 use std::sync::{Arc, Mutex, PoisonError};
 
-use bit_ids_lab::StreamReply;
+use bit_ids_lab::{ConnectionId, StreamReply};
 use bit_ids_wire::WireError;
 use bit_ids_wire::bencode::{self, Value};
 use bit_ids_wire::tracker_http::{HttpRequest, PercentCase, head_end};
@@ -38,6 +38,7 @@ use bit_ids_wire::tracker_http::{HttpRequest, PercentCase, head_end};
 pub struct Announce {
     raw: Vec<u8>,
     request: HttpRequest,
+    connection: ConnectionId,
 }
 
 impl Announce {
@@ -45,6 +46,16 @@ impl Announce {
     #[must_use]
     pub fn raw(&self) -> &[u8] {
         &self.raw
+    }
+
+    /// Which connection this announce arrived on.
+    ///
+    /// A build that opens a connection per announce and one that reuses a
+    /// connection are different observations, and without this they read the
+    /// same.
+    #[must_use]
+    pub const fn connection(&self) -> ConnectionId {
+        self.connection
     }
 
     /// The decoded view, which retains everything the bytes carried.
@@ -342,11 +353,11 @@ impl HttpTracker {
     }
 
     /// The responder to give a stream endpoint.
-    pub fn responder(&self) -> impl Fn(&[u8]) -> StreamReply + Send + Sync + 'static {
+    pub fn responder(&self) -> impl Fn(ConnectionId, &[u8]) -> StreamReply + Send + Sync + 'static {
         let seen = Arc::clone(&self.seen);
         let response = self.response.clone();
         let cap = self.max_announces;
-        move |buffered: &[u8]| respond(&seen, &response, cap, buffered)
+        move |connection, buffered: &[u8]| respond(&seen, &response, cap, connection, buffered)
     }
 }
 
@@ -368,6 +379,7 @@ fn respond(
     seen: &Arc<Mutex<Record>>,
     response: &TrackerResponse,
     cap: usize,
+    connection: ConnectionId,
     buffered: &[u8],
 ) -> StreamReply {
     let Some(end) = head_end(buffered) else {
@@ -415,6 +427,7 @@ fn respond(
     let announce = Announce {
         raw: buffered[..total].to_vec(),
         request,
+        connection,
     };
     let body = response.body_for(&announce);
     {

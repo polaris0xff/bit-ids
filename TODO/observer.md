@@ -352,7 +352,7 @@ boundary in `docs/capture-host.md` exists to refuse. `CI-03` owns the runner.
 ## OBS-04: Peer-wire handshake observer
 
 Source: bit-cli centralized peer ID and handshake call-site sweep
-Priority: P0 | Effort: L | Status: OPEN
+Priority: P0 | Effort: L | Status: DONE
 
 Problem: Peer ID, protocol string, info hash, and reserved feature bits must
 be captured from bytes emitted by the running client.
@@ -363,8 +363,79 @@ clients can vary behavior by role.
 Approach: Implement active dial and accept roles, preserve handshakes, label
 direction, and correlate each stream to its acquisition and torrent manifest.
 
-Prove: `cargo test --workspace --locked --test peer_wire` exercises both roles and rejects a
-profile whose normalized handshake cannot be rebuilt from raw bytes.
+Prove: `cargo test -p bit-ids-probe -p bit-ids-lab --locked --all-targets`
+exercises both roles and rejects a transcript that cannot be rebuilt from raw
+bytes.
+
+Closure evidence: run on 2026-09-05. `cargo test -p bit-ids-probe --locked
+--all-targets` reports 48 passed and `-p bit-ids-lab` 33 passed, 0 failed.
+`cargo test --workspace --locked --all-targets` reports 24 binaries and 238
+passed, 0 failed: 12 test files, 4 library suites and 8 examples, which is every
+one on disk. `cargo test --workspace --locked --doc` reports 2 passed.
+`cargo fmt --all -- --check`, `cargo check`, `cargo clippy -- -D warnings` at
+`--workspace --locked --all-targets`, `shellcheck`, `shfmt -d -i 2 -ci` and
+`sh scripts/common/check-gate.sh` all exit 0. The whole workspace suite was run
+four times in succession with no failure, after one test was found to be
+timing-dependent.
+
+⭐ The entry's premise about roles turned out to need a change in `OBS-01`'s
+crate, not just a new module. Nothing in `bit-ids-lab` dialled out, and the
+door sweep for `OBS-01` had already put `TcpStream::connect` on the list its
+own test greps for, so the dial landed in the loopback guard rather than beside
+it: `bind::dial` refuses a non-loopback address before the syscall, reads the
+peer back afterwards, and bounds the wait, because a connect to an address that
+drops rather than refuses outlasts any capture deadline and the lab cannot
+interrupt a thread inside a syscall.
+
+Decision: the responder signature grew a `ConnectionId`. One responder serves
+every connection an endpoint accepts, so without an identity a peer observer has
+nowhere to keep per-connection state and would send a second handshake down the
+first connection. The rejected alternative was a responder factory returning a
+fresh closure per connection, which hides the identity the journal also needs:
+`Segment` now carries the connection, so a transcript of two concurrent peer
+connections can be separated back into them.
+
+Guard mutation: 19 defects planted one at a time, each verified to have changed
+the file, 18 refused. Two rounds; the first found that the observer's handshake
+could be re-sent on every read with every test still passing, because none of
+them read again after the handshake exchange.
+
+⚠ The one that is still not refused is `rebuilds_from_raw` returning `true`
+unconditionally, and it says something true about that guard. Its `Ok` arm
+compares `encode()` against the bytes, which holds for every transcript a
+correct codec can produce, so nothing this crate can send makes it false. It is
+a codec-regression detector, and planting a lossy `Message::encode` in
+`bit-ids-wire` **is** refused, so what would have to be true for the guard to
+fire is that the codec became lossy and `FOUND-03`'s own round-trip invariant
+stopped catching it first.
+
+Door sweep: three findings on the dial path. A dial on a stopped lab wrote its
+opening bytes before the worker's first stop check, so a handshake went on the
+wire that nothing was going to answer. A responder taking a `Role` let the
+accepting role be attached to a dial, which makes the observer wait for bytes it
+was supposed to send, so there are two constructors and no role parameter. And a
+connection past the stream cap was left open buffering until the lab's byte cap
+fired, which is the same refusal arriving later and less legibly.
+
+⚠ One finding was in a test rather than the code, and it is this session's
+second of that shape: the pending-cap test wrote a fixed byte budget and asserted
+the close had arrived by then, which is a scheduling outcome it does not control.
+It passed alone and failed twice in three loaded workspace runs. It now writes
+until the close arrives, with a bound that turns a hang into a failure, and
+asserts the deterministic half separately.
+
+Driven on 2026-09-05 with a BEP 3 peer written from the specification in Python,
+in both roles at once. `cargo run -p bit-ids-probe --example peer-wire` accepted
+one connection and dialled another. The accepted side recorded reserved
+`0000000000100005`, peer ID `-qB5000-dialerside01`, and the messages `5(2)`,
+`0(0)`, a keep-alive and `254(10)` in that order, keeping the unassigned id with
+its payload. The dialled side recorded reserved `0000000000100001` and peer ID
+`-LT2090-listenerside`. ⭐ The two roles produced different reserved blocks and
+different peer IDs, which is the role dependence this entry exists for. Both
+transcripts rebuilt byte for byte.
+
+Residual: the same one `OBS-02` and `OBS-03` carry. No stock `BitTorrent` client
+has driven this, and none can on a session host.
 
 ## OBS-05: BEP 10 and early-message observer
 

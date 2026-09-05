@@ -3,26 +3,34 @@
 **Task:** Take the work order in `TODO/PROGRESS.md` in dependency order,
 committing and pushing each green unit to `main`.
 
-**Resume point:** Foundations, schema and acquisition are closed. ⚠ No capture
-is possible yet regardless, because there is no observer. This session splits
-`OBS-01` and then implements the lab and the transport observers, each against
-the `bit-ids-wire` fixture corpus rather than a live client.
+**Resume point:** Foundations, schema, acquisition, the observation lab and both
+tracker observers are closed. ⚠ No capture is possible yet regardless: the peer
+wire has no observer and no torrent exists for a client to announce about.
+`OBS-04` is in flight, `OBS-05` follows it, and `OBS-08` is what a client needs
+before it will say anything at all.
 
 ⛔ A Windows capture is not permitted yet. The disposable-host guards read
 `/proc/net/route` and `/etc/machine-id`, so there is no boundary to run before
 an install on Windows. `CI-03` owns the pair; `docs/capture-host.md` carries
 both contracts.
 
-**In flight:** Splitting `OBS-01`. Nothing is half-edited.
+**In flight:** `OBS-04`, the peer-wire handshake observer. Nothing is
+half-edited; the tree is clean at every commit.
 
-**Tree:** Clean and level with `origin/main`, on `main`, at `2fb8548`.
-Measured at the start of this session, on this host:
+⛔ `OBS-04` needs the lab to dial out, and nothing in `bit-ids-lab` does yet. The
+loopback guard covers binding and a test greps the crate for
+`TcpStream::connect` outside `bind.rs`, so the dial lands in the guard rather
+than beside it.
+
+**Tree:** Clean and level with `origin/main`, on `main`, at `4453f88`.
+Measured on this host after closing `OBS-03`:
 
 | command | result |
 | --- | --- |
 | `sh scripts/common/check-gate.sh` | 12 checks, 11 passed, 0 failed, 1 skipped |
 | `pwsh -File scripts/common/check-gate.ps1` | 12 checks, 10 passed, 0 failed, 2 skipped |
-| `cargo test --workspace --locked --all-targets` | 14 binaries, 157 passed, 0 failed |
+| `cargo test --workspace --locked --all-targets` | 22 binaries, 219 passed, 0 failed |
+| `cargo test --workspace --locked --doc` | 2 passed, 0 failed |
 | `cargo fmt --all -- --check` | exit 0 |
 | `cargo check --workspace --locked --all-targets` | exit 0 |
 | `cargo clippy --workspace --locked --all-targets -- -D warnings` | exit 0 |
@@ -49,11 +57,24 @@ not a preference.
 so a rule that differs only on a defect the tree does not contain is invisible
 to it. Compare a changed pair per planted mutation, not on a clean tree alone.
 
-⭐ The same hazard is not confined to the shell twins. `FOUND-03` planted nine
-lossy defects in the Rust codecs and two were missed on the first pass, each
-because the corpus lacked the shape that would have failed. A corpus only tests
-the defects it contains an example of. The mutation loop is worth re-running
-whenever a codec or a guard changes.
+⭐ The same hazard is not confined to the shell twins, and it cost three more
+misses this session: a datagram buffer shrunk to four bytes with no fixture
+larger than three, and a head framer shortened by a byte with no head terminated
+in bare newlines. A corpus only tests the defects it contains an example of.
+
+⛔ **A mutation script that does not check its own edits applied is a script that
+reports guards failing to fire over unmutated source.** That happened twice here,
+which is the defect `docs/methodology/reviews.md` records about this template's
+own patch script. Compare the file either side of every plant, and prefer literal
+string replacement to a regular expression.
+
+⚠ An acceptance command that names a bare test filter can exit 0 having run
+nothing. `CI-05` is the check for it; until that exists, write every `cargo test`
+acceptance as `-p <package>` or `--test <target>`.
+
+⛔ No observer has been driven by a stock `BitTorrent` client and none can be on
+a session host: `sh scripts/acquisition/assert-disposable.sh --egress` exits 1
+here, so running one would be the capture that boundary refuses.
 
 **Paste:** Read `docs/AGENTS.md` in full, follow its start protocol, and take
 the first unblocked item from `TODO/PROGRESS.md`. Work on `main`. Re-measure
