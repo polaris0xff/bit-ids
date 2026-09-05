@@ -5,6 +5,32 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-06T12:15:00Z
+
+- `CI-01` closed, the complete cross-platform quality gate, and with it the last
+  open `P0`. Record: [`TODO/ci.md`](TODO/ci.md).
+- ⭐ The Windows lane reports **zero skipped** on CI run 37 under `-Strict`: ten
+  passed, none failed, and seven rows named unavailable with the entry that owns
+  each. That is the Prove's first half measured rather than argued.
+- `.github/workflows/publish-data.yml` carries the job-scoped `contents: write`
+  and the concurrency group `PUB-02` left as residuals. ⛔ It has no automatic
+  trigger and its dry run is the default, so it cannot fire on its own and a
+  dispatch by accident still pushes nothing; both are cases in the harness.
+- ⚠ Its group does not cancel in flight, unlike the gate's. Cancelling a gate run
+  costs a rerun; cancelling a publisher between its append comparison and its
+  read-back leaves a branch nobody has verified.
+- ⚠ The token reaches git as a header rather than inside a remote URL. The first
+  version wrote it into the URL and `check-no-secrets` refused the file, which is
+  the guard working rather than an obstacle.
+- ⛔ That workflow has never run and cannot succeed today: its first step wants
+  the assembled bundle of a capture run, and there are no captures.
+- The harness now covers every workflow rather than the one it was written for,
+  and its scratch tree carries the origin remote, without which
+  `check-remote-items` could not run there and the gate cases never saw a clean
+  tree exit 0.
+- Deployment: nothing deployed. No capture was taken. Nothing was published. No
+  remote was written other than this repository's `main`.
+
 ### 2026-09-06T10:30:00Z
 
 - `CI-01` in progress, the cross-platform quality gate. Record:

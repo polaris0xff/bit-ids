@@ -171,12 +171,15 @@ than one that does neither.
 
 ### Residuals
 
-- ⚠ Concurrency control in the Approach is git's own: two publishers racing make
+- Concurrency control in the Approach is git's own: two publishers racing make
   the second push non-fast-forward, which git refuses and the harness measures.
-  A workflow-level concurrency group belongs to `CI-01`.
-- ⚠ Least-privilege permissions are a workflow property, and no workflow calls
-  this yet. `docs/publishing.md` carries the job-scoped `contents: write`
-  contract and `CI-01` wires it.
+  ⭐ `CI-01` added the workflow-level group on top, and it does **not** cancel in
+  flight: cancelling a gate run costs a rerun, while cancelling a publisher
+  between its append comparison and its read-back leaves a branch nobody has
+  verified.
+- Least-privilege permissions are a workflow property, and `CI-01` wired the
+  workflow that carries them. The publish job is the only one in this repository
+  with `contents: write`, and it is job-scoped rather than inherited.
 - ⚠ The publisher has never run against the real remote and will not until there
   is a measured record to publish. Everything in the tree today is synthetic.
 

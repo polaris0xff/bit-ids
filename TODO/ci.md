@@ -3,7 +3,7 @@
 ## CI-01: Complete cross-platform quality gate
 
 Source: template gate method and operator best-in-class CI requirement
-Priority: P0 | Effort: L | Status: IN_PROGRESS
+Priority: P0 | Effort: L | Status: DONE
 
 Problem: The bootstrap CI verifies code and documents but not future schema,
 fixtures, corpus determinism, or publication invariants.
@@ -65,6 +65,78 @@ nothing at all on such a host and reported it nowhere. Fixing that one exposed
 the second door: `publish-data.sh` composes the same path itself, so the
 publisher exited 2 saying its own append checker was missing. Both resolve the
 variable now. Found by driving this entry, whose harness sets it.
+
+### The publisher's workflow, which `PUB-02` left as two residuals
+
+`.github/workflows/publish-data.yml` carries the job-scoped `contents: write`
+and the concurrency group. ⛔ **It has no automatic trigger and its dry run is
+the default**, because nothing may be published until a measured record exists
+and everything in the tree is synthetic; a push trigger here would be one merge
+away from publishing that. ⚠ Its group does not cancel in flight, unlike the
+gate's: cancelling a gate run costs a rerun, and cancelling a publisher between
+its append comparison and its read-back leaves a branch nobody has verified.
+
+⚠ **The token reaches git as a header rather than inside a remote URL.** The
+first version wrote it into the URL and `check-no-secrets` refused the file,
+which is the guard working: a credential in a remote is visible to anything
+listing processes on the runner.
+
+⛔ **The workflow has never run and cannot succeed today.** Its first step
+downloads the assembled bundle from a capture run, no such run exists, and that
+is the honest state rather than a guard. What is proved is its shape.
+
+### Acceptance, all run on 2026-09-06
+
+- `sh scripts/ci/check-workflow.sh`
+- `sh scripts/common/check-gate.sh`
+- `pwsh -NoProfile -File scripts/common/check-gate.ps1`
+- `cargo test --workspace --locked --all-targets`
+
+### Closure evidence, 2026-09-06
+
+| what | measured |
+| --- | --- |
+| `sh scripts/ci/check-workflow.sh` | 34 cases, 34 passed, 0 failed |
+| `sh scripts/common/check-gate.sh` | 17 checks, 16 passed, 0 failed, 1 skipped, 0 unavailable |
+| `pwsh -File scripts/common/check-gate.ps1` | 17 checks, 10 passed, 0 failed, 1 skipped, 6 unavailable |
+| `cargo test --workspace --locked --all-targets` | 36 binaries, 337 passed, 0 failed |
+| CI run 37, Windows lane | 17 checks, 10 passed, 0 failed, **0 skipped**, 7 unavailable, under `-Strict` |
+| CI run 37, Linux lane | green through *Workflow acceptance*, which reported 27 cases passing at that commit |
+| driven pass | eight defect classes planted one at a time, each refused by the step that owns it, with the clean tree accepted either side |
+
+⭐ **The Windows row is the Prove's first half, measured rather than argued.**
+Zero skipped means every check that lane can run, ran. The seven `n/a` rows are
+the six platform gaps and `-Fast`, each named with the entry that owns it.
+
+### Guard mutation
+
+Eight probes over the runner split, run on a scratch worktree: a check rewritten
+to `exit 2`, one rewritten to `exit 1`, and one deleted outright, against each
+half, plus the clean control on both. All eight landed on the intended verdict.
+⛔ The blind spot reproduced exactly: without the flag, the `exit 2` plant left
+the runner at 0.
+
+The harness carries nineteen more, being its four inherited probe guards, five
+mutation probes over its own static readers, and the ten plant-and-control pairs
+in its case list. ⚠ Its static readers are checked against a workflow with each
+property **removed**, because a reader that answers present over a file that
+lacks it would pass on any workflow at all.
+
+### Residuals
+
+- ⚠ `check-workflow.sh` is not in `check-gate.sh` and cannot be, so a
+  contributor's local gate does not run it. The workflow runs it on every push
+  and it is this entry's acceptance; a gate runner that listed it would re-enter
+  itself.
+- ⚠ On a host with no authenticated `gh` the harness's gate cases cannot use the
+  exit code as their control, because the clean tree exits 1 there. They read
+  the runner's failure count instead and say so in the row. `check-remote-items`
+  is the only observed skip in either half.
+- ⚠ `append_once` verifies that a file changed but has not itself been refuted,
+  the way `replace_once` has. Every plant that uses it did land, which is
+  evidence and not a proof.
+- ⚠ `CI-03` still owns the Windows capture runner, and the six `n/a` rows on that
+  lane close only when it lands.
 
 ## CI-02: Stable-release staleness monitor
 

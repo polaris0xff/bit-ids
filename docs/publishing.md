@@ -97,6 +97,14 @@ foreign-key integrity. Raw binary evidence is never embedded into CSV.
 bare repository created for the run. ⛔ It has never run against this
 repository's own remote and will not until a measured record exists to publish.
 
+[`publish-data.yml`](../.github/workflows/publish-data.yml) is what calls it,
+and `CI-01` wired it. ⛔ **It has no automatic trigger and its dry run is the
+default**, so it cannot fire on its own and dispatching it by accident still
+pushes nothing; both are cases in
+[`check-workflow.sh`](../scripts/ci/check-workflow.sh) rather than assurances in
+prose. The token reaches git as a header rather than inside a remote URL, which
+is the form `check-no-secrets` refuses in this tree.
+
 - capture lanes: `contents: read`, no secrets, upload artifacts only;
 - collector/validator: `contents: read`, cannot push;
 - data publisher: job-scoped `contents: write`, append-only push without force;

@@ -3,19 +3,22 @@
 **Task:** Take the work order in `TODO/PROGRESS.md` in dependency order,
 committing and pushing each green unit to `main`.
 
-**Resume point:** `CI-01` is IN_PROGRESS and most of it has landed. Both gate
-runners separate a declared unavailability from an observed skip, so both CI
-lanes now run strictly; `scripts/ci/check-workflow.sh` plants a defect of each
-class and runs the offending workflow step against it; and the workflow declares
-per-job permissions and timeouts and caches by lockfile. What remains is the
-publish workflow that `PUB-02` left as two residuals, being the job-scoped
-`contents: write` and the workflow-level concurrency group, after which the
-entry closes. `CORPUS-04` and `PUB-03` follow.
+**Resume point:** ⭐ **`CI-01` is closed, and with it the last open `P0`.** Both
+gate runners separate a declared unavailability from an observed skip, so both CI
+lanes run strictly and the Windows lane reports zero skipped;
+`scripts/ci/check-workflow.sh` plants eight classes of defect and runs the
+offending workflow step against each; the workflow declares per-job permissions
+and timeouts and caches by lockfile; and the publisher has a workflow carrying
+the job-scoped write permission and a concurrency group. The next item is
+`CORPUS-04`, supersession and correction records, which the latest view needs
+before a superseded record can drop out of it. `PUB-03` follows.
 
 ⛔ **Nothing has ever been published.** The publisher has never run against this
 repository's own remote and must not until a measured record exists; everything
-in the tree today is synthetic and says so. A publish workflow written for that
-residual has to be unable to fire on its own until then.
+in the tree today is synthetic and says so. Its workflow exists but has no
+automatic trigger, defaults to a dry run, and cannot succeed at all today: its
+first step wants the assembled bundle of a capture run and there are no
+captures.
 
 ⛔ The client entries stay behind this work on a measurement rather than a
 preference. A client entry's acceptance needs a capture, a capture needs a host
@@ -27,8 +30,8 @@ preference. A client entry's acceptance needs a capture, a capture needs a host
 an install on Windows. `CI-03` owns the pair; `docs/capture-host.md` carries
 both contracts.
 
-**In flight:** `CI-01`, coherently. Its entry carries what has landed and what
-has not. No files half-edited.
+**In flight:** Nothing. `CI-01` landed whole, with its entry, index, summary
+and record updated in the same change. No files half-edited.
 
 **Tree:** Clean and level with `origin/main`, on `main`, full clone. ⚠ The
 container started on a stale `claude/*` branch whose commits had already been
@@ -40,7 +43,7 @@ name. Measured on this host:
 | --- | --- |
 | `sh scripts/common/check-gate.sh` | 17 checks, 16 passed, 0 failed, 1 skipped, 0 unavailable |
 | `pwsh -File scripts/common/check-gate.ps1` | 17 checks, 10 passed, 0 failed, 1 skipped, 6 unavailable |
-| `sh scripts/ci/check-workflow.sh` | 27 cases, 27 passed, 0 failed |
+| `sh scripts/ci/check-workflow.sh` | 34 cases, 34 passed, 0 failed |
 | `cargo test --workspace --locked --all-targets` | 36 binaries, 337 passed, 0 failed |
 | `cargo test --workspace --locked --doc` | 2 passed, 0 failed |
 | `sh scripts/corpus/check-store.sh` | 14 cases, 14 passed, 0 failed |

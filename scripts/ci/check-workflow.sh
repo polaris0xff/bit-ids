@@ -119,6 +119,13 @@ mkdir -p "$TREE" || exit 2
 # ⛔ IT IS A REAL REPOSITORY, because half the checks the gate runs ask git what
 # is tracked. A plain directory would make every one of them exit 2, and a run
 # of nothing but skips is what --strict exists to refuse.
+#
+# ⚠ AND IT CARRIES THE ORIGIN, which is not decoration either. check-remote-items
+# resolves the repository from that remote, so a scratch tree without one made
+# that check answer 2 wherever it ran, including on a CI runner that could
+# perfectly well have run it. The gate cases then never saw a clean tree exit 0
+# and their exit codes did no work anywhere. Measured on run 37.
+ORIGIN=$(cd "$ROOT" && git remote get-url origin 2>/dev/null) || ORIGIN=""
 (
   cd "$TREE" || exit 1
   # ⚠ The identity carries no at-sign on purpose. check-no-secrets --public
@@ -126,7 +133,8 @@ mkdir -p "$TREE" || exit 2
   # commit; git accepts a bare word here and the commit is thrown away anyway.
   git init -q -b main &&
     git add -A &&
-    git -c user.email=gate -c user.name=gate commit -qm scratch
+    git -c user.email=gate -c user.name=gate commit -qm scratch &&
+    { [ -z "$ORIGIN" ] || git remote add origin "$ORIGIN"; }
 ) >/dev/null 2>&1 || {
   printf 'check-workflow: cannot make the scratch tree a repository\n' >&2
   exit 2
@@ -210,9 +218,47 @@ gate_asks_strictly() { # workflow job flag
   esac
 }
 
-declares_key() { # workflow key label
+declares_key() { # workflow key
   _missing=$(jobs_missing "$1" "$2")
   [ -z "$_missing" ]
+}
+
+# The top-level trigger keys of a workflow, one per line.
+triggers() { # workflow
+  awk '
+    function indent(s,   i) { i = match(s, /[^ ]/); return i ? i - 1 : -1 }
+    /^on:[ \t]*$/ { inon = 1; next }
+    /^on:/ { print "inline"; next }
+    !inon { next }
+    {
+      line = $0
+      sub(/\r$/, "", line)
+      ind = indent(line)
+      if (ind < 0) next
+      if (ind == 0) { inon = 0; next }
+      if (ind == 2 && line ~ /^ *[A-Za-z_][A-Za-z0-9_]*:/) {
+        k = line; sub(/^ +/, "", k); sub(/:.*$/, "", k); print k
+      }
+    }
+  ' "$1"
+}
+
+# The declared default of one workflow_dispatch input.
+input_default() { # workflow input
+  awk -v WANT="$2" '
+    function indent(s,   i) { i = match(s, /[^ ]/); return i ? i - 1 : -1 }
+    {
+      line = $0
+      sub(/\r$/, "", line)
+      ind = indent(line)
+    }
+    ind == 6 && line ~ /^ *[A-Za-z_][A-Za-z0-9_]*:[ \t]*$/ {
+      k = line; sub(/^ +/, "", k); sub(/:.*$/, "", k); cur = k; next
+    }
+    cur == WANT && ind == 8 && line ~ /^ *default:/ {
+      v = line; sub(/^ *default:[ \t]*/, "", v); print v; exit
+    }
+  ' "$1"
 }
 
 # ⛔ 127 MEANS THE WORKFLOW HAS NO SUCH STEP, and it is reported separately from
@@ -348,21 +394,56 @@ fi
 # person who widens that floor for one job widens it for every job that never
 # said anything. The same argument holds for a timeout: the default is six
 # hours, so a job with none is a job that hangs for an afternoon.
-for key in permissions timeout-minutes; do
-  if declares_key "$WORKFLOW" "$key"; then
-    pass "workflow  every job declares $key"
+#
+# ⛔ EVERY WORKFLOW, NOT THE ONE THIS FILE CARES ABOUT. A rule that read ci.yml
+# alone would be a gate on one of two doors the moment a second workflow landed,
+# and a second workflow did land: the publisher is the one job in this
+# repository that may write, so it is exactly the file a permissions rule must
+# not skip. check-project.sh's action-pin rule generalises the same way.
+for wf in "$ROOT"/.github/workflows/*.yml; do
+  [ -f "$wf" ] || continue
+  wfname=${wf##*/}
+  for key in permissions timeout-minutes; do
+    if declares_key "$wf" "$key"; then
+      pass "workflow  $wfname: every job declares $key"
+    else
+      fail "workflow  $wfname: jobs with no $key: $(jobs_missing "$wf" "$key" | tr '\n' ' ')"
+    fi
+  done
+  if grep -q '^concurrency:' "$wf" && grep -q 'cancel-in-progress:' "$wf"; then
+    pass "workflow  $wfname declares a concurrency group"
   else
-    fail "workflow  jobs with no $key: $(jobs_missing "$WORKFLOW" "$key" | tr '\n' ' ')"
+    fail "workflow  $wfname declares no concurrency group"
   fi
 done
 
-if grep -q '^concurrency:' "$WORKFLOW" && grep -q 'cancel-in-progress:' "$WORKFLOW"; then
-  pass "workflow  the workflow declares a concurrency group"
+# -- 0c. the publisher cannot fire on its own ---------------------------------
+#
+# ⛔ NOTHING HAS EVER BEEN PUBLISHED AND NOTHING MAY BE until a measured record
+# exists, because everything in the tree is synthetic. The publisher's workflow
+# is therefore dispatch-only, and its dry run is the default so that dispatching
+# it by accident still pushes nothing. ⚠ Both are properties a reader can check,
+# which is why they are cases here rather than a sentence in the file.
+PUBWF="$ROOT/.github/workflows/publish-data.yml"
+if [ -f "$PUBWF" ]; then
+  PUBTRIG=$(triggers "$PUBWF" | tr '\n' ' ' | sed 's/ *$//')
+  if [ "$PUBTRIG" = "workflow_dispatch" ]; then
+    pass "workflow  the publisher can only be dispatched by hand"
+  else
+    fail "workflow  the publisher has other triggers: $PUBTRIG"
+  fi
+
+  PUBDRY=$(input_default "$PUBWF" dry_run)
+  if [ "$PUBDRY" = "true" ]; then
+    pass "workflow  the publisher dry-runs unless told otherwise"
+  else
+    fail "workflow  the publisher's dry_run default is [$PUBDRY], not true"
+  fi
 else
-  fail "workflow  the workflow declares no concurrency group"
+  fail "workflow  there is no publisher workflow to check"
 fi
 
-# -- 0c. the static readers, refuted --------------------------------------
+# -- 0d. the static readers, refuted ------------------------------------------
 #
 # ⛔ EVERY RULE ABOVE IS A READER THAT HAS NEVER BEEN SEEN TO REFUSE ANYTHING.
 # Each is checked against a copy of the workflow with the property removed,
@@ -389,6 +470,24 @@ if declares_key "$MUTWF" timeout-minutes; then
   fail "probe    the job-key reader passed a job with no timeout"
 else
   pass "probe    the job-key reader refuses a job with no timeout"
+fi
+
+# ⚠ The trigger reader is checked against a workflow that HAS an automatic
+# trigger rather than against one with none, because the direction that matters
+# is the one where the publisher gains a way to fire by itself.
+if [ -f "$PUBWF" ]; then
+  awk '/^on:$/ { print; print "  push:"; next } { print }' "$PUBWF" >"$MUTWF"
+  case "$(triggers "$MUTWF" | tr '\n' ' ')" in
+    *push*) pass "probe    the trigger reader sees an added push trigger" ;;
+    *) fail "probe    the trigger reader missed an added push trigger" ;;
+  esac
+
+  sed 's/        default: true/        default: false/' "$PUBWF" >"$MUTWF"
+  if [ "$(input_default "$MUTWF" dry_run)" = "true" ]; then
+    fail "probe    the input-default reader still reports true after the flip"
+  else
+    pass "probe    the input-default reader follows the declared default"
+  fi
 fi
 
 # -- the controls -------------------------------------------------------------
@@ -461,9 +560,13 @@ fi
 restore "$FIXTURE" || exit 2
 
 # -- 6. a shell script that does not parse ------------------------------------
+# ⚠ The pattern is shellcheck's own parse-error code rather than nothing at all.
+# This case accepted any non-zero status at first, which `shfmt` would also have
+# produced for a reformatting difference, so the case would have passed while
+# the syntax checker said nothing.
 SCRIPT="scripts/doctor/doctor.sh"
 if keep "$SCRIPT" && append_once "$TREE/$SCRIPT" "if [ 1 = 1 ; then :"; then
-  refuses linux "Shell syntax and style" "a shell script that does not parse" ""
+  refuses linux "Shell syntax and style" "a shell script that does not parse" "SC1073"
 else
   fail "plant    could not plant the shell defect"
 fi

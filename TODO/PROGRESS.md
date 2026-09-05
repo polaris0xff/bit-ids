@@ -4,9 +4,9 @@ State instant: 2026-09-06
 Baseline commit: `ad0b68f` on `main`
 Total: 56
 Open: 31
-In progress: 1
+In progress: 0
 Blocked: 0
-Done: 24
+Done: 25
 
 ## Current state
 
@@ -287,29 +287,33 @@ second publication changes `MANIFEST.json`, `SHA256SUMS` and the indexes by
 design, and treating every published path as immutable made a correct second
 publication impossible. `CANONICAL_ROOTS` names the roots the rule is about.
 
-`CI-01` is the entry in flight. ⛔ **Its Problem was largely overtaken before it
-started**, because the Linux lane already delegates to the gate and the Rust
-suite already covers the schema and the fixtures on both lanes. Its Prove was
-not: no lane could see a check that had stopped running, and nothing anywhere
-established that an injected defect turns the pipeline red. Both are answered
-now, the first by counting a declared gap apart from an observed skip so that
-`--strict` became usable on the lane that needed it, and the second by
-`scripts/ci/check-workflow.sh`. ⚠ The publish workflow those residuals ask for
-is what remains.
+⭐ `CI-01` is closed, and with it the last open `P0`. ⛔ **Its Problem was largely
+overtaken before it started**, because the Linux lane already delegates to the
+gate and the Rust suite already covers the schema and the fixtures on both lanes.
+Its Prove was not. No lane could see a check that had stopped running, and
+nothing anywhere established that an injected defect turns the pipeline red.
+
+The first is answered by counting a gap the runner declares apart from a skip it
+observed, which is what made `--strict` usable on the lane that needed it most:
+that lane now reports zero skipped. The second is
+`scripts/ci/check-workflow.sh`, which plants eight classes of defect into a
+scratch copy of the working tree and runs the offending step against each. ⛔ It
+reads every command out of the workflow by job and step name, so it cannot drift
+from CI, and it is kept out of `check-gate.sh` because two of its cases run the
+gate.
+
+The publisher has a workflow now, carrying the job-scoped write permission and
+the concurrency group `PUB-02` left as residuals. ⛔ **It cannot fire on its
+own**, its dry run is the default, and it has never run: its first step wants a
+bundle from a capture run and there are no captures.
 
 ## Work order
 
-1. `CI-01`, the complete cross-platform quality gate, IN_PROGRESS. Both lanes
-   ask strictly now and the workflow acceptance harness is driven and green;
-   what is left is the publish workflow carrying the job-scoped
-   `contents: write` and the concurrency group `PUB-02` leaves as residuals.
-   ⛔ It has to be unable to fire on its own, because nothing may be published
-   until a measured record exists.
-2. `CORPUS-04`, supersession and correction records, which is what the latest
+1. `CORPUS-04`, supersession and correction records, which is what the latest
    view needs before a superseded record can drop out of it.
-3. `PUB-03`, the multi-format publisher, which derives its formats from the
+2. `PUB-03`, the multi-format publisher, which derives its formats from the
    bundle `PUB-01` assembles rather than beside it.
-4. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
+3. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
    captures, on Linux only until `CI-03` provides the Windows guard pair.
    ⛔ **They stay behind the corpus work on a measurement rather than a
    preference:** their acceptance needs a capture, a capture needs a host
@@ -317,10 +321,10 @@ is what remains.
    refused. `TODO/clients.md` carries the three routes that were tried on
    2026-09-05. ⭐ Neither the observer layer nor the store blocks them any more;
    `CI-03` and a host are what remain.
-5. `ACQ-05`, the artifact cache, and `FOUND-04`, the licence register, before
+4. `ACQ-05`, the artifact cache, and `FOUND-04`, the licence register, before
    the first proprietary client is acquired.
-6. `CI-02` through `CI-04`, then the remaining client and engine breadth.
-7. Consumer library, public documentation, and refinements.
+5. `CI-02` through `CI-04`, then the remaining client and engine breadth.
+6. Consumer library, public documentation, and refinements.
 
 ## Pending operator decisions
 
