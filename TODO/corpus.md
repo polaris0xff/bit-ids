@@ -26,7 +26,7 @@ field provenance, agreement, stable status, or evidence reachability.
 Approach: Implement all publication invariants in Rust with stable diagnostic
 codes and adversarial fixtures.
 
-Prove: `cargo test --workspace corpus_validator` rejects one fixture for each
+Prove: `cargo test --workspace --locked --test corpus_validator` rejects one fixture for each
 invariant and validates the complete golden corpus.
 
 ## CORPUS-03: Deterministic indexes and latest views

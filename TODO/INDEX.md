@@ -1,17 +1,17 @@
 # Work index
 
-Total: 55
+Total: 56
 Open: 44
 In progress: 0
 Blocked: 0
-Done: 11
+Done: 12
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| P0 | 13 | 0 | 0 | 11 | 24 |
-| P1 | 30 | 0 | 0 | 0 | 30 |
+| P0 | 12 | 0 | 0 | 12 | 24 |
+| P1 | 31 | 0 | 0 | 0 | 31 |
 | P2 | 1 | 0 | 0 | 0 | 1 |
-| Total | 44 | 0 | 0 | 11 | 55 |
+| Total | 44 | 0 | 0 | 12 | 56 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -23,7 +23,7 @@ Done: 11
 | SCHEMA-02 | P0 | L | DONE | Raw evidence and run manifest schema |
 | SCHEMA-03 | P0 | L | DONE | Connector agreement and conflict model |
 | SCHEMA-04 | P0 | M | DONE | Variability and repeated-sampling model |
-| OBS-01 | P0 | L | OPEN | Isolated Rust loopback observation lab |
+| OBS-01 | P0 | L | DONE | Isolated Rust loopback observation lab |
 | OBS-02 | P0 | L | OPEN | HTTP tracker observer |
 | OBS-03 | P0 | L | OPEN | UDP tracker observer |
 | OBS-04 | P0 | L | OPEN | Peer-wire handshake observer |
@@ -68,6 +68,7 @@ Done: 11
 | CI-02 | P1 | L | OPEN | Stable-release staleness monitor |
 | CI-03 | P1 | L | OPEN | Trusted capture runner matrix |
 | CI-04 | P1 | L | OPEN | Build provenance and supply-chain hardening |
+| CI-05 | P1 | S | OPEN | Acceptance commands that cannot pass over nothing |
 | DOC-01 | P1 | M | OPEN | Public data and library documentation |
 | DOC-02 | P2 | M | OPEN | Contributor capture-run handbook |
 

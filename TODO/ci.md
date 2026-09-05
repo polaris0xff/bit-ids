@@ -58,3 +58,38 @@ builder facts.
 
 Prove: release verification binds every asset to the expected repository,
 workflow, commit, lockfile, and checksum manifest.
+
+## CI-05: Acceptance commands that cannot pass over nothing
+
+Source: found while closing `OBS-01` on 2026-09-05
+Priority: P1 | Effort: S | Status: OPEN
+
+Problem: An entry's `Prove` is the acceptance, and one of them ran nothing while
+exiting 0. `cargo test --workspace --locked lab_supervisor` filters by test
+**name**; the name matched none, so every binary in the workspace printed
+`running 0 tests` and the command succeeded. Nothing in the gate can tell that
+from an acceptance that passed.
+
+Premise: Measured on 2026-09-05, not read. The nine `cargo test` acceptance
+commands in `TODO/` were all of the bare-filter form, and they worked only
+because of a convention nothing checks: all 110 test functions across the eight
+pre-existing test files begin with their file's name. `lab_supervisor` did not,
+and the acceptance went green over zero tests. All nine were rewritten to name a
+target or a package.
+
+Approach: A rule in `scripts/common/check-project.sh` and its PowerShell twin
+that reads every `cargo test` invocation inside a code span in `TODO/*.md` and
+refuses a bare word argument unless it follows `-p`, `--package`, `--test`,
+`--example` or `--bin`. ⚠ The parsing is the work: a code span can wrap across
+lines, so the file is joined before the spans are found, and the two twins must
+agree per planted mutation rather than on a clean tree.
+
+Decision: a shape rule over a naming convention. Renaming every test function to
+start with its file's name would also make the bare filter work, and it makes
+the filter's correctness depend on a convention no check holds, while
+`docs/conventions/code.md` asks for test names that describe behaviour.
+
+Prove: `sh scripts/common/check-project.sh` and
+`pwsh -File scripts/common/check-project.ps1` both exit 1 when a `Prove` line is
+rewritten to the bare-filter form, both exit 0 on the tree as it stands, and
+both agree on every planted mutation.

@@ -5,6 +5,42 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-05T01:20:00Z
+
+- Closed `OBS-01`. The `bit-ids-lab` crate is the loopback observation lab that
+  `OBS-02` through `OBS-05` plug into: it binds the sockets, holds the run
+  deadline, records every byte in order with its direction, and releases every
+  port on shutdown or on drop. Record: [`TODO/observer.md`](TODO/observer.md).
+- ⛔ Every socket in the crate is created by one function, which refuses an
+  address outside loopback before the syscall and reads the address back off the
+  socket afterwards. A bind request and a bound address are different facts, and
+  only the second says where traffic can reach.
+- The lab speaks no protocol. That is what lets one deadline, one loopback guard
+  and one journal serve every surface instead of each observer growing its own.
+- No new third-party crate. `std::net` with one thread per endpoint, over an
+  async runtime, for the reason [`docs/supply-chain.md`](docs/supply-chain.md)
+  requires in the entry: the lab serves a handful of local connections and the
+  runtime would be a large dependency in the component that must be reviewable.
+- ⛔ The entry's acceptance command ran nothing and exited 0. `cargo test`
+  filters by test name and a filter matching none succeeds, so it printed
+  `running 0 tests` for every binary in the workspace. The nine `cargo test`
+  acceptance commands in `TODO/` were all of that form; all nine now name a
+  target or a package, and `CI-05` is filed for the check that would stop it
+  returning.
+- Fifteen defects planted one at a time, all fifteen refused. The first round
+  found three misses, and one was a defect in the shipped code rather than in
+  the tests: the responder was offered its buffer once per read, so a client
+  sending two units in one write and waiting for two answers would have waited
+  forever.
+- ⚠ A finding about the probe rather than the code. The first mutation script
+  did not check that its edits applied and one pattern silently matched nothing,
+  so a run over unmutated source read as a guard that failed to fire. Every
+  plant now compares the file's checksum either side.
+- The door sweep added outbound connections to the greps that hold the
+  one-door rule, because `OBS-04` is authored to dial, and refused a lab capped
+  at zero connections, which accepted every connection and closed it at once.
+- Deployment: no data branch, release or capture service was created.
+
 ### 2026-09-05T00:10:00Z
 
 - Split `OBS-01`, which was the one XL entry and carried an instruction to split

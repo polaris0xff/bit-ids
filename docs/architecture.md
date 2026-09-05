@@ -51,6 +51,7 @@ No arrow reads identity values from client source code.
 | --- | --- | --- |
 | `bit-ids` crate | public types, schema identity, validation, stable-version resolution and eventually embedded/pinned catalogue access | capture, installation or network mutation |
 | `bit-ids-wire` crate | byte-exact codecs for the observed surfaces, and the fixture corpus every observer parses against | sockets, timing, and any mapping from a peer-ID prefix to a client name |
+| `bit-ids-lab` crate | the sockets: binding them on loopback and nowhere else, the run deadline, the ordered byte record, and endpoint shutdown | every protocol, and what a transcript becomes on disk |
 | `bit-ids-probe` | active Rust tracker/peer/DHT/web-seed endpoints and raw evidence writing | client launch or package installation |
 | acquisition scripts | retrieval: fetching a release listing or artifact and keeping the exact bytes | parsing, ordering or deciding anything, all of which are Rust's |
 | client drivers | launch/configure one target against the isolated fixture | deciding whether the observation is valid |
@@ -318,6 +319,51 @@ port/encryption/upload fields and early message order.
 DHT, PEX, MSE and web seed are separate optional surfaces. Absence is recorded
 only after a positive control proves the observer could see the surface.
 
+### The lab a client is pointed at
+
+Something has to hold the sockets those codecs read from, and
+[`../crates/bit-ids-lab/`](../crates/bit-ids-lab/) is it. `OBS-01` owns it.
+
+⛔ **Every socket the lab creates is created by one function**, in
+[`../crates/bit-ids-lab/src/bind.rs`](../crates/bit-ids-lab/src/bind.rs), which
+refuses any address that is not loopback before the syscall and reads the
+address back off the socket afterwards. Those are two facts, not one: a bind
+request is what was asked for and `local_addr` is what the kernel gave. A second
+place calling `TcpListener::bind` would be a gate on one of two doors into the
+same action, so a test greps this crate's own source for that rather than
+leaving the rule as a comment.
+
+The port is always zero, so the operating system chooses. Two labs on one host
+that both named a port collide in whichever one starts second, which reads as a
+flake rather than as the configuration error it is.
+
+A lab holds one deadline and stops itself when it passes, rather than a timeout
+per read: a client that connects and then says nothing would otherwise hold a
+run open until the CI job's own timeout, which reports as infrastructure. Whether
+the deadline ended the run is recorded, because a lab that ran out of time and
+one that was told to stop leave the same empty journal.
+
+The journal is the ordered record of every byte each endpoint moved, with the
+direction it travelled. ⛔ **The order is the sequence the segments were appended
+in, under one lock, and not their millisecond offsets.** Endpoints run on their
+own threads and two segments can share a millisecond, so ordering by offset can
+put a reply before the request that caused it.
+
+⚠ **A stream segment is what the observer read, not provably what the target
+wrote.** Section 5 keeps write segmentation because a handshake and a bitfield in
+one write is a different observation from the same bytes in two, and TCP
+preserves no write boundaries to recover. One segment per read is the closest an
+observer gets. The read buffer is larger than any message these surfaces carry,
+so no message is split by the buffer size; a burst larger than the buffer still
+spans two segments and nothing in the bytes distinguishes that from two writes.
+A datagram has no such gap, and its buffer is above the largest a host can
+deliver, so `recv_from` never reports a truncated packet as a whole one.
+
+⛔ **The lab speaks no protocol.** `OBS-02` through `OBS-05` supply a responder
+per surface. That is what lets one deadline, one loopback guard and one journal
+serve every surface instead of each observer growing its own, and it is why the
+codecs in section 5 have no sockets in them.
+
 ## 6. Connector contract
 
 The primary connector is the project-owned Rust active observer. It terminates
@@ -479,8 +525,10 @@ consume the same artifact assembled once.
 ## 10. Limits
 
 - There are no measured profiles yet.
-- There is no observer yet, so nothing can take a capture whatever the
-  acquisition side supports. `OBS-01` through `OBS-05` own that.
+- No observer speaks a protocol yet, so nothing can take a capture whatever the
+  acquisition side supports. The lab binds, records and stops; `OBS-02` through
+  `OBS-05` own the responders that would make a client say anything, and
+  `OBS-08` owns the torrent that would make it announce.
 - ⛔ A Windows capture is not permitted. The disposable-host guards in
   [`capture-host.md`](capture-host.md) read `/proc/net/route` and
   `/etc/machine-id`, so there is no boundary to run before an install on

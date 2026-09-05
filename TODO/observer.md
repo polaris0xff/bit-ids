@@ -6,7 +6,7 @@ interfaces. Each stores exact received bytes before parsing them.
 ## OBS-01: Isolated Rust loopback observation lab
 
 Source: operator active-probing rule and bit-cli loopback architecture
-Priority: P0 | Effort: L | Status: OPEN
+Priority: P0 | Effort: L | Status: DONE
 
 Split on 2026-09-04. The entry was authored at XL with the instruction to split
 transport services into follow-up entries before implementation if the
@@ -53,10 +53,64 @@ bounded by the surface count, and gives per-socket timeouts directly. Also
 rejected: binding port 0 and reporting the requested address, which is what
 makes a lab look loopback-only while a misconfiguration listens elsewhere.
 
-Prove: `cargo test --workspace --locked lab_supervisor` covers a refused
+Prove: `cargo test -p bit-ids-lab --locked --all-targets` covers a refused
 non-loopback bind, a bound address read back from the socket, two labs on one
 host with distinct ports, a deadline expiring on a client that connects and
 sends nothing, the ordered byte record, and every port released after shutdown.
+
+⚠ The Prove was authored as `cargo test --workspace --locked lab_supervisor`
+and that command runs nothing. `cargo test` filters by test **name**, and a
+filter matching none exits 0: it printed `running 0 tests` for every binary in
+the workspace and reported success. The closed entries' filters do match, by a
+convention that holds exactly: measured on 2026-09-05, all 110 test functions
+across the eight pre-existing test files start with their file's name, and
+nothing checks that. `--test lab_supervisor` was the first correction and was
+also wrong, more quietly: it selects the integration target and skips the
+library's own tests, so the guard-mutation pass found the bound-address readback
+uncovered by the acceptance while a unit test for it existed.
+[`../docs/conventions/forbidden-patterns.md`](../docs/conventions/forbidden-patterns.md)
+carries the class and `CI-05` is the check that would stop it returning.
+
+Closure evidence: run on 2026-09-05.
+`cargo test -p bit-ids-lab --locked --all-targets` reports 27 passed, 0 failed,
+over 9 library tests and 18 acceptance tests. `cargo test --workspace --locked
+--all-targets` reports 17 binaries and 184 passed, 0 failed: 9 test files, 3
+library suites and 5 examples, which is every one on disk.
+`cargo test --workspace --locked --doc` reports 2 passed, 0 failed.
+`cargo fmt --all -- --check`, `cargo check`, `cargo clippy -- -D warnings` at
+`--workspace --locked --all-targets`, `shellcheck`, `shfmt -d -i 2 -ci` and
+`sh scripts/common/check-gate.sh` all exit 0.
+
+Guard mutation: 15 defects planted one at a time, each verified to have changed
+the file, all 15 refused with the exit code read unpiped. Two rounds were needed
+and the first found three misses, all real: the acceptance skipped the library
+tests, the responder was offered its buffer once per read rather than until it
+stopped consuming, and shrinking the datagram buffer to four bytes changed no
+result because no fixture datagram was larger than three. The second is a defect
+in the shipped code, not the tests: a client sending two units in one write and
+waiting for two answers would have waited forever.
+
+⚠ A finding about the probe rather than the code: the first mutation script did
+not check that its edits applied, and one `sed` pattern silently matched
+nothing. The run went green over unmutated source and was read as a guard that
+failed to fire. Every plant now compares the file's checksum either side.
+
+Driven on 2026-09-05 with two clients that are not this project's test harness.
+`cargo run -p bit-ids-lab --example loopback-lab` printed its two endpoints on
+`127.0.0.1` with ports the kernel chose; `curl` to the stream endpoint returned
+`HTTP/1.1 200 OK` and a `python3` datagram to the other came back reversed. The
+transcript recorded four segments in order, request before answer on each
+endpoint, with the request's percent-encoding intact in the recorded bytes, and
+`deadline expired: true`, so the deadline stopped the run rather than a client
+closing.
+
+Residual: a stream segment is what the observer read, not provably what the
+target wrote, because TCP does not preserve write boundaries at all. The buffer
+is larger than any message these surfaces carry, so no message is split by the
+buffer size; a burst larger than the buffer still spans two segments, and no
+reading of the bytes can tell that from two writes.
+`crates/bit-ids-lab/src/journal.rs` states the limit where a reader of the
+journal will find it.
 
 ## OBS-08: Synthetic torrent for the observation lab
 
@@ -82,7 +136,7 @@ copyrighted file. The `.torrent` bytes and the digest the manifest cites come
 out of one function, so the digest cannot describe something other than what
 the client was handed.
 
-Prove: `cargo test --workspace --locked synthetic_torrent` checks that the
+Prove: `cargo test --workspace --locked --test synthetic_torrent` checks that the
 generated document round-trips through `bit_ids_wire::bencode`, that the info
 hash is the digest of the encoded info dictionary and not of the whole
 document, that identical parameters produce identical bytes, and that one
@@ -111,7 +165,7 @@ rather than from the buffer, because a writer that reports the digest of what
 it meant to write cannot detect a short write. A redaction declaration is
 emitted whenever anything was scrubbed, so `raw` cannot quietly mean `edited`.
 
-Prove: `cargo test --workspace --locked evidence_journal` writes a bundle to a
+Prove: `cargo test --workspace --locked --test evidence_journal` writes a bundle to a
 temporary directory, reads every artifact back off disk, and binds the manifest
 it produced against a profile with `bit_ids::manifest::bind`, exiting non-zero
 if any shared value disagrees. A truncated artifact is planted and the digest
@@ -140,7 +194,7 @@ stream to the declared identity fields, and compare. A difference is a finding
 about the observer until the same bytes are shown to differ, because the client
 is one build and the observer is two compilations.
 
-Prove: a matrix job runs `cargo test --workspace --locked cross_platform_events`
+Prove: a matrix job runs `cargo test --workspace --locked --test cross_platform_events`
 on Linux and Windows and both produce the same normalized event digest for one
 client build.
 
@@ -163,7 +217,7 @@ guessing how a client constructed them.
 Approach: Capture request line and headers before normalization, return valid
 tracker responses, and repeat lifecycle events under controlled torrents.
 
-Prove: `cargo test --workspace http_tracker` checks raw ordering, binary query
+Prove: `cargo test --workspace --locked --test http_tracker` checks raw ordering, binary query
 values, repeated requests, and malformed input behavior.
 
 ## OBS-03: UDP tracker observer
@@ -180,7 +234,7 @@ and preserve every datagram.
 Approach: Implement strict transaction matching, deterministic responses,
 packet capture, and parsed views with no lossy string conversion.
 
-Prove: `cargo test --workspace udp_tracker` covers connect, announce, timeout,
+Prove: `cargo test --workspace --locked --test udp_tracker` covers connect, announce, timeout,
 retry, key, event, numwant, and rejection cases.
 
 ## OBS-04: Peer-wire handshake observer
@@ -197,7 +251,7 @@ clients can vary behavior by role.
 Approach: Implement active dial and accept roles, preserve handshakes, label
 direction, and correlate each stream to its acquisition and torrent manifest.
 
-Prove: `cargo test --workspace peer_wire` exercises both roles and rejects a
+Prove: `cargo test --workspace --locked --test peer_wire` exercises both roles and rejects a
 profile whose normalized handshake cannot be rebuilt from raw bytes.
 
 ## OBS-05: BEP 10 and early-message observer
@@ -214,7 +268,7 @@ without exchanging copyrighted payload data.
 Approach: Negotiate extensions, record bencoded bytes and ordered messages,
 and vary allowed features one at a time.
 
-Prove: `cargo test --workspace extended_peer` validates canonical fixtures,
+Prove: `cargo test --workspace --locked --test extended_peer` validates canonical fixtures,
 unknown extension keys, ordering, and size limits.
 
 ## OBS-06: Adjacent protocol observer suite
