@@ -139,13 +139,31 @@ a line that really is a force flag.
 host rather than taken from the manual.** The publisher's whole
 non-fast-forward defence rests on it.
 
+### What the closing mutation pass found, which the entry's own did not
+
+⛔ **The read-back could not catch a remote that discarded the push.** It
+compared what came back against the prior tree, and a `post-receive` hook that
+accepted the push and then moved the ref back leaves a branch that appends to the
+prior tree perfectly, because it *is* the prior tree. "What came back appends to
+what was there" and "what came back is what I pushed" are two facts, and only the
+second notices that remote.
+
+The publisher now compares the fetched tree against the bundle by a digest over
+every file, before the append comparison and the checksum verification. The
+planted hook is a case in the harness, so the guard has been seen to refuse.
+
+⚠ It was found by planting against the read-back and watching the harness stay
+green, which is the whole argument for planting against a guard rather than
+reading it.
+
 ### Closure evidence, 2026-09-05
 
 | what | measured |
 | --- | --- |
-| `sh scripts/publishing/check-publish.sh` | 13 cases, 13 passed, 0 failed |
+| `sh scripts/publishing/check-publish.sh` | 15 cases, 15 passed, 0 failed |
+| guard mutation over `publish-data.sh` | 5 plants, 5 refused |
 | driven pass | first publication, a second version appended, an identical bundle pushing nothing, a deletion and a rewrite each refused with the branch left at its prior commit |
-| read-back | every publication fetched again, compared against the prior tree, and its `SHA256SUMS` verified with `sha256sum -c` |
+| read-back | every publication fetched again, compared against the bundle, against the prior tree, and its `SHA256SUMS` verified with `sha256sum -c` |
 
 ⚠ Every refusal case checks the commit count on the branch as well as the exit
 code, because a publisher that refuses loudly and half-pushes anyway is worse

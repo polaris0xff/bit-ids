@@ -24,9 +24,16 @@
 # -- ⛔ A PUSH IS NOT COMPLETION ------------------------------------------
 #
 # The branch is fetched again afterwards, checked out into a third directory,
-# and compared: the append rule again, and every digest in the bundle's own
-# SHA256SUMS verified against the bytes that came back. A push that reported
-# success and landed something else is the case this exists to catch.
+# and compared three ways: that it is byte-for-byte the bundle that was pushed,
+# that it still appends to what was there, and that every digest in its own
+# SHA256SUMS matches the bytes that came back.
+#
+# ⛔ THE FIRST OF THOSE THREE WAS MISSING AND A PLANTED REMOTE FOUND IT. A
+# post-receive hook that accepted the push and then moved the ref back left a
+# branch that still appended to the prior tree perfectly, because it WAS the
+# prior tree. "What came back appends to what was there" and "what came back is
+# what I pushed" are two facts, and only the second one notices a remote that
+# discarded the push.
 #
 # Usage:
 #   sh scripts/publishing/publish-data.sh --bundle DIR --remote URL [--branch B]
@@ -149,6 +156,17 @@ mkdir -p "$WORK/prior" "$WORK/after" || {
 }
 trap 'rm -rf "$WORK"' EXIT INT TERM
 
+# One digest over every file in a tree and its bytes, so two trees can be
+# compared in one comparison rather than path by path.
+tree_fingerprint() { # dir
+  (
+    cd "$1" 2>/dev/null || exit 1
+    find . -type f | LC_ALL=C sort | while read -r p; do
+      printf '%s %s\n' "$p" "$(sha256sum "$p" | cut -d' ' -f1)"
+    done
+  ) | sha256sum | cut -d' ' -f1
+}
+
 CLONE="$WORK/clone"
 git init -q "$CLONE" 2>/dev/null || {
   printf 'publish-data: cannot create a workspace\n' >&2
@@ -215,14 +233,22 @@ if ! git -C "$CLONE" push -q origin "HEAD:refs/heads/$BRANCH" 2>"$WORK/push.log"
   exit 1
 fi
 
-# ⛔ A PUSH IS NOT COMPLETION. Fetch it back, take the tree out, and check both
-# halves: that it still appends to what was there, and that every digest the
-# bundle declared is the bytes that came back.
+# ⛔ A PUSH IS NOT COMPLETION. Fetch it back, take the tree out, and check all
+# three: that it is the bundle, that it appends to what was there, and that its
+# own checksums describe it.
 git -C "$CLONE" fetch -q origin "$BRANCH" || {
   printf 'publish-data: cannot read the branch back\n' >&2
   exit 1
 }
 git -C "$CLONE" archive FETCH_HEAD | tar -x -C "$WORK/after" || exit 1
+
+# ⛔ IS IT THE BUNDLE? A remote that accepted the push and stored something else
+# satisfies every other check below, because those compare what came back
+# against the tree that was already there.
+if [ "$(tree_fingerprint "$BUNDLE")" != "$(tree_fingerprint "$WORK/after")" ]; then
+  printf 'publish-data: what came back is not what was pushed\n' >&2
+  exit 1
+fi
 
 "$CHECKER" "$WORK/prior" "$WORK/after" >"$WORK/readback.log" 2>&1
 READBACK_RC=$?

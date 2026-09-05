@@ -96,7 +96,7 @@ build_trees() {
   rm -rf "$WORK/published" "$WORK/proposed"
   mkdir -p "$WORK/published" "$WORK/proposed"
   PROFILE_REL=$(place "$BIN" "$WORK/published" "$FIXTURES/valid-profile.json") || return 1
-  place "$BIN" "$WORK/published" "$FIXTURES/valid-manifest.json" >/dev/null || return 1
+  MANIFEST_REL=$(place "$BIN" "$WORK/published" "$FIXTURES/valid-manifest.json") || return 1
   cp -R "$WORK/published/." "$WORK/proposed/" || return 1
   CORRECTION_REL=$(place "$BIN" "$WORK/proposed" "$FIXTURES/valid-correction.json") || return 1
   return 0
@@ -193,6 +193,8 @@ rm -f "$WORK/proposed/$PROFILE_REL" &&
   ln -s "$WORK/published/$PROFILE_REL" "$WORK/proposed/$PROFILE_REL"
 end_case $?
 
+# ⚠ The wrong path is spelled here on purpose: it is where the record must NOT
+# be, so asking for it is not possible. Everything else below is derived.
 begin_case "a record is filed at another platform" "E-STO-30"
 WRONG="profiles/v1/fixture-client/0.0.0-fixture/windows/x86-64/tar-gz/fixture-capture-0002.json"
 mkdir -p "$WORK/proposed/$(dirname "$WRONG")" &&
@@ -203,19 +205,23 @@ end_case $?
 # what says so: on a case-insensitive host the copy lands on the original and
 # the count does not move, which reports NOT-PLANTED rather than reporting a
 # guard that did not fire.
+# ⛔ DERIVED FROM THE RECORD'S OWN PATH, not spelled. A hard-coded one would
+# land somewhere else the day the layout moved, and the case would still pass:
+# the plant would change the tree and the checker would refuse it for a
+# different reason, under the name of a rule it had stopped testing.
 begin_case "two records differ only in case" "E-STO-10"
-UPPER="profiles/v1/fixture-client/0.0.0-fixture/linux/x86-64/tar-gz/Fixture-capture-0001.json"
+UPPER="$(dirname "$PROFILE_REL")/$(printf '%s' "$(basename "$PROFILE_REL")" | sed 's/^f/F/')"
 FILES_BEFORE=$(tree_files "$WORK/proposed")
 cp "$WORK/proposed/$PROFILE_REL" "$WORK/proposed/$UPPER" &&
   [ "$(tree_files "$WORK/proposed")" != "$FILES_BEFORE" ]
 end_case $?
 
 begin_case "a segment is a Windows device" "E-STO-11"
-RESERVED="$WORK/proposed/raw/v1/fixture-client/0.0.0-fixture/linux/x86-64/tar-gz/nul"
+RESERVED="$WORK/proposed/$(dirname "$(dirname "$MANIFEST_REL")")/nul"
 mkdir -p "$RESERVED" && printf 'x\n' >"$RESERVED/a.json"
 end_case $?
 
-LEAF="$WORK/proposed/profiles/v1/fixture-client/0.0.0-fixture/linux/x86-64/tar-gz"
+LEAF="$WORK/proposed/$(dirname "$PROFILE_REL")"
 
 begin_case "an artifact has no bytes" "E-STO-13"
 : >"$LEAF/empty.json"

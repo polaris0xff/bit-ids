@@ -164,6 +164,45 @@ else
   fail "E-STO-21  NOT-PLANTED (the record edit did not apply)"
 fi
 
+# ⛔ A PUSH THAT REPORTED SUCCESS AND LANDED SOMETHING ELSE. A post-receive hook
+# moves the ref back after the push is accepted, which is a remote doing exactly
+# what the read-back exists to catch. Without a case like this the read-back is a
+# guard nothing has ever seen refuse.
+#
+# ⭐ Writing it found that the publisher could not catch this at all. It compared
+# what came back against the prior tree, and a rewound ref appends to the prior
+# tree perfectly, because it IS the prior tree. The comparison against the bundle
+# that was pushed is what this case now proves.
+fresh_remote >/dev/null 2>&1
+run_publish
+FIRST=$(git -C "$REMOTE" rev-parse data)
+"$BUILDER" --version 1.2.10 "$BUNDLE" >/dev/null 2>&1
+reassemble
+mkdir -p "$REMOTE/hooks"
+cat >"$REMOTE/hooks/post-receive" <<EOF
+#!/bin/sh
+git update-ref refs/heads/data $FIRST
+EOF
+chmod +x "$REMOTE/hooks/post-receive"
+run_publish
+rm -f "$REMOTE/hooks/post-receive"
+if [ "$RC" = "1" ] && grep -q 'what came back is not what was pushed' "$WORK/out"; then
+  pass "read-back  a remote that moves the ref after accepting the push is caught"
+else
+  fail "read-back  exit $RC: $(head -3 "$WORK/out" | tr '\n' ' ')"
+fi
+
+# ⛔ A published tree with nothing to verify is refused rather than reported
+# clean, because "no checksums" and "checksums all matched" are the same silence.
+fresh_remote >/dev/null 2>&1
+rm -f "$BUNDLE/SHA256SUMS"
+run_publish
+if [ "$RC" = "1" ] && grep -q 'no SHA256SUMS' "$WORK/out"; then
+  pass "read-back  a published tree with no checksum file is refused"
+else
+  fail "read-back  expected a refusal over the missing checksums, exit $RC: $(head -2 "$WORK/out" | tr '\n' ' ')"
+fi
+
 # ⛔ A branch name carrying a + would be the second half of a forcing refspec.
 fresh_remote >/dev/null 2>&1
 sh "$PUBLISHER" --bundle "$BUNDLE" --remote "$REMOTE" --branch '+data' >"$WORK/out" 2>&1

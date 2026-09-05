@@ -45,7 +45,7 @@ re-measure rather than trusting a branch name. Measured on this host:
 | `sh scripts/corpus/check-corpus.sh` | 14 cases, 14 passed, 0 failed |
 | `sh scripts/corpus/check-indexes.sh` | 10 cases, 10 passed, 0 failed |
 | `sh scripts/publishing/check-release.sh` | 13 cases, 13 passed, 0 failed |
-| `sh scripts/publishing/check-publish.sh` | 13 cases, 13 passed, 0 failed |
+| `sh scripts/publishing/check-publish.sh` | 15 cases, 15 passed, 0 failed |
 | `cargo fmt`, `cargo clippy --workspace --locked --all-targets -- -D warnings`, `shellcheck`, `shfmt -d -i 2 -ci` | exit 0 |
 
 ⛔ **Run the gate with `sh scripts/common/check-gate.sh`, not from memory.** A
@@ -115,6 +115,11 @@ bare repository in a scratch directory is a remote as far as git is concerned,
 so a publisher's refusals and its read-back are measured rather than reasoned
 about.
 
+⛔ **"It came back and it appends" is not "it came back and it is mine".** A
+read-back that compares the fetched tree only against what was already there
+passes over a remote that discarded the push, because the prior tree appends to
+itself. Compare against what was sent as well.
+
 ⛔ **A constant every test reads is a constant no test can check.** Found twice
 last session by two entries, neither looking for it. Pin a specification's
 values to their literals, and build a fixture at a value no default or bound
@@ -129,7 +134,10 @@ a session host: `sh scripts/acquisition/assert-disposable.sh --egress` exits 1
 here. `OBS-07` owns the stock-client controls and `CI-03` owns the runner.
 
 ⭐ The last session's record is
-[`SESSION-2026-09-05-EVIDENCE.md`](SESSION-2026-09-05-EVIDENCE.md).
+[`SESSION-2026-09-05-CORPUS.md`](SESSION-2026-09-05-CORPUS.md). It carries what
+each review pass found, the two guards it could not refute and what would have to
+be true for each to fire, and the four harness defects that would each have
+reported a guard proved or broken when it was neither.
 
 **Paste:** Read `docs/AGENTS.md` in full, follow its start protocol, and take
 the first unblocked item from `TODO/PROGRESS.md`. Work on `main`. Re-measure the

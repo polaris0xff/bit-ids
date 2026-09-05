@@ -16,3 +16,8 @@ saved summary of the session that closed `FOUND-03` and the blocking acquisition
 entries, with the defects each review pass found. ⚠ A saved summary, not a
 diary: it is one session's measurements, and the current state lives in
 [`../../TODO/PROGRESS.md`](../../TODO/PROGRESS.md).
+
+[`SESSION-2026-09-05-CORPUS.md`](SESSION-2026-09-05-CORPUS.md) is the saved
+summary of the session that closed the corpus group and the first two publishing
+entries, with what each review pass found and the two guards it could not
+refute.

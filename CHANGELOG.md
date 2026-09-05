@@ -26,6 +26,11 @@ Nothing is released yet. Entries accumulate here until the first
 - ⛔ The acceptance touches no real remote: it creates a bare repository in a
   scratch directory and deletes it. The publisher has never run against this
   repository's own remote and will not until a measured record exists.
+- ⛔ The closing mutation pass found that the read-back could not catch a remote
+  that discarded the push: it compared the fetched tree only against the prior
+  one, and a rewound ref appends to the prior tree because it is the prior tree.
+  The publisher now compares against the bundle as well, and a `post-receive`
+  hook that rewinds the ref is a case in the harness.
 - Deployment: nothing deployed. No capture was taken. No remote was written
   other than this repository's `main`.
 
