@@ -31,8 +31,10 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use bit_ids_lab::{ConnectionId, StreamReply};
 use bit_ids_wire::WireError;
+use bit_ids_wire::bencode::{self, Value};
 use bit_ids_wire::peer_wire::{
-    Handshake, INFO_HASH_LEN, Message, PEER_ID_LEN, RESERVED_LEN, Transcript,
+    EXTENDED_HANDSHAKE_ID, EXTENDED_MESSAGE_ID, ExtendedMessage, Handshake, INFO_HASH_LEN, Message,
+    PEER_ID_LEN, RESERVED_LEN, Transcript,
 };
 
 /// How many connections one observer keeps before it stops keeping them.
@@ -56,6 +58,8 @@ pub struct Stream {
     /// One responder serves every connection an endpoint accepts, and without
     /// this a second connection's handshake would go down the first.
     answered: bool,
+    /// Whether the observer has already sent its extended handshake.
+    extended_sent: bool,
 }
 
 /// Which side opened the connection.
@@ -110,6 +114,40 @@ impl Stream {
         self.error.as_ref()
     }
 
+    /// The target's BEP 10 extended handshake, when it sent one.
+    ///
+    /// ⚠ The inner error means the extension dictionary did not decode, which
+    /// is an observation about the build. The bytes are in [`Stream::raw`]
+    /// either way.
+    #[must_use]
+    pub fn extended_handshake(&self) -> Option<Result<ExtendedMessage, WireError>> {
+        match Transcript::parse(&self.raw) {
+            Ok(transcript) => match transcript.extended_handshake() {
+                Ok(found) => found.map(Ok),
+                Err(error) => Some(Err(error)),
+            },
+            // A trailing partial message does not hide a handshake that already
+            // arrived whole, so the messages decoded so far are searched.
+            Err(_) => self
+                .messages
+                .iter()
+                .filter_map(Message::as_extended)
+                .find(|extended| extended.as_ref().is_ok_and(ExtendedMessage::is_handshake)),
+        }
+    }
+
+    /// Whether the target offered BEP 10 in its own reserved block.
+    ///
+    /// ⭐ Distinct from whether it sent an extended handshake. A build that
+    /// offers the protocol and never uses it, and one that does not offer it at
+    /// all, are different measurements.
+    #[must_use]
+    pub fn offers_extension_protocol(&self) -> bool {
+        self.handshake
+            .as_ref()
+            .is_some_and(Handshake::offers_extension_protocol)
+    }
+
     /// Whether the whole of what arrived rebuilds byte for byte from what was
     /// decoded.
     ///
@@ -123,6 +161,142 @@ impl Stream {
             Ok(transcript) => transcript.encode() == self.raw,
             Err(_) => false,
         }
+    }
+}
+
+/// What the observer offers in its reserved block, and what it says in BEP 10.
+///
+/// ⭐ **This is a condition of the measurement, not a setting.** A build answers
+/// what it was offered: it sends an extended handshake because the observer
+/// asked for one, and its extension map may differ with what the observer put in
+/// its own. `OBS-05`'s approach is to vary allowed features one at a time, which
+/// is only meaningful if what was offered is recorded beside what came back.
+/// [`PeerWire::offer`] is where a record reads it from.
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
+pub struct Offer {
+    /// BEP 10, the extension protocol.
+    pub extension_protocol: ExtensionProtocol,
+    /// BEP 5, the DHT. Reserved byte 7, bit `0x01`.
+    pub dht: bool,
+    /// BEP 6, the fast extension. Reserved byte 7, bit `0x04`.
+    pub fast: bool,
+}
+
+/// What this observer does about BEP 10.
+///
+/// ⛔ **Three states, and a bit plus an option would have been four.** The
+/// fourth is "do not offer the protocol and send an extended handshake anyway",
+/// which is an observer inventing a negotiation, and the guard-mutation pass
+/// found that deleting the check for it changed no test result. It is not a
+/// state this type can hold.
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
+pub enum ExtensionProtocol {
+    /// The reserved bit stays clear and nothing is sent.
+    #[default]
+    NotOffered,
+    /// The reserved bit is set and no extended handshake follows.
+    ///
+    /// A real condition to run: a build that is offered the protocol and never
+    /// answered is a different measurement from one that was never offered it.
+    OfferedSilent,
+    /// The reserved bit is set and this handshake follows, once the target has
+    /// offered the protocol too.
+    Offered(ExtendedOffer),
+}
+
+impl ExtensionProtocol {
+    /// Whether the reserved bit is set.
+    #[must_use]
+    pub const fn is_offered(&self) -> bool {
+        !matches!(self, Self::NotOffered)
+    }
+
+    /// The extended handshake to send, when there is one.
+    #[must_use]
+    pub const fn handshake(&self) -> Option<&ExtendedOffer> {
+        match self {
+            Self::Offered(offer) => Some(offer),
+            Self::NotOffered | Self::OfferedSilent => None,
+        }
+    }
+}
+
+/// The BEP 10 extended handshake the observer sends.
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
+pub struct ExtendedOffer {
+    /// The `m` map: extension name to the id this observer will accept it on.
+    pub extensions: Vec<(Vec<u8>, i64)>,
+    /// The `v` string, which is what this observer says it is.
+    pub client: Option<Vec<u8>>,
+    /// `reqq`, the request queue depth this observer advertises.
+    pub request_queue: Option<i64>,
+    /// `metadata_size`, present only when `ut_metadata` is offered.
+    pub metadata_size: Option<i64>,
+}
+
+impl Offer {
+    /// The reserved block these flags produce.
+    ///
+    /// ⛔ Built from the flags rather than written as a literal, so what the
+    /// record says was offered and what went on the wire cannot disagree.
+    #[must_use]
+    pub const fn reserved(&self) -> [u8; RESERVED_LEN] {
+        let mut reserved = [0_u8; RESERVED_LEN];
+        if self.extension_protocol.is_offered() {
+            reserved[5] |= 0x10;
+        }
+        if self.dht {
+            reserved[7] |= 0x01;
+        }
+        if self.fast {
+            reserved[7] |= 0x04;
+        }
+        reserved
+    }
+}
+
+impl ExtendedOffer {
+    /// The bencoded extended handshake payload.
+    ///
+    /// Keys are sorted so the document is canonical bencode and re-encodes to
+    /// the bytes it was built from, for the reason the tracker response is
+    /// sorted: a deviation here would be this code's, not the build's.
+    #[must_use]
+    pub fn document(&self) -> Value {
+        let mut map: Vec<(Vec<u8>, Value)> = self
+            .extensions
+            .iter()
+            .map(|(name, id)| (name.clone(), Value::integer(*id)))
+            .collect();
+        map.sort_by(|left, right| left.0.cmp(&right.0));
+
+        let mut entries: Vec<(Vec<u8>, Value)> = vec![(b"m".to_vec(), Value::Dictionary(map))];
+        if let Some(size) = self.metadata_size {
+            entries.push((b"metadata_size".to_vec(), Value::integer(size)));
+        }
+        if let Some(queue) = self.request_queue {
+            entries.push((b"reqq".to_vec(), Value::integer(queue)));
+        }
+        if let Some(client) = &self.client {
+            entries.push((b"v".to_vec(), Value::bytes(client.clone())));
+        }
+        entries.sort_by(|left, right| left.0.cmp(&right.0));
+        Value::Dictionary(entries)
+    }
+
+    /// The whole extended-handshake message, length prefix and ids included.
+    #[must_use]
+    pub fn message(&self) -> Vec<u8> {
+        let payload = bencode::encode(&self.document());
+        Message::Typed {
+            id: EXTENDED_MESSAGE_ID,
+            payload: {
+                let mut out = vec![EXTENDED_HANDSHAKE_ID];
+                out.extend_from_slice(&payload);
+                out
+            },
+        }
+        .encode()
     }
 }
 
@@ -143,12 +317,23 @@ impl Default for PeerIdentity {
     /// ⚠ The reserved block is zero on purpose. Every bit set there asks the
     /// target to use an extension, and an extension the observer offered is a
     /// condition of the run rather than something the build chose.
-    /// `OBS-05` turns on BEP 10 deliberately and records that it did.
+    /// [`PeerIdentity::offering`] turns them on deliberately.
     fn default() -> Self {
         Self {
             protocol: b"BitTorrent protocol".to_vec(),
             reserved: [0; RESERVED_LEN],
             peer_id: *b"bit-ids-fixture-0001",
+        }
+    }
+}
+
+impl PeerIdentity {
+    /// The default identity with the reserved block an [`Offer`] produces.
+    #[must_use]
+    pub fn offering(offer: &Offer) -> Self {
+        Self {
+            reserved: offer.reserved(),
+            ..Self::default()
         }
     }
 }
@@ -190,6 +375,7 @@ struct Record {
 pub struct PeerWire {
     seen: Arc<Mutex<Record>>,
     identity: PeerIdentity,
+    offer: Offer,
     info_hash: [u8; INFO_HASH_LEN],
     max_streams: usize,
 }
@@ -201,9 +387,33 @@ impl PeerWire {
         Self {
             seen: Arc::new(Mutex::new(Record::default())),
             identity,
+            offer: Offer::default(),
             info_hash,
             max_streams: DEFAULT_MAX_STREAMS,
         }
+    }
+
+    /// An observer that offers `offer`, with a reserved block to match.
+    ///
+    /// ⭐ One constructor for both halves, because they must not disagree: the
+    /// reserved block is derived from the same flags the extended handshake is,
+    /// so a run that says it offered BEP 10 cannot have sent a zero reserved
+    /// block, and one that offered nothing cannot send an extended handshake.
+    #[must_use]
+    pub fn offering(offer: Offer, info_hash: [u8; INFO_HASH_LEN]) -> Self {
+        Self {
+            seen: Arc::new(Mutex::new(Record::default())),
+            identity: PeerIdentity::offering(&offer),
+            offer,
+            info_hash,
+            max_streams: DEFAULT_MAX_STREAMS,
+        }
+    }
+
+    /// What this observer offers, which a record cites as a run condition.
+    #[must_use]
+    pub const fn offer(&self) -> &Offer {
+        &self.offer
     }
 
     /// How many connections this observer keeps.
@@ -271,9 +481,10 @@ impl PeerWire {
     ) -> impl Fn(ConnectionId, &[u8]) -> StreamReply + Send + Sync + 'static {
         let seen = Arc::clone(&self.seen);
         let identity = self.identity.clone();
+        let offer = self.offer.clone();
         let cap = self.max_streams;
         move |connection, buffered: &[u8]| {
-            respond(&seen, &identity, role, cap, connection, buffered)
+            respond(&seen, &identity, &offer, role, cap, connection, buffered)
         }
     }
 }
@@ -288,6 +499,7 @@ impl PeerWire {
 fn respond(
     seen: &Arc<Mutex<Record>>,
     identity: &PeerIdentity,
+    offer: &Offer,
     role: Role,
     cap: usize,
     connection: ConnectionId,
@@ -318,6 +530,7 @@ fn respond(
         messages: Vec::new(),
         error: None,
         answered: false,
+        extended_sent: false,
     });
     stream.raw = buffered.to_vec();
     match &parsed {
@@ -333,17 +546,34 @@ fn respond(
             stream.error = Some(error.clone());
         }
     }
-    let answered = stream.answered;
+    let target_offers_bep10 = stream
+        .handshake
+        .as_ref()
+        .is_some_and(Handshake::offers_extension_protocol);
     let info_hash = stream.handshake.as_ref().map(|one| *one.info_hash());
+
+    let mut send = Vec::new();
     if let Some(info_hash) = info_hash
-        && !answered
+        && !stream.answered
         && role == Role::TargetDialled
     {
         stream.answered = true;
-        return StreamReply::Answer {
-            consumed: 0,
-            send: identity.handshake(&info_hash),
-        };
+        send.extend_from_slice(&identity.handshake(&info_hash));
     }
-    StreamReply::NeedMore
+    // ⛔ Only when both sides offered it. Sending an extended handshake to a
+    // peer that did not set the bit is this observer inventing a negotiation,
+    // and whatever the build did about it would be recorded as identity.
+    if let Some(extended) = offer.extension_protocol.handshake()
+        && target_offers_bep10
+        && stream.handshake.is_some()
+        && !stream.extended_sent
+    {
+        stream.extended_sent = true;
+        send.extend_from_slice(&extended.message());
+    }
+    if send.is_empty() {
+        StreamReply::NeedMore
+    } else {
+        StreamReply::Answer { consumed: 0, send }
+    }
 }

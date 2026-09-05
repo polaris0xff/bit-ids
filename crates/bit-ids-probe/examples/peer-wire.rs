@@ -14,7 +14,7 @@ use core::fmt::Write as _;
 use std::time::Duration;
 
 use bit_ids_lab::Lab;
-use bit_ids_probe::peer_wire::{PeerIdentity, PeerWire};
+use bit_ids_probe::peer_wire::{ExtendedOffer, ExtensionProtocol, Offer, PeerWire};
 use bit_ids_wire::peer_wire::INFO_HASH_LEN;
 
 /// The torrent this observer claims to have. `OBS-08` will generate a real one.
@@ -36,7 +36,19 @@ fn main() {
     let dial_to: Option<std::net::SocketAddr> =
         std::env::args().nth(2).and_then(|one| one.parse().ok());
 
-    let peer = PeerWire::new(PeerIdentity::default(), INFO_HASH);
+    // ⚠ What this offers is a condition of the run, printed with the result.
+    let offer = Offer {
+        extension_protocol: ExtensionProtocol::Offered(ExtendedOffer {
+            extensions: vec![(b"ut_metadata".to_vec(), 1), (b"ut_pex".to_vec(), 2)],
+            client: Some(b"bit-ids-fixture/0".to_vec()),
+            request_queue: Some(250),
+            metadata_size: None,
+        }),
+        dht: false,
+        fast: false,
+    };
+    println!("offered reserved {}", hex(&offer.reserved()));
+    let peer = PeerWire::offering(offer, INFO_HASH);
     let mut lab = Lab::builder()
         .deadline(Duration::from_secs(seconds))
         .stream("peer-wire", peer.accepting())
@@ -89,6 +101,23 @@ fn main() {
             })
             .collect();
         println!("  messages      {}", ids.join(", "));
+        match stream.extended_handshake() {
+            Some(Ok(extended)) => {
+                let names: Vec<String> = extended
+                    .extension_ids()
+                    .iter()
+                    .map(|(name, id)| format!("{}={id}", String::from_utf8_lossy(name)))
+                    .collect();
+                println!("  bep10 m       {}", names.join(", "));
+                println!(
+                    "  bep10 v       {:?}",
+                    extended.advertised_client().map(String::from_utf8_lossy)
+                );
+                println!("  bep10 reqq    {:?}", extended.integer(b"reqq"));
+            }
+            Some(Err(error)) => println!("  bep10 did not decode: {error}"),
+            None => println!("  no extended handshake"),
+        }
         if let Some(error) = stream.error() {
             println!("  stopped at    {error}");
         }

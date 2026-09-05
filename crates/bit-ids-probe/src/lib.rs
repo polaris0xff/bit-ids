@@ -25,7 +25,9 @@ pub mod peer_wire;
 pub mod tracker_http;
 pub mod tracker_udp;
 
-pub use peer_wire::{PeerIdentity, PeerWire, Role, Stream};
+pub use peer_wire::{
+    ExtendedOffer, ExtensionProtocol, Offer, PeerIdentity, PeerWire, Role, Stream,
+};
 pub use tracker_http::{
     Announce, HttpTracker, OfferedPeer, TrackerResponse, failure_body, http_response,
 };

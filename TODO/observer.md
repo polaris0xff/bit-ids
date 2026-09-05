@@ -440,7 +440,7 @@ has driven this, and none can on a session host.
 ## OBS-05: BEP 10 and early-message observer
 
 Source: bit-cli T-234 extended-handshake and message-order inventory
-Priority: P0 | Effort: L | Status: OPEN
+Priority: P0 | Effort: L | Status: DONE
 
 Problem: The BEP 10 client string, extension map, metadata fields, request
 sizes, and early message order add identity beyond the initial handshake.
@@ -451,8 +451,57 @@ without exchanging copyrighted payload data.
 Approach: Negotiate extensions, record bencoded bytes and ordered messages,
 and vary allowed features one at a time.
 
-Prove: `cargo test --workspace --locked --test extended_peer` validates canonical fixtures,
-unknown extension keys, ordering, and size limits.
+Prove: `cargo test -p bit-ids-probe --locked --all-targets` validates canonical
+fixtures, unknown extension keys, ordering, and size limits.
+
+Closure evidence: run on 2026-09-05.
+`cargo test -p bit-ids-probe --locked --all-targets` reports 58 passed, 0 failed.
+`cargo test --workspace --locked --all-targets` reports 25 binaries and 248
+passed, 0 failed: 13 test files, 4 library suites and 8 examples, which is every
+one on disk. `cargo test --workspace --locked --doc` reports 2 passed.
+`cargo fmt --all -- --check`, `cargo check`, `cargo clippy -- -D warnings` at
+`--workspace --locked --all-targets`, `shellcheck`, `shfmt -d -i 2 -ci` and
+`sh scripts/common/check-gate.sh` all exit 0.
+
+BEP 10 lives in the same module as the handshake, because it is the same
+connection: one read path for the peer surface rather than two that would each
+have to frame it.
+
+⭐ **What the observer offers is a condition of the measurement, and the type
+now says so.** A build sends an extended handshake because it was asked for one,
+and its map may differ with what it was offered, so the offer is recorded beside
+the answer. The reserved block is derived from the same value the extended
+handshake is, so a run that says it offered BEP 10 cannot have sent a zero
+reserved block.
+
+Decision: three states, not a flag plus an option. `NotOffered`,
+`OfferedSilent` and `Offered(handshake)` are the conditions worth running; a
+`bool` beside an `Option` makes a fourth that means "offer nothing and send an
+extended handshake anyway", which is the observer inventing a negotiation. The
+guard-mutation pass found that deleting the guard against that fourth state
+changed no test result, and the enum is why it cannot be written now.
+
+Guard mutation: 14 defects planted one at a time, each verified to have changed
+the file, all 14 refused. Two rounds; the first found four misses and all four
+were real. One was the state above. One was the extended handshake being
+re-sent on every read, which is the second time in two entries that a
+send-once flag was cleared with nothing noticing. Two were the `v` and `reqq`
+keys being dropped from the observer's own offer, which nothing asserted because
+the tests only read the `m` map.
+
+Driven on 2026-09-05 with the BEP 3 peer from `OBS-04`, extended to negotiate
+BEP 10. The observer offered `0000000000100000`, which is the extension protocol
+and neither the DHT nor the fast extension, and sent
+`d1:md11:ut_metadatai1e6:ut_pexi2ee4:reqqi250e1:v17:bit-ids-fixture/0e`, sorted
+at both levels. The peer answered with a deliberately unsorted map and an
+unregistered top-level key, and the observer recorded
+`ut_pex=1, ut_metadata=3, lt_donthave=7` **in the order sent**, with
+`v` as `qBittorrent/5.0.0` and `reqq` as 500. The dialled connection's peer
+offered the protocol and sent no extended handshake, which is reported as such
+rather than as an absence of the offer.
+
+Residual: the same one the other three observers carry. No stock `BitTorrent`
+client has driven this.
 
 ## OBS-06: Adjacent protocol observer suite
 

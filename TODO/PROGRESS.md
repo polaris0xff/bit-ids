@@ -3,10 +3,10 @@
 State instant: 2026-09-04
 Baseline commit: `2fb8548` on `main`
 Total: 56
-Open: 41
+Open: 40
 In progress: 0
 Blocked: 0
-Done: 15
+Done: 16
 
 ## Current state
 
@@ -14,10 +14,10 @@ The whole `SCHEMA-*` group is closed, along with `FOUND-01` through `FOUND-03`,
 `ACQ-01` through `ACQ-04`. Foundations are finished, and acquisition has its
 record shape, a resolver that chooses the version, a verifier that says what two
 routes agreeing is worth, and a boundary that runs before anything is installed.
-⚠ No capture is possible yet regardless. Both tracker surfaces and the peer
-handshake have observers; `OBS-05` is what is missing on the wire, and `OBS-08`
-owns the torrent that makes a client announce at all. Those are the critical
-path now.
+All four core observer surfaces are done: both trackers, the peer handshake and
+BEP 10. ⚠ No capture is possible yet regardless, because `OBS-08` owns the
+torrent that makes a client announce about anything at all, and `OBS-09` owns
+what a run's transcript becomes on disk. Those two are the critical path now.
 
 `OBS-01` was the one XL entry and was split, which is what its own approach line
 asked for if the acceptance could not stay atomic. It could not: the Prove named
@@ -46,8 +46,8 @@ next, and that change would be recorded as identity when it is the observer's
 doing. The UDP one holds the BEP 15 exchange: a client connects before it
 announces, so an announce carrying a connection id the tracker never issued means
 the build reused a stale one, invented one, or skipped the connect, and each is
-answered with the protocol's error action and recorded with its reason. The peer-wire one holds both roles, because a build can behave
-differently as the side that dialled and the side that accepted: driven with one
+answered with the protocol's error action and recorded with its reason. The peer-wire one holds both roles and BEP 10. Both roles, because a build can
+behave differently as the side that dialled and the side that accepted: driven with one
 external peer in both roles at once, the two sides produced different reserved
 blocks and different peer IDs. All three frame with the codec's own reader rather
 than a second one, keep the bytes of what they refuse, and bound every list they
@@ -59,6 +59,12 @@ serving: one responder serves every connection an endpoint accepts, so without a
 identity a peer observer would send a second handshake down the first connection.
 The journal carries the connection too, so a transcript of two concurrent peer
 connections can be separated back into them.
+
+⭐ What an observer offers is a condition of the measurement rather than a
+setting. A build sends an extended handshake because it was asked for one, and
+what it puts in its map may differ with what it was offered, so the offer is
+recorded beside the answer and the reserved block is derived from the same value
+the extended handshake is.
 
 ⛔ No observer has been driven by a stock client. Each was driven by an
 independent client written from the specification, which shares this project's
@@ -153,10 +159,11 @@ anything.
 
 ## Work order
 
-1. `OBS-05`, the BEP 10 and early-message observer, on the peer-wire endpoint
-   `OBS-04` built. It is the last of the four core surfaces. Then `OBS-08`,
-   which is what a client needs before it will announce about anything at all,
-   and after which a first vertical capture becomes possible.
+1. `OBS-08`, the synthetic torrent, which is what a client needs before it will
+   announce about anything, and then `OBS-09`, which writes a run's transcript
+   out as the content-addressed evidence a manifest cites. After those two a
+   first vertical capture becomes possible on a host the `ACQ-04` guards
+   permit.
 2. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
    captures, on Linux only until `CI-03` provides the Windows guard pair.
 3. `ACQ-05`, the artifact cache, and `FOUND-04`, the licence register, before

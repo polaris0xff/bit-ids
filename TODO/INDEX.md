@@ -1,17 +1,17 @@
 # Work index
 
 Total: 56
-Open: 41
+Open: 40
 In progress: 0
 Blocked: 0
-Done: 15
+Done: 16
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| P0 | 9 | 0 | 0 | 15 | 24 |
+| P0 | 8 | 0 | 0 | 16 | 24 |
 | P1 | 31 | 0 | 0 | 0 | 31 |
 | P2 | 1 | 0 | 0 | 0 | 1 |
-| Total | 41 | 0 | 0 | 15 | 56 |
+| Total | 40 | 0 | 0 | 16 | 56 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -27,7 +27,7 @@ Done: 15
 | OBS-02 | P0 | L | DONE | HTTP tracker observer |
 | OBS-03 | P0 | L | DONE | UDP tracker observer |
 | OBS-04 | P0 | L | DONE | Peer-wire handshake observer |
-| OBS-05 | P0 | L | OPEN | BEP 10 and early-message observer |
+| OBS-05 | P0 | L | DONE | BEP 10 and early-message observer |
 | OBS-06 | P1 | M | OPEN | Adjacent protocol observer suite |
 | OBS-07 | P1 | M | OPEN | Known-client positive controls |
 | OBS-08 | P0 | M | OPEN | Synthetic torrent for the observation lab |

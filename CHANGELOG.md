@@ -5,6 +5,25 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-05T06:30:00Z
+
+- Closed `OBS-05`, the BEP 10 and early-message observer, which completes all
+  four core observer surfaces. Record: [`TODO/observer.md`](TODO/observer.md).
+- ⭐ What an observer offers is a condition of the measurement, and the type says
+  so: the reserved block is derived from the same value the extended handshake
+  is, so a run cannot claim an offer it did not make.
+- ⛔ Three states rather than a flag beside an option. The fourth state a flag
+  would allow means the observer invented a negotiation, and the guard-mutation
+  pass found that deleting the guard against it changed no test result.
+- Fourteen defects planted one at a time, all fourteen refused. The first round
+  found four misses and all four were real, including a send-once flag that
+  could be cleared with nothing noticing. That is the second entry running in
+  which a send-once flag went unproven.
+- Driven with the BEP 3 peer from `OBS-04`, extended to negotiate BEP 10. The
+  peer answered with a deliberately unsorted extension map and an unregistered
+  top-level key, and the observer recorded the map in the order sent.
+- Deployment: no data branch, release or capture service was created.
+
 ### 2026-09-05T05:10:00Z
 
 - Closed `OBS-04`, the peer-wire handshake observer, in both roles. Record:

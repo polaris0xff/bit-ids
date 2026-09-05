@@ -372,10 +372,10 @@ nowhere to keep per-connection state and sends a second handshake down the first
 connection. The journal carries the connection too, so a transcript of two
 concurrent peer connections separates back into them. A datagram has none.
 
-⛔ **The lab speaks no protocol.** `OBS-02` through `OBS-05` supply a responder
-per surface. That is what lets one deadline, one loopback guard and one journal
-serve every surface instead of each observer growing its own, and it is why the
-codecs in section 5 have no sockets in them.
+⛔ **The lab speaks no protocol.** The observers supply a responder per surface.
+That is what lets one deadline, one loopback guard and one journal serve every
+surface instead of each observer growing its own, and it is why the codecs in
+section 5 have no sockets in them.
 
 ### The observers
 
@@ -400,6 +400,19 @@ A request the codec refuses is answered with a bencoded failure and is not kept
 as an observation, because a head that did not decode is not an announce. The
 bytes are not lost: the lab recorded them before the responder saw them, and
 that is what the suite asserts rather than assuming.
+
+⭐ **What an observer offers is a condition of the measurement, not a setting.**
+A build sends a BEP 10 extended handshake because it was asked for one, and what
+it puts in its extension map may differ with what it was offered. So the offer is
+recorded beside the answer, and the reserved block is derived from the same value
+the extended handshake is: a run that says it offered the extension protocol
+cannot have sent a zero reserved block.
+
+⛔ **Offering nothing and negotiating anyway is not a state the observer can
+hold.** The conditions worth running are not offered, offered and silent, and
+offered with a handshake; a flag beside an optional handshake makes a fourth that
+means the observer invented a negotiation, and whatever the build did about that
+would be recorded as identity.
 
 ⚠ **What an observer keeps is bounded and the overflow is counted.** The lab's
 deadline bounds how long a target can talk and not how fast, so a build that
@@ -589,11 +602,10 @@ consume the same artifact assembled once.
 ## 10. Limits
 
 - There are no measured profiles yet.
-- The peer surface has a handshake and a message transcript, and no extension
-  negotiation. `OBS-05` owns BEP 10, so a capture would see what a build offers
-  in its reserved block and not what it says in its extended handshake.
-  `OBS-08` owns the torrent that makes a client announce at all, so no capture
-  is possible yet whatever the acquisition side supports.
+- All four core surfaces have observers, and no capture is possible yet
+  regardless. `OBS-08` owns the torrent that makes a client announce about
+  anything at all, and `OBS-09` owns what a run's transcript becomes on disk, so
+  nothing yet produces the content-addressed evidence a manifest cites.
 - ⚠ No observer has been driven by a stock `BitTorrent` client. Each was driven
   by an independent client written from the specification, which is a weaker
   control: it shares this project's reading of the protocol. `OBS-07` owns the
