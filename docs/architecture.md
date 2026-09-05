@@ -52,7 +52,7 @@ No arrow reads identity values from client source code.
 | `bit-ids` crate | public types, schema identity, validation, stable-version resolution and eventually embedded/pinned catalogue access | capture, installation or network mutation |
 | `bit-ids-wire` crate | byte-exact codecs for the observed surfaces, and the fixture corpus every observer parses against | sockets, timing, and any mapping from a peer-ID prefix to a client name |
 | `bit-ids-lab` crate | the sockets: binding them on loopback and nowhere else, the run deadline, the ordered byte record, and endpoint shutdown | every protocol, and what a transcript becomes on disk |
-| `bit-ids-probe` | active Rust tracker/peer/DHT/web-seed endpoints and raw evidence writing | client launch or package installation |
+| `bit-ids-probe` | what each surface answers with, and what an exchange was observed to carry, one module per surface | sockets, the run clock, and client launch or package installation |
 | acquisition scripts | retrieval: fetching a release listing or artifact and keeping the exact bytes | parsing, ordering or deciding anything, all of which are Rust's |
 | client drivers | launch/configure one target against the isolated fixture | deciding whether the observation is valid |
 | reference connectors | independent live observation of overlapping fields | filling gaps by inference |
@@ -364,6 +364,36 @@ per surface. That is what lets one deadline, one loopback guard and one journal
 serve every surface instead of each observer growing its own, and it is why the
 codecs in section 5 have no sockets in them.
 
+### The observers
+
+[`../crates/bit-ids-probe/`](../crates/bit-ids-probe/) holds one module per
+surface. Each is a responder handed to a lab endpoint: it decodes with the
+section 5 codec, keeps what arrived, and answers.
+
+⚠ **What an observer answers is part of the experiment, not a detail.** A client
+that receives the wrong shape of tracker response reports an error and changes
+what it does next, and that change would be recorded as identity when it is the
+observer's doing. So the HTTP tracker observer reads `compact` and `no_peer_id`
+out of the announce and answers the shape that was asked for. Where a request
+leaves the choice open, the observer's choice is recorded as a condition of the
+run rather than treated as a default.
+
+⛔ **An observer frames requests with the codec's own framer and never a second
+one.** [`tracker_http::head_end`](../crates/bit-ids-wire/src/tracker_http.rs) is
+that framer. A framer that disagreed with the decoder would answer one request
+while the decoder read another, and both halves would look correct alone.
+
+A request the codec refuses is answered with a bencoded failure and is not kept
+as an observation, because a head that did not decode is not an announce. The
+bytes are not lost: the lab recorded them before the responder saw them, and
+that is what the suite asserts rather than assuming.
+
+⚠ **What an observer keeps is bounded and the overflow is counted.** The lab's
+deadline bounds how long a target can talk and not how fast, so a build that
+announces in a loop would otherwise grow the record until the host runs out of
+memory. A record that kept a cap's worth with nothing saying how many there were
+is a measurement with no denominator.
+
 ## 6. Connector contract
 
 The primary connector is the project-owned Rust active observer. It terminates
@@ -525,10 +555,11 @@ consume the same artifact assembled once.
 ## 10. Limits
 
 - There are no measured profiles yet.
-- No observer speaks a protocol yet, so nothing can take a capture whatever the
-  acquisition side supports. The lab binds, records and stops; `OBS-02` through
-  `OBS-05` own the responders that would make a client say anything, and
-  `OBS-08` owns the torrent that would make it announce.
+- Only the HTTP tracker surface has an observer. `OBS-03` through `OBS-05` own
+  the UDP tracker and the peer wire, and until they exist a capture would see a
+  client announce and nothing else. `OBS-08` owns the torrent that makes a
+  client announce at all, so no capture is possible yet whatever the acquisition
+  side supports.
 - ⛔ A Windows capture is not permitted. The disposable-host guards in
   [`capture-host.md`](capture-host.md) read `/proc/net/route` and
   `/etc/machine-id`, so there is no boundary to run before an install on

@@ -206,7 +206,7 @@ repository's own open work.
 ## OBS-02: HTTP tracker observer
 
 Source: bit-cli T-234 and tracker request-order tests
-Priority: P0 | Effort: L | Status: OPEN
+Priority: P0 | Effort: L | Status: DONE
 
 Problem: HTTP announces expose peer ID, user agent, header set, query order,
 encoding, key, numwant, and event behavior that a peer-ID table omits.
@@ -217,8 +217,60 @@ guessing how a client constructed them.
 Approach: Capture request line and headers before normalization, return valid
 tracker responses, and repeat lifecycle events under controlled torrents.
 
-Prove: `cargo test --workspace --locked --test http_tracker` checks raw ordering, binary query
-values, repeated requests, and malformed input behavior.
+Prove: `cargo test -p bit-ids-probe --locked --all-targets` checks raw ordering,
+binary query values, repeated requests, and malformed input behavior.
+
+Closure evidence: run on 2026-09-05.
+`cargo test -p bit-ids-probe --locked --all-targets` reports 19 passed, 0 failed.
+`cargo test --workspace --locked --all-targets` reports 20 binaries and 203
+passed, 0 failed: 10 test files, 4 library suites and 6 examples, which is every
+one on disk. `cargo test --workspace --locked --doc` reports 2 passed.
+`cargo fmt --all -- --check`, `cargo check`, `cargo clippy -- -D warnings` at
+`--workspace --locked --all-targets`, `shellcheck`, `shfmt -d -i 2 -ci` and
+`sh scripts/common/check-gate.sh` all exit 0.
+
+The observer is `crates/bit-ids-probe/src/tracker_http.rs`, a responder for a
+`bit-ids-lab` stream endpoint. It keeps the exact head bytes, decodes with
+`bit_ids_wire::tracker_http`, and answers a bencoded response whose shape is read
+out of the announce. Frames with `tracker_http::head_end`, which was added to the
+codec rather than written a second time here: a framer that disagrees with its
+decoder answers one request while the decoder reads another, and both halves look
+correct alone.
+
+Guard mutation: 17 defects planted one at a time, each verified to have changed
+the file, all 17 refused. Two rounds. ⚠ The first round's script used `sed` with
+`|` as its delimiter over Rust closures and four of its plants silently matched
+nothing, which is the probe defect `docs/methodology/reviews.md` records about
+this template's own patch script, hit for the second time in one session. The
+second script replaces literal strings and asserts the match count.
+
+The first round also found two real gaps. ⭐ Nothing exercised a head terminated
+with bare newlines, so the framer's answer could be shortened by a byte and every
+test still passed: every other head in the corpus ends `\r\n\r\n` or mixes the
+two. And a head the codec refuses is answered and not kept as an announce, which
+nothing asserted was safe; the bytes survive because the lab recorded them first,
+and there is now a test holding the two halves to that.
+
+Door sweep: the record was unbounded, so a build announcing in a loop would grow
+it until the host ran out of memory, and the cap now counts what it stopped
+keeping rather than discarding it silently. A second `Content-Length` header was
+taking the first value; two lengths may disagree and there is no reading of them
+that frames the rest of the connection correctly, so the request is refused.
+
+Driven on 2026-09-05 with `curl`, which is not this project's test harness.
+`cargo run -p bit-ids-probe --example http-tracker` printed an announce URL on
+`127.0.0.1`; two announces through it were answered `200` and recorded with the
+query keys in curl's order, the header names in curl's order and spelling, the
+percent-encoding case per value, and a peer ID of 20 bytes for the first and 11
+for the second. ⭐ The 11-byte peer ID was reported rather than refused, which is
+the intended behaviour: BEP 3 fixes the width and `bit_ids::observation` enforces
+it in a record, but a build that sends 19 is the measurement this project exists
+to take. The compact announce was answered with a six-byte peer string and the
+`compact=0` announce with a peer list, so the shape followed the request.
+
+Residual: nothing here is evidence about any build. Every announce driven through
+this observer was written by this project, because no client is installed and
+`OBS-08` has not generated a torrent for one to announce about.
 
 ## OBS-03: UDP tracker observer
 

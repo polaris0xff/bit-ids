@@ -20,6 +20,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bit-ids-probe"
+version = "0.0.0"
+dependencies = [
+ "bit-ids",
+ "bit-ids-lab",
+ "bit-ids-wire",
+]
+
+[[package]]
 name = "bit-ids-wire"
 version = "0.0.0"
 dependencies = [

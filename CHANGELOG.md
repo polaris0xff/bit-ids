@@ -5,6 +5,39 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-05T02:30:00Z
+
+- Closed `OBS-02`. The `bit-ids-probe` crate holds the observers, one module per
+  surface, and the HTTP tracker is the first. It keeps the exact head bytes,
+  decodes with `bit-ids-wire`, and answers a bencoded response. Record:
+  [`TODO/observer.md`](TODO/observer.md).
+- ⚠ What an observer answers is part of the experiment. A client that asked for
+  a compact peer list and got a peer list reports an error and changes what it
+  does next, and that change would be recorded as identity when it is the
+  observer's doing, so `compact` and `no_peer_id` are read out of the announce
+  and honoured.
+- ⛔ Framing uses the codec's own `head_end`, added to `bit-ids-wire` rather than
+  written a second time in the observer. `TODO/observer.md` says what a second
+  framer costs.
+- Seventeen defects planted one at a time, all seventeen refused. ⚠ The first
+  round's script used `sed` with `|` as its delimiter over Rust closures and four
+  plants silently matched nothing, which is the same probe defect as the round
+  before. The replacement asserts the match count instead.
+- ⭐ The first round also found that nothing exercised a head terminated with
+  bare newlines, so the framer's answer could be shortened by a byte with every
+  test still passing. A corpus only tests the defects it contains an example of.
+- The door sweep found the record unbounded, so a build announcing in a loop
+  would grow it until the host ran out of memory; the cap now counts what it
+  stopped keeping. A second `Content-Length` header was taking the first value,
+  and two lengths that disagree cannot both frame the rest of the connection, so
+  the request is refused.
+- Driven with `curl`. Two announces answered `200`, recorded with curl's query
+  order, curl's header spelling, the percent-encoding case per value, and a peer
+  ID of 20 bytes for one and 11 for the other. The 11-byte one was reported
+  rather than refused: the width is the record layer's rule, and a build that
+  sends the wrong one is the measurement.
+- Deployment: no data branch, release or capture service was created.
+
 ### 2026-09-05T01:20:00Z
 
 - Closed `OBS-01`. The `bit-ids-lab` crate is the loopback observation lab that

@@ -3,10 +3,10 @@
 State instant: 2026-09-04
 Baseline commit: `2fb8548` on `main`
 Total: 56
-Open: 44
+Open: 43
 In progress: 0
 Blocked: 0
-Done: 12
+Done: 13
 
 ## Current state
 
@@ -14,9 +14,9 @@ The whole `SCHEMA-*` group is closed, along with `FOUND-01` through `FOUND-03`,
 `ACQ-01` through `ACQ-04`. Foundations are finished, and acquisition has its
 record shape, a resolver that chooses the version, a verifier that says what two
 routes agreeing is worth, and a boundary that runs before anything is installed.
-⚠ No capture is possible yet regardless: there is no observer that speaks a
-protocol. `OBS-02` through `OBS-05` are what is missing, and they are the
-critical path now.
+⚠ No capture is possible yet regardless. One surface has an observer, the HTTP
+tracker; `OBS-03` through `OBS-05` are what is missing, and `OBS-08` owns the
+torrent that makes a client announce at all. Those are the critical path now.
 
 `OBS-01` was the one XL entry and was split, which is what its own approach line
 asked for if the acceptance could not stay atomic. It could not: the Prove named
@@ -33,9 +33,18 @@ the address back from the socket afterwards, because a bind request and a bound
 address are different facts. A lab holds a deadline and stops itself, records
 every byte each endpoint moved in the order it moved them with the direction it
 travelled, and releases every port on shutdown or on drop. It speaks no
-protocol: `OBS-02` onward supply a responder per surface, which is what lets one
+protocol: the observers supply a responder per surface, which is what lets one
 deadline, one loopback guard and one journal serve every surface rather than
 each observer growing its own.
+
+The `bit-ids-probe` crate is where those responders live, one module per surface,
+and the HTTP tracker is the first. It keeps the exact head bytes and answers a
+bencoded response whose shape is read out of the announce, because a client that
+receives the wrong shape reports an error and changes what it does next, and that
+change would be recorded as identity when it is the observer's doing. It frames
+requests with the codec's own framer rather than a second one, refuses a head the
+codec cannot read without losing the bytes, and bounds what it keeps while
+counting what it stopped keeping.
 
 The `bit-ids` crate carries the published record shape, the six field states,
 the derived record identifier, the canonical value forms and the publication
@@ -123,10 +132,10 @@ anything.
 
 ## Work order
 
-1. `OBS-02` through `OBS-05`, each a responder on a `bit-ids-lab` endpoint,
+1. `OBS-03` through `OBS-05`, each a responder on a `bit-ids-lab` endpoint,
    parsing against the `bit-ids-wire` fixture corpus rather than against a live
-   client. This is the critical path: the boundary, the acquisition record and
-   the lab exist, and what is missing is something that speaks a protocol.
+   client. This is the critical path: the boundary, the acquisition record, the
+   lab and the first observer exist, and the other three surfaces do not.
    `OBS-08` is needed before the first client capture rather than before the
    observers, because an observer can be driven with fixture bytes and a client
    cannot be made to announce without a torrent.

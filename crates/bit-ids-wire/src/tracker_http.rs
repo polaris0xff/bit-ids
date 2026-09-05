@@ -248,7 +248,7 @@ impl HttpRequest {
         // first version only fired when there was no blank line at all, so a
         // hundred megabytes of headers with a blank line at the end sailed
         // past it: the bound was written and did not bind.
-        match find_blank(input) {
+        match head_end(input) {
             None if input.len() > Self::MAX_HEAD => {
                 return Err(WireError::new(
                     "head-too-long",
@@ -410,11 +410,34 @@ impl HttpRequest {
     }
 }
 
-fn find_blank(input: &[u8]) -> Option<usize> {
-    input
-        .windows(4)
-        .position(|window| window == b"\r\n\r\n")
-        .or_else(|| input.windows(2).position(|window| window == b"\n\n"))
+/// Where a request head ends, or `None` when the blank line has not arrived.
+///
+/// The index is one past the blank line's terminator, so `input[..head_end]` is
+/// the whole head and `input[head_end..]` is whatever follows it.
+///
+/// ⛔ **An observer frames requests with this and nothing else.** A second
+/// implementation of "where does the head end" in the code that reads from a
+/// socket is the copy that disagrees, and a framer that disagrees with the
+/// decoder answers one request while the decoder reads another.
+///
+/// ⚠ It accepts a mixed terminator, because [`HttpRequest::parse`] does. A head
+/// whose last header line ends `\n` and whose blank line is `\r\n` is a
+/// difference between builds, and a framer that did not find its end would
+/// leave that client's announce unanswered while recording it, which reads as a
+/// client that never announced.
+#[must_use]
+pub fn head_end(input: &[u8]) -> Option<usize> {
+    for (index, byte) in input.iter().enumerate() {
+        if *byte != b'\n' {
+            continue;
+        }
+        match input.get(index + 1) {
+            Some(b'\n') => return Some(index + 2),
+            Some(b'\r') if input.get(index + 2) == Some(&b'\n') => return Some(index + 3),
+            _ => {}
+        }
+    }
+    None
 }
 
 fn take_line(input: &[u8], cursor: &mut usize) -> Result<Line, WireError> {
