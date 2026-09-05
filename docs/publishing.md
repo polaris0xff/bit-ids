@@ -13,8 +13,9 @@ pushes nothing.
 LICENSE
 MANIFEST.json
 SHA256SUMS
-raw/v1/<target>/<version>/<platform>/<arch>/<capture-id>/...
-profiles/v1/<target>/<version>/<platform>/<arch>/<capture-id>.json
+raw/v1/<target>/<version>/<platform>/<arch>/<package>/<capture-id>/manifest.json
+raw/v1/<target>/<version>/<platform>/<arch>/<package>/<capture-id>/...
+profiles/v1/<target>/<version>/<platform>/<arch>/<package>/<capture-id>.json
 routes/v1/<target>/latest/<platform>/<arch>.json
 routes/v1/<target>/<version>/<platform>/<arch>.json
 indexes/v1/profiles.json
@@ -25,8 +26,39 @@ formats/bit-ids-v1.sqlite3
 formats/bit-ids-v1.cbor
 ```
 
+⛔ **A record's path carries its whole identity tuple, and `<package>` is in it
+because the record identifier digests it.** This layout omitted that segment
+until `CORPUS-01` derived the path in code and compared the two: a `deb` and an
+`AppImage` of one version on one platform are two records the identifier tells
+apart, and they were one file. Whether they also differ in capture identifier is
+not the question, because `capture.id` is only documented unique per target,
+version, platform and architecture, so the collision was resting on a uniqueness
+rule nothing states or checks. The derivation is
+[`store::StoreKey`](../crates/bit-ids/src/store.rs) and it is the only place a
+path is composed.
+
 `latest` selects the newest validated stable version only. It is a generated
 pointer, not a profile, and a prerelease can never move it.
+
+## Append-only, and what checks it
+
+A published path never changes and never disappears; a correction appends a
+record carrying `supersedes`. [`store`](../crates/bit-ids/src/store.rs) holds
+both halves of that as `E-STO-*` refusals: the structural rules a tree must
+satisfy to be checked out at all on every platform in the matrix, and the
+comparison between a published tree and the successor a run proposes.
+
+`cargo run -p bit-ids --example check-store -- PRIOR NEXT` is the driving
+surface, and [`scripts/corpus/check-store.sh`](../scripts/corpus/check-store.sh)
+plants each refusal in a disposable tree and reads the exit code back.
+
+⚠ **A version is not a path segment and the store is what says so.**
+[`Version`](../crates/bit-ids/src/canonical.rs) accepts whatever the installed
+build printed, `../../etc` included, because imposing a grammar on a measurement
+would refuse builds that number themselves some other way. `E-STO-01` blocks
+publication for a version that cannot be a segment rather than mangling it into
+one, because an escape that is not injective merges two measurements into one
+directory.
 
 ## Assembly
 

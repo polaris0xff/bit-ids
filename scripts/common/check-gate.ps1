@@ -125,6 +125,15 @@ Invoke-Check 'check-remote-items' 'check-remote-items.ps1'
 Add-Row 'SKIP  check-runner  (the guards are Linux-only; ACQ-04 residual)'
 $skip++
 
+# ⛔ REPORTED AS A SKIP, NEVER OMITTED, for the same reason. check-store plants
+# a symbolic link and a named pipe in a disposable tree, and neither is
+# available to an unprivileged Windows session, so the harness is a POSIX one
+# today. ⚠ The rules it proves are not Linux-only and the Rust suite exercises
+# every one of them on both lanes; what this lane does not do is plant them
+# against a real filesystem. CI-03 owns the Windows runner.
+Add-Row 'SKIP  check-store  (the plants need a POSIX filesystem; CI-03 residual)'
+$skip++
+
 # ⭐ THE SLOW ONE, and ⚠ it is the one part of this gate that needs a POSIX
 # shell: check-twins runs the sh half of every pair, so it cannot run on a host
 # without one. That is reported as a skip, never as a pass.

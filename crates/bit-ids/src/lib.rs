@@ -35,6 +35,7 @@ pub mod observation;
 pub mod record;
 pub mod resolution;
 pub mod sampling;
+pub mod store;
 pub mod validate;
 
 pub use acquisition::{AcquisitionRoute, RouteKind, SignatureStatus, SourceIdentity};
@@ -44,6 +45,7 @@ pub use json::DocumentError;
 pub use manifest::{MANIFEST_SCHEMA, RunManifest, bind, validate_manifest};
 pub use record::Profile;
 pub use resolution::{RESOLUTION_SCHEMA, Resolution, resolve, validate_resolution};
+pub use store::{Entry, ObjectRef, StoreKey, StoreTree, append_only, validate_tree};
 pub use validate::{SchemaError, Violations, validate};
 
 use serde::{Deserialize, Serialize};

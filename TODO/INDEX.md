@@ -1,17 +1,17 @@
 # Work index
 
 Total: 56
-Open: 37
+Open: 36
 In progress: 0
 Blocked: 0
-Done: 19
+Done: 20
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| P0 | 6 | 0 | 0 | 18 | 24 |
+| P0 | 5 | 0 | 0 | 19 | 24 |
 | P1 | 30 | 0 | 0 | 1 | 31 |
 | P2 | 1 | 0 | 0 | 0 | 1 |
-| Total | 37 | 0 | 0 | 19 | 56 |
+| Total | 36 | 0 | 0 | 20 | 56 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -54,7 +54,7 @@ Done: 19
 | ENGINE-01 | P1 | L | OPEN | libtorrent engine matrix |
 | ENGINE-02 | P1 | L | OPEN | anacrolix/torrent engine matrix |
 | ENGINE-03 | P1 | L | OPEN | rqbit engine matrix |
-| CORPUS-01 | P0 | L | OPEN | Append-only canonical store |
+| CORPUS-01 | P0 | L | DONE | Append-only canonical store |
 | CORPUS-02 | P0 | L | OPEN | Semantic corpus validator |
 | CORPUS-03 | P0 | L | OPEN | Deterministic indexes and latest views |
 | CORPUS-04 | P1 | M | OPEN | Supersession and correction records |

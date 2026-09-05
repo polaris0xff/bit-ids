@@ -5,6 +5,39 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-05T12:10:00Z
+
+- `CORPUS-01`, the append-only canonical store. Record:
+  [`TODO/corpus.md`](TODO/corpus.md).
+- A record's path is derived from the identity tuple `RecordId` digests, in full,
+  and a published path never changes or disappears. `E-STO-*` carries both
+  halves: the structural rules a tree must satisfy to be checked out at all, and
+  the comparison between a published tree and the successor a run proposes.
+- ⛔ The published layout was not injective over the identity tuple. A profile
+  was filed with no `package` segment while the tuple carries one, so a `deb` and
+  an `AppImage` of one version on one platform were two records at one file name.
+  [`docs/publishing.md`](docs/publishing.md) is amended and a test pins it.
+- ⛔ `Version` accepts `../../etc`, measured rather than assumed, because a
+  version string is what the build printed. The store refuses a version that
+  cannot be a path segment rather than escaping it, since a non-injective escape
+  merges two measurements into one directory.
+- ⭐ The driven pass found what the suite could not: the placement reader
+  selected a record by name and opened it, so a named pipe blocked it forever
+  while `validate_tree` already refused that entry kind. One action, two doors,
+  one gate. The reader now takes the kind from the walk.
+- ⛔ The door sweep found a second spelling of the layout, in the recogniser that
+  decides whether the placement check runs at all. A layout change would have
+  left it recognising nothing, with the suite still green. The recognisers moved
+  beside the composer and a round-trip test closes the loop.
+- Guard mutation: 10 plants over the store source, 10 refused; 9 planted against
+  a real filesystem, 9 refused; 4 harness self-guards exercised. ⚠ `grep -F`
+  splits a multi-line pattern into alternatives and miscounted three plants as
+  ambiguous, which fails safe and still leaves guards unproven; the committed
+  harness refuses a multi-line literal outright.
+- `scripts/corpus/check-store.sh` joins the `sh` gate and is a named skip on the
+  PowerShell half, because its plants are a symbolic link and a named pipe.
+- Deployment: nothing deployed. No capture was taken.
+
 ### 2026-09-05T11:20:00Z
 
 - The session's four closing reviews. Record:

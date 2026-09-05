@@ -49,7 +49,7 @@ No arrow reads identity values from client source code.
 
 | component | owns | does not own |
 | --- | --- | --- |
-| `bit-ids` crate | public types, schema identity, validation, stable-version resolution and eventually embedded/pinned catalogue access | capture, installation or network mutation |
+| `bit-ids` crate | public types, schema identity, validation, stable-version resolution, where a record is filed and what a successor tree may do to it, and eventually embedded/pinned catalogue access | capture, installation, network mutation, and the filesystem: the store rules are pure over a tree a caller has already read |
 | `bit-ids-wire` crate | byte-exact codecs for the observed surfaces, and the fixture corpus every observer parses against | sockets, timing, and any mapping from a peer-ID prefix to a client name |
 | `bit-ids-lab` crate | the sockets: binding them on loopback and nowhere else, the run deadline, the ordered byte record, endpoint shutdown, the synthetic torrent a capture hands a client, and writing a run out as content-addressed evidence | every protocol, and assembling or publishing a store |
 | `bit-ids-probe` | what each surface answers with, and what an exchange was observed to carry, one module per surface | sockets, the run clock, and client launch or package installation |
@@ -245,6 +245,32 @@ digests, and whether the profile's capture instant falls inside the run.
 nothing comparing them is the copy a reader trusts being the wrong one. Pairing
 a manifest with the profile of a different run of the same build is the
 realistic version of that mistake, and it is refused.
+
+### Where a record is filed
+
+The two documents above are files in an append-only tree, and
+[`../crates/bit-ids/src/store.rs`](../crates/bit-ids/src/store.rs) is where a
+path comes from and what a successor tree may do to one.
+[`publishing.md`](publishing.md) carries the layout; `CORPUS-01` owns the rules.
+
+⛔ **A path is derived from the record's identity tuple, never chosen.** It is
+the tuple `RecordId` digests, in full. A path built from fewer components files
+two measurements at one name and one of them silently wins; a path built from
+more files one measurement under two names, which the append-only rule then
+protects both of. The published layout was missing `package` until the
+derivation was written and compared against the identifier.
+
+⛔ **A version is a measurement and not an identifier.** `Version` accepts what
+the build printed, `../../etc` included, so the store is what refuses a version
+that cannot be a path segment. It blocks publication rather than escaping it,
+because an escape that is not injective merges two measurements into one
+directory and one that is injective needs bytes `RelPath` refuses.
+
+⚠ **Two paths that differ only in case are one file on half of the capture
+matrix**, and so is a segment Windows resolves to a device. Those are checked
+over a whole tree rather than at derivation, because a tree is read off a disk
+somebody else wrote and a segment can arrive without this crate having derived
+it. The same rule runs at both doors.
 
 ## 5. Observation surfaces
 
@@ -662,14 +688,25 @@ commit without force and reads the branch back.
 A pushed `v1.*` tag is the only release trigger. Releases and the data branch
 consume the same artifact assembled once.
 
+⛔ **The append rule is checked before the push, not trusted to the push.** A
+branch protection setting refuses a force-push and says nothing about a commit
+that deletes a file, which is the shape a latest-only regeneration takes. The
+comparison in [`section 4`](#where-a-record-is-filed) is what refuses that, and
+`PUB-02` runs it over the fetched branch.
+
 ## 10. Limits
 
 - There are no measured profiles yet. The observer layer is complete: all four
   core surfaces have observers, the lab generates the torrent that makes a
   client announce about anything at all, and a run's transcript becomes the
-  content-addressed evidence a manifest cites. What stands between here and a
-  first capture is a client adapter and a host the
-  [`capture-host.md`](capture-host.md) guards permit.
+  content-addressed evidence a manifest cites. There is now somewhere durable to
+  put a record as well. What stands between here and a first capture is a client
+  adapter and a host the [`capture-host.md`](capture-host.md) guards permit.
+- ⚠ The store answers where a record goes and what a successor may do to it. It
+  does not answer whether a record should be there at all: route count,
+  connector independence, field provenance and evidence reachability across a
+  whole store are `CORPUS-02`'s, and assembling the tree in the first place is
+  `PUB-01`'s.
 - ⚠ No observer has been driven by a stock `BitTorrent` client. Each was driven
   by an independent client written from the specification, which is a weaker
   control: it shares this project's reading of the protocol. `OBS-07` owns the

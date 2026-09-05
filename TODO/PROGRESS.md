@@ -1,12 +1,12 @@
 # Current progress
 
 State instant: 2026-09-05
-Baseline commit: `cda5968` on `main`
+Baseline commit: `5a21e32` on `main`
 Total: 56
-Open: 37
+Open: 36
 In progress: 0
 Blocked: 0
-Done: 19
+Done: 20
 
 ## Current state
 
@@ -17,7 +17,8 @@ routes agreeing is worth, and a boundary that runs before anything is installed.
 All four core observer surfaces are done: both trackers, the peer handshake and
 BEP 10. ⭐ `OBS-08` and `OBS-09` are closed too, so the observer layer is
 complete: there is a torrent to point a client at, and a run's transcript now
-becomes the content-addressed evidence a manifest cites. **A first vertical
+becomes the content-addressed evidence a manifest cites. ⭐ `CORPUS-01` is closed
+as well, so there is somewhere durable to put the answer. **A first vertical
 capture is possible from here**, on a host the `ACQ-04` guards permit, and what
 stands between is a client adapter rather than any missing machinery.
 
@@ -106,6 +107,40 @@ cannot be closed on a session host: `assert-disposable.sh --egress` refuses one
 with a public route, and running a client there would be the capture the boundary
 exists to refuse.
 
+`CORPUS-01` is the append-only store, and it is two rules. A record's path is
+derived from the identity tuple `RecordId` digests, in full and nothing else,
+because that is the only choice under which the path and the identifier cannot
+disagree. A published path then never changes and never disappears; a correction
+appends a record carrying `supersedes` rather than editing the one it corrects.
+
+⛔ **The published layout was not injective over that tuple and the derivation
+is what found it.** `docs/publishing.md` filed a profile with no `package`
+segment while the identity tuple carries one, so a `deb` and an `AppImage` of
+one version on one platform were two records at one file name. Whether their
+capture identifiers also differ is not the question: `capture.id` is only
+documented unique per target, version, platform and architecture, so the
+collision rested on a uniqueness rule nothing states or checks.
+
+⛔ **A version is a measurement and not an identifier, and `Version` accepts
+`../../etc`.** That is measured rather than assumed, and it has to stay that way:
+imposing a grammar on a version string would refuse builds that number
+themselves some other way. So the store refuses a version that cannot be a path
+segment instead, rather than escaping it, because an escape that is not
+injective merges two measurements into one directory and an injective one needs
+bytes `RelPath` refuses.
+
+⚠ Two paths differing only in case are one file on half of the capture matrix,
+and so is a segment Windows resolves to a device. Those are checked over a whole
+tree rather than at derivation, because a tree is read off a disk somebody else
+wrote and a segment can arrive without this crate having derived it. The same
+rule runs at both doors.
+
+⭐ `scripts/corpus/check-store.sh` plants each refusal against a real filesystem
+and is in the `sh` gate. ⚠ It is a named skip on the PowerShell half: what it
+plants is a symbolic link and a named pipe, neither of which an unprivileged
+Windows session can create. The rules themselves are not platform-specific and
+the Rust suite exercises every one of them on both CI lanes.
+
 The `bit-ids` crate carries the published record shape, the six field states,
 the derived record identifier, the canonical value forms and the publication
 invariants, with one validating read path and one validating write path.
@@ -193,26 +228,28 @@ anything.
 
 ## Work order
 
-1. `CORPUS-01`, the append-only store. ⛔ **The client entries moved behind it
-   on 2026-09-05, and the reason is a measurement rather than a preference.**
-   Their acceptance needs a capture, a capture needs a host
-   `assert-disposable.sh --egress` does not refuse, and this session's host is
-   refused. The provable prefix was run anyway, and it ran out of somewhere to
-   put its answer: the resolver selected qBittorrent 5.2.3 from a real listing
-   and there is no store to record it in. `CLIENT-01` carries the three routes
-   that were tried and what would unblock them.
-2. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
-   captures, on Linux only until `CI-03` provides the Windows guard pair. ⭐ The
-   observer layer does not block them: `OBS-08` and `OBS-09` both closed on
-   2026-09-05, so a client adapter has a torrent to be given and a bundle to
-   write into. `CI-03` and a store are what remain.
-3. `ACQ-05`, the artifact cache, and `FOUND-04`, the licence register, before
+1. `CORPUS-02`, the semantic corpus validator, and `CORPUS-03`, the
+   deterministic indexes. Both are fully provable here: no host, no network, no
+   client. ⚠ `CORPUS-02`'s `Prove` still carries a `--test <target>` form, which
+   skips the library's own tests; rewrite it as
+   `-p <package> --locked --all-targets` when the entry is taken.
+2. `PUB-01`, the deterministic release assembler. It is what first builds a tree
+   for `CORPUS-01`'s comparison to run over, and it is where `E-STO-22` becomes
+   reachable, because a tree assembled from a manifest carries a declared length
+   beside a digest.
+3. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
+   captures, on Linux only until `CI-03` provides the Windows guard pair.
+   ⛔ **They stay behind the corpus work on a measurement rather than a
+   preference:** their acceptance needs a capture, a capture needs a host
+   `assert-disposable.sh --egress` does not refuse, and a session host is
+   refused. `TODO/clients.md` carries the three routes that were tried on
+   2026-09-05. ⭐ Neither the observer layer nor the store blocks them any more;
+   `CI-03` and a host are what remain.
+4. `ACQ-05`, the artifact cache, and `FOUND-04`, the licence register, before
    the first proprietary client is acquired.
-4. `CORPUS-02` through `CORPUS-03`, then `PUB-01` through `PUB-03`.
-5. `CI-01` through `CI-04`, followed by remaining client and engine breadth.
-6. `FOUND-04`, the licence and redistribution register, before the first
-   proprietary client is acquired.
-7. Consumer library, public documentation, and refinements.
+5. `PUB-02` and `PUB-03`, then `CI-01` through `CI-04`, followed by remaining
+   client and engine breadth.
+6. Consumer library, public documentation, and refinements.
 
 ## Pending operator decisions
 
@@ -282,3 +319,15 @@ disposable host; running a client still does.
 on the wire, so the transcript can be checked against what actually happened
 rather than against what the lab believed happened. A reader that only
 re-computes digests is checking the writer against itself.
+
+⚠ **`grep -F` splits a pattern containing a newline into separate
+alternatives**, so a unique multi-line literal counts as the sum of its lines and
+a plant verifier built on it reports NOT-PLANTED over a plant that would have
+applied. Measured on 2026-09-05 while reviewing `CORPUS-01`, where it miscounted
+three plants. It fails safe, and it still costs the guards it silently declines
+to prove. Count a multi-line literal with something that understands one, or
+refuse it outright as `scripts/corpus/check-store.sh` does.
+
+⭐ **`check-store` needs `cargo`, `sha256sum` and `mkfifo` and exits 2 without
+them.** The Linux CI lane runs the gate with `--strict`, so that skip would be a
+failure there; all three are present on `ubuntu-24.04`.

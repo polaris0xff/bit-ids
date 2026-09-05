@@ -160,6 +160,21 @@ else
   SKIP=$((SKIP + 1))
 fi
 
+# ⛔ NOT IN common/ EITHER, AND IN THE GATE FOR THE SAME REASON. `check-store`
+# mutation-proves the guards that stand between this project and silently
+# deleting or rewriting published evidence, which is the one loss this
+# repository cannot recover from: the record that goes is not anywhere else. It
+# is hermetic and takes no network. ⚠ It needs cargo, so it exits 2 on a host
+# without one, which is a skip and not a pass. It has no PowerShell half;
+# scripts/README.md carries why.
+STORE="$HERE/../corpus/check-store.sh"
+if [ -f "$STORE" ]; then
+  run "check-store" sh "$STORE"
+else
+  row "SKIP  check-store  (not present)"
+  SKIP=$((SKIP + 1))
+fi
+
 # ⭐ THE SLOW ONE. Measured on one Windows 11 Pro 26200 machine, 2026-08-28:
 # check-twins alone is most of a full run's wall time, because it starts both
 # halves of every pair. --fast drops it and nothing else.
