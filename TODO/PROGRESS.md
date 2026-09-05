@@ -1,12 +1,12 @@
 # Current progress
 
 State instant: 2026-09-05
-Baseline commit: `f7580d0` on `main`
+Baseline commit: `03bdd7b` on `main`
 Total: 56
-Open: 39
+Open: 38
 In progress: 0
 Blocked: 0
-Done: 17
+Done: 18
 
 ## Current state
 
@@ -15,10 +15,11 @@ The whole `SCHEMA-*` group is closed, along with `FOUND-01` through `FOUND-03`,
 record shape, a resolver that chooses the version, a verifier that says what two
 routes agreeing is worth, and a boundary that runs before anything is installed.
 All four core observer surfaces are done: both trackers, the peer handshake and
-BEP 10. `OBS-08` is closed too, so there is now a torrent to point a client at.
-⚠ No capture is possible yet regardless, because `OBS-09` owns what a run's
-transcript becomes on disk and nothing writes the content-addressed evidence a
-manifest cites. That one entry is the critical path now.
+BEP 10. ⭐ `OBS-08` and `OBS-09` are closed too, so the observer layer is
+complete: there is a torrent to point a client at, and a run's transcript now
+becomes the content-addressed evidence a manifest cites. **A first vertical
+capture is possible from here**, on a host the `ACQ-04` guards permit, and what
+stands between is a client adapter rather than any missing machinery.
 
 `OBS-01` was the one XL entry and was split, which is what its own approach line
 asked for if the acceptance could not stay atomic. It could not: the Prove named
@@ -54,6 +55,21 @@ staying reproducible, seed-dependent and prefix-stable, which is everything a
 naive test asserts. The acceptance suite compares the stream against the
 algorithm restated from its specification and anchored to the published
 reference's own first words for seed zero.
+
+⭐ The lab also writes a run out. One artifact per endpoint, each a
+`bit-ids/transcript/1` document carrying every segment's bytes, direction,
+connection and offset, plus the manifest rows describing them. The digest is of
+the file rather than of the buffer and the file is compared against the buffer,
+because a writer that reports the digest of what it meant to write cannot detect
+a short write and a truncated file digests to a value matching itself.
+
+⛔ **A transcript is never scrubbed and the type has no argument for it.** The
+bytes a build put on the wire are the measurement, and a peer ID is exactly the
+sort of high-entropy token a scrubber reaches for. Scrubbing belongs to text a
+host produced, where every removal is declared with its count so `raw` cannot
+quietly mean `edited`, and the scrubber replaces what the caller names rather
+than guessing: a capture knows its own hostname and account, and only an IPv4
+address has a shape worth matching on.
 
 The `bit-ids-probe` crate is where those responders live, one module per surface.
 Both tracker surfaces and the peer wire are done. The HTTP one keeps the exact head bytes and
@@ -177,19 +193,18 @@ anything.
 
 ## Work order
 
-1. `OBS-09`, which writes a run's transcript out as the content-addressed
-   evidence a manifest cites. It is the last thing between here and a first
-   vertical capture on a host the `ACQ-04` guards permit. `OBS-08` closed on
-   2026-09-05 and is no longer in the way.
-2. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
-   captures, on Linux only until `CI-03` provides the Windows guard pair.
-3. `ACQ-05`, the artifact cache, and `FOUND-04`, the licence register, before
+1. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
+   captures, on Linux only until `CI-03` provides the Windows guard pair. ⭐ The
+   observer layer no longer blocks them: `OBS-08` and `OBS-09` both closed on
+   2026-09-05, so a client adapter has a torrent to be given and a bundle to
+   write into.
+2. `ACQ-05`, the artifact cache, and `FOUND-04`, the licence register, before
    the first proprietary client is acquired.
-4. `CORPUS-01` through `CORPUS-03`, then `PUB-01` through `PUB-03`.
-5. `CI-01` through `CI-04`, followed by remaining client and engine breadth.
-6. `FOUND-04`, the licence and redistribution register, before the first
+3. `CORPUS-01` through `CORPUS-03`, then `PUB-01` through `PUB-03`.
+4. `CI-01` through `CI-04`, followed by remaining client and engine breadth.
+5. `FOUND-04`, the licence and redistribution register, before the first
    proprietary client is acquired.
-7. Consumer library, public documentation, and refinements.
+6. Consumer library, public documentation, and refinements.
 
 ## Pending operator decisions
 
@@ -250,6 +265,12 @@ a fixture at a value no default or bound also has.
 
 ⭐ **Third-party readers are installable here and are a much stronger driven
 pass than a decoder written for the purpose.** `libtorrent` 2.1.1.0 and `torf`
-4.3.1 install into a virtualenv from the package index in seconds and read a
-`.torrent` without touching the network. Parsing a file is not a capture and
-needs no disposable host; running a client still does.
+4.3.1 install into a virtualenv from the package index and read a `.torrent`
+without touching the network. Parsing a file is not a capture and needs no
+disposable host; running a client still does.
+
+⭐ **A driven pass gets its strength from the client knowing what it sent.**
+`OBS-09`'s reads the bundle back with the same Python client that put the bytes
+on the wire, so the transcript can be checked against what actually happened
+rather than against what the lab believed happened. A reader that only
+re-computes digests is checking the writer against itself.

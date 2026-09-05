@@ -21,14 +21,18 @@
 //! is what lets one deadline, one loopback guard and one journal serve every
 //! surface rather than each observer growing its own.
 //!
-//! `OBS-09` writes the journal out as the content-addressed evidence a run
-//! manifest cites, and it does not exist yet. What is here is the supervisor
-//! the observers plug into, plus the synthetic torrent a capture hands a client.
+//! What is here is the supervisor the observers plug into, the synthetic torrent
+//! a capture hands a client, and the writer that turns a run into the
+//! content-addressed evidence a manifest cites.
 //!
-//! [`torrent`] is `OBS-08` and is closed. ⚠ Its bytes are a function of its
-//! declared spec, which is what lets a record cite the fixture it used and have
-//! that be checkable, so the payload's byte stream is part of the contract
-//! rather than an implementation detail.
+//! [`torrent`] is `OBS-08`. ⚠ Its bytes are a function of its declared spec,
+//! which is what lets a record cite the fixture it used and have that be
+//! checkable, so the payload's byte stream is part of the contract rather than
+//! an implementation detail.
+//!
+//! [`evidence`] is `OBS-09`. ⛔ It writes to a contract that already exists
+//! rather than inventing one, and a transcript it writes is never scrubbed: the
+//! bytes a build put on the wire are the measurement.
 //!
 //! # Starting one
 //!
@@ -59,6 +63,7 @@
 
 pub mod bind;
 pub mod endpoint;
+pub mod evidence;
 pub mod journal;
 mod lab;
 pub mod torrent;
@@ -67,6 +72,7 @@ pub use bind::BindError;
 pub use endpoint::{
     ConnectionId, DEFAULT_MAX_PENDING_BYTES, DatagramResponder, StreamReply, StreamResponder,
 };
+pub use evidence::{Bundle, BundleError, Scrub, TranscriptOf};
 pub use journal::{Journal, Segment};
 pub use lab::{
     DEFAULT_DEADLINE, DEFAULT_DIAL_TIMEOUT, DEFAULT_MAX_CONNECTIONS, DEFAULT_POLL, Endpoint, Lab,

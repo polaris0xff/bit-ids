@@ -287,7 +287,7 @@ allowed name, and the clean tree. Both halves agreed on all five.
 ## OBS-09: Raw evidence journal and bundle writer
 
 Source: split out of `OBS-01` on 2026-09-04
-Priority: P0 | Effort: M | Status: OPEN
+Priority: P0 | Effort: M | Status: DONE
 
 Problem: `OBS-01` keeps what the lab observed in memory, which is what its own
 tests can assert against and is not what a capture publishes. A run has to
@@ -312,6 +312,106 @@ temporary directory, reads every artifact back off disk, and binds the manifest
 it produced against a profile with `bit_ids::manifest::bind`, exiting non-zero
 if any shared value disagrees. A truncated artifact is planted and the digest
 comparison must refuse it.
+
+⚠ The Prove names `--test evidence_journal`, which selects the integration
+target and skips the library's own tests. That is the shape `OBS-01` was
+corrected for and `../docs/conventions/forbidden-patterns.md` carries; the
+acceptance run is `cargo test -p bit-ids-lab --locked --all-targets`, which is
+this file and the module's unit tests together. `CI-05` is the check for it.
+
+Closure evidence: run on 2026-09-05.
+`cargo test -p bit-ids-lab --locked --all-targets` reports 71 passed, 0 failed
+over 7 binaries: 17 library tests, 15 in `evidence_journal`, 21 in
+`lab_supervisor`, 18 in `synthetic_torrent`, and three examples carrying none.
+`cargo test --workspace --locked --all-targets` reports 30 binaries and 288
+passed, 0 failed, up from 28 and 270. `cargo fmt --all -- --check`,
+`cargo clippy --workspace --locked --all-targets -- -D warnings`,
+`sh scripts/common/check-gate.sh` and `pwsh -File scripts/common/check-gate.ps1`
+all exit 0.
+
+⭐ **The bind test uses `bit-ids`'s own golden manifest and profile, included
+rather than copied.** The bundle's rows are spliced into both documents under
+the identifiers the golden profile already cites, each document keeping its own
+shape, and both are parsed through the validating route so that what `bind`
+reports is a disagreement between them rather than a defect inside one. Splicing
+into one document and not the other is the control: without it, a `bind` that
+passed over the real artifacts would also have passed had the writer produced
+nothing at all.
+
+⛔ **An endpoint the plan does not name is refused rather than defaulted.** The
+writer was first authored to derive an identifier from the endpoint name and
+assume `observer_stream`, which gives a run that grew a surface an artifact
+nobody planned, filed under whatever the writer guessed, and `E-MAN-52` and
+`E-MAN-53` cannot see it: they only require the tool and the phase to name
+something the run declares. Failing closed costs one line in the plan.
+
+Guard mutation: 35 defects planted one at a time over
+`crates/bit-ids-lab/src/evidence.rs`, each by literal replacement required to
+match exactly once, each verified to have changed the file by comparing its
+SHA-256 either side, each acceptance exit code read unpiped, and the tree
+restored and re-run clean afterwards. 34 refused. ⭐ The first round refused 26
+and the six it missed were all real gaps in the tests rather than equivalent
+mutants: the transcript's schema string, the tool and the phase were each
+asserted only against the constant or not at all, so a writer that filed every
+artifact under another declared tool produced a manifest that validates and
+lies. That is the same shape `OBS-08` found in its own constants, twice in one
+session.
+
+⛔ **The door sweep found a gate on the spelling of a path and none on where it
+resolves.** `RelPath` refuses `..`, a leading separator and a backslash, and
+every one of those is a rule about the text; a symlink sitting in a reused
+bundle root satisfies all of them and lands the artifact outside, with the
+manifest citing a path that reads as inside. The writer now resolves the root
+once and requires every artifact's directory to resolve under it, and refuses a
+path already held by a symlink, a file or a directory. ⭐ Resolving the root is
+the half that is easy to miss: without it the check refuses **every** write on a
+host whose root is itself behind a symlink, which is `/tmp` on macOS and a bind
+mount anywhere, and it reads as a broken filesystem rather than as this check.
+
+⭐ **The occupied check and the read-back split on principle rather than on
+convenience.** The first refuses what would be followed or overwritten; the
+second catches what would be swallowed. A character device planted at an
+artifact path accepts every byte and returns none, which is the one case a check
+on existence cannot tell from a healthy write and a check on the bytes can, so
+refusing it too would leave the read-back with no reachable failure and no way
+to know it works.
+
+Driven on 2026-09-05 by a client that is not this project's test harness.
+`cargo run -p bit-ids-lab --example evidence-bundle -- <root> 6` runs a lab on
+two surfaces, writes the bundle, verifies it and prints what a manifest would
+carry; a Python client connects to both endpoints, sends bytes it chose, and
+then reads the bundle off disk. 32 comparisons, 32 agree: the file, its size,
+its digest recomputed independently, the content-addressed store path
+re-derived from that digest, the schema and endpoint each transcript names, and
+⭐ **the transcript holding exactly the bytes that client sent and exactly what
+it read back, request recorded before answer.** The client is the authority on
+what went over the wire, which is what makes that last one an outside opinion
+rather than the lab agreeing with itself. Four negative controls: a truncated
+artifact and a length-preserving edit both stop matching, and a rerun into the
+same root is refused with `peer-wire.transcript.json is already taken`.
+
+Decision taken here: `serde_json` was added as a **dev**-dependency of
+`bit-ids-lab`, and `docs/supply-chain.md` requires the argument. The lockfile
+diff is one line and no new package: `bit-ids` already depends on it, so no
+maintainer joins the trust set. It is used only by the acceptance suite, to
+splice the bundle's rows into the golden documents. ⛔ The transcript itself is
+serialised by hand rather than through a derive, and
+[`../docs/supply-chain.md`](../docs/supply-chain.md) carries why.
+
+The one guard that is not refuted: `read_back` compares the file's size and its
+digest, and dropping the size comparison is refused by nothing. For an artifact
+this bundle wrote the digest subsumes it, because any change to the length
+changes the digest. What it catches is a record whose declared length disagrees
+with the bytes its own digest names, and reaching that needs a `Bundle`
+reconstructed from a manifest read off disk rather than one this process just
+wrote. `PUB-01` is where that arrives; the comparison is kept and the reason is
+stated where it is written.
+
+Residual: nothing reads a `bit-ids/transcript/1` document back into typed
+segments. The driven pass parses one in Python and the acceptance suite parses
+one with `serde_json`, so the format is proven readable, and a Rust reader
+belongs with the consumer that needs it rather than here. `LIB-01` and `PUB-01`
+are the candidates.
 
 ## OBS-10: Cross-platform normalized-event equality
 

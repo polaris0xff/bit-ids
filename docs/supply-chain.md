@@ -85,6 +85,17 @@ same torrent, to save one small crate. ⚠ The crate is checked against RFC 3174
 own vectors rather than trusted, in
 [`../crates/bit-ids-lab/src/torrent.rs`](../crates/bit-ids-lab/src/torrent.rs).
 
+`OBS-09` added `serde_json` 1.0.151 to `bit-ids-lab` as a **dev**-dependency, and
+no new package: `bit-ids` already depends on it, so the lockfile diff is one line
+naming the existing crate against another member. ⭐ **It is a dev-dependency on
+purpose.** The acceptance suite needs a JSON reader to splice the bundle's rows
+into the golden manifest and profile; the crate itself does not, because a
+transcript is serialised by hand. The field order, the hex case and the exact
+spacing are the bytes a digest names, and a derive that reordered a field on a
+dependency bump would change every artifact's digest with nothing saying why.
+The rejected alternative was serialising through the derive and accepting that
+the on-disk form of published evidence is a dependency's choice.
+
 ⚠ **`check-no-secrets --public` refuses a bare run of long hex, and a published
 test vector is one.** Forty lowercase hex digits is exactly what a token looks
 like, so the rule is right to fire. It was narrowed rather than switched off, per

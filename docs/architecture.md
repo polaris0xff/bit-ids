@@ -51,7 +51,7 @@ No arrow reads identity values from client source code.
 | --- | --- | --- |
 | `bit-ids` crate | public types, schema identity, validation, stable-version resolution and eventually embedded/pinned catalogue access | capture, installation or network mutation |
 | `bit-ids-wire` crate | byte-exact codecs for the observed surfaces, and the fixture corpus every observer parses against | sockets, timing, and any mapping from a peer-ID prefix to a client name |
-| `bit-ids-lab` crate | the sockets: binding them on loopback and nowhere else, the run deadline, the ordered byte record, endpoint shutdown, and the synthetic torrent a capture hands a client | every protocol, and what a transcript becomes on disk |
+| `bit-ids-lab` crate | the sockets: binding them on loopback and nowhere else, the run deadline, the ordered byte record, endpoint shutdown, the synthetic torrent a capture hands a client, and writing a run out as content-addressed evidence | every protocol, and assembling or publishing a store |
 | `bit-ids-probe` | what each surface answers with, and what an exchange was observed to carry, one module per surface | sockets, the run clock, and client launch or package installation |
 | acquisition scripts | retrieval: fetching a release listing or artifact and keeping the exact bytes | parsing, ordering or deciding anything, all of which are Rust's |
 | client drivers | launch/configure one target against the isolated fixture | deciding whether the observation is valid |
@@ -408,6 +408,38 @@ name a torrent nobody used. The `.torrent` bytes and both digests come out of
 one function, so a digest cannot describe something other than what the client
 was handed.
 
+### What a run leaves on disk
+
+A profile cites evidence and a manifest describes it, and something has to write
+it. [`../crates/bit-ids-lab/src/evidence.rs`](../crates/bit-ids-lab/src/evidence.rs)
+is that, and `OBS-09` owns it. One artifact per endpoint, each a
+`bit-ids/transcript/1` document carrying every segment's bytes, direction,
+connection and offset, plus the `EvidenceRecord` rows a manifest carries. The
+shape is section 4's and is not invented here.
+
+⛔ **The digest is of the file, and the file is compared against the buffer.** A
+writer that digests what it meant to write cannot detect a short write, and the
+manifest would then be internally consistent and describe an artifact nobody
+has. Reading it back closes half of that and only half, because a truncated file
+digests to a value that matches itself. One comparison serves both the write and
+a later verification, so the guard that cannot be provoked at write time is
+proved by the caller that can be.
+
+⛔ **A path is gated on where it resolves, not only on how it is spelled.** The
+canonical form already refuses `..`, a leading separator and a backslash, and
+those are rules about text: a symlink in a reused bundle root satisfies every
+one and still lands the artifact outside, with the manifest citing a path that
+reads as inside. The root is resolved once and every artifact's directory must
+resolve under it.
+
+⛔ **A transcript is never scrubbed.** The bytes a build put on the wire are the
+measurement, and editing one changes the identity being measured; a peer ID is
+exactly the sort of high-entropy token a scrubber reaches for. Scrubbing belongs
+to text a host produced, where every removal is declared with its count so that
+`raw` cannot quietly mean `edited`. ⚠ The scrubber replaces what the caller
+names rather than guessing: a capture harness knows its own hostname, account
+and variables, and only an IPv4 address has a shape worth matching on by itself.
+
 ### The observers
 
 [`../crates/bit-ids-probe/`](../crates/bit-ids-probe/) holds one module per
@@ -632,11 +664,12 @@ consume the same artifact assembled once.
 
 ## 10. Limits
 
-- There are no measured profiles yet.
-- All four core surfaces have observers and the lab generates the torrent that
-  makes a client announce about anything at all, and no capture is possible yet
-  regardless: `OBS-09` owns what a run's transcript becomes on disk, so nothing
-  yet produces the content-addressed evidence a manifest cites.
+- There are no measured profiles yet. The observer layer is complete: all four
+  core surfaces have observers, the lab generates the torrent that makes a
+  client announce about anything at all, and a run's transcript becomes the
+  content-addressed evidence a manifest cites. What stands between here and a
+  first capture is a client adapter and a host the
+  [`capture-host.md`](capture-host.md) guards permit.
 - ⚠ No observer has been driven by a stock `BitTorrent` client. Each was driven
   by an independent client written from the specification, which is a weaker
   control: it shares this project's reading of the protocol. `OBS-07` owns the

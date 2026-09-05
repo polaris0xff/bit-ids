@@ -1,17 +1,17 @@
 # Work index
 
 Total: 56
-Open: 39
+Open: 38
 In progress: 0
 Blocked: 0
-Done: 17
+Done: 18
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| P0 | 7 | 0 | 0 | 17 | 24 |
+| P0 | 6 | 0 | 0 | 18 | 24 |
 | P1 | 31 | 0 | 0 | 0 | 31 |
 | P2 | 1 | 0 | 0 | 0 | 1 |
-| Total | 39 | 0 | 0 | 17 | 56 |
+| Total | 38 | 0 | 0 | 18 | 56 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -31,7 +31,7 @@ Done: 17
 | OBS-06 | P1 | M | OPEN | Adjacent protocol observer suite |
 | OBS-07 | P1 | M | OPEN | Known-client positive controls |
 | OBS-08 | P0 | M | DONE | Synthetic torrent for the observation lab |
-| OBS-09 | P0 | M | OPEN | Raw evidence journal and bundle writer |
+| OBS-09 | P0 | M | DONE | Raw evidence journal and bundle writer |
 | OBS-10 | P1 | M | OPEN | Cross-platform normalized-event equality |
 | ACQ-01 | P0 | L | DONE | Acquisition route schema |
 | ACQ-02 | P0 | L | DONE | Latest stable release resolver |

@@ -5,6 +5,49 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-05T09:45:00Z
+
+- Closed `OBS-09`, the raw evidence journal and bundle writer, which completes
+  the observer layer. A run's transcript now becomes one
+  `bit-ids/transcript/1` artifact per endpoint plus the manifest rows describing
+  them, and a first vertical capture is possible from here. Record:
+  [`TODO/observer.md`](TODO/observer.md).
+- ⛔ The digest is of the file and the file is compared against the buffer. A
+  writer that digests what it meant to write cannot detect a short write, and a
+  truncated file digests to a value matching itself, so reading back closes only
+  half of it. One comparison serves the write path and a later `verify`, so the
+  guard that cannot be provoked at write time is proved by the caller that can.
+- ⛔ The door sweep found a gate on how a path is spelled and none on where it
+  resolves. A symlink in a reused bundle root satisfies every canonical-path
+  rule and lands the artifact outside, with the manifest citing a path that
+  reads as inside. The root is now resolved once and every artifact's directory
+  must resolve under it; a path already held by a symlink, a file or a directory
+  is refused rather than followed or overwritten.
+- ⭐ That check has a second half that is easy to miss: without resolving the
+  root, it refuses **every** write on a host whose root is itself behind a
+  symlink, which is `/tmp` on macOS and a bind mount anywhere.
+- ⛔ A transcript is never scrubbed and the type has no argument for it: the
+  bytes a build put on the wire are the measurement. Scrubbing belongs to text a
+  host produced, with every removal declared and counted, and the scrubber
+  replaces what the caller names rather than guessing.
+- An endpoint the transcript plan does not name is refused, not defaulted. A
+  derived identifier and an assumed kind produce a manifest that validates and
+  lies, because `E-MAN-52` and `E-MAN-53` only require the tool and the phase to
+  name something the run declares.
+- Guard mutation: 35 plants, 34 refused. ⚠ The first round refused 26, and all
+  six misses were real gaps in the tests rather than equivalent mutants: the
+  transcript schema, the producing tool and the phase were each asserted against
+  a constant that moves with the code, or not at all. `TODO/observer.md` records
+  it beside the `OBS-08` finding it repeats.
+- Driven by a Python client that sent the bytes itself and then read the bundle
+  off disk: 32 comparisons, 32 agree, including that each transcript holds
+  exactly what that client sent and read back, request before answer. Four
+  negative controls, and a rerun into the same root refused by name.
+- `serde_json` added as a dev-dependency of `bit-ids-lab`. The lockfile diff is
+  one line and no new package, because `bit-ids` already depends on it.
+  [`docs/supply-chain.md`](docs/supply-chain.md) carries the layers.
+- Deployment: nothing deployed. No capture was taken.
+
 ### 2026-09-05T08:30:00Z
 
 - Closed `OBS-08`, the synthetic torrent. The generator was checkpointed in the
