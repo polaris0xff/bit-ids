@@ -15,7 +15,7 @@ follow carry this file, and each row that depends on one names it.
 | Checks | gate 12 checks, 11 passed, 0 failed, 1 skipped on `sh`; 10 passed, 0 failed, 2 skipped on `pwsh` |
 | Suite | 30 binaries, 289 passed, 0 failed, plus 2 doctests |
 | Mutation | 94 defects planted across 4 passes, 91 refused, 3 not refused and each named below |
-| CI | runs 25 and 26 green on both lanes, read back from the API per commit. ⛔ Run 27 at `f9239a5` is **red on Windows and green on Linux**, and the failure is named below |
+| CI | runs 25, 26 and 28 green on **both** lanes, read back from the API per commit. ⚠ Run 27 at `f9239a5` was red on Windows and green on Linux; the cause is named below and run 28 confirms it was transient |
 | Cost | no money. Network: one crate already in the lockfile, two Python libraries into a virtualenv, and three read-only GitHub API calls |
 | Health | tree clean, level with `origin/main`, nothing deployed, no capture taken |
 
@@ -86,7 +86,7 @@ exercised, with an absent literal, an ambiguous one and a no-op edit, because a
 probe's guard is a guard like any other and this project has been burned by one
 three times.
 
-## The three guards that are not refuted
+## The two guards that are not refuted
 
 | guard | why nothing refutes it | what would have to be true |
 | --- | --- | --- |
@@ -104,15 +104,18 @@ a later reader does not take an unreached guard for a proven one.
   exists to refuse, and the Windows guard pair does not exist at all. Three
   routes were tried before the client entries were moved behind `CORPUS-01`;
   [`../../TODO/clients.md`](../../TODO/clients.md) carries them.
-- ⛔ **The Windows CI lane is red on the last pushed commit, and not because of
-  the change.** Run 27 at `f9239a5` failed at *Install pinned Rust toolchain*,
+- ⚠ **One Windows CI lane went red, and not because of the change.** Run 27 at
+  `f9239a5` failed at *Install pinned Rust toolchain*,
   before any repository code ran, with
   `could not download file from 'https://static.rust-lang.org/dist/channel-rust-1.98.0.toml.sha256'`
   and `os error 10060`, a TCP connect timeout to rustup's CDN. Every later step
   reports `skipped`. The Linux lane of the same commit is green including the
-  repository gate, which runs both `check-project` halves under `--strict`. ⚠ A
-  toolchain download is not something this repository can fix; the next push
-  re-runs the lane and its conclusion is the evidence either way.
+  repository gate, which runs both `check-project` halves under `--strict`.
+  ⭐ **Confirmed transient rather than assumed to be:** run 28 at `14f1da6`, a
+  superset of that tree, installed the same pinned toolchain on the same runner
+  image in ten seconds and went green on both lanes, repository gate included.
+  A toolchain download is not something a change here could have fixed, and one
+  red run of that shape is no evidence about the tree.
 - `check-remote-items` still cannot run on this host, for the reason two
   sessions ago measured.
 - ⛔ No observer has been driven by a stock `BitTorrent` client. `OBS-08`'s

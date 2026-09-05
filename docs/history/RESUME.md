@@ -33,7 +33,7 @@ both contracts.
 | --- | --- |
 | `sh scripts/common/check-gate.sh` | 12 checks, 11 passed, 0 failed, 1 skipped |
 | `pwsh -File scripts/common/check-gate.ps1` | 12 checks, 10 passed, 0 failed, 2 skipped |
-| `cargo test --workspace --locked --all-targets` | 30 binaries, 289 passed, 0 failed |
+| `cargo test --workspace --locked --all-targets` | 30 binaries, 289 passed, 0 failed, three runs in succession |
 | guard mutation, 4 passes | 94 plants, 91 refused, 3 named in the record |
 | `cargo test --workspace --locked --doc` | 2 passed, 0 failed |
 | `cargo fmt --all -- --check` | exit 0 |
@@ -56,13 +56,13 @@ on the wire, so a transcript is checked against what actually happened rather
 than against what the lab believed happened. A reader that only re-computes
 digests is checking the writer against itself.
 
-⛔ **The Windows CI lane is red on `f9239a5` and it is not this repository's
-defect.** Run 27 failed at *Install pinned Rust toolchain*, before any code ran,
-with a TCP connect timeout to `static.rust-lang.org` (`os error 10060`); every
-later step reports `skipped` and the Linux lane of the same commit is green
-including the strict repository gate. ⚠ Read the next run's conclusion on both
-lanes before doing anything about it: a toolchain download is not something a
-change here can fix, and it is not evidence about the tree either.
+⚠ **A red Windows lane may be a toolchain download rather than a defect.** Run
+27 at `f9239a5` failed at *Install pinned Rust toolchain*, before any repository
+code ran, with a TCP connect timeout to `static.rust-lang.org` (`os error
+10060`), every later step `skipped`, and the Linux lane green. Run 28 at
+`14f1da6` installed the same pinned toolchain on the same image and went green
+on both lanes, so it was transient. ⭐ Read the failing **step** before reading
+the run: a failure above *Rust check* is the runner's network, not the tree's.
 
 ⛔ `check-remote-items` cannot be made to run here and installing `gh` does not
 fix it. ⭐ **That it runs in CI is verified rather than assumed:** the Linux lane
