@@ -275,7 +275,7 @@ this observer was written by this project, because no client is installed and
 ## OBS-03: UDP tracker observer
 
 Source: bit-cli T-234 UDP key and numwant inventory
-Priority: P0 | Effort: L | Status: OPEN
+Priority: P0 | Effort: L | Status: DONE
 
 Problem: UDP announces carry identity-adjacent fields and binary layout not
 visible to the HTTP observer.
@@ -286,8 +286,68 @@ and preserve every datagram.
 Approach: Implement strict transaction matching, deterministic responses,
 packet capture, and parsed views with no lossy string conversion.
 
-Prove: `cargo test --workspace --locked --test udp_tracker` covers connect, announce, timeout,
-retry, key, event, numwant, and rejection cases.
+Prove: `cargo test -p bit-ids-probe --locked --all-targets` covers connect,
+announce, timeout, retry, key, event, numwant, and rejection cases.
+
+Closure evidence: run on 2026-09-05.
+`cargo test -p bit-ids-probe --locked --all-targets` reports 35 passed, 0 failed.
+`cargo test --workspace --locked --all-targets` reports 22 binaries and 219
+passed, 0 failed: 11 test files, 4 library suites and 7 examples, which is every
+one on disk. `cargo test --workspace --locked --doc` reports 2 passed.
+`cargo fmt --all -- --check`, `cargo check`, `cargo clippy -- -D warnings` at
+`--workspace --locked --all-targets`, `shellcheck`, `shfmt -d -i 2 -ci` and
+`sh scripts/common/check-gate.sh` all exit 0.
+
+The observer is `crates/bit-ids-probe/src/tracker_udp.rs`, a responder for a
+`bit-ids-lab` datagram endpoint. ⭐ The exchange is stateful and that is the
+measurement rather than an obstacle: BEP 15 makes a client connect before it
+announces, so an announce carrying a connection id this tracker never issued
+means the build reused a stale one, invented one, or skipped the connect. Each is
+answered with the protocol's own error action and recorded as a refusal with its
+reason.
+
+Decision: the connection ids are a contiguous deterministic range, which inverts
+`docs/conventions/code.md`'s rule that identifiers come from a cryptographic
+random source. The value protects nothing, the only party who can see it is the
+build under measurement on a loopback socket, and two runs of one capture have to
+produce comparable transcripts; a random id would make every recorded exchange
+differ in bytes for no measurement. The range also makes membership arithmetic
+rather than a set that grows for as long as a client keeps connecting. The
+rejected alternative is a fixed id, which cannot tell a build that echoed what it
+was given from one that ignored it.
+
+Guard mutation: 17 defects planted one at a time, each verified to have changed
+the file, all 17 refused on the first round. That is the first round in this
+session to miss nothing, and the corpus was written against the two lessons the
+earlier rounds cost.
+
+Door sweep: two findings, both about one rule enforced in one of two places. The
+connection id was read by the codec for an announce and by the observer's own
+byte slice for a scrape, so it is now read once, by the codec, for both. And the
+datagram list was capped while the refusal list was not, so a build sending
+garbage in a loop would have grown the second without limit.
+
+⚠ Claim audit: `Datagram::connection_id` reported BEP 15's magic value as a
+connection id for a connect request, which is a number that looks like one. A
+test assertion written the other way round is what found it. A connect now
+reports none, and `opens_with_protocol_id` is the reader for those bytes.
+
+Driven on 2026-09-05 with a BEP 15 client written from the specification in
+Python, independent of the Rust codec in language and in code. It connected and
+received `0x6269745f69640001`, announced and received interval 60, seeders 1 and
+one compact peer `127.0.0.1:6881`, then announced with an id the tracker never
+issued and received action 3 carrying
+`connection id was never issued by this tracker`. The observer recorded three
+datagrams with the peer ID, `key 0xcafebabe`, `event 2`, `num_want -1` and port
+51413 intact.
+
+⛔ Residual, and it is the same one `OBS-02` carries: no stock `BitTorrent`
+client has driven this. An independent client written from the same
+specification shares this project's reading of it, so it is a weaker control than
+`OBS-07`'s stock clients. It cannot be closed on this host:
+`sh scripts/acquisition/assert-disposable.sh --egress` exits 1 here with
+`a public route exists`, so running a client here would be the capture the
+boundary in `docs/capture-host.md` exists to refuse. `CI-03` owns the runner.
 
 ## OBS-04: Peer-wire handshake observer
 

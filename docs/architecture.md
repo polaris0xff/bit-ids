@@ -392,7 +392,28 @@ that is what the suite asserts rather than assuming.
 deadline bounds how long a target can talk and not how fast, so a build that
 announces in a loop would otherwise grow the record until the host runs out of
 memory. A record that kept a cap's worth with nothing saying how many there were
-is a measurement with no denominator.
+is a measurement with no denominator. ⛔ Every list an observer grows is bounded
+by that cap, not only the obvious one: the UDP observer's refusal list was
+unbounded while its datagram list was capped, which is a bound on one of two
+lists that grow together.
+
+The UDP exchange is stateful, and that is an observation rather than an
+obstacle. BEP 15 makes a client connect before it announces, and an announce
+carrying a connection id the observer never issued means the build reused a
+stale one, invented one, or skipped the connect. So the id is checked and a
+mismatch is answered with the protocol's own error action.
+
+⚠ **The connection ids are a contiguous deterministic range**, which inverts the
+rule in [`conventions/code.md`](conventions/code.md) that identifiers come from a
+cryptographic random source. The value protects nothing, the only party who can
+see it is the build under measurement on a loopback socket, and two runs of one
+capture have to produce comparable transcripts. A random id would make every
+recorded exchange differ in bytes for no measurement.
+
+⚠ **A connect request carries no connection id.** Its first eight bytes are BEP
+15's magic value, and reporting those as a connection id hands a caller a number
+that looks like one. The codec returns nothing for that case and
+`opens_with_protocol_id` is the reader for those bytes.
 
 ## 6. Connector contract
 
@@ -555,11 +576,16 @@ consume the same artifact assembled once.
 ## 10. Limits
 
 - There are no measured profiles yet.
-- Only the HTTP tracker surface has an observer. `OBS-03` through `OBS-05` own
-  the UDP tracker and the peer wire, and until they exist a capture would see a
-  client announce and nothing else. `OBS-08` owns the torrent that makes a
-  client announce at all, so no capture is possible yet whatever the acquisition
-  side supports.
+- Only the two tracker surfaces have observers. `OBS-04` and `OBS-05` own the
+  peer wire, and until they exist a capture would see a client announce and
+  nothing else. `OBS-08` owns the torrent that makes a client announce at all,
+  so no capture is possible yet whatever the acquisition side supports.
+- ⚠ No observer has been driven by a stock `BitTorrent` client. Each was driven
+  by an independent client written from the specification, which is a weaker
+  control: it shares this project's reading of the protocol. `OBS-07` owns the
+  stock-client positive controls, and they need a host the
+  [`capture-host.md`](capture-host.md) guards permit, which the session host
+  this was written on is not.
 - ⛔ A Windows capture is not permitted. The disposable-host guards in
   [`capture-host.md`](capture-host.md) read `/proc/net/route` and
   `/etc/machine-id`, so there is no boundary to run before an install on

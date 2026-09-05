@@ -22,7 +22,9 @@
 //! identity. Each module says what it answers and why.
 
 pub mod tracker_http;
+pub mod tracker_udp;
 
 pub use tracker_http::{
     Announce, HttpTracker, OfferedPeer, TrackerResponse, failure_body, http_response,
 };
+pub use tracker_udp::{Observed, Refusal, UdpTracker, UdpTrackerResponse};

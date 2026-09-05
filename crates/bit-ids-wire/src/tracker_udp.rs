@@ -183,6 +183,32 @@ impl Datagram {
         &self.raw
     }
 
+    /// The connection id a request opens with.
+    ///
+    /// ⛔ **One read path for one field.** The observer checks this id on an
+    /// announce and on a scrape, and reading it out of the raw bytes in the
+    /// second place is how two spans drift apart: `docs/conventions/code.md`
+    /// names copy-pasted parsing as the shape whose fix in one copy never
+    /// reaches the other. `AnnounceRequest` takes its own from here too.
+    ///
+    /// ⚠ **A connect request has none.** Its first eight bytes are
+    /// [`PROTOCOL_ID`], and returning that as a connection id is a value that
+    /// looks like one and is not: a caller comparing it against the ids a
+    /// tracker issued would be comparing against BEP 15's magic number. The
+    /// reader for those bytes is [`Datagram::opens_with_protocol_id`].
+    ///
+    /// Returns `None` for a connect, for a response, which carries no
+    /// connection id, and for a request too short to hold one.
+    #[must_use]
+    pub fn connection_id(&self) -> Option<u64> {
+        if self.direction != Direction::FromTarget || self.action == Action::Connect {
+            return None;
+        }
+        be_bytes::<8>(&self.raw, 0, "connection id")
+            .ok()
+            .map(u64::from_be_bytes)
+    }
+
     /// Whether this is a connect request opening with [`PROTOCOL_ID`].
     ///
     /// A client that opens with a different magic value is talking a protocol
@@ -222,7 +248,10 @@ impl Datagram {
             Ok(u32::from_be_bytes(be_bytes::<4>(raw, at, what)?))
         };
         Ok(AnnounceRequest {
-            connection_id: u64_at(0, "connection id")?,
+            // Through the one reader, not a second span of its own.
+            connection_id: self.connection_id().ok_or_else(|| {
+                WireError::new("truncated", 0, "announce carries no connection id")
+            })?,
             transaction_id: u32_at(12, "transaction id")?,
             info_hash: be_bytes::<20>(raw, 16, "info hash")?,
             peer_id: be_bytes::<20>(raw, 36, "peer id")?,

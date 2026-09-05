@@ -5,6 +5,35 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-05T03:40:00Z
+
+- Closed `OBS-03`, the UDP tracker observer, which completes both tracker
+  surfaces. Record: [`TODO/observer.md`](TODO/observer.md).
+- ⭐ The BEP 15 exchange is stateful and that is the measurement. A client
+  connects before it announces, so an announce carrying a connection id the
+  tracker never issued means the build reused a stale one, invented one or
+  skipped the connect. Each is answered with the protocol's error action and
+  recorded with its reason.
+- The connection ids are a contiguous deterministic range, which inverts this
+  project's rule about identifiers coming from a random source. The entry
+  carries the argument and the rejected alternative.
+- Seventeen defects planted one at a time, all seventeen refused on the first
+  round, which is the first round this session to miss nothing.
+- The door sweep found one rule enforced in one of two places, twice. The
+  connection id was read by the codec for an announce and by the observer's own
+  byte slice for a scrape. And the datagram list was capped while the refusal
+  list was not.
+- ⚠ The claim audit found `Datagram::connection_id` reporting BEP 15's magic
+  value as a connection id for a connect request. `TODO/observer.md` says how
+  that was found.
+- Driven with a BEP 15 client written from the specification in Python, which
+  connected, announced, and was refused when it used an id the tracker never
+  issued.
+- ⛔ No observer has been driven by a stock `BitTorrent` client, and none can be
+  on a session host. `TODO/PROGRESS.md` carries which guard refuses it and why.
+  `OBS-07` owns the stock-client controls and `CI-03` owns the runner.
+- Deployment: no data branch, release or capture service was created.
+
 ### 2026-09-05T02:30:00Z
 
 - Closed `OBS-02`. The `bit-ids-probe` crate holds the observers, one module per

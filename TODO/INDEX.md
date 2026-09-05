@@ -1,17 +1,17 @@
 # Work index
 
 Total: 56
-Open: 43
+Open: 42
 In progress: 0
 Blocked: 0
-Done: 13
+Done: 14
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| P0 | 11 | 0 | 0 | 13 | 24 |
+| P0 | 10 | 0 | 0 | 14 | 24 |
 | P1 | 31 | 0 | 0 | 0 | 31 |
 | P2 | 1 | 0 | 0 | 0 | 1 |
-| Total | 43 | 0 | 0 | 13 | 56 |
+| Total | 42 | 0 | 0 | 14 | 56 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -25,7 +25,7 @@ Done: 13
 | SCHEMA-04 | P0 | M | DONE | Variability and repeated-sampling model |
 | OBS-01 | P0 | L | DONE | Isolated Rust loopback observation lab |
 | OBS-02 | P0 | L | DONE | HTTP tracker observer |
-| OBS-03 | P0 | L | OPEN | UDP tracker observer |
+| OBS-03 | P0 | L | DONE | UDP tracker observer |
 | OBS-04 | P0 | L | OPEN | Peer-wire handshake observer |
 | OBS-05 | P0 | L | OPEN | BEP 10 and early-message observer |
 | OBS-06 | P1 | M | OPEN | Adjacent protocol observer suite |
