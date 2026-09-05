@@ -115,11 +115,74 @@ try {
         }
     }
 
-    $summary = Get-Content -LiteralPath 'TODO/SUMMARY.md' |
-        Where-Object { $_ -match '^\| Total \|' } | Select-Object -First 1
-    $expectedSummary = "| Total | $($openRows.Count) | $($inProgressRows.Count) | $($blockedRows.Count) | $($doneRows.Count) | $($rows.Count) |"
+    $summaryLines = @(Get-Content -LiteralPath 'TODO/SUMMARY.md')
+    $summary = $summaryLines | Where-Object { $_ -match '^\| Total \|' } | Select-Object -First 1
+    $expectedSummary = "| Total | | $($openRows.Count) | $($inProgressRows.Count) | $($blockedRows.Count) | $($doneRows.Count) | $($rows.Count) |"
     if ($summary -ne $expectedSummary) {
         $failures.Add("TODO/SUMMARY.md total is '$summary', computed '$expectedSummary'")
+    }
+
+    # ⛔ THE TOTAL ROW WAS THE ONLY ROW CHECKED, AND IT IS ONE OF TWELVE. The
+    # eleven category rows are derived from the same index and nothing compared
+    # them, so Observer could read 9 over ten open observer entries and this
+    # check exited 0.
+    #
+    # ⭐ The mapping from a category to the identifiers it counts is declared in
+    # TODO/SUMMARY.md rather than here, so this twin and the sh twin read one
+    # mapping instead of holding one each. ⛔ Keep this identical to the sh
+    # twin: both directions are checked, so a prefix with no row and a row
+    # naming nothing are both failures.
+    #
+    # ⚠ A DATA ROW IS RECOGNISED BY ITS SHAPE, NOT BY ITS CASE. The first
+    # version matched '^\| [A-Z]' and this twin let the `category` header
+    # through, because PowerShell's -match is case-insensitive and awk's
+    # bracket expression is not. The two regexes were character for character
+    # identical and answered differently.
+    $byPrefix = @{}
+    foreach ($pair in $indexPairs) {
+        $prefix = $pair.Id -replace '-\d\d$', ''
+        if (-not $byPrefix.ContainsKey($prefix)) {
+            $byPrefix[$prefix] = @{ OPEN = 0; IN_PROGRESS = 0; BLOCKED = 0; DONE = 0; TOTAL = 0 }
+        }
+        $byPrefix[$prefix][$pair.Status]++
+        $byPrefix[$prefix].TOTAL++
+    }
+    $summaryBad = [System.Collections.Generic.List[string]]::new()
+    $declaredPrefixes = @{}
+    foreach ($line in $summaryLines) {
+        if ($line -notmatch '^\|') { continue }
+        $parts = @($line -split '\|' | ForEach-Object { $_.Trim() })
+        if ($parts.Count -lt 9) { continue }
+        $prefix = $parts[2] -replace '`', ''
+        if (-not $prefix) { continue }
+        if (@($parts[3..7] | Where-Object { $_ -notmatch '^\d+$' }).Count -gt 0) { continue }
+        if ($declaredPrefixes.ContainsKey($prefix)) {
+            $summaryBad.Add("duplicate row for $prefix")
+            continue
+        }
+        $declaredPrefixes[$prefix] = $true
+        $counts = if ($byPrefix.ContainsKey($prefix)) { $byPrefix[$prefix] }
+        else { @{ OPEN = 0; IN_PROGRESS = 0; BLOCKED = 0; DONE = 0; TOTAL = 0 } }
+        if ([int]$parts[3] -ne $counts.OPEN -or
+            [int]$parts[4] -ne $counts.IN_PROGRESS -or
+            [int]$parts[5] -ne $counts.BLOCKED -or
+            [int]$parts[6] -ne $counts.DONE -or
+            [int]$parts[7] -ne $counts.TOTAL) {
+            $summaryBad.Add($prefix)
+        }
+    }
+    foreach ($prefix in $byPrefix.Keys) {
+        if (-not $declaredPrefixes.ContainsKey($prefix)) {
+            $summaryBad.Add("$prefix has no row")
+        }
+    }
+    foreach ($prefix in $declaredPrefixes.Keys) {
+        if (-not $byPrefix.ContainsKey($prefix)) {
+            $summaryBad.Add("$prefix names nothing in the index")
+        }
+    }
+    if ($summaryBad.Count -gt 0) {
+        $failures.Add('TODO/SUMMARY.md category rows disagree: ' + (($summaryBad | Sort-Object) -join ' '))
     }
 
     foreach ($priority in @('P0', 'P1', 'P2')) {

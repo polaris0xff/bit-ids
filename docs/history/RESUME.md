@@ -3,32 +3,36 @@
 **Task:** Take the work order in `TODO/PROGRESS.md` in dependency order,
 committing and pushing each green unit to `main`.
 
-**Resume point:** `FOUND-03` and `ACQ-01` through `ACQ-04` are closed. The
-acquisition side is finished and ⚠ no capture is possible yet regardless, because
-there is no observer. The next item is splitting `OBS-01` and then `OBS-02`
-onward, against the `bit-ids-wire` fixture corpus rather than a live client.
+**Resume point:** Foundations, schema and acquisition are closed. ⚠ No capture
+is possible yet regardless, because there is no observer. This session splits
+`OBS-01` and then implements the lab and the transport observers, each against
+the `bit-ids-wire` fixture corpus rather than a live client.
 
 ⛔ A Windows capture is not permitted yet. The disposable-host guards read
 `/proc/net/route` and `/etc/machine-id`, so there is no boundary to run before
 an install on Windows. `CI-03` owns the pair; `docs/capture-host.md` carries
 both contracts.
 
-**In flight:** Nothing. The tree is coherent and the session ended cleanly.
-[`SESSION-2026-09-04-ACQUISITION.md`](SESSION-2026-09-04-ACQUISITION.md) is the
-saved summary of what it did and what each review pass found.
+**In flight:** Splitting `OBS-01`. Nothing is half-edited.
 
-**Tree:** Clean and level with `origin/main`, on `main`.
-`sh scripts/common/check-gate.sh` is green: 11 passed, 0 failed, 1 skipped.
-`cargo test --workspace --locked --all-targets` is 157 passed, 0 failed.
-`sh scripts/acquisition/check-runner.sh` is 7 guard cases, 7 passed, 0 failed.
-`cargo fmt --all -- --check`, `cargo check`, `cargo clippy` at
-`--workspace --locked --all-targets`, `shellcheck` and `shfmt -d -i 2 -ci` all
-exit 0.
+**Tree:** Clean and level with `origin/main`, on `main`, at `2fb8548`.
+Measured at the start of this session, on this host:
+
+| command | result |
+| --- | --- |
+| `sh scripts/common/check-gate.sh` | 12 checks, 11 passed, 0 failed, 1 skipped |
+| `pwsh -File scripts/common/check-gate.ps1` | 12 checks, 10 passed, 0 failed, 2 skipped |
+| `cargo test --workspace --locked --all-targets` | 14 binaries, 157 passed, 0 failed |
+| `cargo fmt --all -- --check` | exit 0 |
+| `cargo check --workspace --locked --all-targets` | exit 0 |
+| `cargo clippy --workspace --locked --all-targets -- -D warnings` | exit 0 |
+| `shellcheck` over every tracked `*.sh` | exit 0 |
+| `shfmt -d -i 2 -ci` over every tracked `*.sh` | exit 0 |
 
 ⭐ Install `pwsh`, `shellcheck` and `shfmt` before touching a script.
 `TODO/PROGRESS.md` carries the commands, including the `chmod +x` the
-PowerShell tarball needs on this image and which the previous version of that
-snippet omitted.
+PowerShell tarball needs on this image. All three installed cleanly here and
+`check-twins` compared both halves as a result.
 
 ⛔ `check-remote-items` cannot be made to run here and installing `gh` does not
 fix it. `gh` 2.63.2 installs and then reports the environment token invalid, and
@@ -49,7 +53,7 @@ to it. Compare a changed pair per planted mutation, not on a clean tree alone.
 lossy defects in the Rust codecs and two were missed on the first pass, each
 because the corpus lacked the shape that would have failed. A corpus only tests
 the defects it contains an example of. The mutation loop is worth re-running
-whenever a codec changes.
+whenever a codec or a guard changes.
 
 **Paste:** Read `docs/AGENTS.md` in full, follow its start protocol, and take
 the first unblocked item from `TODO/PROGRESS.md`. Work on `main`. Re-measure

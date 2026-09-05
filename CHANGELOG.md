@@ -5,6 +5,33 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-05T00:10:00Z
+
+- Split `OBS-01`, which was the one XL entry and carried an instruction to split
+  itself if its acceptance could not stay atomic. It could not: the Prove named
+  a known client fixture and a Linux-and-Windows comparison, and no client
+  adapter exists while a Windows capture is not permitted at all. The supervisor
+  stays in `OBS-01` at L, the synthetic torrent is `OBS-08`, the evidence
+  journal is `OBS-09`, and the cross-platform comparison is `OBS-10` with its
+  three blocking entries named. Record:
+  [`TODO/observer.md`](TODO/observer.md).
+- ⛔ `check-project` compared one row of `TODO/SUMMARY.md` against the index and
+  eleven against nothing. Setting `Observer` to 9 over ten open observer entries
+  passed the whole gate. Found by planting the count while checking that the
+  split's arithmetic was held by something, not by reading the file.
+- The category-to-identifier mapping now lives in `TODO/SUMMARY.md` as a
+  `prefix` column rather than in the checks, so the two twins read one mapping
+  instead of holding one each. Both directions are checked: a prefix with no row
+  and a row naming nothing are both refusals.
+- ⚠ The first version of that check used `^\| [A-Z]` in both halves and the two
+  halves disagreed, because PowerShell's `-match` is case-insensitive and awk's
+  bracket expression is not. The regex was character for character identical.
+  A data row is now recognised by its shape. Both new classes have rows in
+  [`docs/conventions/forbidden-patterns.md`](docs/conventions/forbidden-patterns.md).
+- Eight defects were planted one at a time and both halves refused all eight and
+  agreed on every one, with the exit codes read unpiped.
+- Deployment: no data branch, release or capture service was created.
+
 ### 2026-09-04T19:20:00Z
 
 - Closed `ACQ-04`, and with it the acquisition group's blocking work. A client

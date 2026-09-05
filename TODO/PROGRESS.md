@@ -1,9 +1,9 @@
 # Current progress
 
 State instant: 2026-09-04
-Baseline commit: `bf94f13` on `main`
-Total: 52
-Open: 41
+Baseline commit: `2fb8548` on `main`
+Total: 55
+Open: 44
 In progress: 0
 Blocked: 0
 Done: 11
@@ -16,6 +16,15 @@ record shape, a resolver that chooses the version, a verifier that says what two
 routes agreeing is worth, and a boundary that runs before anything is installed.
 ⚠ No capture is possible yet regardless: there is no observer. `OBS-01` through
 `OBS-05` are what is missing, and they are the critical path now.
+
+`OBS-01` was the one XL entry and was split, which is what its own approach line
+asked for if the acceptance could not stay atomic. It could not: the Prove named
+a known client fixture and a Linux-and-Windows comparison, and neither is
+available, so the entry could not have closed however well it was implemented.
+The supervisor stays in `OBS-01` and is provable on one Linux host today. The
+synthetic torrent is `OBS-08`, the durable evidence journal is `OBS-09`, and the
+cross-platform comparison is `OBS-10`, which names the three open entries that
+block it. Nothing was dropped in the split.
 
 The `bit-ids` crate carries the published record shape, the six field states,
 the derived record identifier, the canonical value forms and the publication
@@ -103,10 +112,13 @@ anything.
 
 ## Work order
 
-1. Split `OBS-01`, then implement `OBS-02` through `OBS-05`. Each parses
-   against the `bit-ids-wire` fixture corpus rather than against a live client.
-   This is now the critical path: the boundary and the acquisition record exist,
-   and what is missing is something to observe with.
+1. Implement `OBS-01`, the lab supervisor, then `OBS-02` through `OBS-05` on
+   top of it. Each parses against the `bit-ids-wire` fixture corpus rather than
+   against a live client. This is the critical path: the boundary and the
+   acquisition record exist, and what is missing is something to observe with.
+   `OBS-08` is needed before the first client capture rather than before the
+   observers, because an observer can be driven with fixture bytes and a client
+   cannot be made to announce without a torrent.
 2. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
    captures, on Linux only until `CI-03` provides the Windows guard pair.
 3. `ACQ-05`, the artifact cache, and `FOUND-04`, the licence register, before

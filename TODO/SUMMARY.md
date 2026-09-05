@@ -1,19 +1,26 @@
 # Work summary
 
-| category | open | in progress | blocked | done | total |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Foundation | 1 | 0 | 0 | 3 | 4 |
-| Schema | 0 | 0 | 0 | 4 | 4 |
-| Observer | 7 | 0 | 0 | 0 | 7 |
-| Acquisition | 1 | 0 | 0 | 4 | 5 |
-| Clients | 13 | 0 | 0 | 0 | 13 |
-| Engines | 3 | 0 | 0 | 0 | 3 |
-| Corpus | 4 | 0 | 0 | 0 | 4 |
-| Library | 2 | 0 | 0 | 0 | 2 |
-| Publishing | 4 | 0 | 0 | 0 | 4 |
-| CI | 4 | 0 | 0 | 0 | 4 |
-| Documentation | 2 | 0 | 0 | 0 | 2 |
-| Total | 41 | 0 | 0 | 11 | 52 |
+Every count here is derived from the rows in [`INDEX.md`](INDEX.md) and checked
+against them by `check-project`. The `prefix` column is what makes that
+possible: it says which identifiers the row counts, so the check needs no
+mapping of its own and the two twins cannot hold different ones.
 
-Effort inventory: 9 M, 42 L, 1 XL. The XL observer-lab entry must be split
-before implementation if its acceptance cannot remain atomic.
+| category | prefix | open | in progress | blocked | done | total |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| Foundation | `FOUND` | 1 | 0 | 0 | 3 | 4 |
+| Schema | `SCHEMA` | 0 | 0 | 0 | 4 | 4 |
+| Observer | `OBS` | 10 | 0 | 0 | 0 | 10 |
+| Acquisition | `ACQ` | 1 | 0 | 0 | 4 | 5 |
+| Clients | `CLIENT` | 13 | 0 | 0 | 0 | 13 |
+| Engines | `ENGINE` | 3 | 0 | 0 | 0 | 3 |
+| Corpus | `CORPUS` | 4 | 0 | 0 | 0 | 4 |
+| Library | `LIB` | 2 | 0 | 0 | 0 | 2 |
+| Publishing | `PUB` | 4 | 0 | 0 | 0 | 4 |
+| CI | `CI` | 4 | 0 | 0 | 0 | 4 |
+| Documentation | `DOC` | 2 | 0 | 0 | 0 | 2 |
+| Total | | 44 | 0 | 0 | 11 | 55 |
+
+Effort inventory: 12 M, 43 L, 0 XL. The observer-lab entry was the XL one and
+was split on 2026-09-04, because its acceptance named a client fixture and a
+Windows run that this repository cannot produce yet.
+[`observer.md`](observer.md) carries what moved where.

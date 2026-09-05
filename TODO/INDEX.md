@@ -1,17 +1,17 @@
 # Work index
 
-Total: 52
-Open: 41
+Total: 55
+Open: 44
 In progress: 0
 Blocked: 0
 Done: 11
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| P0 | 11 | 0 | 0 | 11 | 22 |
-| P1 | 29 | 0 | 0 | 0 | 29 |
+| P0 | 13 | 0 | 0 | 11 | 24 |
+| P1 | 30 | 0 | 0 | 0 | 30 |
 | P2 | 1 | 0 | 0 | 0 | 1 |
-| Total | 41 | 0 | 0 | 11 | 52 |
+| Total | 44 | 0 | 0 | 11 | 55 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -23,13 +23,16 @@ Done: 11
 | SCHEMA-02 | P0 | L | DONE | Raw evidence and run manifest schema |
 | SCHEMA-03 | P0 | L | DONE | Connector agreement and conflict model |
 | SCHEMA-04 | P0 | M | DONE | Variability and repeated-sampling model |
-| OBS-01 | P0 | XL | OPEN | Isolated Rust loopback observation lab |
+| OBS-01 | P0 | L | OPEN | Isolated Rust loopback observation lab |
 | OBS-02 | P0 | L | OPEN | HTTP tracker observer |
 | OBS-03 | P0 | L | OPEN | UDP tracker observer |
 | OBS-04 | P0 | L | OPEN | Peer-wire handshake observer |
 | OBS-05 | P0 | L | OPEN | BEP 10 and early-message observer |
 | OBS-06 | P1 | M | OPEN | Adjacent protocol observer suite |
 | OBS-07 | P1 | M | OPEN | Known-client positive controls |
+| OBS-08 | P0 | M | OPEN | Synthetic torrent for the observation lab |
+| OBS-09 | P0 | M | OPEN | Raw evidence journal and bundle writer |
+| OBS-10 | P1 | M | OPEN | Cross-platform normalized-event equality |
 | ACQ-01 | P0 | L | DONE | Acquisition route schema |
 | ACQ-02 | P0 | L | DONE | Latest stable release resolver |
 | ACQ-03 | P0 | L | DONE | Same-version multi-route verifier |
@@ -77,3 +80,8 @@ then establish the shared measurement layer. Three open clients with useful
 automation seams prove the vertical path before the remaining product
 breadth. Corpus, publishing, and CI close the automation loop; documentation
 and refinements follow operating behavior.
+
+Identifiers are allocated in the order entries were authored, so `OBS-08`
+through `OBS-10` came out of splitting `OBS-01` and are not the last observer
+work to be done. This table is the list; the order is in
+[`PROGRESS.md`](PROGRESS.md) and nowhere else.

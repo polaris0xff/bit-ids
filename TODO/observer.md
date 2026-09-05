@@ -6,21 +6,148 @@ interfaces. Each stores exact received bytes before parsing them.
 ## OBS-01: Isolated Rust loopback observation lab
 
 Source: operator active-probing rule and bit-cli loopback architecture
-Priority: P0 | Effort: XL | Status: OPEN
+Priority: P0 | Effort: L | Status: OPEN
+
+Split on 2026-09-04. The entry was authored at XL with the instruction to split
+transport services into follow-up entries before implementation if the
+acceptance could not remain atomic. It could not, for a reason the original
+Prove states in its own sentence: it asks for a known client fixture and for
+Linux and Windows agreement, and neither exists. No client adapter is written,
+and a Windows capture is not permitted at all until `CI-03` supplies the
+disposable-host guard pair. An entry whose acceptance cannot run is an entry
+nothing can close.
+
+What moved out, each to its own entry with its own acceptance: the synthetic
+torrent to `OBS-08`, the durable evidence journal to `OBS-09`, and the
+cross-platform equality half of the original Prove to `OBS-10`. The transport
+services were already separate as `OBS-02` through `OBS-05`. What is left here
+is the supervisor those five plug into, and it is provable on this host today.
 
 Problem: Client adapters need a deterministic fake torrent environment that
-never depends on public trackers, DHT, or peers.
+never depends on public trackers, DHT, or peers. Nothing in the tree binds a
+socket: `rg 'std::net|TcpListener|UdpSocket' crates` returns nothing on
+`2fb8548`, so there is no endpoint for an observer to be.
 
-Premise: A local tracker, seeder, peer, DNS/TLS endpoint, and orchestration
-boundary can drive all core surfaces while blocking escape traffic.
+Premise: A supervisor that owns every bind can hold the property the transport
+observers must not each re-implement, which is that a lab endpoint is on
+loopback and nowhere else. Measured rather than assumed: the address a listener
+actually got is read back from the socket after binding, because a bind request
+and a bound address are different facts.
 
-Approach: Build a Rust lab supervisor with ephemeral endpoints, synthetic
-torrents, strict egress assertions, timeouts, raw event journals, and cleanup.
-Split transport services into follow-up entries before implementation if the
-acceptance cannot remain atomic.
+Approach: A `bit-ids-lab` workspace member carrying the supervisor. It hands out
+endpoints, refuses a bind to any address outside loopback before the syscall and
+verifies the bound address after it, allocates ephemeral ports so two labs on
+one host cannot collide, holds a deadline per lab rather than per read so a
+silent client cannot hang a run, records every byte each endpoint received in
+order with a monotonic offset, and shuts every endpoint down on drop. Blocking
+`std::net` and one thread per endpoint, not an async runtime: the lab serves a
+handful of local connections and an async runtime is a large dependency for a
+scheduler this workload does not need. Rejected alternatives are recorded in the
+Decision below.
 
-Prove: integration tests run a known client fixture with networking denied
-outside the lab and produce identical normalized events on Linux and Windows.
+Decision: `std::net` with threads over `tokio`. `tokio` would add a dependency
+tree an order of magnitude larger than everything this workspace has, into the
+one component that must be reviewable, and `docs/supply-chain.md` requires the
+argument in the entry. The blocking API costs one thread per endpoint, which is
+bounded by the surface count, and gives per-socket timeouts directly. Also
+rejected: binding port 0 and reporting the requested address, which is what
+makes a lab look loopback-only while a misconfiguration listens elsewhere.
+
+Prove: `cargo test --workspace --locked lab_supervisor` covers a refused
+non-loopback bind, a bound address read back from the socket, two labs on one
+host with distinct ports, a deadline expiring on a client that connects and
+sends nothing, the ordered byte record, and every port released after shutdown.
+
+## OBS-08: Synthetic torrent for the observation lab
+
+Source: split out of `OBS-01` on 2026-09-04
+Priority: P0 | Effort: M | Status: OPEN
+
+Problem: A client announces about an info hash and requests pieces of a real
+piece layout. Without a torrent the lab can accept a connection and cannot make
+a build say anything, so every observer below it has nothing to observe.
+
+Premise: The torrent can be generated rather than committed, and generating it
+is what makes it citable. `capture.fixture_digest` in
+`crates/bit-ids/src/record.rs` already requires a digest of the fixture a run
+used, and a generated torrent whose bytes are a function of its declared inputs
+is reproducible from the record. Read rather than measured: no torrent
+generator exists in the tree.
+
+Approach: A module in `bit-ids-lab` that builds the info dictionary, the piece
+layout and the payload from declared parameters, encodes it with
+`bit_ids_wire::bencode` rather than a second encoder, and derives the info hash
+from the encoded info dictionary. The payload is generated bytes, never a
+copyrighted file. The `.torrent` bytes and the digest the manifest cites come
+out of one function, so the digest cannot describe something other than what
+the client was handed.
+
+Prove: `cargo test --workspace --locked synthetic_torrent` checks that the
+generated document round-trips through `bit_ids_wire::bencode`, that the info
+hash is the digest of the encoded info dictionary and not of the whole
+document, that identical parameters produce identical bytes, and that one
+changed parameter changes both the bytes and the digest.
+
+## OBS-09: Raw evidence journal and bundle writer
+
+Source: split out of `OBS-01` on 2026-09-04
+Priority: P0 | Effort: M | Status: OPEN
+
+Problem: `OBS-01` keeps what the lab observed in memory, which is what its own
+tests can assert against and is not what a capture publishes. A run has to
+leave content-addressed artifacts a manifest can cite, and nothing writes them.
+
+Premise: The shape is already specified and already checked.
+`crates/bit-ids/src/manifest.rs` requires per artifact a kind, a readable path,
+a size, a digest, the tool that produced it, the phase it came out of, and
+whether anything was scrubbed, and it derives the store path from the digest
+rather than recording it. So this entry writes to a contract that exists rather
+than inventing one.
+
+Approach: A writer in `bit-ids-lab` that takes the supervisor's ordered byte
+record and emits one artifact per endpoint plus the manifest rows describing
+them. The digest is computed over the bytes written, read back from the file
+rather than from the buffer, because a writer that reports the digest of what
+it meant to write cannot detect a short write. A redaction declaration is
+emitted whenever anything was scrubbed, so `raw` cannot quietly mean `edited`.
+
+Prove: `cargo test --workspace --locked evidence_journal` writes a bundle to a
+temporary directory, reads every artifact back off disk, and binds the manifest
+it produced against a profile with `bit_ids::manifest::bind`, exiting non-zero
+if any shared value disagrees. A truncated artifact is planted and the digest
+comparison must refuse it.
+
+## OBS-10: Cross-platform normalized-event equality
+
+Source: split out of `OBS-01` on 2026-09-04
+Priority: P1 | Effort: M | Status: OPEN
+
+Problem: The original `OBS-01` Prove asked that a known client fixture produce
+identical normalized events on Linux and Windows. That is the half of it that
+catches a platform difference in the observer, and it is blocked on two things
+this repository does not have: any client adapter, and a permitted Windows
+capture host.
+
+Premise: The blockers are named rather than assumed. `TODO/INDEX.md` carries
+`CLIENT-01` through `CLIENT-13` all open, so no adapter can be driven, and
+`docs/capture-host.md` states that the disposable-host guards read
+`/proc/net/route` and `/etc/machine-id`, so a Windows capture is not permitted
+until `CI-03` supplies the Windows pair.
+
+Approach: Once `OBS-02` through `OBS-05` and one client adapter exist, run the
+same lab and the same client build on both platforms, normalize the event
+stream to the declared identity fields, and compare. A difference is a finding
+about the observer until the same bytes are shown to differ, because the client
+is one build and the observer is two compilations.
+
+Prove: a matrix job runs `cargo test --workspace --locked cross_platform_events`
+on Linux and Windows and both produce the same normalized event digest for one
+client build.
+
+Blocked by: `OBS-02` through `OBS-05`, one of `CLIENT-01` through `CLIENT-13`,
+and `CI-03` for the Windows guard pair. Status stays OPEN rather than BLOCKED
+because nothing external prevents progress; the dependencies are this
+repository's own open work.
 
 ## OBS-02: HTTP tracker observer
 

@@ -106,13 +106,67 @@ done
 
 SUMMARY_TOTAL=$(awk -F '|' '
   /^\| Total \|/ {
-    for (i=3; i<=7; i++) { gsub(/^ +| +$/, "", $i) }
-    print $3 "|" $4 "|" $5 "|" $6 "|" $7
+    for (i=4; i<=8; i++) { gsub(/^ +| +$/, "", $i) }
+    print $4 "|" $5 "|" $6 "|" $7 "|" $8
   }
 ' TODO/SUMMARY.md)
 EXPECTED_TOTAL="$OPEN_ROWS|$IN_PROGRESS_ROWS|$BLOCKED_ROWS|$DONE_ROWS|$ROWS"
 [ "$SUMMARY_TOTAL" = "$EXPECTED_TOTAL" ] ||
   say_fail "TODO/SUMMARY.md total is $SUMMARY_TOTAL, computed $EXPECTED_TOTAL"
+
+# ⛔ THE TOTAL ROW WAS THE ONLY ROW CHECKED, AND IT IS ONE OF TWELVE. The
+# eleven category rows are derived from the same index and nothing compared
+# them: setting Observer to 9 over ten open observer entries passed this check
+# with exit 0. That is the "a value in two places with no check between them"
+# row of docs/conventions/forbidden-patterns.md, inside the file whose job is
+# holding the counts.
+#
+# ⭐ The mapping from a category to the identifiers it counts is declared in
+# TODO/SUMMARY.md itself rather than here. A table of names in this script
+# would be a second copy in each twin, and check-twins compares answers on this
+# tree, so two mappings that differ only for a category the tree does not have
+# would agree until the day one arrived.
+#
+# Both directions are checked. A prefix in the index with no row, and a row
+# naming a prefix the index does not have, are both failures; otherwise a new
+# category silently goes uncounted, which is the state this check exists to
+# refuse. That pair is also what catches a row this parser skipped: a malformed
+# count means the prefix never registers, so the missing-row arm fires.
+#
+# ⚠ A DATA ROW IS RECOGNISED BY ITS SHAPE, NOT BY ITS CASE. The first version
+# matched `^\| [A-Z]` and the PowerShell twin let the `category` header through,
+# because PowerShell's -match is case-insensitive and awk's bracket expression
+# is not. One rule, two answers, from a regex that looked identical.
+SUMMARY_BAD=$(awk -F '|' '
+  function trim(s) { gsub(/^ +| +$/, "", s); return s }
+  FILENAME ~ /INDEX\.md$/ &&
+  /^\| (FOUND|SCHEMA|OBS|ACQ|CLIENT|ENGINE|CORPUS|LIB|PUB|CI|DOC)-[0-9][0-9] / {
+    id = trim($2); status = trim($5)
+    prefix = id; sub(/-[0-9][0-9]$/, "", prefix)
+    count[prefix, status]++
+    total[prefix]++
+    known[prefix] = 1
+    next
+  }
+  FILENAME ~ /SUMMARY\.md$/ && /^\|/ && NF >= 9 {
+    prefix = trim($3); gsub(/`/, "", prefix)
+    if (prefix == "") next
+    for (i = 4; i <= 8; i++) if (trim($i) !~ /^[0-9]+$/) next
+    if (seen[prefix]++) { print "duplicate row for " prefix; next }
+    declared[prefix] = 1
+    if (trim($4) + 0 != count[prefix, "OPEN"] + 0 ||
+        trim($5) + 0 != count[prefix, "IN_PROGRESS"] + 0 ||
+        trim($6) + 0 != count[prefix, "BLOCKED"] + 0 ||
+        trim($7) + 0 != count[prefix, "DONE"] + 0 ||
+        trim($8) + 0 != total[prefix] + 0) print prefix
+  }
+  END {
+    for (p in known) if (!declared[p]) print p " has no row"
+    for (p in declared) if (!known[p]) print p " names nothing in the index"
+  }
+' TODO/INDEX.md TODO/SUMMARY.md | sort)
+[ -z "$SUMMARY_BAD" ] ||
+  say_fail "TODO/SUMMARY.md category rows disagree: $(printf '%s' "$SUMMARY_BAD" | tr '\n' ' ')"
 
 PRIORITY_BAD=$(awk -F '|' '
   function trim(s) { gsub(/^ +| +$/, "", s); return s }
