@@ -41,7 +41,11 @@ PowerShell tarball needs on this image. All three installed cleanly here.
 ⛔ `check-remote-items` cannot be made to run here and installing `gh` does not
 fix it. ⭐ **That it runs in CI is now verified rather than assumed:** the Linux
 lane runs the gate with `--strict`, which turns a skip into a failure, and every
-push this session went green.
+push this session that ran to completion went green on both lanes. ⚠ One did
+not run to completion: the workflow sets `cancel-in-progress`, so a push that
+lands while the previous run is still going cancels it. Read each run's
+conclusion rather than counting runs: `cancelled` is not `failure`, and it is
+not evidence of a pass either.
 
 ⚠ `check-twins` compares the two halves' answers on the tree it runs against,
 so a rule that differs only on a defect the tree does not contain is invisible

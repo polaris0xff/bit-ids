@@ -5,6 +5,16 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-05T07:50:00Z
+
+- ⚠ Corrected the session record's CI row. It reported the seventh run as
+  confirmed when that run had been cancelled, and a cancelled run is no
+  evidence. Record:
+  [`docs/history/SESSION-2026-09-05-OBSERVERS.md`](docs/history/SESSION-2026-09-05-OBSERVERS.md).
+- The class now has a row in
+  [`docs/conventions/forbidden-patterns.md`](docs/conventions/forbidden-patterns.md).
+- Deployment: nothing deployed.
+
 ### 2026-09-05T07:20:00Z
 
 - Checkpointed `OBS-08`, which stays OPEN. The synthetic torrent generator and

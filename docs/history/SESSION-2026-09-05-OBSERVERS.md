@@ -4,19 +4,19 @@ The session summary printed to the operator, saved so it survives the chat. It
 carries no work order; [`../../TODO/PROGRESS.md`](../../TODO/PROGRESS.md) has
 that and is where it is correct.
 
-Baseline `2fb8548`, work range `2fb8548..39b6fa7`, then the checkpoint commit
-that follows it.
+Baseline `2fb8548`, work range `2fb8548..39b6fa7`. The record commits that follow
+carry this file, and each row that depends on one names it.
 
 | row | measured |
 | --- | --- |
-| Commits | 6 closing work over `2fb8548..39b6fa7`, all pushed and read back from `origin/main`, then one checkpoint commit |
+| Commits | 6 closing work over `2fb8548..39b6fa7`, all pushed and read back from `origin/main`. ⚠ The record commits after that range are deliberately not counted here: a total that includes them changes when this file is written |
 | Work | 6 entries completed, 1 checkpointed in flight, 0 failed. 1 new entry filed |
 | Changes | 41 files over `2fb8548..5887270`, +8209 / -112 |
 | Size | 39,998 tracked lines over 169 files at `5887270`, from 31,901 over 147 at `2fb8548`. Delta +8,097. ⚠ Measured from the committed trees, not the working copy: a size read from the working copy changes when this file is written |
 | Checks | gate 12 checks, 11 passed, 0 failed, 1 skipped, both halves |
 | Suite | 25 binaries, 250 passed, 0 failed, plus 2 doctests |
 | Mutation | 93 defects planted across 7 guards, 1 not refused and named below |
-| CI | the six work commits green on both the Linux and Windows lanes, read back from the API; the checkpoint commit's run confirmed separately |
+| CI | runs 16 to 21, the six work commits, green on both the Linux and Windows lanes, read back from the API. ⚠ Run 22 at `5887270` was **cancelled**, not failed: the workflow sets `cancel-in-progress`, and the next push superseded it. A cancelled run is not evidence either way, so the tree that stands is run 23 at `a7e6ac6`, green on both lanes |
 | Cost | no money. Network: one crate added from the registry, plus three tool downloads |
 | Health | tree clean, level with `origin/main`, nothing deployed |
 
