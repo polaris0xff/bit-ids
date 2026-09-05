@@ -5,6 +5,33 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-05T10:30:00Z
+
+- Closed `CI-05`. `check-project` and its PowerShell twin now refuse a `cargo
+  test` invocation that selects by test **name**, because a filter matching none
+  prints `running 0 tests` for every binary and exits 0. Record:
+  [`TODO/ci.md`](TODO/ci.md).
+- ⚠ The entry claimed all nine bare-filter acceptance commands had been
+  rewritten and that was false: only the observer entries were. Five `Prove`
+  commands were still of that form, in `FOUND-03` and all four `SCHEMA-*`
+  entries. Each is corrected, and each corrected command was run before it was
+  written down.
+- ⛔ The door sweep found the second door and it is the one that matters more.
+  An entry's `Prove` is run by a person; a workflow's `run:` is run by every
+  push, and a bare filter there reports green over zero tests with nobody
+  reading it. Both are covered, with separate extractors and one tokeniser.
+- ⭐ Scoped to `Prove:` paragraphs rather than carrying an exclusion list. A
+  `Closure evidence` paragraph records what was run on a past tree and rewriting
+  one would falsify the record, and two entries have to quote the command that
+  caused the defect. Every bare filter left in the tree is one of those two.
+- Guard mutation: 21 cases, each verified to have changed the file, both halves
+  compared on exit code **and** output. All 21 landed on the intended verdict
+  and the twins agreed on all 21. The cases include the three that would make a
+  careless rule fire on correct usage.
+- The `forbidden-patterns.md` row now points at the check instead of asking a
+  reader to remember the rule, which is what that page asks for.
+- Deployment: nothing deployed.
+
 ### 2026-09-05T09:45:00Z
 
 - Closed `OBS-09`, the raw evidence journal and bundle writer, which completes

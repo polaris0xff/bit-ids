@@ -1,17 +1,17 @@
 # Work index
 
 Total: 56
-Open: 38
+Open: 37
 In progress: 0
 Blocked: 0
-Done: 18
+Done: 19
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | P0 | 6 | 0 | 0 | 18 | 24 |
-| P1 | 31 | 0 | 0 | 0 | 31 |
+| P1 | 30 | 0 | 0 | 1 | 31 |
 | P2 | 1 | 0 | 0 | 0 | 1 |
-| Total | 38 | 0 | 0 | 18 | 56 |
+| Total | 37 | 0 | 0 | 19 | 56 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -68,7 +68,7 @@ Done: 18
 | CI-02 | P1 | L | OPEN | Stable-release staleness monitor |
 | CI-03 | P1 | L | OPEN | Trusted capture runner matrix |
 | CI-04 | P1 | L | OPEN | Build provenance and supply-chain hardening |
-| CI-05 | P1 | S | OPEN | Acceptance commands that cannot pass over nothing |
+| CI-05 | P1 | S | DONE | Acceptance commands that cannot pass over nothing |
 | DOC-01 | P1 | M | OPEN | Public data and library documentation |
 | DOC-02 | P2 | M | OPEN | Contributor capture-run handbook |
 

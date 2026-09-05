@@ -62,7 +62,7 @@ workflow, commit, lockfile, and checksum manifest.
 ## CI-05: Acceptance commands that cannot pass over nothing
 
 Source: found while closing `OBS-01` on 2026-09-05
-Priority: P1 | Effort: S | Status: OPEN
+Priority: P1 | Effort: S | Status: DONE
 
 Problem: An entry's `Prove` is the acceptance, and one of them ran nothing while
 exiting 0. `cargo test --workspace --locked lab_supervisor` filters by test
@@ -74,15 +74,37 @@ Premise: Measured on 2026-09-05, not read. The nine `cargo test` acceptance
 commands in `TODO/` were all of the bare-filter form, and they worked only
 because of a convention nothing checks: all 110 test functions across the eight
 pre-existing test files begin with their file's name. `lab_supervisor` did not,
-and the acceptance went green over zero tests. All nine were rewritten to name a
-target or a package.
+and the acceptance went green over zero tests.
+
+⚠ **This entry claimed all nine had been rewritten, and that was false.** Only
+the observer entries were. Re-measured while closing this one: five `Prove`
+commands were still of the bare-filter form, in `FOUND-03` and in all four
+`SCHEMA-*` entries. They are corrected now, and each corrected command was run
+before it was written down. That the claim survived a session is the argument for
+this entry: a fact about the record that only a person checks is a fact that
+drifts.
 
 Approach: A rule in `scripts/common/check-project.sh` and its PowerShell twin
-that reads every `cargo test` invocation inside a code span in `TODO/*.md` and
-refuses a bare word argument unless it follows `-p`, `--package`, `--test`,
-`--example` or `--bin`. ⚠ The parsing is the work: a code span can wrap across
-lines, so the file is joined before the spans are found, and the two twins must
-agree per planted mutation rather than on a clean tree.
+that reads every `cargo test` invocation and refuses a bare word argument unless
+it follows a flag that takes a value. ⚠ The parsing is the work: a code span can
+wrap across lines, so the paragraph is joined before the spans are found, and the
+two twins must agree per planted mutation rather than on a clean tree.
+
+⭐ **Scoped to `Prove:` paragraphs, and that scope is the whole rule rather than
+an exclusion list.** A `Prove` is the live acceptance and has to be runnable. A
+`Closure evidence` paragraph records what was run on a past tree, and rewriting
+one would falsify the record; and this entry and `OBS-01` both have to quote the
+command that caused the defect. A rule that fired on those is a rule somebody
+switches off, and the seven remaining bare filters in the tree are all of exactly
+those two kinds.
+
+⛔ **The door sweep found a second door and it is the one that matters more.**
+An entry's `Prove` is the acceptance a person runs; the workflow's `run:` is the
+one every push runs, and a bare filter there would report green over zero tests
+on every commit with nobody reading it. The rule covers
+`.github/workflows/*.yml` as well, with separate extractors and one tokeniser,
+because a rule on one of two doors into the same mistake is the shape
+`docs/methodology/reviews.md` names.
 
 Decision: a shape rule over a naming convention. Renaming every test function to
 start with its file's name would also make the bare filter work, and it makes
@@ -93,3 +115,31 @@ Prove: `sh scripts/common/check-project.sh` and
 `pwsh -File scripts/common/check-project.ps1` both exit 1 when a `Prove` line is
 rewritten to the bare-filter form, both exit 0 on the tree as it stands, and
 both agree on every planted mutation.
+
+Closure evidence: run on 2026-09-05. Both halves exit 0 on the tree as it
+stands, and `sh scripts/common/check-gate.sh` and
+`pwsh -File scripts/common/check-gate.ps1` both pass with `check-twins` green.
+
+Guard mutation: 21 cases planted one at a time, 16 into a `Prove` paragraph and
+5 into the workflow, each verified to have changed the file. Both halves were run
+on every one and their **exit codes and their output** compared, because
+`check-twins` compares the two on the tree it runs against and a rule that
+differs only on a defect the tree does not contain is invisible to it. All 21
+landed on the intended verdict and the twins agreed on all 21, character for
+character.
+
+⭐ The cases are the shape space rather than one example: a bare filter with and
+without other flags, a filter after `--`, a filter after a value-taking flag, a
+filter after a flag whose value was attached with `=`, a filter in a code span
+that wraps across lines, a target in a span that wraps, two commands in one
+`Prove`, a `Prove` running no `cargo test` at all, a bare filter in a paragraph
+that is not a `Prove`, and a commented-out one in the workflow. The last three
+are the ones that would make the rule fire on correct usage, and each is
+accepted.
+
+Residual: the rule cannot see the other half of the class, which is
+`--test <target>` skipping the library's own tests. That form runs something, so
+it is not "passing over nothing", and refusing it outright would fire on a
+package with no library tests. `docs/conventions/forbidden-patterns.md` carries
+the class. ⚠ Two open entries still carry it in their `Prove`, `OBS-10` and
+`CORPUS-02`, and both are corrected when they close, as `OBS-09`'s was.

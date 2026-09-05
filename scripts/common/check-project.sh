@@ -302,6 +302,89 @@ LOCK_OUT=$(awk -v REG="$REGISTRY" '
 [ -z "$LOCK_OUT" ] || say_fail "unreviewed dependency source:
 $LOCK_OUT"
 
+# ⛔ AN ACCEPTANCE COMMAND MUST NOT BE ABLE TO PASS OVER NOTHING. `cargo test`
+# with a bare word selects by test NAME, and a filter matching none prints
+# `running 0 tests` for every binary and exits 0. `OBS-01`'s Prove did exactly
+# that and was read as an acceptance that passed; measured on 2026-09-05, ten
+# more invocations in TODO/ were of the same shape and had only ever worked
+# because every test function happened to begin with its file's name, which is a
+# convention nothing held. CI-05 is the entry.
+#
+# ⛔ TWO SOURCES, ONE TOKENISER. An entry's `Prove` is the acceptance a person
+# runs and the workflow's `run:` is the one every push runs, and a bare filter in
+# either exits 0 over nothing. A rule on one of two doors into the same mistake
+# is the shape docs/methodology/reviews.md names, so the extractors are separate
+# and the judgement is not: they emit `file<TAB>line<TAB>command` and one reader
+# decides.
+#
+# ⚠ SCOPED TO `Prove:` PARAGRAPHS IN TODO, and that is the whole rule rather
+# than an exclusion list. A `Prove` is the live acceptance and must be runnable;
+# a `Closure evidence` paragraph records what was actually run on a past tree and
+# rewriting it would falsify the record, and the two entries that document this
+# defect have to be able to quote the command that caused it. A rule that fired
+# on those would be a rule somebody switches off.
+#
+# ⚠ A code span wraps across lines, so the paragraph is joined before the spans
+# are found.
+# ⚠ The awk programs below are single-quoted on purpose: `$0` and `$1` are awk's
+# own field references and expanding them in the shell would hand awk an empty
+# program. SC2016 exists to catch the opposite mistake and is right to fire on
+# the shape; `check-placeholders.sh` and `mine-repo.sh` disable it for the same
+# reason.
+# shellcheck disable=SC2016
+PROVE_OUT=$({
+  git ls-files 'TODO/*.md' | xargs awk '
+    function emit(   n, parts, k) {
+      if (inprove && buf != "") {
+        n = split(buf, parts, "`")
+        for (k = 2; k <= n; k += 2)
+          if (parts[k] ~ /^cargo[ \t]+test([ \t]|$)/)
+            printf "%s\t%d\t%s\n", startfile, startline, parts[k]
+      }
+      inprove = 0; buf = ""
+    }
+    FNR == 1 { emit() }
+    /^[ \t]*$/ { emit(); next }
+    /^Prove:/ { emit(); inprove = 1; startline = FNR; startfile = FILENAME; buf = $0; next }
+    { if (inprove) buf = buf " " $0 }
+    END { emit() }
+  '
+  git ls-files '.github/workflows/*.yml' | xargs awk '
+    # A commented-out command is not one every push runs.
+    /^[ \t]*#/ { next }
+    /cargo[ \t]+test/ {
+      line = $0
+      sub(/^.*cargo[ \t]+test/, "cargo test", line)
+      sub(/[ \t]*\\[ \t]*$/, "", line)
+      printf "%s\t%d\t%s\n", FILENAME, FNR, line
+    }
+  '
+} | awk -F '\t' '
+  {
+    file = $1; line = $2; command = $3
+    n = split(command, tok, /[ \t]+/)
+    expect = 0
+    for (i = 3; i <= n; i++) {
+      t = tok[i]
+      if (t == "") continue
+      if (substr(t, 1, 1) == "-") {
+        # A flag that takes a value consumes the next bare word, which is then a
+        # target or a package rather than a name filter.
+        if (index(t, "=") == 0 && t ~ /^(-p|-j|-F|--package|--exclude|--test|--bin|--example|--bench|--features|--target|--target-dir|--manifest-path|--profile|--jobs|--message-format|--color|--config|--test-threads|--skip)$/)
+          expect = 1
+        else
+          expect = 0
+        continue
+      }
+      if (expect) { expect = 0; continue }
+      printf "  %s:%d selects tests by name, so it exits 0 over nothing: %s\n", file, line, command
+      break
+    }
+  }
+')
+[ -z "$PROVE_OUT" ] || say_fail "an acceptance that can pass over nothing:
+$PROVE_OUT"
+
 # ⚠ The lockfile test above is the authority; this one fires earlier and names
 # the manifest line, so the report points at the file somebody edited rather
 # than at the file cargo generated.

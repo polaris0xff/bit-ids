@@ -1,5 +1,12 @@
 # Schema entries
 
+⚠ **The four `Prove` commands here were corrected on 2026-09-05 by `CI-05`.**
+Each was authored as `cargo test --workspace` followed by a bare word, which
+selects by test **name** and exits 0 over nothing when no name matches. They
+worked only because every function in each file happens to begin with its file's
+name, which is a convention nothing held. Each closure evidence below records
+the command that was actually run at the time and is left as it was.
+
 ## SCHEMA-01: Versioned identity profile schema
 
 Source: bit-cli T-234 surface inventory and b-ids profile model
@@ -30,8 +37,8 @@ Decision: `id` is derived from the identity tuple and re-derived on validation
 rather than stored independently. Storing it loose would put one value in two
 places with nothing checking that they agree.
 
-Prove: `cargo test --workspace profile_schema` validates golden records and
-rejects unknown schema versions and unproven fields.
+Prove: `cargo test -p bit-ids --locked --all-targets` validates golden records
+and rejects unknown schema versions and unproven fields.
 
 Closure evidence: `cargo test --workspace profile_schema` reports 22 passed,
 0 failed on 2026-09-04. `cargo fmt --all -- --check`,
@@ -109,8 +116,8 @@ Decision: phases are the state machine in `docs/architecture.md` section 8, and
 a run advances one step at a time or falls to `provisional`. Skipping is
 refused because a phase nobody ran is a phase nobody can produce evidence for.
 
-Prove: `cargo test --workspace evidence_manifest` round-trips a complete run
-and rejects missing digests, connector versions, or acquisition identity.
+Prove: `cargo test -p bit-ids --locked --all-targets` round-trips a complete
+run and rejects missing digests, connector versions, or acquisition identity.
 
 Closure evidence: `cargo test --workspace evidence_manifest` reports 15 passed,
 0 failed on 2026-09-04. The three rejections the acceptance names are covered:
@@ -185,8 +192,9 @@ observations, so the record keeps what each one saw rather than a verdict. The
 list was derivable from the observations and keeping both would have been one
 value in two places.
 
-Prove: `cargo test --workspace agreement` proves conflicts are unpublishable
-and that non-overlapping observations are not falsely called agreement.
+Prove: `cargo test -p bit-ids --locked --all-targets` proves conflicts are
+unpublishable and that non-overlapping observations are not falsely called
+agreement.
 
 Closure evidence: `cargo test --workspace agreement` reports 14 passed, 0
 failed on 2026-09-04, and the whole suite is 53 passed, 0 failed.
@@ -245,8 +253,8 @@ profile, and `bind` holds them together. A field claiming variation needs a run
 that varied something, and a field cannot rest on more samples than the plan
 could produce.
 
-Prove: `cargo test --workspace variability` classifies fixed prefixes and
-changing suffixes correctly from fixture samples and rejects a variability
+Prove: `cargo test -p bit-ids --locked --all-targets` classifies fixed prefixes
+and changing suffixes correctly from fixture samples and rejects a variability
 claim backed by one sample. ⚠ The command is an amendment; the entry named the
 acceptance without one, and the model requires the acceptance to be a command.
 

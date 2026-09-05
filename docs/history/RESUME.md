@@ -27,6 +27,7 @@ both contracts.
 | `sh scripts/common/check-gate.sh` | 12 checks, 11 passed, 0 failed, 1 skipped |
 | `pwsh -File scripts/common/check-gate.ps1` | 12 checks, 10 passed, 0 failed, 2 skipped |
 | `cargo test --workspace --locked --all-targets` | 30 binaries, 288 passed, 0 failed |
+| `sh` and `pwsh` `check-project`, 21 planted cases | 21 correct, 0 twin disagreements |
 | `cargo test --workspace --locked --doc` | 2 passed, 0 failed |
 | `cargo fmt --all -- --check` | exit 0 |
 | `cargo clippy --workspace --locked --all-targets -- -D warnings` | exit 0 |
@@ -88,10 +89,12 @@ prefix-stability all survive any change to the arithmetic, so the module's own
 unit tests could not see a drift that would invalidate every fixture digest
 already recorded.
 
-⚠ An acceptance command that names a bare test filter can exit 0 having run
-nothing, and `--test <target>` skips the library's own tests. `CI-05` is the
-check for it; until then write every `cargo test` acceptance as
-`-p <package> --all-targets`.
+⭐ **A bare test filter in a `Prove` or a workflow `run:` is now refused by
+`check-project`**, in both twins, because `cargo test <name>` exits 0 over
+nothing when no test name matches. `CI-05` closed it. ⚠ The other half of the
+class is still a reading: `--test <target>` skips the library's own tests, and
+`OBS-10` and `CORPUS-02` both still carry that form in their `Prove`. Write
+every `cargo test` acceptance as `-p <package> --locked --all-targets`.
 
 ⛔ No observer has been driven by a stock `BitTorrent` client and none can be on
 a session host: `sh scripts/acquisition/assert-disposable.sh --egress` exits 1

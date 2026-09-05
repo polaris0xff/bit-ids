@@ -1,12 +1,12 @@
 # Current progress
 
 State instant: 2026-09-05
-Baseline commit: `03bdd7b` on `main`
+Baseline commit: `cda5968` on `main`
 Total: 56
-Open: 38
+Open: 37
 In progress: 0
 Blocked: 0
-Done: 18
+Done: 19
 
 ## Current state
 

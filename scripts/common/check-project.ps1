@@ -320,6 +320,108 @@ try {
         $failures.Add("unreviewed dependency source:`n" + ($lockProblems -join "`n"))
     }
 
+    # ⛔ AN ACCEPTANCE COMMAND MUST NOT BE ABLE TO PASS OVER NOTHING. `cargo
+    # test` with a bare word selects by test NAME, and a filter matching none
+    # prints `running 0 tests` for every binary and exits 0. `OBS-01`'s Prove did
+    # exactly that and was read as an acceptance that passed; measured on
+    # 2026-09-05, ten more invocations in TODO/ were of the same shape and had
+    # only ever worked because every test function happened to begin with its
+    # file's name, which is a convention nothing held. CI-05 is the entry.
+    #
+    # ⛔ TWO SOURCES, ONE TOKENISER. An entry's `Prove` is the acceptance a
+    # person runs and the workflow's `run:` is the one every push runs, and a
+    # bare filter in either exits 0 over nothing. A rule on one of two doors into
+    # the same mistake is the shape docs/methodology/reviews.md names, so the
+    # extractors are separate and the judgement is not.
+    #
+    # ⚠ SCOPED TO `Prove:` PARAGRAPHS IN TODO, and that is the whole rule rather
+    # than an exclusion list. A `Prove` is the live acceptance and must be
+    # runnable; a `Closure evidence` paragraph records what was actually run on a
+    # past tree and rewriting it would falsify the record, and the two entries
+    # that document this defect have to be able to quote the command that caused
+    # it. A rule that fired on those would be a rule somebody switches off.
+    #
+    # ⚠ A code span wraps across lines, so the paragraph is joined before the
+    # spans are found.
+    $candidates = [System.Collections.Generic.List[object]]::new()
+    foreach ($todo in (& git ls-files 'TODO/*.md')) {
+        if (-not (Test-Path -LiteralPath $todo -PathType Leaf)) { continue }
+        $inProve = $false
+        $buffer = ''
+        $startLine = 0
+        $number = 0
+        foreach ($line in (Get-Content -LiteralPath $todo)) {
+            $number++
+            $closing = $false
+            if ($line -match '^[ \t]*$') { $closing = $true }
+            elseif ($line -match '^Prove:') { $closing = $true }
+            if ($closing -and $inProve -and $buffer -ne '') {
+                $parts = $buffer -split '`'
+                for ($k = 1; $k -lt $parts.Count; $k += 2) {
+                    if ($parts[$k] -match '^cargo[ \t]+test([ \t]|$)') {
+                        $candidates.Add([pscustomobject]@{ File = $todo; Line = $startLine; Command = $parts[$k] })
+                    }
+                }
+            }
+            if ($closing) { $inProve = $false; $buffer = '' }
+            if ($line -match '^Prove:') {
+                $inProve = $true
+                $startLine = $number
+                $buffer = $line
+                continue
+            }
+            if ($inProve) { $buffer = "$buffer $line" }
+        }
+        if ($inProve -and $buffer -ne '') {
+            $parts = $buffer -split '`'
+            for ($k = 1; $k -lt $parts.Count; $k += 2) {
+                if ($parts[$k] -match '^cargo[ \t]+test([ \t]|$)') {
+                    $candidates.Add([pscustomobject]@{ File = $todo; Line = $startLine; Command = $parts[$k] })
+                }
+            }
+        }
+    }
+    foreach ($workflow in (& git ls-files '.github/workflows/*.yml')) {
+        if (-not (Test-Path -LiteralPath $workflow -PathType Leaf)) { continue }
+        $number = 0
+        foreach ($line in (Get-Content -LiteralPath $workflow)) {
+            $number++
+            # A commented-out command is not one every push runs.
+            if ($line -match '^[ \t]*#') { continue }
+            if ($line -notmatch 'cargo[ \t]+test') { continue }
+            $command = $line -replace '^.*cargo[ \t]+test', 'cargo test'
+            $command = $command -replace '[ \t]*\\[ \t]*$', ''
+            $candidates.Add([pscustomobject]@{ File = $workflow; Line = $number; Command = $command })
+        }
+    }
+
+    $valueFlags = @(
+        '-p', '-j', '-F', '--package', '--exclude', '--test', '--bin', '--example',
+        '--bench', '--features', '--target', '--target-dir', '--manifest-path',
+        '--profile', '--jobs', '--message-format', '--color', '--config',
+        '--test-threads', '--skip'
+    )
+    $proveProblems = [System.Collections.Generic.List[string]]::new()
+    foreach ($candidate in $candidates) {
+        $tokens = @($candidate.Command -split '[ \t]+' | Where-Object { $_ -ne '' })
+        $expect = $false
+        for ($i = 2; $i -lt $tokens.Count; $i++) {
+            $token = $tokens[$i]
+            if ($token.StartsWith('-')) {
+                # A flag that takes a value consumes the next bare word, which is
+                # then a target or a package rather than a name filter.
+                $expect = (-not $token.Contains('=')) -and ($valueFlags -ccontains $token)
+                continue
+            }
+            if ($expect) { $expect = $false; continue }
+            $proveProblems.Add("  $($candidate.File):$($candidate.Line) selects tests by name, so it exits 0 over nothing: $($candidate.Command)")
+            break
+        }
+    }
+    if ($proveProblems.Count -gt 0) {
+        $failures.Add("an acceptance that can pass over nothing:`n" + ($proveProblems -join "`n"))
+    }
+
     # ⚠ The lockfile test above is the authority; this one fires earlier and
     # names the manifest line, so the report points at the file somebody edited
     # rather than at the file cargo generated.

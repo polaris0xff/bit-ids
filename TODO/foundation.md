@@ -123,8 +123,15 @@ leading zero, which is an artefact of the encoder's integer formatter rather
 than a value the build chose, and preserving it would put a second spelling on
 every string in the tree.
 
-Prove: `cargo test --workspace fixtures` passes twice with identical fixture
-digests.
+Prove: `cargo test -p bit-ids-wire --locked --all-targets` passes twice with
+identical fixture digests.
+
+⚠ Corrected on 2026-09-05 by `CI-05`. The Prove was authored as
+`cargo test --workspace` followed by the bare word `fixtures`, which selects by
+test **name** and exits 0 over nothing when no name matches. It worked here only
+because every function in that file happens to begin with `fixtures`, which is a
+convention nothing held. The closure evidence below records the command that was
+actually run at the time and is left as it was.
 
 Closure evidence: run on 2026-09-04. `cargo test --workspace --locked fixtures`
 passed twice, 17 tests each time, 0 failed. `cargo run -p bit-ids-wire --example
