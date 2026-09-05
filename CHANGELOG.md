@@ -5,6 +5,29 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-06T19:30:00Z
+
+- `FOUND-04`, the third-party licence and redistribution register. Record:
+  [`TODO/foundation.md`](TODO/foundation.md).
+- ⛔ The measurement is the finding: six of the nine targets with a GitHub
+  upstream answer `NOASSERTION` when their licence endpoint is asked, so a
+  detector cannot name one. Those rows say `unverified` and name who was asked,
+  rather than carrying an identifier nobody established.
+- ⭐ The twenty-two dependency rows are read out of each package's own manifest
+  at the version the lockfile pins. `libc` is not built for this host's target,
+  so its manifest was fetched before it was read rather than assumed from its
+  siblings.
+- ⛔ Every row refuses redistribution, which is the policy and not a consequence
+  of the licences. `permitted` exists so the check can refuse it over an
+  unverified licence or with no notice.
+- ⛔ The twin comparison found a defect a clean tree could not show. On an empty
+  register the two halves disagreed, because `grep -c .` prints `0` and exits 1,
+  so a `|| printf 0` fallback made the count two zeroes on two lines and the
+  guard that refuses a register of nothing was disabled by exactly the input it
+  exists to catch. `wc -l` replaces it.
+- `check-licences` joins `check-twins` and both gate runners as the tenth pair.
+- Deployment: nothing deployed. No capture was taken. Nothing was published.
+
 ### 2026-09-06T17:05:00Z
 
 - `PUB-03`, the multi-format publisher, closed over four of its five renderings.

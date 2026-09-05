@@ -159,7 +159,8 @@ command -v pwsh >/dev/null 2>&1 && have_pwsh=1
 
 # The sh halves. Each is the authority on its own subject.
 for c in check-docs check-markers check-one-home check-placeholders \
-  check-control-bytes check-changelog check-no-secrets check-project; do
+  check-control-bytes check-changelog check-no-secrets check-project \
+  check-licences; do
   if [ -f "$HERE/$c.sh" ]; then
     run "$c" sh "$HERE/$c.sh"
   else

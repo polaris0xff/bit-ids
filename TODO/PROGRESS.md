@@ -3,10 +3,10 @@
 State instant: 2026-09-06
 Baseline commit: `ad0b68f` on `main`
 Total: 57
-Open: 30
+Open: 29
 In progress: 0
 Blocked: 0
-Done: 27
+Done: 28
 
 ## Current state
 
@@ -307,6 +307,13 @@ the concurrency group `PUB-02` left as residuals. ⛔ **It cannot fire on its
 own**, its dry run is the default, and it has never run: its first step wants a
 bundle from a capture run and there are no captures.
 
+⭐ `FOUND-04` is closed, so every catalogue target and every third-party package
+has a recorded licence disposition. ⛔ **Six of the nine targets with a GitHub
+upstream have no licence a detector can name**, and those rows say `unverified`
+rather than carrying an identifier nobody established. Every row refuses
+redistribution, which is the policy rather than a consequence of the licences,
+and `check-licences` also refuses an installer-shaped file in the tree.
+
 ⭐ `PUB-03` is closed as well, so the record set has consumer-facing renderings:
 a combined JSON carrying each record's own bytes, one compact document per line,
 a tabular view that publishes what it omits, and deterministic CBOR. ⛔ **Which
@@ -332,8 +339,8 @@ publishable, and a superseded one was.
    refused. `TODO/clients.md` carries the three routes that were tried on
    2026-09-05. ⭐ Neither the observer layer nor the store blocks them any more;
    `CI-03` and a host are what remain.
-2. `ACQ-05`, the artifact cache, and `FOUND-04`, the licence register, before
-   the first proprietary client is acquired.
+2. `ACQ-05`, the artifact cache, which the licence register `FOUND-04` landed
+   is what it enforces, before the first proprietary client is acquired.
 3. `CI-02` through `CI-04`, then the remaining client and engine breadth.
 4. `PUB-04` and `PUB-05`, then the consumer library, public documentation and
    refinements. ⚠ `PUB-05` is blocked on the operator decision above.

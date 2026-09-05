@@ -351,6 +351,7 @@ compare_pair "check-changelog" check-changelog.sh "--json" check-changelog.ps1 "
 compare_pair "check-no-secrets" check-no-secrets.sh "--json" check-no-secrets.ps1 "-Json"
 compare_pair "check-no-secrets pub" check-no-secrets.sh "--public --json" check-no-secrets.ps1 "-Public -Json"
 compare_pair "check-project" check-project.sh "--json" check-project.ps1 "-Json"
+compare_pair "check-licences" check-licences.sh "--json" check-licences.ps1 "-Json"
 
 # ⭐ mine-repo IS COMPARED THROUGH --selftest, AND THAT IS THE WHOLE POINT.
 # This pair used to be excluded, on the reasoning that comparing two miners

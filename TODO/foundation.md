@@ -213,7 +213,7 @@ that acts on it.
 ## FOUND-04: Third-party licence and redistribution register
 
 Source: public-repository policy and proprietary client scope
-Priority: P1 | Effort: M | Status: OPEN
+Priority: P1 | Effort: M | Status: DONE
 
 Problem: Free observation data does not grant permission to redistribute
 installers, client assets, or third-party code.
@@ -226,3 +226,88 @@ required notices for every dependency and acquisition route.
 
 Prove: the licence checker reports every catalogue target and dependency with
 a non-empty disposition and rejects bundled proprietary artifacts.
+
+### ⛔ What the measurement found: most of them have no answer to give
+
+Nine targets have a GitHub upstream, so their licence endpoint was asked. **Six
+answered `NOASSERTION`**, which means a detector could not name a single
+licence. Only `aria2`, `biglybt` and `anacrolix-torrent` came back with an SPDX
+identifier. Writing one into the other six anyway would have invented exactly
+the kind of fact this project refuses everywhere else, so the register records
+`unverified` and says who was asked.
+
+⚠ **An SPDX id from that endpoint is a detector's conclusion, not a reading of
+the licence text**, and `licence_source` says so per row rather than letting all
+the answers look equally strong. The three sources are the repository endpoint,
+a crate's own `Cargo.toml`, and `clients.toml`'s existing `open_source` flag.
+
+⭐ The twenty-two dependency licences are the strongest rows here, because each
+was read out of the package's own manifest at the version the lockfile pins.
+⚠ `libc` is not built for this host's target, so its manifest was fetched with
+`cargo fetch --locked --target` before it was read rather than assumed from its
+siblings.
+
+### Decision: `unverified` is a disposition, and refusal is the default
+
+⛔ **Every row says `refused`, and that is the policy rather than a consequence
+of the licences.** This project publishes measurements and never artifacts, so a
+licence that would permit redistribution does not make this repository
+redistribute. `unverified` then costs nothing: it records that nobody has
+established the licence and that nobody may treat the target as permissive on
+this file's authority.
+
+⚠ `permitted` exists in the vocabulary and nothing uses it. It is what the check
+has to be able to refuse: a row claiming it over an `unverified` licence, or
+with no notice, is the combination that would publish somebody's bytes on
+nobody's authority.
+
+### ⛔ What the twin comparison found, which a clean tree could not
+
+The pair agreed on the clean tree and disagreed on an empty register: the `sh`
+half reported two failures where the PowerShell half reported three. The cause
+is a shell idiom rather than a rule: `grep -c .` prints `0` **and exits 1** on an
+empty file, so the `|| printf 0` fallback fired and the variable became two
+zeroes on two lines. The comparison then said `Illegal number` and the guard did
+not run at all.
+
+⭐ **The guard that failed is the one that refuses a register of nothing, and it
+was disabled by exactly the input it exists to catch.** It was invisible on a
+clean tree, which is what `check-twins` compares, and visible immediately when
+the two halves were compared per planted mutation. `wc -l` replaces the idiom.
+
+### Acceptance, all run on 2026-09-06
+
+- `sh scripts/common/check-licences.sh`
+- `pwsh -NoProfile -File scripts/common/check-licences.ps1`
+- `sh scripts/common/check-gate.sh`
+
+### Closure evidence, 2026-09-06
+
+| what | measured |
+| --- | --- |
+| `sh scripts/common/check-licences.sh` | 16 target rows and 22 dependency rows, every one with a disposition |
+| `pwsh -File scripts/common/check-licences.ps1` | the same line, character for character |
+| twin comparison | 12 cases planted one at a time, both halves run on every one and their exit codes and machine-readable output compared; 12 of 12 agreed after the defect above was fixed |
+| dependency licences | 22 of 22 read from each package's own manifest at the locked version, none asserted |
+| target licences | 3 SPDX identifiers, 6 `unverified` where the endpoint answered `NOASSERTION`, 5 `proprietary` from the catalogue's own flag, 2 `unverified` with no route asked |
+
+⭐ The twelve cases are the shape space rather than one example: a missing row,
+a stale row, a version that moved, an empty licence, a value outside the
+vocabulary, `permitted` unearned, a closed-source target under an open licence,
+a foreign schema, an empty register, and an installer-shaped file in the tree.
+The clean register is compared first and again at the end, because a restore
+that silently failed would leave every later case running against a defective
+one.
+
+### Residuals
+
+- ⚠ `ktorrent` is on KDE's own forge rather than GitHub, so no licence route was
+  asked and its row is `unverified`. That is a gap in coverage and not in the
+  register: adding a second source is `ACQ-05`'s kind of work.
+- ⚠ The tracked-artifact rule matches on file extension, so an installer
+  committed without one passes it. A content check would need to read every
+  tracked file on every gate run; the extension list is the cheap half and the
+  register is the half that says what may be here at all.
+- ⚠ Nothing re-asks the licence endpoints. A target that gains a detectable
+  licence keeps its `unverified` row until somebody measures again, which is
+  honest and stale in the safe direction.

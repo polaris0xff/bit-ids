@@ -22,8 +22,14 @@ publishes what it omits, and deterministic CBOR. ⛔ The SQLite one is split out
 as `PUB-05` and is **blocked on an operator decision** about a dependency, which
 `TODO/PROGRESS.md` carries under pending decisions. The next unblocked item is
 `CLIENT-01`, `CLIENT-06` or `CLIENT-05`, and each of those needs a capture host
-this session does not have, so `ACQ-05` and `FOUND-04` are the next ones that
-can actually move.
+this session does not have.
+
+⭐ **And `FOUND-04`**, the licence register: every catalogue target and every
+third-party package now has a recorded disposition, and six of the nine targets
+with a GitHub upstream turn out to have no licence a detector can name, so those
+rows say `unverified` rather than inventing one. `ACQ-05`, the artifact cache, is
+the next item that can actually move, and it is what the register exists to
+enforce.
 
 ⛔ **Nothing has ever been published.** The publisher has never run against this
 repository's own remote and must not until a measured record exists; everything
@@ -42,7 +48,8 @@ preference. A client entry's acceptance needs a capture, a capture needs a host
 an install on Windows. `CI-03` owns the pair; `docs/capture-host.md` carries
 both contracts.
 
-**In flight:** Nothing. `CI-01`, `CORPUS-04` and `PUB-03` each landed whole,
+**In flight:** Nothing. `CI-01`, `CORPUS-04`, `PUB-03` and `FOUND-04` each
+landed whole,
 with entry, index, summary and record updated in the same change. No files
 half-edited.
 
@@ -54,8 +61,8 @@ name. Measured on this host:
 
 | command | result |
 | --- | --- |
-| `sh scripts/common/check-gate.sh` | 18 checks, 17 passed, 0 failed, 1 skipped, 0 unavailable |
-| `pwsh -File scripts/common/check-gate.ps1` | 18 checks, 10 passed, 0 failed, 1 skipped, 7 unavailable |
+| `sh scripts/common/check-gate.sh` | 19 checks, 18 passed, 0 failed, 1 skipped, 0 unavailable |
+| `pwsh -File scripts/common/check-gate.ps1` | 19 checks, 11 passed, 0 failed, 1 skipped, 7 unavailable |
 | `sh scripts/ci/check-workflow.sh` | 34 cases, 34 passed, 0 failed |
 | `cargo test --workspace --locked --all-targets` | 37 binaries, 350 passed, 0 failed |
 | `cargo test --workspace --locked --doc` | 2 passed, 0 failed |
@@ -65,6 +72,7 @@ name. Measured on this host:
 | `sh scripts/publishing/check-release.sh` | 13 cases, 13 passed, 0 failed |
 | `sh scripts/publishing/check-formats.sh` | 16 cases, 16 passed, 0 failed |
 | `sh scripts/publishing/check-publish.sh` | 15 cases, 15 passed, 0 failed |
+| `sh scripts/common/check-licences.sh` | 16 target rows and 22 dependency rows, all with a disposition |
 | `cargo fmt`, `cargo clippy --workspace --locked --all-targets -- -D warnings`, `shellcheck`, `shfmt -d -i 2 -ci` | exit 0 |
 
 ⛔ **Run the gate with `sh scripts/common/check-gate.sh`, not from memory.** A
@@ -106,6 +114,12 @@ is the difference a claim audit exists to find.
 corrected store and finding the original still there proves it was written, not
 that it was left alone. Build the store with and without, and compare the earlier
 record's bytes between them.
+
+⛔ **`grep -c .` prints 0 and EXITS 1 on an empty file.** A `|| printf 0`
+fallback then fires on the one input that matters and the variable becomes two
+zeroes on two lines, which the next comparison rejects as a non-number. That
+disabled a guard whose whole subject was an empty file, and only comparing the
+two halves per planted mutation showed it. Count with `wc -l`.
 
 ⭐ **Two implementations agreeing beats one agreeing with itself.** `PUB-03`'s
 CBOR encoder is checked against `cbor2` 6.1.4, and not by a round trip: that

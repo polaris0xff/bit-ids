@@ -1,0 +1,310 @@
+# Third-party licence and redistribution register.
+#
+# FOUND-04 owns this. Every catalogue target and every third-party package has
+# a row, and a row records what was MEASURED about it and where that came from.
+#
+# The disposition is the same for every row and that is the policy rather than
+# an oversight: this project publishes measurements, never artifacts. A licence
+# that would permit redistribution does not make this repository redistribute.
+#
+# licence_source says who answered, because the answers are not equally strong:
+#   github-api     the repository licence endpoint, whose SPDX id is a detector's
+#                  conclusion rather than a reading of the licence text
+#   crate-manifest the package's own Cargo.toml license field, at that version
+#   catalogue      clients.toml already records the target as closed source
+#   none           nobody has asked, so the licence is unverified
+#
+# unverified is a disposition and not a gap. It means redistribution stays
+# refused, which it is anyway, and that nobody may treat the target as
+# permissively licensed on this file's authority.
+
+schema = "bit-ids/licences/1"
+artifact_policy = "measurements-only"
+
+[[targets]]
+id = "qbittorrent"
+licence = "unverified"
+licence_source = "github-api"
+redistribute = "refused"
+notice = ""
+
+[[targets]]
+id = "qbittorrent-enhanced"
+licence = "unverified"
+licence_source = "github-api"
+redistribute = "refused"
+notice = ""
+
+[[targets]]
+id = "utorrent"
+licence = "proprietary"
+licence_source = "catalogue"
+redistribute = "refused"
+notice = ""
+
+[[targets]]
+id = "bitcomet"
+licence = "proprietary"
+licence_source = "catalogue"
+redistribute = "refused"
+notice = ""
+
+[[targets]]
+id = "aria2"
+licence = "GPL-2.0"
+licence_source = "github-api"
+redistribute = "refused"
+notice = ""
+
+[[targets]]
+id = "transmission"
+licence = "unverified"
+licence_source = "github-api"
+redistribute = "refused"
+notice = ""
+
+[[targets]]
+id = "deluge"
+licence = "unverified"
+licence_source = "github-api"
+redistribute = "refused"
+notice = ""
+
+[[targets]]
+id = "bittorrent"
+licence = "proprietary"
+licence_source = "catalogue"
+redistribute = "refused"
+notice = ""
+
+[[targets]]
+id = "biglybt"
+licence = "GPL-2.0"
+licence_source = "github-api"
+redistribute = "refused"
+notice = ""
+
+[[targets]]
+id = "tixati"
+licence = "proprietary"
+licence_source = "catalogue"
+redistribute = "refused"
+notice = ""
+
+[[targets]]
+id = "ktorrent"
+licence = "unverified"
+licence_source = "none"
+redistribute = "refused"
+notice = ""
+
+[[targets]]
+id = "fdm"
+licence = "proprietary"
+licence_source = "catalogue"
+redistribute = "refused"
+notice = ""
+
+[[targets]]
+id = "zona"
+licence = "proprietary"
+licence_source = "catalogue"
+redistribute = "refused"
+notice = ""
+
+[[targets]]
+id = "libtorrent"
+licence = "unverified"
+licence_source = "github-api"
+redistribute = "refused"
+notice = ""
+
+[[targets]]
+id = "anacrolix-torrent"
+licence = "MPL-2.0"
+licence_source = "github-api"
+redistribute = "refused"
+notice = ""
+
+[[targets]]
+id = "rqbit"
+licence = "unverified"
+licence_source = "github-api"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "block-buffer"
+version = "0.12.1"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "cfg-if"
+version = "1.0.4"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "const-oid"
+version = "0.10.2"
+licence = "Apache-2.0 OR MIT"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "cpufeatures"
+version = "0.3.1"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "crypto-common"
+version = "0.2.2"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "digest"
+version = "0.11.3"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "hybrid-array"
+version = "0.4.14"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "itoa"
+version = "1.0.18"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "libc"
+version = "0.2.189"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "memchr"
+version = "2.8.3"
+licence = "Unlicense OR MIT"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "proc-macro2"
+version = "1.0.107"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "quote"
+version = "1.0.47"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "serde"
+version = "1.0.229"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "serde_core"
+version = "1.0.229"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "serde_derive"
+version = "1.0.229"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "serde_json"
+version = "1.0.151"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "sha1"
+version = "0.11.0"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "sha2"
+version = "0.11.0"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "syn"
+version = "3.0.4"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "typenum"
+version = "1.20.1"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "unicode-ident"
+version = "1.0.24"
+licence = "(MIT OR Apache-2.0) AND Unicode-3.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "zmij"
+version = "1.0.23"
+licence = "MIT"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""

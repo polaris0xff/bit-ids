@@ -85,6 +85,13 @@ same torrent, to save one small crate. ⚠ The crate is checked against RFC 3174
 own vectors rather than trusted, in
 [`../crates/bit-ids-lab/src/torrent.rs`](../crates/bit-ids-lab/src/torrent.rs).
 
+⭐ `FOUND-04` put every one of these packages in a register with the licence
+read out of its own manifest at the version the lockfile pins, beside every
+catalogue target. ⚠ A row records who answered, because the answers are not
+equally strong, and a licence nobody established is `unverified` rather than
+guessed. `catalogue/licences.toml` is the register and `check-licences` is the
+pair that holds it to the lockfile.
+
 `PUB-03` added five published renderings and **no** third-party crate. JSON,
 JSONL and CSV need no encoder the crate does not already have, and the CBOR one
 is written here for the reason the wire codecs are: the published bytes are what

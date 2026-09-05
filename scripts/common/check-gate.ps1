@@ -130,7 +130,8 @@ function Invoke-Check([string]$Name, [string]$Script, [string[]]$ExtraArgs = @()
 }
 
 foreach ($c in 'check-docs', 'check-markers', 'check-one-home', 'check-placeholders',
-                'check-control-bytes', 'check-changelog', 'check-no-secrets', 'check-project') {
+                'check-control-bytes', 'check-changelog', 'check-no-secrets', 'check-project',
+                'check-licences') {
     Invoke-Check $c ($c + '.ps1')
 }
 
