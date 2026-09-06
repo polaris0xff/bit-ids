@@ -26,9 +26,10 @@
 //! `docs/capture-methodology.md` lists a decoder table among the inputs that may
 //! seed a hypothesis and may not populate the catalogue.
 
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::sync::{Arc, Mutex, PoisonError};
 
-use bit_ids_lab::{ConnectionId, StreamReply};
+use bit_ids_lab::{ConnectionId, StreamReply, bind};
 use bit_ids_wire::WireError;
 use bit_ids_wire::bencode::{self, Value};
 use bit_ids_wire::tracker_http::{HttpRequest, PercentCase, head_end};
@@ -158,18 +159,70 @@ impl Announce {
 }
 
 /// One peer the tracker offers back.
+///
+/// ⛔ **The fields are private and [`OfferedPeer::new`] is the only constructor,
+/// because this is the third door.** A tracker response hands the build
+/// addresses it will then dial *itself*, on its own socket, so
+/// `bind::send_to` is never called on those packets and no guard on this
+/// project's sockets can see them. An offered `8.8.8.8` reaches the network as
+/// surely as one the lab sent.
+///
+/// ⚠ **A door sweep found this and it had been open since `OBS-02`.** `OBS-11`
+/// added `bind::check_offered` for the DHT's `values` list and for BEP 19's
+/// `url-list`, and the two oldest observers had the same affordance with public
+/// fields and no check at all. That is the one-gated-door defect
+/// `docs/methodology/reviews.md` names, found exactly the way that document says
+/// to find it: by grepping for the callers that were not on the list.
+///
+/// ⚠ Shared with [`crate::tracker_udp`], which offers the same type in BEP 15's
+/// compact form, so one constructor closes both surfaces.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct OfferedPeer {
-    /// The four bytes of an IPv4 address.
-    pub address: [u8; 4],
-    /// The port, in host order.
-    pub port: u16,
-    /// The 20 peer-ID bytes, used only by the non-compact form.
-    pub peer_id: [u8; 20],
+    address: [u8; 4],
+    port: u16,
+    peer_id: [u8; 20],
 }
 
 impl OfferedPeer {
-    fn compact(&self) -> Vec<u8> {
+    /// A peer to offer, if its address is inside the lab's allowed set.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`bind::BindError::NotReachable`] for an address outside
+    /// loopback.
+    pub fn new(address: [u8; 4], port: u16, peer_id: [u8; 20]) -> Result<Self, bind::BindError> {
+        bind::check_offered(SocketAddr::V4(SocketAddrV4::new(
+            Ipv4Addr::from(address),
+            port,
+        )))?;
+        Ok(Self {
+            address,
+            port,
+            peer_id,
+        })
+    }
+
+    /// The four address bytes, already checked.
+    #[must_use]
+    pub const fn address(&self) -> [u8; 4] {
+        self.address
+    }
+
+    /// The port, in host order.
+    #[must_use]
+    pub const fn port(&self) -> u16 {
+        self.port
+    }
+
+    /// The twenty peer-ID bytes, used only by the non-compact form.
+    #[must_use]
+    pub const fn peer_id(&self) -> &[u8; 20] {
+        &self.peer_id
+    }
+
+    /// The six-byte compact form both tracker surfaces write.
+    #[must_use]
+    pub fn compact(&self) -> Vec<u8> {
         let mut out = self.address.to_vec();
         out.extend_from_slice(&self.port.to_be_bytes());
         out

@@ -448,15 +448,14 @@ this project's reading of the protocol, which is what `OBS-07` exists to fix.
    refused. `TODO/clients.md` carries the three routes that were tried on
    2026-09-05. ⭐ Neither the observer layer nor the store blocks them any more;
    `CI-03` and a host are what remain.
-2. `OBS-11`, the three adjacent surfaces `OBS-06` split out, **in flight**.
-   ⭐ **The only remaining item that needs no capture host**: the containment,
-   the switch and the sweep are built, so each of DHT, web seed and MSE is a
-   protocol module and its acceptance. Its carried-over prerequisite is done and
-   the modules follow in the order DHT, web seed, MSE. `OBS-07` and `OBS-10` are
-   the other two observer entries and both need a client build, so they wait on
-   the same host the clients do.
-3. `CI-02` through `CI-04`, of which `CI-03` is what a capture host needs.
-   `CI-02`'s own acceptance is fixture-driven and could move before one.
+2. ⭐ **`OBS-11` is closed**, so the observer layer covers every surface a build
+   reaches for. `OBS-07` and `OBS-10` are the other two observer entries and both
+   need a client build, so they wait on the same host the clients do.
+3. ⭐ **`CI-02` through `CI-04` are what is next**, and `CI-03` is the one that
+   supplies the capture host everything else waits on. ⚠ `CI-02`'s acceptance is
+   fixture-driven and `PUB-04`'s can be driven against a scratch bare repository,
+   so both are reachable on a session host and neither is as blocked as the
+   ordering suggests.
 4. The remaining client and engine breadth, behind the same capture host.
 5. `PUB-04` and `PUB-05`, then the consumer library, public documentation and
    refinements. ⚠ `PUB-04`'s Prove fetches every documented path and nothing has

@@ -671,3 +671,42 @@ fn an_mse_exchange_completes_and_the_handshake_comes_out_of_it() {
     let name = Slug::parse(endpoint_name(Surface::Mse)).expect("a canonical name");
     assert_eq!(journal.received(&name), opening.as_slice());
 }
+
+/// ⛔ The third door, on the two surfaces that had it open longest.
+///
+/// ⚠ **This case exists because a door sweep found the hole after `OBS-11` had
+/// already closed it twice elsewhere.** `bind::check_offered` was added for the
+/// DHT's `values` list and for BEP 19's `url-list`, and `OfferedPeer`, the type
+/// *both* tracker observers hand a build to dial, had public fields and no
+/// check at all, since `OBS-02`. A gate on some of several paths into one action
+/// is what `docs/methodology/reviews.md` calls the most recurring hole there is,
+/// and grepping for the callers not on the list is how that document says to
+/// find it.
+#[test]
+fn a_tracker_cannot_offer_a_peer_outside_the_lab() {
+    use bit_ids_probe::OfferedPeer;
+
+    // Addresses a build would actually dial if it were handed one.
+    for (address, port) in [
+        ([198_u8, 51, 100, 7], 6881_u16),
+        ([8, 8, 8, 8], 80),
+        ([0, 0, 0, 0], 6881),
+        ([192, 168, 1, 10], 6881),
+    ] {
+        assert!(
+            matches!(
+                OfferedPeer::new(address, port, *b"bit-ids-fixture-0001"),
+                Err(bind::BindError::NotReachable { .. })
+            ),
+            "{address:?}:{port} was offered"
+        );
+    }
+
+    // ⚠ The control, so a constructor that refused everything would fail here,
+    // and the compact form is the six bytes BEP 15 and BEP 23 both write.
+    let allowed = OfferedPeer::new([127, 0, 0, 1], 6881, *b"bit-ids-fixture-0001")
+        .expect("loopback is inside the allowed set");
+    assert_eq!(allowed.compact(), vec![127, 0, 0, 1, 0x1a, 0xe1]);
+    assert_eq!(allowed.address(), [127, 0, 0, 1]);
+    assert_eq!(allowed.port(), 6881);
+}

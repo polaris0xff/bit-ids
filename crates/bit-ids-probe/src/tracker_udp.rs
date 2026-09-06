@@ -267,8 +267,10 @@ fn announce_response(transaction_id: u32, response: &UdpTrackerResponse) -> Vec<
     out.extend_from_slice(&response.leechers.to_be_bytes());
     out.extend_from_slice(&response.seeders.to_be_bytes());
     for peer in &response.peers {
-        out.extend_from_slice(&peer.address);
-        out.extend_from_slice(&peer.port.to_be_bytes());
+        // ⚠ The shared compact form rather than a second copy of it. Both
+        // tracker surfaces write the same six bytes, and `OfferedPeer` is the
+        // one type whose constructor has already checked the address.
+        out.extend_from_slice(&peer.compact());
     }
     out
 }

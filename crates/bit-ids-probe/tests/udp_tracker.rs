@@ -202,16 +202,10 @@ fn udp_tracker_answers_six_bytes_per_peer_and_nothing_else() {
         leechers: 3,
         seeders: 4,
         peers: vec![
-            OfferedPeer {
-                address: [127, 0, 0, 1],
-                port: 6881,
-                peer_id: *b"bit-ids-fixture-0001",
-            },
-            OfferedPeer {
-                address: [127, 0, 0, 2],
-                port: 51413,
-                peer_id: *b"bit-ids-fixture-0002",
-            },
+            OfferedPeer::new([127, 0, 0, 1], 6881, *b"bit-ids-fixture-0001")
+                .expect("a loopback peer is inside the allowed set"),
+            OfferedPeer::new([127, 0, 0, 2], 51413, *b"bit-ids-fixture-0002")
+                .expect("a loopback peer is inside the allowed set"),
         ],
     });
     let lab = lab_with(&tracker);

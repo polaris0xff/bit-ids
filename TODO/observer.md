@@ -514,6 +514,15 @@ Residual: nothing here is evidence about any build. Every announce driven throug
 this observer was written by this project, because no client is installed and
 `OBS-08` has not generated a torrent for one to announce about.
 
+⛔ **Corrected on 2026-09-06 by `OBS-11`'s door sweep.** `OfferedPeer`, the type
+this observer hands a build to dial, had public fields and no check on the
+address, so a caller could offer a routable one and the build would contact it on
+its own socket, where nothing this project guards can see the packet. That is the
+third door `bind::check_offered` exists for, and it had been open here since this
+entry landed. The fields are private now and `OfferedPeer::new` is the only
+constructor; `a_tracker_cannot_offer_a_peer_outside_the_lab` is the case.
+⚠ The type is shared with `OBS-03`, so one constructor closed both surfaces.
+
 ## OBS-03: UDP tracker observer
 
 Source: bit-cli T-234 UDP key and numwant inventory
@@ -590,6 +599,15 @@ specification shares this project's reading of it, so it is a weaker control tha
 `sh scripts/acquisition/assert-disposable.sh --egress` exits 1 here with
 `a public route exists`, so running a client here would be the capture the
 boundary in `docs/capture-host.md` exists to refuse. `CI-03` owns the runner.
+
+⛔ **Corrected on 2026-09-06 by `OBS-11`'s door sweep.** `OfferedPeer`, the type
+this observer hands a build to dial, had public fields and no check on the
+address, so a caller could offer a routable one and the build would contact it on
+its own socket, where nothing this project guards can see the packet. That is the
+third door `bind::check_offered` exists for, and it had been open here since this
+entry landed. The fields are private now and `OfferedPeer::new` is the only
+constructor; `a_tracker_cannot_offer_a_peer_outside_the_lab` is the case.
+⚠ The type is shared with `OBS-03`, so one constructor closed both surfaces.
 
 ## OBS-04: Peer-wire handshake observer
 

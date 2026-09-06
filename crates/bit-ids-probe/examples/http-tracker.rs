@@ -44,11 +44,10 @@ fn main() {
         interval: 60,
         complete: 1,
         incomplete: 0,
-        peers: vec![OfferedPeer {
-            address: [127, 0, 0, 1],
-            port: 6881,
-            peer_id: *b"bit-ids-fixture-0001",
-        }],
+        peers: vec![
+            OfferedPeer::new([127, 0, 0, 1], 6881, *b"bit-ids-fixture-0001")
+                .expect("a loopback peer is inside the allowed set"),
+        ],
     });
 
     let mut lab = Lab::builder()

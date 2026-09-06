@@ -222,11 +222,10 @@ fn http_tracker_answers_a_body_that_decodes_and_re_encodes_unchanged() {
         interval: 900,
         complete: 2,
         incomplete: 3,
-        peers: vec![OfferedPeer {
-            address: [127, 0, 0, 1],
-            port: 6881,
-            peer_id: *b"bit-ids-fixture-0001",
-        }],
+        peers: vec![
+            OfferedPeer::new([127, 0, 0, 1], 6881, *b"bit-ids-fixture-0001")
+                .expect("a loopback peer is inside the allowed set"),
+        ],
     });
     let lab = lab_with(&tracker);
     let answer = announce(
@@ -264,11 +263,10 @@ fn http_tracker_answers_the_shape_the_announce_asked_for() {
     // error and changes what it does next. That behaviour would be recorded as
     // identity and it would be this code's, not the build's.
     let tracker = HttpTracker::new(TrackerResponse {
-        peers: vec![OfferedPeer {
-            address: [127, 0, 0, 1],
-            port: 6881,
-            peer_id: *b"bit-ids-fixture-0001",
-        }],
+        peers: vec![
+            OfferedPeer::new([127, 0, 0, 1], 6881, *b"bit-ids-fixture-0001")
+                .expect("a loopback peer is inside the allowed set"),
+        ],
         ..TrackerResponse::default()
     });
     let lab = lab_with(&tracker);

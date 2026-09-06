@@ -204,6 +204,66 @@ Nothing is released yet. Entries accumulate here until the first
 - Deployment: nothing deployed. No capture was taken. No remote was written
   other than this repository's `main`.
 
+### 2026-09-06T09:25:41Z
+
+⚠ **This entry is newer than the seven above it and sits below them, because
+their stamps are not machine-read.** `docs/conventions/git.md` section 3 asks for
+`date -u`; the entries dated 2026-09-06T10:30Z through 23:55Z were written by
+hand while their commits were made between 2026-09-05T17:42Z and 23:37Z. This
+stamp is the machine's. File order here is stamp order and is not work order,
+and the older stamps are not retro-corrected: rewriting somebody else's record of
+when they worked is worse than the gap it would close.
+
+- `OBS-11`, message stream encryption, DHT and web-seed observers, closed. The
+  observer layer now covers every surface a build reaches for. Record:
+  [`TODO/observer.md`](TODO/observer.md).
+- ⭐ A datagram responder is handed the source address of the packet it answers,
+  which `OBS-06` carried over. `implied_port` in BEP 5 means *use the source port
+  of this packet*, so an observer blind to it cannot record what port a build
+  announced. The address reaches the record and never a syscall.
+- ⛔ **A third door, and it is not a socket.** A DHT `values` list, a BEP 19
+  `url-list` and a tracker's peer list all hand the build addresses it dials
+  *itself*, so `bind::send_to` is never called on those packets and no guard on
+  this project's sockets can see them. `bind::check_offered` is the guard.
+- ⛔ **A door sweep found the same hole in the two oldest observers.**
+  `OfferedPeer`, which both tracker surfaces hand a build, had public fields and
+  no check at all since `OBS-02`. Its fields are private now and `OfferedPeer::new`
+  is the only constructor.
+- ⚠ The hazard had been written down against the wrong surface: `adjacent::reaches`
+  said `pex` hands out addresses a client will then dial and said nothing of the
+  kind about `dht`, which does the same through a different field.
+- ⭐ `bit_ids_wire::dht` reads BEP 5's KRPC and keeps the whole decoded document,
+  so key order, transaction-id width and integer spelling survive a re-encode.
+  `Surface::Dht` has two fixtures and is no longer refused with `E-FIX-07`.
+- ⛔ The `E-FIX-07` negative control named `dht` as *the surface with no codec*,
+  in two places, which stopped being true the moment the codec landed. Both name
+  `mse` now.
+- ⚠ "Peer ID" was the wrong name for what the corpus guard reads, since a KRPC
+  message carries a *node* id, and nothing checked a version string at all until
+  `dht` put a `v` on a second surface. Both are checked now.
+- ⭐ `bit_ids_probe::web_seed` answers BEP 19, where the identity belongs to the
+  build's HTTP library rather than to the build. `TorrentSpec` carries
+  `web_seeds`; an empty list writes no key, so no recorded digest moves.
+- ⭐ `bit_ids_wire::mse` and `bit_ids_probe::mse` complete the entry. MSE comes
+  first or not at all, so the offer is a condition of the measurement, and the
+  peer ID read back out of `IA` is `OBS-04`'s measurement through a second door.
+  The 768-bit arithmetic is written out and added **no package** to the lockfile.
+- ⛔ A mutation pass found `VerificationFailed` unreachable: the only case
+  exercising a wrong key relies on random plaintext, which trips the pad-length
+  check first. The case that reaches it is a build that keys correctly and writes
+  the wrong constant.
+- ⭐ Each module has a driven run against an outside implementation: `curl`
+  8.5.0, a `libtorrent`-encoded KRPC exchange, and an MSE initiator written from
+  the specification in Python. ⛔ None is a stock client, which is unchanged and
+  is `OBS-07`'s to fix.
+- ⛔ `synthetic-torrent` defaulted its output into the repository root, so running
+  it turned `check-licences` red. The path is required now.
+- ⚠ `check-no-secrets --public` gained an allowance for the MSE test vectors,
+  anchored on the `MSE_` name, on both quotes and on exactly 192 digits. Five
+  planted inputs, both twins agreeing on every one.
+- Deployment: nothing deployed. No capture was taken and nothing was published.
+
+
 ### 2026-09-05T15:00:00Z
 
 - `PUB-02`, the append-only data branch publisher. Record:
