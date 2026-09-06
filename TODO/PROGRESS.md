@@ -367,6 +367,23 @@ socket holds, so a mismatch is the ordinary case for a *conforming* build.
 Recording it as a refusal would have filed one against nearly every client this
 project will measure.
 
+⭐ **`bit_ids_wire::dht` is the second `OBS-11` unit**, so `Surface::Dht` has a
+codec and two committed fixtures and is no longer refused with `E-FIX-07`. KRPC
+is one bencoded dictionary per datagram, and the module keeps the whole decoded
+document rather than a struct of extracted fields: key order, transaction-id
+width, integer spelling and the keys a build invents are each identity, and named
+fields could not write any of them back. ⛔ **The `v` string stays bytes and is
+never resolved to a client name.**
+
+⛔ **The `E-FIX-07` negative control had to move and that is a finding.** Two
+places named `dht` as *the surface with no codec*, which stopped being true the
+moment the codec landed; a control that keeps passing while asserting the
+opposite of what it was written for is what a mutation pass exists to catch. Both
+name `mse` now. ⚠ In the same sweep, "peer ID" turned out to be the wrong name
+for what the corpus guard reads, since a KRPC message carries a *node* id, and
+**nothing checked a version string at all** until this surface put a `v` on a
+second one. Both are checked now.
+
 ## Work order
 
 1. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical

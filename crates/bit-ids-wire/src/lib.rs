@@ -42,6 +42,7 @@
 //! the canonical value forms, and the arrow points that way only.
 
 pub mod bencode;
+pub mod dht;
 pub mod error;
 pub mod fixture;
 pub mod peer_wire;

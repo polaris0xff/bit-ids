@@ -10,10 +10,22 @@ says what may.
 
 The synthetic identity is the guard against exactly that mistake, and it is
 checked rather than trusted:
-`fixtures_all_declare_a_synthetic_origin_and_carry_only_the_synthetic_peer_id`
-pulls every peer ID out **through the codec** and refuses any other value. A
-fixture carrying a real client's prefix is one search away from being read as a
-result about that client.
+`fixtures_all_declare_a_synthetic_origin_and_carry_only_the_synthetic_identity_token`
+pulls every one out **through the codec** and refuses any other value. A fixture
+carrying a real client's prefix is one search away from being read as a result
+about that client.
+
+⚠ **"Identity token" rather than "peer ID", because `dht` has neither.** A KRPC
+message carries a *node* id, which BEP 5 fixes at the same twenty bytes and which
+is the same thing for the check's purpose: the value a search would match a real
+build on. `bit-ids-fixture-0001` is twenty bytes and serves as both.
+
+⛔ **A version string names a build as squarely as an identifier does**, and
+nothing checked one until `dht` put a `v` on a second surface.
+`no_fixture_carries_a_version_string_that_could_name_a_real_build` reads BEP 5's
+`v` and BEP 10's `v` through their codecs and holds both to
+`bit-ids-fixture/0`. It also asserts it read at least two, because a sweep that
+found nothing would otherwise report nothing wrong.
 
 ## What each one is for
 
@@ -26,6 +38,8 @@ result about that client.
 | `peer-wire-handshake-only.json` | `peer_wire` | a handshake advertising nothing, every reserved byte zero |
 | `peer-wire-extended-handshake.json` | `peer_wire` | the extension, fast and DHT bits, a sorted BEP 10 dictionary, `m` order, `reqq`, `p`, `v`, and two messages written together |
 | `peer-wire-early-message-sequence.json` | `peer_wire` | unsorted dictionary keys, the non-canonical integer `i-0e`, a keep-alive, and an unassigned message id |
+| `dht-bootstrap-queries.json` | `dht` | a sorted KRPC query, the twenty-byte node id, a `v` of non-standard width, a transaction id with an unprintable byte, and `want` kept as a list |
+| `dht-announce-unusual-shape.json` | `dht` | unsorted message keys, the non-canonical integer `i01e` in `implied_port`, and BEP 43's `ro` beside the message rather than inside `a` |
 | `index.json` | none | the digest of every fixture above, and of the corpus |
 
 ⭐ **The unusual ones are the load-bearing ones.** A fixture that only carries a

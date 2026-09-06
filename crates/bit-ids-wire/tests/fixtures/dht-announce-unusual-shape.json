@@ -1,0 +1,20 @@
+{
+  "schema": "bit-ids/wire-fixture/1",
+  "id": "dht-announce-unusual-shape",
+  "surface": "dht",
+  "summary": "An announce_peer with unsorted keys, a non-canonical implied_port and a read-only flag",
+  "provenance": {
+    "origin": "synthetic",
+    "authored": "2026-09-06T07:56:00Z",
+    "specifications": [
+      "BEP 5",
+      "BEP 43"
+    ]
+  },
+  "frames": [
+    {
+      "offset_ms": 0,
+      "bytes": "64313a79313a71313a74323aaa03313a7131333a616e6e6f756e63655f70656572313a7631373a6269742d6964732d666978747572652f30313a6164323a696432303a6269742d6964732d666978747572652d30303031393a696e666f5f6861736832303a111111111111111111111111111111111111111131323a696d706c6965645f706f727469303165343a706f7274693638383165353a746f6b656e383a616f6575736e746865323a726f69316565"
+    }
+  ]
+}

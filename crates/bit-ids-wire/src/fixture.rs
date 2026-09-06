@@ -32,6 +32,7 @@ use serde::de::Error as _;
 use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::bencode;
+use crate::dht;
 use crate::error::WireError;
 use crate::peer_wire::Transcript;
 use crate::tracker_http::HttpRequest;
@@ -394,6 +395,11 @@ impl Fixture {
             }
             Surface::PeerWire => Transcript::parse(&bytes).map(|transcript| transcript.encode()),
             Surface::TrackerUdp => self.round_trip_datagrams(),
+            // ⚠ Framed per datagram for the reason the UDP tracker is: one KRPC
+            // message is one packet, so joining them would read the second as
+            // the first one's trailing bytes, which the DHT codec would then
+            // report as a departure rather than as a message.
+            Surface::Dht => self.round_trip_krpc(),
             other => {
                 return Err(violation(
                     "E-FIX-07",
@@ -463,6 +469,21 @@ impl Fixture {
         for frame in &self.frames {
             let datagram = Datagram::parse(Direction::FromTarget, frame.bytes.as_slice())?;
             out.extend_from_slice(&datagram.encode());
+        }
+        Ok(out)
+    }
+
+    /// KRPC is framed by datagram too, so each frame decodes on its own.
+    ///
+    /// ⚠ Separate from [`Fixture::round_trip_datagrams`] rather than generic
+    /// over a codec: the two decode different grammars and share only the loop,
+    /// and a helper taking a function pointer would read as though the surfaces
+    /// were interchangeable.
+    fn round_trip_krpc(&self) -> Result<Vec<u8>, WireError> {
+        let mut out = Vec::new();
+        for frame in &self.frames {
+            let message = dht::Message::parse(frame.bytes.as_slice())?;
+            out.extend_from_slice(&message.encode());
         }
         Ok(out)
     }

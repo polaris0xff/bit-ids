@@ -10,7 +10,8 @@ use std::collections::BTreeSet;
 use std::path::PathBuf;
 
 use bit_ids::observation::Surface;
-use bit_ids_wire::bencode::Value;
+use bit_ids_wire::bencode::{self, Value};
+use bit_ids_wire::dht;
 use bit_ids_wire::fixture::{FIXTURE_SCHEMA, Fixture, FixtureError, INDEX_FILE, load_directory};
 use bit_ids_wire::peer_wire::Transcript;
 use bit_ids_wire::tracker_http::{HttpRequest, PercentCase, QueryPair};
@@ -68,6 +69,15 @@ fn fixtures_all_round_trip_byte_for_byte() {
                         .encode()
                 })
                 .collect(),
+            Surface::Dht => fixture
+                .frames
+                .iter()
+                .flat_map(|frame| {
+                    dht::Message::parse(frame.bytes.as_slice())
+                        .expect("decodes")
+                        .encode()
+                })
+                .collect(),
             other => panic!("{}: no codec for {other}", fixture.id),
         };
         assert_eq!(re_encoded, bytes, "{} lost bytes", fixture.id);
@@ -80,7 +90,11 @@ fn fixtures_all_round_trip_byte_for_byte() {
 /// ⚠ Built here rather than committed to the corpus: the corpus index is
 /// `FOUND-03`'s acceptance, and a fixture belongs in it once a real announce has
 /// been captured rather than to prove a dispatch arm exists. The negative half
-/// is the same document on `dht`, which has no codec and is still refused.
+/// is the same document on `mse`, which has no codec and is still refused. ⚠ It
+/// was `dht` until `OBS-11` gave that surface one; a negative control has to name
+/// a surface that is still uncovered, or it stops being a control the moment the
+/// thing it contrasts with lands.
+///
 /// The fixture document the case below fills in. Two substitutions, no braces.
 const TEMPLATE: &str = r#"{
   "schema": "SCHEMA-HERE",
@@ -131,8 +145,8 @@ fn fixtures_accept_a_local_discovery_announce_and_still_refuse_one_with_no_codec
 
     // ⛔ The control. Without it this passes over a validator that stopped
     // refusing every surface rather than learning one.
-    let refused = Fixture::from_json(&document.replace("\"local_discovery\"", "\"dht\""))
-        .expect_err("dht has no codec");
+    let refused = Fixture::from_json(&document.replace("\"local_discovery\"", "\"mse\""))
+        .expect_err("mse has no codec");
     assert!(format!("{refused:?}").contains("E-FIX-07"), "{refused:?}");
 }
 
@@ -180,15 +194,20 @@ fn fixtures_cover_every_surface_this_crate_decodes() {
         .iter()
         .map(|fixture| fixture.surface.to_string())
         .collect();
-    let expected: BTreeSet<String> = [Surface::TrackerHttp, Surface::TrackerUdp, Surface::PeerWire]
-        .into_iter()
-        .map(|surface| surface.to_string())
-        .collect();
+    let expected: BTreeSet<String> = [
+        Surface::TrackerHttp,
+        Surface::TrackerUdp,
+        Surface::PeerWire,
+        Surface::Dht,
+    ]
+    .into_iter()
+    .map(|surface| surface.to_string())
+    .collect();
     assert_eq!(covered, expected);
 }
 
 /// Every fixture says it is synthetic, names what it was written from, and
-/// carries the synthetic peer ID and nothing else.
+/// carries the synthetic identity token and nothing else.
 ///
 /// ⛔ Nothing in this corpus is evidence about any real build. A fixture
 /// carrying a real client's peer-ID prefix is one search away from being read
@@ -196,12 +215,19 @@ fn fixtures_cover_every_surface_this_crate_decodes() {
 /// `tests/fixtures/README.md` in the `bit-ids` crate already guards against for
 /// the schema fixtures.
 ///
+/// ⚠ **"Identity token" rather than "peer ID", because `dht` has neither.** A
+/// KRPC message carries a *node* id, which BEP 5 fixes at the same twenty bytes
+/// and which is the same thing for this check's purpose: the value a search
+/// would match a real build on. Calling the two one name would be the divergent
+/// vocabulary `check-one-home` exists for, so the check is named for what it
+/// actually reads and `identity_token` says which field each surface offers.
+///
 /// ⚠ Read through the codecs, not off the raw bytes. The first version of this
 /// scanned for the literal marker and passed six fixtures while missing the one
 /// that percent-encodes its peer ID, which is exactly the fixture that exists
 /// because clients do that.
 #[test]
-fn fixtures_all_declare_a_synthetic_origin_and_carry_only_the_synthetic_peer_id() {
+fn fixtures_all_declare_a_synthetic_origin_and_carry_only_the_synthetic_identity_token() {
     for fixture in corpus() {
         assert_eq!(fixture.schema, FIXTURE_SCHEMA);
         assert!(
@@ -209,25 +235,78 @@ fn fixtures_all_declare_a_synthetic_origin_and_carry_only_the_synthetic_peer_id(
             "{} names no specification",
             fixture.id
         );
-        let observed = peer_ids(&fixture);
+        let observed = identity_tokens(&fixture);
         assert!(
             !observed.is_empty(),
-            "{} carries no peer id for this check to read",
+            "{} carries no identity token for this check to read",
             fixture.id
         );
-        for peer_id in observed {
+        for token in observed {
             assert_eq!(
-                peer_id,
+                token,
                 b"bit-ids-fixture-0001".to_vec(),
-                "{} carries a peer id that is not the synthetic one",
+                "{} carries an identity token that is not the synthetic one",
                 fixture.id
             );
         }
     }
 }
 
-/// Every peer ID a fixture carries, pulled out through the surface's codec.
-fn peer_ids(fixture: &Fixture) -> Vec<Vec<u8>> {
+/// ⛔ A version string names a build as squarely as an identifier does, and
+/// nothing checked one until `dht` put a `v` in a second surface.
+///
+/// BEP 5's `v` and BEP 10's `v` are both free-form vendor tags, so a fixture
+/// carrying `UT` and a version number would read as a measurement of that
+/// client exactly the way a real peer-ID prefix would. The corpus answers
+/// `bit-ids-fixture/0` on both surfaces and this is what holds it there.
+#[test]
+fn no_fixture_carries_a_version_string_that_could_name_a_real_build() {
+    const SYNTHETIC: &[u8] = b"bit-ids-fixture/0";
+    let mut checked = 0_usize;
+    for fixture in corpus() {
+        let bytes = fixture.joined_bytes();
+        match fixture.surface {
+            Surface::Dht => {
+                for frame in &fixture.frames {
+                    let message = dht::Message::parse(frame.bytes.as_slice()).expect("decodes");
+                    if let Some(version) = message.version() {
+                        assert_eq!(version, SYNTHETIC, "{} names a build", fixture.id);
+                        checked += 1;
+                    }
+                }
+            }
+            Surface::PeerWire => {
+                for message in Transcript::parse(&bytes).expect("decodes").messages() {
+                    let Some(extended) = message.as_extended() else {
+                        continue;
+                    };
+                    let extended = extended.expect("decodes");
+                    if let Some(bencode::Value::Bytes(version)) = extended.document().get(b"v") {
+                        assert_eq!(
+                            version.as_slice(),
+                            SYNTHETIC,
+                            "{} names a build",
+                            fixture.id
+                        );
+                        checked += 1;
+                    }
+                }
+            }
+            // ⚠ The tracker surfaces carry no vendor tag of this kind. A `key`
+            // or a `numwant` is not one, so there is nothing here to read.
+            Surface::TrackerHttp | Surface::TrackerUdp => {}
+            other => panic!("no codec for {other}"),
+        }
+    }
+    // ⛔ A sweep that read nothing reports nothing wrong. Two fixtures carry a
+    // `v` today, one per surface that has the field, and a corpus that stopped
+    // carrying either would fail here rather than pass vacuously.
+    assert!(checked >= 2, "only {checked} version strings were read");
+}
+
+/// Every identity token a fixture carries, pulled out through the surface's
+/// codec. A peer ID on the three core surfaces, a node id on `dht`.
+fn identity_tokens(fixture: &Fixture) -> Vec<Vec<u8>> {
     let bytes = fixture.joined_bytes();
     match fixture.surface {
         Surface::TrackerHttp => HttpRequest::parse(&bytes)
@@ -257,6 +336,16 @@ fn peer_ids(fixture: &Fixture) -> Vec<Vec<u8>> {
                     .expect("decodes")
                     .as_announce_request()
                     .map(|announce| announce.expect("it decodes").peer_id.to_vec())
+            })
+            .collect(),
+        Surface::Dht => fixture
+            .frames
+            .iter()
+            .filter_map(|frame| {
+                dht::Message::parse(frame.bytes.as_slice())
+                    .expect("decodes")
+                    .node_id()
+                    .map(<[u8]>::to_vec)
             })
             .collect(),
         other => panic!("no codec for {other}"),
@@ -359,6 +448,77 @@ fn fixtures_expose_the_tracker_udp_identity_fields() {
     assert_eq!(announce.options, b"\x02\x09/announce");
 }
 
+/// What the `dht` corpus proves survives a decode.
+///
+/// ⭐ **The unusual fixture is the load-bearing one**, for the reason the corpus
+/// README gives: a fixture carrying only a well-formed query cannot catch a
+/// decoder that repairs what it reads, and repairing is the failure mode on this
+/// surface specifically. Sorting a KRPC dictionary or canonicalising
+/// `implied_port` from `i01e` to `i1e` would destroy two of the differences
+/// between builds that this surface exists to record.
+#[test]
+fn fixtures_expose_the_dht_identity_fields() {
+    let queries = by_id("dht-bootstrap-queries");
+    let find_node = dht::Message::parse(queries.frames[0].bytes.as_slice()).expect("decodes");
+    assert!(find_node.is_conforming(), "{:?}", find_node.departures());
+    assert_eq!(find_node.kind(), dht::Kind::Query);
+    assert_eq!(find_node.method(), Some(&b"find_node"[..]));
+    assert_eq!(find_node.node_id(), Some(&b"bit-ids-fixture-0001"[..]));
+    assert_eq!(find_node.version(), Some(&b"bit-ids-fixture/0"[..]));
+    // ⚠ A transaction id with a byte that is not printable, kept as bytes. A
+    // numeric or textual reading would lose the width or the value.
+    assert_eq!(find_node.transaction_id(), Some(&b"\xaa\x01"[..]));
+
+    let get_peers = dht::Message::parse(queries.frames[1].bytes.as_slice()).expect("decodes");
+    assert!(get_peers.is_conforming(), "{:?}", get_peers.departures());
+    assert_eq!(
+        get_peers.argument_order(),
+        vec![b"id".to_vec(), b"info_hash".to_vec(), b"want".to_vec()]
+    );
+    // ⭐ `want` is a list and stays one. A build asking for both families and a
+    // build asking for neither are different observations.
+    let Some(bencode::Value::List(want)) = get_peers.argument(b"want") else {
+        panic!("want is a list");
+    };
+    assert_eq!(want.len(), 2);
+
+    let unusual = by_id("dht-announce-unusual-shape");
+    let announce = dht::Message::parse(unusual.frames[0].bytes.as_slice()).expect("decodes");
+    assert_eq!(announce.method(), Some(&b"announce_peer"[..]));
+    // ⛔ Unsorted keys, recorded rather than repaired.
+    assert!(
+        announce
+            .departures()
+            .contains(&dht::Departure::KeysUnsorted),
+        "{:?}",
+        announce.departures()
+    );
+    assert_eq!(
+        announce.key_order(),
+        vec![
+            b"y".to_vec(),
+            b"t".to_vec(),
+            b"q".to_vec(),
+            b"v".to_vec(),
+            b"a".to_vec(),
+            b"ro".to_vec(),
+        ]
+    );
+    // ⛔ And `i01e` survives with its own digit text, which is the shape a
+    // canonicalising encoder would silently erase.
+    let Some(bencode::Value::Integer(implied)) = announce.argument(b"implied_port") else {
+        panic!("implied_port is an integer");
+    };
+    assert_eq!(implied.as_str(), "01");
+    assert!(!implied.is_canonical());
+    assert_eq!(implied.to_i64(), Some(1));
+    // BEP 43's read-only flag sits beside the message rather than in `a`.
+    assert!(matches!(
+        announce.document().get(b"ro"),
+        Some(bencode::Value::Integer(_))
+    ));
+}
+
 /// The handshake, the extension negotiation and the early message order.
 #[test]
 fn fixtures_expose_the_peer_wire_identity_fields() {
@@ -451,7 +611,7 @@ fn fixtures_refuse_a_planted_defect_for_every_code() {
             )
         }),
         ("E-FIX-07", &|document: &str| {
-            document.replace("\"tracker_http\"", "\"dht\"")
+            document.replace("\"tracker_http\"", "\"mse\"")
         }),
         ("E-FIX-08", &|document: &str| {
             replace_frames(document, "[{\"offset_ms\": 0, \"bytes\": \"ffff\"}]")

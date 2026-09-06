@@ -1,7 +1,15 @@
 {
   "schema": "bit-ids/wire-fixture-index/1",
-  "corpus": "sha256:ed574f760001ee5d8c79ccd357456ef4f169aebfdbb4a11efafe656da44911db",
+  "corpus": "sha256:0405fcb74742884bc4ab683849ae49e2be2e845df4eff4b0a815c92f6b0ec9a2",
   "entries": [
+    {
+      "id": "dht-announce-unusual-shape",
+      "digest": "sha256:302e852c55f8cf585ca36084c9f093ac4a77d51fd12aca51775c5fed2843d827"
+    },
+    {
+      "id": "dht-bootstrap-queries",
+      "digest": "sha256:c1b7e604200208596c362b7b75e780c760f8d1424c24c66e1f95cfd091534431"
+    },
     {
       "id": "peer-wire-early-message-sequence",
       "digest": "sha256:96a2f45f17ef52cd703f462d92a348988776acbd29408d4a66b6f22e57fe50a0"

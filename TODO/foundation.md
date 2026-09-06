@@ -200,12 +200,18 @@ which is the fixture that exists because clients do that.
    there was no blank line at all, so a hundred megabytes of headers with a
    blank line at the end parsed in full. The cap is now on where the head ends.
 
-Residual: `Surface::Dht`, `Mse` and `WebSeed` have no codec, and a fixture on one
-is refused with `E-FIX-07` rather than silently passing. `OBS-11` owns those
-three. ⚠ Two moved on 2026-09-06: `Pex` rides inside a peer-wire transcript and
-`OBS-06` reads it out of one, so a fixture for it is a `peer_wire` fixture and
-never its own surface; `LocalDiscovery`, added to the vocabulary by the same
-entry, is read by the HTTP codec that already existed and validates.
+Residual: `Surface::Mse` and `WebSeed` have no codec, and a fixture on either is
+refused with `E-FIX-07` rather than silently passing. `OBS-11` owns both. ⚠ Three
+moved on 2026-09-06: `Pex` rides inside a peer-wire transcript and `OBS-06` reads
+it out of one, so a fixture for it is a `peer_wire` fixture and never its own
+surface; `LocalDiscovery`, added to the vocabulary by the same entry, is read by
+the HTTP codec that already existed and validates; and `OBS-11` gave `Dht` a
+codec and two fixtures. ⛔ **The `E-FIX-07` control moved with it.** It named
+`dht` as the surface with no codec, which stopped being true the moment that
+codec landed, so a negative control has to name a surface that is still
+uncovered: it names `mse` now. A control that quietly starts asserting the
+opposite of what it was written for is the shape a guard-mutation pass exists to
+find.
 
 Residual: an incremental reader distinguishes "need more bytes" from "malformed"
 only by `WireError::kind() == "truncated"` plus its own knowledge of whether the

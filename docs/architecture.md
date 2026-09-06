@@ -903,13 +903,21 @@ reports that it happened.
   [`capture-host.md`](capture-host.md) read `/proc/net/route` and
   `/etc/machine-id`, so there is no boundary to run before an install on
   Windows. `CI-03` owns the pair.
-- `dht`, `pex`, `mse` and `web_seed` have no codec in `bit-ids-wire` and no
-  fixture. A fixture on one of those surfaces is refused with `E-FIX-07` rather
-  than silently passing. `OBS-11` owns the three that need one; `pex` rides
-  inside a peer-wire transcript, so a fixture for it is a `peer_wire` fixture and
-  `OBS-06` reads it there. ⚠ `local_discovery` has a codec now, because a BEP 14
-  announce is read by the HTTP codec that already existed, and no fixture: one
-  belongs in the corpus when a real announce has been captured.
+- `mse` and `web_seed` have no codec in `bit-ids-wire` and no fixture. A fixture
+  on either is refused with `E-FIX-07` rather than silently passing, and `mse` is
+  what the negative control in the fixture suite now names. `OBS-11` owns both.
+  ⚠ `pex` rides inside a peer-wire transcript, so a fixture for it is a
+  `peer_wire` fixture and `OBS-06` reads it there. ⚠ `local_discovery` has a
+  codec, because a BEP 14 announce is read by the HTTP codec that already
+  existed, and no fixture: one belongs in the corpus when a real announce has
+  been captured.
+- ⭐ `dht` has a codec and two fixtures as of `OBS-11`. KRPC is one bencoded
+  dictionary per datagram, so the module carries the whole decoded document
+  rather than a struct of extracted fields: a KRPC message's key order, its
+  transaction-id width, its integer spelling and the keys a build invents are
+  each identity, and a struct of named fields could not write any of them back.
+  ⛔ **The `v` string is kept as bytes and never resolved to a client name**, for
+  the reason section 5 gives about peer-ID prefixes.
 - Windows packet corroboration needs a route that works on hosted runners or a
   disposable self-hosted runner; `OBS-07` owns the independent-control
   decision and `CI-03` owns the runner.

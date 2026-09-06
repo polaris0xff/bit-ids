@@ -1042,6 +1042,85 @@ the sender's address failed that case alone, and dropping the source inside
 `read_from` failed the two unit cases that read it. The workspace is 40 binaries
 and 395 tests.
 
+### The DHT codec, done on 2026-09-06
+
+⭐ **`bit_ids_wire::dht` reads BEP 5's KRPC**, so `Surface::Dht` has a codec and
+two committed fixtures and is no longer refused with `E-FIX-07`.
+
+⛔ **The module carries the whole decoded document rather than a struct of
+extracted fields**, and that is the round-trip invariant rather than a shortcut.
+[`../docs/architecture.md`](../docs/architecture.md) section 10 says which fields
+that keeps and why named ones could not write them back. A plant that sorted the
+dictionary on the way in was refused by the unit case and, independently, by the
+fixture corpus.
+
+⛔ **The `v` string is bytes and is never resolved to a client name**, for the
+reason `lib.rs` gives about peer-ID prefixes: this crate is the one component
+every observer trusts, and `capture-methodology.md` lists a decoder table among
+the inputs that may seed a hypothesis and may not populate the catalogue.
+
+⛔ **Nothing is refused except bencode that will not decode.** A message with no
+`y`, a `y` that is not `q`, `r` or `e`, a node id of the wrong width, a top-level
+list rather than a dictionary: each is a finding about the build and each is
+reported by `Message::departures` while the bytes are kept. A codec that refused
+a query with no `y` would turn *this build omits `y`* into a parse failure.
+
+⚠ **A `y` of the wrong type and a missing `y` are two observations**, and
+collapsing them was one of the four plants. So was dropping the bytes that
+followed a dictionary inside one datagram, which are a departure and are written
+back rather than tidied away.
+
+⛔ **The `E-FIX-07` negative control had to move, and that is a finding in its
+own right.** Two places named `dht` as *the surface with no codec*, which stopped
+being true the moment this landed: a control that keeps passing while asserting
+the opposite of what it was written for is exactly what a guard-mutation pass
+exists to catch. Both name `mse` now, which is still uncovered.
+
+⚠ **"Peer ID" was the wrong name for what the corpus guard reads.** A KRPC
+message carries a *node* id; BEP 5 fixes it at the same twenty bytes and
+`bit-ids-fixture-0001` is twenty bytes, so it serves as both, but calling them
+one thing would be the divergent vocabulary `check-one-home` exists for. The
+check is `..._carry_only_the_synthetic_identity_token` now and says which field
+each surface offers.
+
+⛔ **And nothing checked a version string until this surface put a `v` on a
+second one.** BEP 5's `v` and BEP 10's `v` are both free-form vendor tags, so a
+fixture carrying a real one would read as a measurement of that client exactly
+the way a peer-ID prefix would. `no_fixture_carries_a_version_string_that_could_name_a_real_build`
+holds both to `bit-ids-fixture/0` and asserts it read at least two, because a
+sweep that found nothing reports nothing wrong.
+
+⭐ **Driven by `libtorrent` 2.1.1.0, which this project did not write**, from a
+virtualenv, reading the two committed fixtures. Both halves matter and the second
+is the load-bearing one:
+
+- the conforming fixture has sorted keys and canonical integers, so
+  `lt.bencode(lt.bdecode(raw))` is **byte-identical** to what is committed, on
+  both frames. Two implementations agreeing beats one agreeing with itself;
+- ⛔ the unusual fixture's re-encode is **177 bytes against the 178 sent**.
+  `libtorrent` sorts the keys and writes `i1e` where the build wrote `i01e`, so
+  it loses exactly the byte and exactly the ordering this codec exists to keep.
+  The evidence loss is *shown against a reader that suffers it* rather than
+  argued about, and our own re-encode of the same bytes is byte-exact.
+
+⚠ It also reads `implied_port` as `1` from `i01e`, which is the control on our
+own reading of the value: keeping the digit text has not changed what the number
+means.
+
+⚠ The script is not committed and that follows the tree's existing practice: a
+third-party reader needs a package install, so it belongs in an entry's driven
+pass rather than in the gate, the way `cbor2` sits in `PUB-03` and `torf` in
+`OBS-08`. `scripts/publishing/check-formats.sh` records the same argument.
+
+Prove, run on 2026-09-06: `cargo test -p bit-ids-wire --locked` is 48 unit cases
+and 20 corpus cases. Four plants over the codec were each refused by a named
+case and none failed to compile: dropping the trailing bytes on encode, sorting
+the dictionary on decode, collapsing a wrong-typed `y` into an absent one, and
+narrowing `NODE_ID_LEN` to 19. ⚠ The sort plant was **also** refused by the
+fixture corpus on its own, checked separately, because a lib failure stops cargo
+before the integration binary runs and the first reading credited only the unit
+case.
+
 ## OBS-07: Known-client positive controls
 
 Source: reference sweep finding that self-consistency can hide observer bugs
