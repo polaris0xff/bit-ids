@@ -79,6 +79,86 @@ fn a_local_discovery_announce_is_recorded_and_nothing_is_answered() {
     assert_eq!(journal.received(&name), ANNOUNCE);
 }
 
+/// ⭐ The source address a responder is handed is the one the kernel reported,
+/// driven end to end rather than asserted on a hand-made value.
+///
+/// ⛔ **The two ends of this comparison come from two kernels' worth of
+/// bookkeeping and neither from the test.** The client asks its own socket what
+/// port it was given, and the lab asks `recv_from` what port the packet came
+/// from. A plumbing defect that passed a placeholder, the endpoint's own address
+/// or a zero would leave every other assertion in this file true, because
+/// nothing else reads the argument.
+///
+/// ⚠ The port is deliberately not the one the announce claims, so `Matches` and
+/// `Differs` cannot both be satisfied by the same number.
+#[test]
+fn the_responder_is_handed_the_port_the_datagram_actually_came_from() {
+    let observer = LocalDiscovery::new(Capability::enable(Surface::LocalDiscovery))
+        .expect("the capability names this surface");
+    let lab = Lab::builder()
+        .deadline(Duration::from_secs(5))
+        .datagram(endpoint_name(Surface::LocalDiscovery), observer.observing())
+        .expect("a canonical endpoint name")
+        .start()
+        .expect("loopback binds");
+    let endpoint = lab
+        .endpoint(endpoint_name(Surface::LocalDiscovery))
+        .expect("it was added");
+
+    // Kept alive for the whole exchange: a client socket dropped before the lab
+    // reads would free the port, and the comparison below would be against a
+    // number nothing holds any more.
+    let client = bind::datagram(IpAddr::V4(Ipv4Addr::LOCALHOST)).expect("loopback binds");
+    let mine = client.local_addr().expect("a bound socket has an address");
+    bind::send_to(&client, ANNOUNCE, endpoint.address()).expect("the lab is on loopback");
+
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    while observer.announces().is_empty() && std::time::Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(5));
+    }
+
+    let announces = observer.announces();
+    assert_eq!(announces.len(), 1);
+    assert_eq!(
+        announces[0].source(),
+        Some(mine),
+        "the responder saw a different address than the client sent from"
+    );
+    // ⚠ 51413 is what ANNOUNCE claims and `mine` is an ephemeral port the kernel
+    // chose, so this is the ordinary case a real build produces.
+    assert_ne!(
+        mine.port(),
+        51413,
+        "the ephemeral port collided with the claim"
+    );
+    assert_eq!(
+        announces[0].port_claim(),
+        local_discovery::PortClaim::Differs {
+            claimed: 51413,
+            observed: mine.port(),
+        }
+    );
+    // ⛔ And it is still a conforming announce. The comparison describes; it
+    // does not refuse.
+    assert!(
+        announces[0].is_conforming(),
+        "{:?}",
+        announces[0].refusals()
+    );
+
+    // ⛔ The same bytes read back without a source answer NotObserved, which is
+    // what an analysis pass over the evidence bundle gets: the journal carries
+    // no source address for a datagram.
+    let journal = lab.shutdown();
+    let name = Slug::parse(endpoint_name(Surface::LocalDiscovery)).expect("a canonical name");
+    let recorded = local_discovery::read(&journal.received(&name));
+    assert_eq!(recorded.raw(), announces[0].raw());
+    assert_eq!(
+        recorded.port_claim(),
+        local_discovery::PortClaim::NotObserved
+    );
+}
+
 /// ⛔ The driven half of the egress claim: every byte that crossed a socket in
 /// a real run went to an address inside the allowed set.
 #[test]
@@ -207,7 +287,8 @@ fn a_malformed_announce_is_recorded_with_what_is_wrong_with_it() {
     let observer = LocalDiscovery::new(Capability::enable(Surface::LocalDiscovery))
         .expect("the capability names this surface");
     let responder = observer.observing();
-    assert!(responder(b"BT-SEARCH * HTTP/1.1\r\nPort: nope\r\n\r\n").is_none());
+    let source = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 45123);
+    assert!(responder(source, b"BT-SEARCH * HTTP/1.1\r\nPort: nope\r\n\r\n").is_none());
 
     let announces = observer.announces();
     assert_eq!(announces.len(), 1);
@@ -242,7 +323,9 @@ fn a_malformed_announce_is_recorded_with_what_is_wrong_with_it() {
 fn a_datagram_endpoint_answers_and_both_directions_are_recorded() {
     let lab = Lab::builder()
         .deadline(Duration::from_secs(2))
-        .datagram("echo", |received: &[u8]| Some(received.to_vec()))
+        .datagram("echo", |_: SocketAddr, received: &[u8]| {
+            Some(received.to_vec())
+        })
         .expect("a canonical endpoint name")
         .start()
         .expect("loopback binds");

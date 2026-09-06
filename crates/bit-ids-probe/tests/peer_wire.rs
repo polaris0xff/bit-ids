@@ -6,7 +6,7 @@
 //! any build.
 
 use std::io::{Read, Write};
-use std::net::{Ipv4Addr, TcpListener, TcpStream};
+use std::net::{Ipv4Addr, SocketAddr, TcpListener, TcpStream};
 use std::time::Duration;
 
 use bit_ids_lab::{Lab, Transport};
@@ -276,7 +276,7 @@ fn peer_wire_observes_the_other_role_by_dialling_the_target() {
     let mut lab = Lab::builder()
         .deadline(Duration::from_secs(60))
         // A lab needs an endpoint to start; this one is not used.
-        .datagram("unused", |_: &[u8]| None)
+        .datagram("unused", |_: SocketAddr, _: &[u8]| None)
         .expect("a canonical name")
         .start()
         .expect("loopback binds");

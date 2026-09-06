@@ -471,6 +471,28 @@ nowhere to keep per-connection state and sends a second handshake down the first
 connection. The journal carries the connection too, so a transcript of two
 concurrent peer connections separates back into them. A datagram has none.
 
+⭐ **A datagram responder is told the source address instead, because some
+surfaces are that address.** BEP 5's `announce_peer` carries `implied_port`,
+whose meaning is *use the source port of this packet rather than the port in this
+message*, so an observer blind to the source cannot record what port the build
+announced; BEP 14's claimed `Port` beside the port an announce actually arrived
+from is the weaker form of the same measurement. `OBS-06` named the need and
+`OBS-11` is what required it.
+
+⛔ **The address reaches the record and never a syscall.** A UDP source address
+is a claim by the sender that nothing verified, so it is target-controlled input
+like the payload beside it. What a responder returns is addressed by
+[`bind::send_to`](../crates/bit-ids-lab/src/bind.rs) and by nothing else, which
+is what makes handing the same unverified value to an observer safe.
+
+⚠ **A journal segment does not carry it, so the live and recorded readings of one
+datagram differ on purpose.** A transcript holds the endpoint, the connection,
+the offset, the direction and the bytes; an analysis pass over an evidence bundle
+therefore has no source to compare against and says so, rather than inventing
+one. A surface whose published field *is* the source port would need the
+transcript widened first, and `OBS-11` carries that as its own question rather
+than assuming either answer.
+
 ⛔ **The lab speaks no protocol.** The observers supply a responder per surface.
 That is what lets one deadline, one loopback guard and one journal serve every
 surface instead of each observer growing its own, and it is why the codecs in

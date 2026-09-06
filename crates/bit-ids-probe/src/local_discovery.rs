@@ -130,10 +130,49 @@ impl Refusal {
     }
 }
 
+/// How the port a build claimed compares with the port its datagram came from.
+///
+/// ⛔ **Descriptive and never a refusal, and that distinction is the whole
+/// point.** BEP 14's `Port` is the port the build *listens* on for peers, and the
+/// datagram carrying it leaves from whatever source port the build's multicast
+/// socket happens to hold. [`PortClaim::Differs`] is therefore the ordinary case
+/// for a conforming build, not a defect: a reading that treated it as one would
+/// file a refusal against almost every client measured. What is worth recording
+/// is which of the four a build produces, because a build that sends its
+/// announces *from* its peer port and one that does not are distinguishable, and
+/// no other field says so.
+///
+/// ⚠ The observed port is the sender's own claim about itself, since nothing
+/// verifies a UDP source address. Both halves of this comparison come from the
+/// target; neither is a fact the host checked.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PortClaim {
+    /// No source address was recorded, so there is nothing to compare against.
+    ///
+    /// ⚠ The state of every announce read back from an evidence bundle: a
+    /// journal segment carries the endpoint, the connection, the offset, the
+    /// direction and the bytes, and a datagram has no connection and no recorded
+    /// source. Live and recorded readings therefore differ here on purpose,
+    /// rather than the recorded one inventing an address.
+    NotObserved,
+    /// The announce carries no port a comparison could use.
+    NoClaim,
+    /// The claimed port is the port the datagram arrived from.
+    Matches(u16),
+    /// The claimed port is not the port the datagram arrived from.
+    Differs {
+        /// What the announce said.
+        claimed: u16,
+        /// What the packet came from.
+        observed: u16,
+    },
+}
+
 /// One announce, as it arrived.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Announce {
     raw: Vec<u8>,
+    source: Option<SocketAddr>,
     request: Option<HttpRequest>,
     refusals: Vec<Refusal>,
 }
@@ -152,6 +191,35 @@ impl Announce {
     #[must_use]
     pub const fn request(&self) -> Option<&HttpRequest> {
         self.request.as_ref()
+    }
+
+    /// Where the datagram said it came from, when a live endpoint saw it.
+    ///
+    /// ⚠ [`None`] for an announce read back from bytes alone. See
+    /// [`PortClaim::NotObserved`].
+    #[must_use]
+    pub const fn source(&self) -> Option<SocketAddr> {
+        self.source
+    }
+
+    /// The claimed port beside the port the packet arrived from.
+    ///
+    /// ⛔ A description and not a verdict. [`PortClaim`] says why
+    /// [`PortClaim::Differs`] is the ordinary answer for a conforming build.
+    #[must_use]
+    pub fn port_claim(&self) -> PortClaim {
+        let Some(source) = self.source else {
+            return PortClaim::NotObserved;
+        };
+        let Some(claimed) = self.port() else {
+            return PortClaim::NoClaim;
+        };
+        let observed = source.port();
+        if claimed == observed {
+            PortClaim::Matches(claimed)
+        } else {
+            PortClaim::Differs { claimed, observed }
+        }
     }
 
     /// Everything about this announce that BEP 14 does not describe.
@@ -316,19 +384,26 @@ impl LocalDiscovery {
     ///
     /// ⛔ It returns [`None`] for every input. BEP 14 has no reply, and one
     /// invented here would be measured as the client's behaviour.
-    pub fn observing(&self) -> impl Fn(&[u8]) -> Option<Vec<u8>> + Send + Sync + 'static {
+    ///
+    /// ⚠ It takes the source address and records it, which is what makes
+    /// [`Announce::port_claim`] answerable. It never sends there: what a
+    /// responder returns is addressed by `bit_ids_lab::bind::send_to`, and this
+    /// one returns nothing at all.
+    pub fn observing(
+        &self,
+    ) -> impl Fn(SocketAddr, &[u8]) -> Option<Vec<u8>> + Send + Sync + 'static {
         let seen = Arc::clone(&self.seen);
         let cap = self.max_announces;
-        move |datagram: &[u8]| {
-            observe(&seen, cap, datagram);
+        move |source: SocketAddr, datagram: &[u8]| {
+            observe(&seen, cap, source, datagram);
             None
         }
     }
 }
 
 /// Decodes one datagram and records it.
-fn observe(seen: &Arc<Mutex<Record>>, cap: usize, datagram: &[u8]) {
-    let announce = read(datagram);
+fn observe(seen: &Arc<Mutex<Record>>, cap: usize, source: SocketAddr, datagram: &[u8]) {
+    let announce = read_from(source, datagram);
     let mut record = seen.lock().unwrap_or_else(PoisonError::into_inner);
     if record.kept.len() >= cap {
         record.dropped += 1;
@@ -337,18 +412,34 @@ fn observe(seen: &Arc<Mutex<Record>>, cap: usize, datagram: &[u8]) {
     record.kept.push(announce);
 }
 
+/// Reads one datagram as a BEP 14 announce, with no source address to compare.
+///
+/// ⚠ **This is the reading an analysis pass over an evidence bundle can make**,
+/// and [`PortClaim::NotObserved`] is what it answers, because a journal segment
+/// does not carry where a datagram came from. [`read_from`] is the live path.
+#[must_use]
+pub fn read(datagram: &[u8]) -> Announce {
+    decode(None, datagram)
+}
+
+/// Reads one datagram as a BEP 14 announce, keeping the source it arrived from.
+#[must_use]
+pub fn read_from(source: SocketAddr, datagram: &[u8]) -> Announce {
+    decode(Some(source), datagram)
+}
+
 /// Reads one datagram as a BEP 14 announce, keeping every refusal.
 ///
 /// ⚠ Every check runs. Stopping at the first refusal would report a build's
 /// first divergence and hide the rest, and the set of things a build gets wrong
 /// is more identifying than the first one.
-#[must_use]
-pub fn read(datagram: &[u8]) -> Announce {
+fn decode(source: Option<SocketAddr>, datagram: &[u8]) -> Announce {
     let request = match HttpRequest::parse(datagram) {
         Ok(request) => request,
         Err(error) => {
             return Announce {
                 raw: datagram.to_vec(),
+                source,
                 request: None,
                 refusals: vec![Refusal::NotAMessage(error.to_string())],
             };
@@ -356,6 +447,7 @@ pub fn read(datagram: &[u8]) -> Announce {
     };
     let mut announce = Announce {
         raw: datagram.to_vec(),
+        source,
         request: Some(request),
         refusals: Vec::new(),
     };
@@ -398,8 +490,12 @@ fn refusals_of(announce: &Announce) -> Vec<Refusal> {
 
 #[cfg(test)]
 mod tests {
-    use super::{GROUP_V4, GROUP_V6, LocalDiscovery, Refusal, Trailer, read};
+    use super::{
+        GROUP_V4, GROUP_V6, LocalDiscovery, PortClaim, Refusal, SocketAddr, Trailer, read,
+        read_from,
+    };
     use bit_ids_lab::adjacent::{ALL_SURFACES as ALL, Capability, Surface};
+    use std::net::{IpAddr, Ipv4Addr};
 
     const CONFORMING: &[u8] = b"BT-SEARCH * HTTP/1.1\r\nHost: 239.192.152.143:6771\r\nPort: 6881\r\nInfohash: 0123456789abcdef0123456789abcdef01234567\r\ncookie: bit-ids-1\r\n\r\n\r\n";
 
@@ -487,6 +583,12 @@ mod tests {
         }
     }
 
+    /// A source address to hand a responder in a unit test, with a port that is
+    /// not the one `CONFORMING` claims.
+    fn from_port(port: u16) -> SocketAddr {
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port)
+    }
+
     #[test]
     fn answers_nothing_on_any_input() {
         let observer = LocalDiscovery::new(Capability::enable(Surface::LocalDiscovery))
@@ -495,7 +597,7 @@ mod tests {
         // ⛔ Conforming, malformed and empty alike. BEP 14 has no reply, so
         // there is no input for which one would be correct.
         for datagram in [CONFORMING, b"\x00\x01\x02", b""] {
-            assert!(responder(datagram).is_none());
+            assert!(responder(from_port(40000), datagram).is_none());
         }
         assert_eq!(observer.announces().len(), 3);
     }
@@ -507,10 +609,61 @@ mod tests {
             .with_max_announces(2);
         let responder = observer.observing();
         for _ in 0..5 {
-            assert!(responder(CONFORMING).is_none());
+            assert!(responder(from_port(40000), CONFORMING).is_none());
         }
         assert_eq!(observer.announces().len(), 2);
         assert_eq!(observer.dropped(), 3);
+    }
+
+    /// ⛔ The four states, each reached by a different input rather than by
+    /// three readings of one. `Differs` is the ordinary case for a conforming
+    /// build and is asserted to be a description rather than a refusal.
+    #[test]
+    fn the_claimed_port_is_compared_against_the_one_the_packet_came_from() {
+        // Claimed 6881, arrived from 6881.
+        let matching = read_from(from_port(6881), CONFORMING);
+        assert_eq!(matching.port_claim(), PortClaim::Matches(6881));
+
+        // Claimed 6881, arrived from an ephemeral port: what a real build does.
+        let differing = read_from(from_port(45123), CONFORMING);
+        assert_eq!(
+            differing.port_claim(),
+            PortClaim::Differs {
+                claimed: 6881,
+                observed: 45123,
+            }
+        );
+        // ⛔ And it is not a finding. A build announcing its peer port from its
+        // multicast socket is conforming, and filing a refusal here would file
+        // one against nearly every client this project will measure.
+        assert!(differing.is_conforming(), "{:?}", differing.refusals());
+
+        // An announce with no usable port claim at all.
+        let no_port = b"BT-SEARCH * HTTP/1.1\r\nHost: x\r\nInfohash: 0123456789abcdef0123456789abcdef01234567\r\n\r\n";
+        assert_eq!(
+            read_from(from_port(6881), no_port).port_claim(),
+            PortClaim::NoClaim
+        );
+
+        // ⚠ And the reading an evidence bundle supports, which is the one that
+        // has no address to compare with.
+        assert_eq!(read(CONFORMING).port_claim(), PortClaim::NotObserved);
+        assert_eq!(read(CONFORMING).source(), None);
+    }
+
+    /// ⚠ The source is recorded and changes nothing else. A reading that let it
+    /// into the parse would make two runs of one build differ in their refusals
+    /// because the kernel handed out a different ephemeral port.
+    #[test]
+    fn the_source_address_does_not_change_how_an_announce_reads() {
+        let bare = read(CONFORMING);
+        let observed = read_from(from_port(45123), CONFORMING);
+        assert_eq!(bare.raw(), observed.raw());
+        assert_eq!(bare.refusals(), observed.refusals());
+        assert_eq!(bare.field_order(), observed.field_order());
+        assert_eq!(bare.trailer(), observed.trailer());
+        assert_eq!(bare.port(), observed.port());
+        assert_eq!(observed.source(), Some(from_port(45123)));
     }
 
     /// ⛔ The egress-negative case. The addresses are the ones BEP 14 itself

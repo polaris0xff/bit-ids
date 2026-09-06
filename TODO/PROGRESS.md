@@ -1,10 +1,10 @@
 # Current progress
 
 State instant: 2026-09-06
-Baseline commit: `ad0b68f` on `main`
+Baseline commit: `a6c9336` on `main`
 Total: 58
-Open: 28
-In progress: 0
+Open: 27
+In progress: 1
 Blocked: 0
 Done: 30
 
@@ -345,6 +345,28 @@ identifier from last month can find what answers now. ⚠ Two counts are kept
 apart because they mean opposite things: an excluded record was never
 publishable, and a superseded one was.
 
+`OBS-11` is in flight and its carried-over prerequisite is done: ⭐ **a datagram
+responder is handed the source address of the packet it answers.** A DHT needs it
+to answer a query at all, and local discovery needed it to compare a claimed port
+against an observed one. ⛔ **The address reaches an observer's record and never
+a syscall**, which is what makes handing over an unverified value safe: a UDP
+source address is a claim by the sender, and what a responder *returns* is still
+addressed by `bind::send_to` and by nothing else.
+
+⛔ **A journal segment carries no source address, so the live and the recorded
+reading of one datagram differ**, and `PortClaim::NotObserved` is what an
+analysis pass over an evidence bundle gets rather than an invented value. ⚠ That
+is a limit rather than a finished answer: a DHT `announce_peer` with
+`implied_port: 1` publishes a port that exists only in the packet header, so
+re-deriving that field from a bundle would need `bit-ids/transcript/1` widened.
+`TODO/observer.md` carries the decision where the requirement is concrete.
+
+⚠ **`PortClaim` describes and never refuses.** BEP 14's `Port` is the peer port a
+build listens on and its announce leaves from whatever source port its multicast
+socket holds, so a mismatch is the ordinary case for a *conforming* build.
+Recording it as a refusal would have filed one against nearly every client this
+project will measure.
+
 ## Work order
 
 1. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
@@ -355,11 +377,13 @@ publishable, and a superseded one was.
    refused. `TODO/clients.md` carries the three routes that were tried on
    2026-09-05. ⭐ Neither the observer layer nor the store blocks them any more;
    `CI-03` and a host are what remain.
-2. `OBS-11`, the three adjacent surfaces `OBS-06` split out. ⭐ **The only
-   remaining item that needs no capture host**: the containment, the switch and
-   the sweep are built, so each of DHT, web seed and MSE is a protocol module
-   and its acceptance. `OBS-07` and `OBS-10` are the other two observer entries
-   and both need a client build, so they wait on the same host the clients do.
+2. `OBS-11`, the three adjacent surfaces `OBS-06` split out, **in flight**.
+   ⭐ **The only remaining item that needs no capture host**: the containment,
+   the switch and the sweep are built, so each of DHT, web seed and MSE is a
+   protocol module and its acceptance. Its carried-over prerequisite is done and
+   the modules follow in the order DHT, web seed, MSE. `OBS-07` and `OBS-10` are
+   the other two observer entries and both need a client build, so they wait on
+   the same host the clients do.
 3. `CI-02` through `CI-04`, of which `CI-03` is what a capture host needs.
    `CI-02`'s own acceptance is fixture-driven and could move before one.
 4. The remaining client and engine breadth, behind the same capture host.

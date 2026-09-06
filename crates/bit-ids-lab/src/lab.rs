@@ -245,12 +245,16 @@ impl LabBuilder {
 
     /// Adds a UDP endpoint.
     ///
+    /// ⚠ The responder is handed the source address of each packet as well as
+    /// its bytes. [`crate::endpoint::DatagramResponder`] says why a surface can
+    /// need it and why it is not something to trust.
+    ///
     /// # Errors
     ///
     /// Returns [`LabError::Name`] when `name` is not a canonical identifier.
     pub fn datagram<R>(mut self, name: &str, responder: R) -> Result<Self, LabError>
     where
-        R: Fn(&[u8]) -> Option<Vec<u8>> + Send + Sync + 'static,
+        R: Fn(SocketAddr, &[u8]) -> Option<Vec<u8>> + Send + Sync + 'static,
     {
         let name = Slug::parse(name).map_err(LabError::Name)?;
         self.specs.push(Spec::Datagram(name, Arc::new(responder)));

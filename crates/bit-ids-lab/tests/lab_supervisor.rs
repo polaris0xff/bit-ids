@@ -6,7 +6,7 @@
 //! proves nothing about what the kernel will hand out.
 
 use std::io::{Read, Write};
-use std::net::{IpAddr, Ipv4Addr, TcpListener, TcpStream, UdpSocket};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream, UdpSocket};
 use std::sync::mpsc;
 use std::time::Duration;
 
@@ -60,7 +60,7 @@ fn the_refusal_covers_a_datagram_endpoint_too() {
     // defect the crate documentation names.
     let started = Lab::builder()
         .host(IpAddr::V4(Ipv4Addr::UNSPECIFIED))
-        .datagram("tracker-udp", |_: &[u8]| None)
+        .datagram("tracker-udp", |_: SocketAddr, _: &[u8]| None)
         .expect("a canonical name")
         .start();
     assert!(matches!(started, Err(LabError::Bind(_))));
@@ -71,7 +71,7 @@ fn every_endpoint_reports_the_address_its_socket_actually_got() {
     let lab = Lab::builder()
         .stream("tracker-http", echo_once(b"ok"))
         .expect("a canonical name")
-        .datagram("tracker-udp", |_: &[u8]| None)
+        .datagram("tracker-udp", |_: SocketAddr, _: &[u8]| None)
         .expect("a canonical name")
         .start()
         .expect("loopback binds");
@@ -187,7 +187,7 @@ fn a_stream_endpoint_records_what_arrived_and_what_was_sent_in_order() {
 #[test]
 fn a_datagram_endpoint_records_each_packet_and_its_answer() {
     let lab = Lab::builder()
-        .datagram("tracker-udp", |received: &[u8]| {
+        .datagram("tracker-udp", |_: SocketAddr, received: &[u8]| {
             Some(received.iter().rev().copied().collect())
         })
         .expect("a canonical name")
@@ -236,7 +236,7 @@ fn the_largest_datagram_a_host_can_deliver_is_recorded_whole() {
     const PAYLOAD: usize = 65507;
 
     let lab = Lab::builder()
-        .datagram("tracker-udp", |received: &[u8]| {
+        .datagram("tracker-udp", |_: SocketAddr, received: &[u8]| {
             // The answer is the length, so a truncated read cannot look right.
             Some(received.len().to_be_bytes().to_vec())
         })
@@ -340,7 +340,7 @@ fn shutting_a_lab_down_releases_every_port_it_held() {
     let lab = Lab::builder()
         .stream("tracker-http", echo_once(b"ok"))
         .expect("a canonical name")
-        .datagram("tracker-udp", |_: &[u8]| None)
+        .datagram("tracker-udp", |_: SocketAddr, _: &[u8]| None)
         .expect("a canonical name")
         .start()
         .expect("loopback binds");

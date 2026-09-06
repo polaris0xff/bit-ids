@@ -25,6 +25,7 @@
 //! range also means membership is an arithmetic test rather than a set that
 //! grows for as long as a client keeps connecting.
 
+use std::net::SocketAddr;
 use std::sync::{Arc, Mutex, PoisonError};
 
 use bit_ids_wire::WireError;
@@ -224,11 +225,21 @@ impl UdpTracker {
     }
 
     /// The responder to give a datagram endpoint.
-    pub fn responder(&self) -> impl Fn(&[u8]) -> Option<Vec<u8>> + Send + Sync + 'static {
+    ///
+    /// ⚠ **The source address is taken and deliberately unused here.** BEP 15's
+    /// announce carries an `IP address` field whose zero value means *use the
+    /// source address of this packet*, so comparing the two is a real
+    /// observation and it is `OBS-03`'s to make, not a line to slip into
+    /// `OBS-11`'s prerequisite. Recording it would widen `Announce` and its
+    /// acceptance; naming why it is skipped is what keeps the omission from
+    /// reading as an oversight.
+    pub fn responder(
+        &self,
+    ) -> impl Fn(SocketAddr, &[u8]) -> Option<Vec<u8>> + Send + Sync + 'static {
         let seen = Arc::clone(&self.seen);
         let response = self.response.clone();
         let cap = self.max_datagrams;
-        move |packet: &[u8]| respond(&seen, &response, cap, packet)
+        move |_source: SocketAddr, packet: &[u8]| respond(&seen, &response, cap, packet)
     }
 }
 

@@ -954,7 +954,7 @@ parse error.
 ## OBS-11: Message stream encryption, DHT and web-seed observers
 
 Source: split out of `OBS-06` on 2026-09-06
-Priority: P1 | Effort: L | Status: OPEN
+Priority: P1 | Effort: L | Status: IN_PROGRESS
 
 Problem: `OBS-06` named five adjacent surfaces and closed over two. The three
 that remain each carry identity the core flows do not: which cipher and padding
@@ -992,6 +992,55 @@ claimed port against an observed one and a DHT needs to answer a query at all.
 Prove: each module's focused Rust suite passes, a driven run by a client that is
 not this project's test harness records what it sent, and the lab refuses the
 real bootstrap and multicast addresses each protocol names.
+
+### The carried-over prerequisite, done on 2026-09-06
+
+⭐ **A datagram responder is handed the source address of the packet it answers**,
+which is what a DHT needs to answer a query at all and what local discovery
+needed to compare a claimed port against an observed one.
+`bit_ids_lab::endpoint::DatagramResponder` is `Fn(SocketAddr, &[u8]) ->
+Option<Vec<u8>>` now, and `LabBuilder::datagram` takes the same shape.
+
+⛔ **The address reaches an observer's record and never a syscall**, which is the
+whole argument for handing over an unverified value. Nothing verifies a UDP
+source address, so it is target-controlled input exactly like the payload beside
+it; what a responder *returns* is addressed by `bind::send_to` and by nothing
+else, so the surface that could act on a forged address is still the one door
+`OBS-06` closed.
+
+⛔ **A journal segment does not carry a source address, so the live and the
+recorded reading of one datagram genuinely differ**, and `local_discovery` says
+so with a state rather than papering over it: `PortClaim::NotObserved` is what an
+analysis pass over an evidence bundle gets. ⚠ **That is a real limit and not a
+finished answer.** A DHT `announce_peer` with `implied_port: 1` publishes a port
+that exists only in the packet header, so re-deriving that field from a bundle
+would need `bit-ids/transcript/1` widened to carry the source of a datagram
+segment. The decision belongs with the DHT module, where the requirement is
+concrete, and is taken there rather than here.
+
+⚠ **`PortClaim` describes and never refuses, which is the opposite of what the
+name suggests to a reader in a hurry.** BEP 14's `Port` is the peer port a build
+listens on and the announce leaves from whatever source port its multicast socket
+holds, so `Differs` is the ordinary case for a *conforming* build. Filing it as a
+`Refusal` would have filed one against nearly every client this project will
+measure, and the acceptance asserts the announce is still conforming in exactly
+that case.
+
+⚠ **`tracker_udp`'s responder takes the source and does not read it, on
+purpose.** BEP 15's announce carries an `IP address` field whose zero value means
+*use the source address of this packet*, so the same comparison is available
+there and it is `OBS-03`'s to make: recording it widens that entry's `Announce`
+and its acceptance. Named here so the omission reads as a decision.
+
+Prove, run on 2026-09-06: `cargo test -p bit-ids-probe --locked --test
+adjacent_surfaces` is 8 cases, one of them
+`the_responder_is_handed_the_port_the_datagram_actually_came_from`, which
+compares the port the client's own socket reports against the port the lab's
+`recv_from` reported. ⭐ **Neither end of that comparison comes from the test.**
+Two plants were refused: handing the responder `socket.local_addr()` instead of
+the sender's address failed that case alone, and dropping the source inside
+`read_from` failed the two unit cases that read it. The workspace is 40 binaries
+and 395 tests.
 
 ## OBS-07: Known-client positive controls
 

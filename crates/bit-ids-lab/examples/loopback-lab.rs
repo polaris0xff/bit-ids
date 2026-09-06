@@ -14,6 +14,7 @@
 //! drive the part that binds, records and stops.
 
 use core::fmt::Write as _;
+use std::net::SocketAddr;
 use std::time::Duration;
 
 use bit_ids_lab::{Lab, StreamReply};
@@ -38,7 +39,7 @@ fn main() {
             }
         })
         .expect("a canonical endpoint name")
-        .datagram("tracker-udp", |received: &[u8]| {
+        .datagram("tracker-udp", |_: SocketAddr, received: &[u8]| {
             Some(received.iter().rev().copied().collect())
         })
         .expect("a canonical endpoint name")

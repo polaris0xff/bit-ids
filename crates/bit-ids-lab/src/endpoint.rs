@@ -7,7 +7,7 @@
 //! one journal cover every surface instead of each observer growing its own.
 
 use std::io::{ErrorKind, Read, Write};
-use std::net::{Shutdown, TcpListener, TcpStream, UdpSocket};
+use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream, UdpSocket};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::thread::JoinHandle;
@@ -142,7 +142,24 @@ impl core::fmt::Display for ConnectionId {
 pub type StreamResponder = dyn Fn(ConnectionId, &[u8]) -> StreamReply + Send + Sync + 'static;
 
 /// A datagram endpoint's protocol behaviour: one packet in, at most one out.
-pub type DatagramResponder = dyn Fn(&[u8]) -> Option<Vec<u8>> + Send + Sync + 'static;
+///
+/// ⭐ **The [`SocketAddr`] is where the packet said it came from, and some
+/// surfaces cannot be measured without it.** BEP 5's `announce_peer` carries
+/// `implied_port`, whose whole meaning is *ignore the port in this message and
+/// use the source port of the packet carrying it*, so an observer that could not
+/// see the source could not record what port the build announced. BEP 14 has the
+/// weaker form of the same shape: the announce claims a `Port`, and whether it
+/// matches the port the datagram actually arrived from is a fact about the build
+/// that nothing could previously compare.
+///
+/// ⛔ **It is a claim by the sender and not a fact the kernel checked.** Nothing
+/// verifies a UDP source address, so it is target-controlled input like the
+/// payload beside it. A responder may record it and compare against it; it must
+/// not treat it as authenticated, and it cannot use it to send, because what a
+/// responder returns is addressed by [`crate::bind::send_to`] and by nothing
+/// else. That separation is the reason this argument is safe to add: the address
+/// reaches the observer's record without reaching a syscall.
+pub type DatagramResponder = dyn Fn(SocketAddr, &[u8]) -> Option<Vec<u8>> + Send + Sync + 'static;
 
 /// State every worker shares with the supervisor.
 pub(crate) struct Shared {
@@ -468,7 +485,11 @@ pub(crate) fn serve_datagram(
         // source address the sender put on the packet, which nothing verified,
         // so the reply destination is target-controlled input and gets checked
         // like any other. See `bind::send_to`.
-        if let Some(send) = responder(&buffer[..read])
+        //
+        // ⚠ The same unverified address is handed to the responder, and that is
+        // deliberate: `implied_port` and BEP 14's claimed `Port` are measurements
+        // about it. It reaches the record there and the syscall only here.
+        if let Some(send) = responder(from, &buffer[..read])
             && !send.is_empty()
             && crate::bind::send_to(&socket, &send, from).is_ok()
         {
