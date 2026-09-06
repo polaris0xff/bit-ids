@@ -22,12 +22,22 @@
 //! is what needed it, because the adjacent surfaces are precisely the ones
 //! whose protocols carry a destination of their own.
 //!
-//! ⚠ **Writing to a TCP stream is not a third door, and the reason is worth
+//! ⚠ **Writing to a TCP stream is not a further door, and the reason is worth
 //! stating.** A `TcpStream` has one peer, fixed when it was accepted or
 //! connected, and both of those came through this module. So a write can only
 //! reach an address a guard already approved. A datagram is the exception
 //! because its destination is chosen per packet, which is why it needs a guard
 //! per packet.
+//!
+//! ⛔ **There is a third door and it is not a socket at all.** [`check_offered`]
+//! guards an address the lab puts *inside a message* for the target to contact:
+//! a DHT `nodes` or `values` string, a peer-exchange list. Those packets leave
+//! the build's socket rather than the lab's, so no guard on this crate's own
+//! sockets can see them, and a routable address handed over that way reaches the
+//! network just as surely as one this crate sent. `OBS-11` is what needed it.
+//!
+//! So the three questions are where the lab listens, where the lab sends, and
+//! where the lab tells the target to go, and each has its own guard here.
 
 use core::fmt;
 use std::io;
@@ -217,6 +227,42 @@ pub fn send_to(
     Ok(socket.send_to(payload, destination)?)
 }
 
+/// Refuses an address the lab would hand the target as somewhere to go.
+///
+/// ⛔ **The third door, and `OBS-11` is what needed it.** The first two are
+/// where the lab listens and where the lab sends. This is where the lab tells
+/// the *target* to go, and it is a door neither of the others can cover: a DHT
+/// `find_node` response carries a `nodes` string and a `get_peers` response
+/// carries `values`, and both are lists of addresses the build will then dial
+/// itself. Those packets leave the build's socket, not the lab's, so
+/// [`send_to`] never sees them and the loopback guard on the lab's own sockets
+/// is no protection at all.
+///
+/// ⚠ **`adjacent::reaches` already named the shape and named it on the wrong
+/// surface.** It says `pex` "hands out peer addresses a client will then dial",
+/// which is exactly this, and a DHT response does the same thing through a
+/// different field. A hazard recorded against one surface and not the sibling
+/// that shares it is the one-gated-door defect `docs/methodology/reviews.md`
+/// names.
+///
+/// ⚠ This guard is a check and never a rewrite. An address outside the set is
+/// refused so the caller has to decide what to offer instead; silently
+/// substituting loopback would put an address in a transcript that the observer
+/// invented, and the transcript is the measurement.
+///
+/// # Errors
+///
+/// Returns [`BindError::NotReachable`] for any address outside loopback.
+pub const fn check_offered(address: SocketAddr) -> Result<(), BindError> {
+    if address.ip().is_loopback() {
+        Ok(())
+    } else {
+        Err(BindError::NotReachable {
+            destination: address,
+        })
+    }
+}
+
 /// Binds a UDP socket on loopback, on a port the operating system chooses.
 ///
 /// # Errors
@@ -379,6 +425,41 @@ mod tests {
             .expect("the datagram arrives");
         assert_eq!(&buffer[..read], payload);
         assert!(from.ip().is_loopback());
+    }
+
+    /// ⛔ The third door, tested where it lives.
+    ///
+    /// ⚠ **This test exists because a mutation pass found the guard proved only
+    /// from another crate.** Blanking [`super::check_offered`] to accept
+    /// everything was refused by two cases in `bit-ids-probe` and by nothing
+    /// here, so the module that owns the rule had no case of its own and a
+    /// reader of this file would have found the guard unproven. A guard is
+    /// tested beside the code that decides it, not only beside the code that
+    /// happens to call it today.
+    #[test]
+    fn an_address_offered_to_the_target_is_refused_outside_the_allowed_set() {
+        use super::check_offered;
+
+        // The addresses the adjacent protocols actually name, which is what a
+        // DHT response or a peer-exchange list would otherwise carry off-host.
+        // 198.51.100.0/24 is TEST-NET-2 and 82.221.103.244 is a real bootstrap
+        // node's address literal, present to be refused rather than reached.
+        for offered in [
+            SocketAddr::new(v4(198, 51, 100, 7), 6881),
+            SocketAddr::new(v4(82, 221, 103, 244), 6881),
+            SocketAddr::new(v4(0, 0, 0, 0), 6881),
+            SocketAddr::new(v4(239, 192, 152, 143), 6771),
+            SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 6881),
+        ] {
+            assert!(
+                matches!(check_offered(offered), Err(BindError::NotReachable { .. })),
+                "{offered} was not refused"
+            );
+        }
+
+        // ⚠ And the control, so a guard that refused everything would fail too.
+        assert!(check_offered(SocketAddr::new(v4(127, 0, 0, 1), 6881)).is_ok());
+        assert!(check_offered(SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 6881)).is_ok());
     }
 
     #[test]

@@ -104,12 +104,23 @@ pub fn is_adjacent(surface: Surface) -> bool {
 /// ⭐ Carried as data rather than left in a comment, because the refusal a
 /// reader sees when a capability is missing should say what the switch is
 /// protecting them from.
+/// ⛔ **A surface can reach out in two directions and `dht` is the one that does
+/// both.** It queries a bootstrap node, which is the lab's own socket and
+/// [`crate::bind::send_to`]'s question, and its `find_node` and `get_peers`
+/// answers hand the build addresses the build then dials, which is
+/// [`crate::bind::check_offered`]'s. This entry named only the first until
+/// `OBS-11` wrote the observer: `pex` carried the second half of the hazard in
+/// its own line, and a hazard recorded against one surface but not the sibling
+/// that shares it is the one-gated-door defect the reviews document names.
 #[must_use]
 pub const fn reaches(surface: Surface) -> Option<&'static str> {
     Some(match surface {
         Surface::LocalDiscovery => "multicasts to the group BEP 14 fixes, on every interface",
         Surface::Pex => "hands out peer addresses a client will then dial",
-        Surface::Dht => "queries bootstrap nodes this project does not own",
+        Surface::Dht => {
+            "queries bootstrap nodes this project does not own, and answers with addresses a \
+             client will then dial"
+        }
         Surface::WebSeed => "fetches a URL carried in the torrent",
         Surface::Mse => "negotiates before any observer can read the stream",
         Surface::TrackerHttp | Surface::TrackerUdp | Surface::PeerWire => return None,

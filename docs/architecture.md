@@ -514,6 +514,27 @@ did. A datagram socket reports nothing about the packet it just sent. There is n
 after-the-fact reading of where a datagram went, so the destination is decided in
 one place or nowhere.
 
+⛔ **There is a third door and it is not a socket at all.** `bind::check_offered`
+guards an address the lab puts *inside a message* for the target to contact: a
+DHT `nodes` or `values` string, a peer-exchange list. The packets that follow
+leave the build's socket rather than the lab's, so no guard on this project's own
+sockets can ever see them, and a routable address handed over that way reaches
+the network exactly as surely as one the lab sent. `OBS-11` needed it for the DHT
+observer's `get_peers` answer.
+
+So the three questions are where the lab listens, where the lab sends, and where
+the lab tells the target to go. ⚠ **The hazard was recorded on the wrong surface
+before it was guarded:** `adjacent::reaches` said `pex` "hands out peer addresses
+a client will then dial" and said nothing of the kind about `dht`, which does the
+same thing through a different field. A hazard named against one surface and not
+the sibling that shares it is the one-gated-door defect
+[`methodology/reviews.md`](methodology/reviews.md) calls the most recurring hole
+there is.
+
+⚠ **The guard refuses rather than substitutes.** Quietly replacing a routable
+address with a loopback one would put bytes in a transcript that the observer
+chose, and the record would read as though the build had been offered them.
+
 ⚠ **The sweep's needle list was the reason the hole lasted.** Every needle on it
 named a constructor, and a send is a method on a socket that already exists, so
 the whole category was missing rather than one entry.
@@ -525,6 +546,26 @@ is what makes them different from the core surfaces a client only ever reaches
 where the lab pointed it. `OBS-06` calls them adjacent, and
 [`../crates/bit-ids-lab/src/adjacent.rs`](../crates/bit-ids-lab/src/adjacent.rs)
 holds the switch each one is behind.
+
+⭐ **The DHT observer is the one that answers, and that is the difference from
+local discovery.** BEP 14 defines no reply, so `local_discovery` is silent on
+every input; BEP 5 defines several, and a build that queries and hears nothing
+retries, backs off and stops, so a silent observer would measure a build talking
+to a black hole. `OBS-11` owns the module, and what it answers is recorded beside
+what arrived, the way `OBS-05` records a BEP 10 offer.
+
+⭐ **Its token is issued and then checked**, the way section 5 describes the UDP
+tracker's connection id. BEP 5 makes a build ask for a token with `get_peers` and
+present it with `announce_peer`, so an announce carrying a token the observer
+never issued means the build reused a stale one, invented one, or skipped the
+`get_peers`, and each is answered with the protocol's own error and recorded with
+its reason.
+
+⛔ **`implied_port` is why a datagram responder needs a source address at all.**
+BEP 5 says that when it is present and non-zero the `port` argument is ignored
+and the source port of the packet is used, so the announced port is a value that
+exists only in the packet header. A reading that took `port` regardless would
+record a number the build explicitly told it to disregard.
 
 ⭐ **The switch is a value, not a flag.** `Capability::enable(surface)` is the
 only way to make a `Capability`, and an adjacent observer takes one. A boolean

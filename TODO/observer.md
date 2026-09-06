@@ -1121,6 +1121,68 @@ fixture corpus on its own, checked separately, because a lib failure stops cargo
 before the integration binary runs and the first reading credited only the unit
 case.
 
+### The DHT observer, done on 2026-09-06
+
+⭐ **`bit_ids_probe::dht` answers BEP 5**, behind `Capability::enable(Surface::Dht)`
+like every adjacent surface. It is the first observer on this side that answers
+at all: BEP 14 defines no reply so `local_discovery` is silent, BEP 5 defines
+several, and a build that queries and hears nothing retries, backs off and stops,
+so a silent observer would measure a build talking to a black hole rather than a
+build talking to a DHT.
+
+⛔ **A third door was found, and it is not a socket.** A `find_node` or
+`get_peers` answer hands the build addresses it will then dial *itself*, so those
+packets leave the build's socket and `bind::send_to` is never called on them: a
+routable address offered that way reaches the network exactly as surely as one
+the lab sent, and every guard this project had was blind to it.
+`bind::check_offered` is the guard now, and the three questions are where the lab
+listens, where the lab sends, and where the lab tells the target to go.
+
+⛔ **The hazard was already written down, on the wrong surface.**
+`adjacent::reaches` said `pex` "hands out peer addresses a client will then
+dial" and said nothing of the kind about `dht`, which does the same thing through
+a different field while also querying out. A hazard recorded against one surface
+but not the sibling that shares it is the one-gated-door defect
+`docs/methodology/reviews.md` calls the most recurring hole there is. Both halves
+are on the `dht` line now.
+
+⚠ **The guard refuses and never substitutes.** Quietly swapping a routable
+address for a loopback one would put bytes in a transcript that the observer
+chose, and the record would read as though the build had been offered them.
+`OfferedPeers` is a type whose only constructor checks, so a caller cannot append
+a routable address after construction, and a list with one good address and one
+bad offers nothing rather than silently dropping the bad one.
+
+⭐ **The token is issued and then checked**, the way the UDP tracker's connection
+id is. An `announce_peer` carrying a token this observer never issued means the
+build reused a stale one, invented one, or skipped the `get_peers`, and each is
+answered with BEP 5's own protocol error and recorded with its reason.
+
+⛔ **`implied_port` is what the whole prerequisite was for.** BEP 5 says that when
+it is set the `port` argument is ignored and the source port of the packet is
+used, so `AnnouncedPort` reports which of the two the build actually announced. A
+reading that took `port` regardless would record a number the build explicitly
+told it to disregard, and a plant that did exactly that was refused.
+
+⚠ **A guard proved only from another crate is a guard this crate leaves
+unproven.** Blanking `check_offered` was refused by two cases in `bit-ids-probe`
+and by nothing in `bit-ids-lab`, which owns the rule, so a reader of `bind.rs`
+would have found it untested. It has a case beside it now, driven with the
+address a real build's default names and with a control that shows the guard can
+say yes.
+
+⚠ **A node id one byte wrong is a node id every build reports as malformed.** The
+first spelling of the observer's own was twenty-one bytes and read as twenty. It
+is a `&[u8; NODE_ID_LEN]` with a compile-time assertion now, so a later edit stops
+the build rather than one suite somebody could have skipped.
+
+Prove, run on 2026-09-06: `cargo test -p bit-ids-probe --locked --test
+adjacent_surfaces` is 10 cases, two of them the DHT driven run and the
+bootstrap-address refusal; the `dht` module is 13 unit cases. Four plants were
+each refused by a named case and none failed to compile: `check_offered`
+accepting anything, `OfferedPeers::of` skipping the guard, `implied_port` being
+ignored, and any token being accepted.
+
 ## OBS-07: Known-client positive controls
 
 Source: reference sweep finding that self-consistency can hide observer bugs

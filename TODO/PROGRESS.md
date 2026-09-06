@@ -384,6 +384,28 @@ for what the corpus guard reads, since a KRPC message carries a *node* id, and
 **nothing checked a version string at all** until this surface put a `v` on a
 second one. Both are checked now.
 
+⭐ **`bit_ids_probe::dht` is the third `OBS-11` unit**, and the first observer on
+this side that answers at all: BEP 14 defines no reply so local discovery is
+silent, BEP 5 defines several, and a build that hears nothing back retries, backs
+off and stops, so a silent observer would measure a build talking to a black
+hole. Its token is issued and then checked the way the UDP tracker's connection
+id is, and `AnnouncedPort` reports whether a build announced its `port` argument
+or the source port `implied_port` points at.
+
+⛔ **Writing it found a third door, and it is not a socket.** A `find_node` or
+`get_peers` answer hands the build addresses it will then dial *itself*, so those
+packets leave the build's socket and `bind::send_to` is never called on them.
+Every guard this project had was blind to that. `bind::check_offered` is what
+closes it. [`../docs/architecture.md`](../docs/architecture.md) section 5 carries
+the three doors and why the third one cannot read back.
+
+⛔ **The hazard was already written down, against the wrong surface.**
+`adjacent::reaches` said `pex` hands out addresses a client will then dial and
+said nothing of the kind about `dht`, which does the same through a different
+field. ⚠ And the guard was proved only from the crate that calls it: blanking
+`check_offered` was refused by two cases in `bit-ids-probe` and by nothing in
+`bit-ids-lab`, which owns the rule. It has a case beside it now.
+
 ## Work order
 
 1. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical

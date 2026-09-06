@@ -14,13 +14,15 @@
 //! residual rather than letting the three checks above read as more than they
 //! are.
 
-use std::net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket};
 use std::time::Duration;
 
 use bit_ids::canonical::Slug;
 use bit_ids_lab::adjacent::{Capability, Surface, endpoint_name};
 use bit_ids_lab::{Lab, bind};
+use bit_ids_probe::dht::{Dht, OfferedPeers};
 use bit_ids_probe::local_discovery::{self, GROUP_V4, GROUP_V6, LocalDiscovery};
+use bit_ids_wire::{bencode, dht};
 
 const ANNOUNCE: &[u8] = b"BT-SEARCH * HTTP/1.1\r\nHost: 239.192.152.143:6771\r\nPort: 51413\r\nInfohash: 0123456789abcdef0123456789abcdef01234567\r\ncookie: bit-ids\r\n\r\n\r\n";
 
@@ -269,13 +271,126 @@ fn no_observer_opens_a_socket_of_its_own() {
         }
     }
     // ⚠ A sweep that read nothing reports no offenders. The count is asserted
-    // against the modules that exist, the way the lab's own sweep is.
+    // against the modules that exist, the way the lab's own sweep is, and the
+    // floor moves up with them: `OBS-11` added `dht.rs`, so six are read now and
+    // a module quietly disappearing is a failure rather than a smaller sweep.
     assert!(
-        checked.len() >= 5,
+        checked.len() >= 6,
         "only {} modules were read: {checked:?}",
         checked.len()
     );
     assert!(offenders.is_empty(), "{offenders:?}");
+}
+
+/// ⭐ The DHT observer in a running lab, driven by a client that is not this
+/// project's test harness: a bencode query on the wire, an answer back, and the
+/// transcript showing both.
+///
+/// ⛔ **This is the surface that could leave.** A real build's first DHT act is a
+/// query to a bootstrap node nobody here owns, so the acceptance drives the two
+/// guards with the address a build's own default actually names rather than one
+/// chosen to pass, and shows the same socket reaching loopback so a refusal is
+/// not confused with an inability to send.
+#[test]
+fn a_dht_query_is_answered_and_both_directions_are_recorded() {
+    let observer = Dht::new(Capability::enable(Surface::Dht))
+        .expect("the capability names this surface")
+        .offering(
+            OfferedPeers::of(&[SocketAddrV4::new(Ipv4Addr::LOCALHOST, 6881)])
+                .expect("loopback is inside the allowed set"),
+        );
+    let lab = Lab::builder()
+        .deadline(Duration::from_secs(5))
+        .datagram(endpoint_name(Surface::Dht), observer.responder())
+        .expect("a canonical endpoint name")
+        .start()
+        .expect("loopback binds");
+    let endpoint = lab
+        .endpoint(endpoint_name(Surface::Dht))
+        .expect("it was added");
+    assert!(endpoint.address().ip().is_loopback());
+
+    // A get_peers, written here rather than by the observer, so the bytes on the
+    // wire are the client's.
+    let sent = concat!(
+        "d1:ad2:id20:a-build-under-measur9:info_hash20:",
+        "\u{11}\u{11}\u{11}\u{11}\u{11}\u{11}\u{11}\u{11}\u{11}\u{11}",
+        "\u{11}\u{11}\u{11}\u{11}\u{11}\u{11}\u{11}\u{11}\u{11}\u{11}",
+        "e1:q9:get_peers1:t2:zz1:y1:qe"
+    );
+    let sent: Vec<u8> = sent.chars().map(|c| c as u8).collect();
+
+    let client = bind::datagram(IpAddr::V4(Ipv4Addr::LOCALHOST)).expect("loopback binds");
+    client
+        .set_read_timeout(Some(Duration::from_secs(5)))
+        .expect("a read timeout");
+    bind::send_to(&client, &sent, endpoint.address()).expect("the lab is on loopback");
+
+    let mut buffer = [0_u8; 2048];
+    let (read, from) = client.recv_from(&mut buffer).expect("the observer answers");
+    assert_eq!(from, endpoint.address(), "the answer came from the lab");
+
+    // ⭐ Read back with the codec, not by eye. The answer is a message BEP 5
+    // describes, carries the transaction the client chose, and names only the
+    // loopback peer that went through `check_offered`.
+    let answer = dht::Message::parse(&buffer[..read]).expect("the answer is bencode");
+    assert!(answer.is_conforming(), "{:?}", answer.departures());
+    assert_eq!(answer.kind(), dht::Kind::Response);
+    assert_eq!(answer.transaction_id(), Some(&b"zz"[..]));
+    assert_eq!(answer.node_id(), Some(&observer.node_id()[..]));
+    let Some(bencode::Value::List(values)) = answer.argument(b"values") else {
+        panic!("a get_peers answer carries values");
+    };
+    assert_eq!(values.len(), 1);
+    assert_eq!(
+        values[0],
+        bencode::Value::Bytes(vec![127, 0, 0, 1, 0x1a, 0xe1]),
+        "the only address offered is the loopback one"
+    );
+
+    let kept = observer.messages();
+    assert_eq!(kept.len(), 1);
+    assert_eq!(kept[0].raw(), sent.as_slice());
+    assert_eq!(
+        kept[0].source(),
+        client.local_addr().expect("a bound socket has an address")
+    );
+    assert_eq!(kept[0].answered(), Some(&buffer[..read]));
+
+    // ⛔ Two segments, one each way, and the outbound one is what the client
+    // received rather than what the observer meant to send.
+    let journal = lab.shutdown();
+    let name = Slug::parse(endpoint_name(Surface::Dht)).expect("a canonical name");
+    let segments = journal.for_endpoint(&name);
+    assert_eq!(segments.len(), 2, "{segments:?}");
+    assert_eq!(segments[0].bytes(), sent.as_slice());
+    assert_eq!(segments[1].bytes(), &buffer[..read]);
+}
+
+/// ⛔ The address a real build's default names, refused by both doors, driven.
+#[test]
+fn the_bootstrap_node_a_dht_reaches_for_is_refused_and_loopback_is_not() {
+    assert!(!bit_ids_probe::dht::A_REAL_BOOTSTRAP_NODE.ip().is_loopback());
+    let socket = bind::datagram(IpAddr::V4(Ipv4Addr::LOCALHOST)).expect("loopback binds");
+    // Door two: where the lab sends.
+    assert!(matches!(
+        bind::send_to(
+            &socket,
+            b"d1:y1:qe",
+            bit_ids_probe::dht::A_REAL_BOOTSTRAP_NODE
+        ),
+        Err(bind::BindError::NotReachable { .. })
+    ));
+    // Door three: where the lab tells the target to go.
+    assert!(matches!(
+        bind::check_offered(bit_ids_probe::dht::A_REAL_BOOTSTRAP_NODE),
+        Err(bind::BindError::NotReachable { .. })
+    ));
+    // ⚠ And the control: a refusal is not an inability to send.
+    let listener = bind::datagram(IpAddr::V4(Ipv4Addr::LOCALHOST)).expect("loopback binds");
+    let address = listener.local_addr().expect("a bound socket has one");
+    assert!(bind::send_to(&socket, b"d1:y1:qe", address).is_ok());
+    assert!(bind::check_offered(address).is_ok());
 }
 
 /// ⚠ The observer records what arrives and does not correct it.
