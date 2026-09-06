@@ -954,7 +954,7 @@ parse error.
 ## OBS-11: Message stream encryption, DHT and web-seed observers
 
 Source: split out of `OBS-06` on 2026-09-06
-Priority: P1 | Effort: L | Status: IN_PROGRESS
+Priority: P1 | Effort: L | Status: DONE
 
 Problem: `OBS-06` named five adjacent surfaces and closed over two. The three
 that remain each carry identity the core flows do not: which cipher and padding
@@ -1249,6 +1249,118 @@ Prove, run on 2026-09-06: the `web_seed` module is 11 unit cases and
 `a_web_seed_fetch_is_answered_with_the_torrents_own_payload` drives the whole
 path over a real TCP connection, through `bind::dial`, asserting the status line,
 the `Content-Range`, the served bytes and both journal directions.
+
+### The MSE observer, done on 2026-09-06
+
+⭐ **`bit_ids_wire::mse` and `bit_ids_probe::mse` complete the entry.** MSE has
+no BEP; it is the de-facto protocol encryption every major client implements, and
+it is obfuscation rather than security. ⭐ **That is what makes it observable:**
+the shared secret is unauthenticated, so the lab performs the exchange as the
+receiving side and reads what the build offered.
+
+⛔ **It comes first or not at all, which is why the offer is a condition of the
+measurement.** A build that encrypts sends its `BitTorrent` handshake inside
+`IA`, so its peer ID is not on the wire in the clear and `OBS-04` sees nothing it
+recognises. ⭐ **Reading it back out of `IA` is `OBS-04`'s measurement arriving
+through a second door**, which is what `SCHEMA-03` calls corroboration: one peer
+ID, two observations.
+
+⚠ **The arithmetic is written out and no dependency was added.** MSE fixes the
+768-bit MODP group of RFC 2409, so the exchange needs modular exponentiation over
+a 768-bit modulus. ⭐ **The modular multiply is double-and-add rather than
+schoolbook-with-division**: every step is a shift by one, a compare and a
+conditional subtraction, and there is no long division, which is the part of a
+bignum that is hardest to get right and hardest to test. `sha1` was added to
+`bit-ids-wire`, which moves **no package** in the lockfile because `bit-ids-lab`
+already depends on it; the diff is one line.
+
+⛔ **Nothing here is a security primitive and the module says so.** There is no
+constant-time discipline because there is nothing to protect: the only party on
+the far side is a binary this project installed minutes earlier, on a loopback
+socket, and MSE's own threat model does not include the peer.
+
+⭐ **Both primitives are checked against implementations nobody here wrote.**
+`tests/mse_arithmetic.rs` compares four 768-bit public keys and a shared secret,
+digit for digit, against values Python's arbitrary-precision `pow` computed, and
+carries a control on the control: `2^1 mod P` is 2 and `2^0 mod P` is 1 for any
+modulus, closed forms no wrong implementation lands on by accident. `RC4` is
+checked against RFC 6229's published vector. ⚠ **The offset is the whole
+subtlety**: MSE discards 1024 keystream bytes, so a freshly keyed cipher produces
+the stream at offset 1024 rather than the offset-zero block, and the constant
+pins the discard as well as the cipher. The first draft's comment named the wrong
+one; an independent Python `RC4` confirmed both offsets.
+
+⛔ **A mutation pass found a refusal nothing could produce.** Deleting the
+verification check entirely left every test passing, because the only case
+exercising a wrong key relies on random plaintext, and random plaintext trips the
+pad-length check first and reports `Unreadable`. `VerificationFailed` was
+therefore unreachable, which is the shape `OBS-06` found in `peer_exchange`'s
+`BeforeHandshake`. The case that reaches it is a build that keys its stream
+correctly and writes the wrong constant, assembled by hand because `initiate`
+writes the right one by construction. Re-planted afterwards and refused.
+
+⚠ **And an assertion that was too narrow was corrected rather than forced.** A
+case required `VerificationFailed` over a mismatched torrent; the observer
+answered `Unreadable` with `padC is 64448 bytes` and the observer was right, so
+the guarantee asserted is now the true one: a wrong key never reads as a
+conforming exchange, by whichever route.
+
+Prove, run on 2026-09-06: `cargo test -p bit-ids-wire -p bit-ids-probe --locked`
+covers both halves; the wire module is 11 unit cases plus 3 arithmetic controls
+and the probe module is 10. Five plants, four refused immediately and the fifth
+after the gap above was closed: the `RC4` discard removed, the modular reduction
+skipped, the verification never checked, the selection always counted as offered,
+and the padding cap not enforced.
+
+### The driven runs, and what they are worth
+
+⭐ **Each of the three was driven by something that is not this project's test
+harness**, which is what the entry's Prove asks for:
+
+- **web seed** by `curl` 8.5.0, over three fetches;
+- **DHT** by a `libtorrent`-encoded KRPC exchange over a raw socket: a `ping`, a
+  `get_peers` that took a token, an `announce_peer` carrying `implied_port`, and
+  an `announce_peer` presenting a token the observer never issued. ⭐ **The
+  `implied_port` case is the payoff of the whole prerequisite chain**: the
+  observer recorded `Implied { observed: 37466, stated: Some(6881) }`, taking the
+  source port rather than the number in the message, and the Python driver
+  independently reported the same 37466. The forged token was answered with BEP
+  5's error 203;
+- **MSE** by a complete initiator written from the specification in Python, using
+  Python's own `pow`, its own `RC4` and its own `SHA-1` framing. ⭐ **Two
+  independent implementations completed one handshake**: the verification
+  constant decrypted to eight zero bytes, the selection came back as `RC4`, and
+  the observer recorded `padA` 73, `padC` 19, `crypto_provide` `0x3` and the peer
+  ID `python-mse-driver001` recovered from inside the encrypted `IA`.
+
+⛔ **None of them is a stock `BitTorrent` client and that limit is unchanged.**
+Each is an independent implementation written from a specification, which shares
+this project's reading of the protocol and is a weaker control than `OBS-07`'s
+stock clients. `OBS-07` needs a host `assert-disposable.sh --egress` does not
+refuse, and a session host is refused.
+
+⚠ **The scripts are not committed**, which follows the practice `PUB-03`'s
+`cbor2` and `OBS-08`'s `torf` already set: a third-party reader needs a package
+install, so it belongs in an entry's driven pass rather than in the gate. What is
+committed is the driving surface each one points at, `cargo run -p bit-ids-probe
+--example dht`, `--example mse` and `--example web-seed`.
+
+Residual: ⚠ **`mse` and `web_seed` still have no fixture and are still refused
+with `E-FIX-07`.** A fixture needs a codec that round-trips a whole transcript
+byte for byte, and `mse` has protocol primitives and a partial reader rather than
+one: the encrypted section cannot be re-encoded without the key, so a transcript
+fixture on that surface would need the run's secret beside it. A web-seed fetch is
+an HTTP request the existing codec already round-trips, so a fixture for it is
+cheap and belongs in the corpus once a real fetch has been captured.
+
+Residual: ⚠ **`crypto_select` is answered but nothing after it is read.** The
+payload stream that follows is `RC4` under `keyB` and this observer stops at the
+handshake, because `OBS-04` reads a peer wire and this module reads a
+negotiation, and one decoding the other's bytes is how two readings of one stream
+disagree. A capture that wants the post-handshake stream needs the two composed,
+which is a `CLIENT-*` adapter's job.
+
+Status: DONE on 2026-09-06.
 
 ## OBS-07: Known-client positive controls
 

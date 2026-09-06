@@ -2,16 +2,16 @@
 
 Total: 58
 Open: 27
-In progress: 1
+In progress: 0
 Blocked: 0
-Done: 30
+Done: 31
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | P0 | 0 | 0 | 0 | 24 | 24 |
-| P1 | 26 | 1 | 0 | 6 | 33 |
+| P1 | 26 | 0 | 0 | 7 | 33 |
 | P2 | 1 | 0 | 0 | 0 | 1 |
-| Total | 27 | 1 | 0 | 30 | 58 |
+| Total | 27 | 0 | 0 | 31 | 58 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -33,7 +33,7 @@ Done: 30
 | OBS-08 | P0 | M | DONE | Synthetic torrent for the observation lab |
 | OBS-09 | P0 | M | DONE | Raw evidence journal and bundle writer |
 | OBS-10 | P1 | M | OPEN | Cross-platform normalized-event equality |
-| OBS-11 | P1 | L | IN_PROGRESS | Message stream encryption, DHT and web-seed observers |
+| OBS-11 | P1 | L | DONE | Message stream encryption, DHT and web-seed observers |
 | ACQ-01 | P0 | L | DONE | Acquisition route schema |
 | ACQ-02 | P0 | L | DONE | Latest stable release resolver |
 | ACQ-03 | P0 | L | DONE | Same-version multi-route verifier |

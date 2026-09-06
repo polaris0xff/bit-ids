@@ -15,5 +15,10 @@ bit-ids = { path = "../bit-ids" }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 
+# ⚠ No new package in the lockfile: `bit-ids-lab` already depends on `sha1` for
+# the info hash `OBS-08` computes, so this moves nothing. `OBS-11`'s MSE key
+# derivation is SHA-1 throughout, which the specification fixes.
+sha1 = "0.11.0"
+
 [dev-dependencies]
 serde_json = "1.0.151"

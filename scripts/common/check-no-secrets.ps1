@@ -196,6 +196,7 @@ if ($Public) {
             # ⛔ Keep identical to the sh twin: a published test vector, anchored
             # to a constant named for its RFC and to exactly forty hex digits.
             $line = $line -creplace '(RFC[0-9]+_[A-Z0-9_]+: &str = )"[0-9a-f]{40}"', '$1"ALLOWED"'
+            $line = $line -creplace '(MSE_[A-Z0-9_]+: &str = )"[0-9a-f]{192}"', '$1"ALLOWED"'
             # ⛔ Keep identical to the sh twin: the BEP 14 announce field, which
             # carries a torrent's own identifier and never a credential. The
             # trailing class anchors it to exactly forty digits; without it a

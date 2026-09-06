@@ -45,6 +45,7 @@ pub mod bencode;
 pub mod dht;
 pub mod error;
 pub mod fixture;
+pub mod mse;
 pub mod peer_wire;
 pub mod tracker_http;
 pub mod tracker_udp;

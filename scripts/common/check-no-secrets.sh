@@ -204,6 +204,7 @@ if [ "$PUBLIC" = "1" ]; then
       -e 's#"(value|bytes|alphabet|detail)": "[0-9a-f]+"#"\1": "ALLOWED"#g' \
       -e 's#(peer_id|HexBytes::parse)\("[0-9a-f]+"#\1("ALLOWED"#g' \
       -e 's#(RFC[0-9]+_[A-Z0-9_]+: &str = )"[0-9a-f]{40}"#\1"ALLOWED"#g' \
+      -e 's#(MSE_[A-Z0-9_]+: &str = )"[0-9a-f]{192}"#\1"ALLOWED"#g' \
       -e 's#([Ii]nfohash: )[0-9a-f]{40}([^0-9a-f]|$)#\1ALLOWED\2#g' |
     grep -E '\b[0-9a-f]{24,}\b' || true)
   [ -n "$_hex_out" ] && hit "a long hex identifier" "$_hex_out"

@@ -586,6 +586,29 @@ build's about where the authority ends cannot approve a URL the build resolves
 elsewhere. ⚠ An empty list writes no key, so a spec naming no web seed keeps the
 bytes, and the digest, it had before `OBS-11`.
 
+⛔ **Message stream encryption comes first or not at all**, which is what makes
+it unlike every other surface. A build that encrypts sends its `BitTorrent`
+handshake inside MSE's third message, so its peer ID is not on the wire in the
+clear and `OBS-04` sees nothing it recognises. Whether the lab offers MSE
+therefore changes what the peer-wire observers measure, and the offer is a
+condition of the measurement recorded beside the result. ⭐ **Reading the peer ID
+back out of `IA` is `OBS-04`'s measurement arriving through a second door**,
+which is the overlap section 6 calls corroboration.
+
+⭐ **MSE is observable because it is obfuscation rather than security.** The
+shared secret is unauthenticated, so the lab performs the exchange as the
+receiving side and reads what the build offered: `crypto_provide`, the padding
+lengths it chose, and whether it initiated MSE at all before falling back.
+
+⚠ **The arithmetic is written out rather than depended on.** MSE fixes the
+768-bit MODP group of RFC 2409, and
+[`../crates/bit-ids-wire/src/mse.rs`](../crates/bit-ids-wire/src/mse.rs) does the
+modular multiply by double-and-add: a shift, a compare and a conditional
+subtraction, with no long division to get subtly wrong. ⛔ **Nothing there is a
+security primitive and none of it should be reused as one**: there is no
+constant-time discipline because there is nothing to protect, the peer being a
+binary this project installed minutes earlier on a loopback socket.
+
 ⭐ **The switch is a value, not a flag.** `Capability::enable(surface)` is the
 only way to make a `Capability`, and an adjacent observer takes one. A boolean
 defaulting to false is turned on by a later `..Default::default()` in a struct
@@ -963,14 +986,17 @@ reports that it happened.
   [`capture-host.md`](capture-host.md) read `/proc/net/route` and
   `/etc/machine-id`, so there is no boundary to run before an install on
   Windows. `CI-03` owns the pair.
-- `mse` and `web_seed` have no codec in `bit-ids-wire` and no fixture. A fixture
-  on either is refused with `E-FIX-07` rather than silently passing, and `mse` is
-  what the negative control in the fixture suite now names. `OBS-11` owns both.
-  ⚠ `pex` rides inside a peer-wire transcript, so a fixture for it is a
-  `peer_wire` fixture and `OBS-06` reads it there. ⚠ `local_discovery` has a
-  codec, because a BEP 14 announce is read by the HTTP codec that already
-  existed, and no fixture: one belongs in the corpus when a real announce has
-  been captured.
+- ⚠ **`mse` and `web_seed` have protocol code and still no fixture**, so a
+  fixture on either is refused with `E-FIX-07` and `mse` is what the negative
+  control in the fixture suite names. A fixture needs a codec that round-trips a
+  whole transcript byte for byte: `mse` has primitives and a partial reader
+  rather than one, because the encrypted section cannot be re-encoded without the
+  run's key, and a web-seed fetch is an HTTP request the existing codec already
+  round-trips, so a fixture for it is cheap and belongs in the corpus once a real
+  fetch has been captured. ⚠ `pex` rides inside a peer-wire transcript, so a
+  fixture for it is a `peer_wire` fixture and `OBS-06` reads it there. ⚠
+  `local_discovery` has a codec, because a BEP 14 announce is read by the HTTP
+  codec that already existed, and no fixture, for the same reason.
 - ⭐ `dht` has a codec and two fixtures as of `OBS-11`. KRPC is one bencoded
   dictionary per datagram, so the module carries the whole decoded document
   rather than a struct of extracted fields: a KRPC message's key order, its

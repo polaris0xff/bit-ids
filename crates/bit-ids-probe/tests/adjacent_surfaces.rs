@@ -22,8 +22,9 @@ use bit_ids_lab::adjacent::{Capability, Surface, endpoint_name};
 use bit_ids_lab::{Lab, bind};
 use bit_ids_probe::dht::{Dht, OfferedPeers};
 use bit_ids_probe::local_discovery::{self, GROUP_V4, GROUP_V6, LocalDiscovery};
+use bit_ids_probe::mse::{self as mse_probe, Mse};
 use bit_ids_probe::web_seed::WebSeedServer;
-use bit_ids_wire::{bencode, dht};
+use bit_ids_wire::{bencode, dht, mse};
 
 const ANNOUNCE: &[u8] = b"BT-SEARCH * HTTP/1.1\r\nHost: 239.192.152.143:6771\r\nPort: 51413\r\nInfohash: 0123456789abcdef0123456789abcdef01234567\r\ncookie: bit-ids\r\n\r\n\r\n";
 
@@ -273,10 +274,11 @@ fn no_observer_opens_a_socket_of_its_own() {
     }
     // ⚠ A sweep that read nothing reports no offenders. The count is asserted
     // against the modules that exist, the way the lab's own sweep is, and the
-    // floor moves up with them: `OBS-11` added `dht.rs`, so six are read now and
-    // a module quietly disappearing is a failure rather than a smaller sweep.
+    // floor moves up with them: `OBS-11` added `dht.rs`, `web_seed.rs` and
+    // `mse.rs`, so eight are read now and a module quietly disappearing is a
+    // failure rather than a smaller sweep.
     assert!(
-        checked.len() >= 6,
+        checked.len() >= 8,
         "only {} modules were read: {checked:?}",
         checked.len()
     );
@@ -558,4 +560,114 @@ fn a_web_seed_fetch_is_answered_with_the_torrents_own_payload() {
     // ⚠ Both directions recorded: the request as sent and the reply as written.
     assert_eq!(journal.received(&name), request.as_bytes());
     assert!(!journal.for_endpoint(&name).is_empty());
+}
+
+/// ⭐ The MSE exchange in a running lab, over a real TCP connection.
+///
+/// ⛔ **The point is the last assertion.** A build that negotiates encryption
+/// puts its `BitTorrent` handshake inside `IA`, so its peer ID is not on the wire
+/// in the clear. Reading it back out here and comparing it against what
+/// `OBS-04`'s own reader makes of the same bytes is two observations of one
+/// value, arriving through two different doors, which is what `SCHEMA-03` calls
+/// corroboration.
+#[test]
+fn an_mse_exchange_completes_and_the_handshake_comes_out_of_it() {
+    use std::io::{Read as _, Write as _};
+
+    const INFO_HASH: [u8; 20] = [0x11; 20];
+    const IA: &[u8] = b"\x13BitTorrent protocol\x00\x00\x00\x00\x00\x10\x00\x05\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11a-build-under-measur";
+
+    let observer = Mse::new(
+        Capability::enable(Surface::Mse),
+        INFO_HASH,
+        mse_probe::Selection::Rc4,
+    )
+    .expect("the capability names this surface")
+    .with_pad_b(vec![0xBB; 23]);
+    let their_key = observer.public_key();
+
+    let lab = Lab::builder()
+        .deadline(Duration::from_secs(10))
+        .stream(endpoint_name(Surface::Mse), observer.responder())
+        .expect("a canonical endpoint name")
+        .start()
+        .expect("loopback binds");
+    let endpoint = lab
+        .endpoint(endpoint_name(Surface::Mse))
+        .expect("it was added");
+    assert!(endpoint.address().ip().is_loopback());
+
+    // The initiator's side, written by the module rather than copied here: a
+    // second reading of the specification in a test file is how two copies
+    // disagree.
+    let private = *b"a-build-private-key0";
+    let opening = mse_probe::initiate(
+        &private,
+        &their_key,
+        &INFO_HASH,
+        mse::CRYPTO_PLAINTEXT | mse::CRYPTO_RC4,
+        &[0xAA; 41],
+        &[0xCC; 7],
+        IA,
+    );
+
+    let mut stream = bind::dial(endpoint.address(), Duration::from_secs(5)).expect("it connects");
+    stream
+        .set_read_timeout(Some(Duration::from_secs(5)))
+        .expect("a read timeout");
+    stream.write_all(&opening).expect("the endpoint is up");
+    stream.flush().expect("flushed");
+
+    // The reply is the observer's key, its padding, and the encrypted selection.
+    let want = mse::KEY_LEN + 23 + 8 + 4 + 2 + 23;
+    let mut reply = Vec::new();
+    let mut buffer = [0_u8; 4096];
+    while reply.len() < want {
+        let read = stream.read(&mut buffer).expect("the observer answers");
+        if read == 0 {
+            break;
+        }
+        reply.extend_from_slice(&buffer[..read]);
+    }
+    assert_eq!(&reply[..mse::KEY_LEN], &their_key[..], "the observer's key");
+
+    // ⭐ Read the selection with the key the build would derive, not with a
+    // value the observer handed over.
+    let secret = mse::shared_secret(&their_key, &private);
+    let mut plain = reply[mse::KEY_LEN + 23..].to_vec();
+    mse::Rc4::new(&mse::key_b(&secret, &INFO_HASH)).apply(&mut plain);
+    assert_eq!(&plain[..8], &mse::VC, "the verification constant");
+    assert_eq!(&plain[8..12], &mse::CRYPTO_RC4.to_be_bytes());
+
+    let exchanges = observer.exchanges();
+    assert_eq!(exchanges.len(), 1);
+    assert!(
+        exchanges[0].is_conforming(),
+        "{:?}",
+        exchanges[0].refusals()
+    );
+    assert_eq!(
+        exchanges[0].pad_a_len(),
+        41,
+        "the padding length is a choice"
+    );
+    let provide = exchanges[0].provide().expect("it decrypted");
+    assert!(provide.offers_plaintext() && provide.offers_rc4());
+    assert_eq!(provide.pad, vec![0xCC; 7]);
+
+    // ⛔ Two doors, one value. The peer ID inside the encrypted `IA` is the one
+    // `OBS-04`'s reader finds in the same bytes read as a plain handshake.
+    let inside = exchanges[0].initial_payload().expect("IA");
+    assert_eq!(inside, IA);
+    let handshake = bit_ids_wire::peer_wire::Transcript::parse(inside)
+        .expect("IA is a peer-wire handshake")
+        .handshake()
+        .peer_id()
+        .to_vec();
+    assert_eq!(handshake, b"a-build-under-measur".to_vec());
+
+    drop(stream);
+    let journal = lab.shutdown();
+    let name = Slug::parse(endpoint_name(Surface::Mse)).expect("a canonical name");
+    assert_eq!(journal.received(&name), opening.as_slice());
 }

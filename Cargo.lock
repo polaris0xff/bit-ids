@@ -37,6 +37,7 @@ dependencies = [
  "bit-ids",
  "serde",
  "serde_json",
+ "sha1",
 ]
 
 [[package]]

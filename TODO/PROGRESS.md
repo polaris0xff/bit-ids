@@ -4,9 +4,9 @@ State instant: 2026-09-06
 Baseline commit: `a6c9336` on `main`
 Total: 58
 Open: 27
-In progress: 1
+In progress: 0
 Blocked: 0
-Done: 30
+Done: 31
 
 ## Current state
 
@@ -420,6 +420,23 @@ and `Host, User-Agent, Accept` on a plain one, which is exactly the
 library-shaped signal the surface exists to record. Both bodies were compared
 against the torrent's own payload and matched, so the seed serves bytes a
 build's piece hashes would accept rather than bytes of the right length.
+
+⭐ **`OBS-11` is closed**, so the observer layer covers every surface a build
+reaches for. `bit_ids_probe::mse` completes it: MSE comes first or not at all, so
+a build that encrypts sends its handshake inside `IA` and `OBS-04` sees nothing
+it recognises, which makes the offer a condition of the measurement. ⭐ **Reading
+the peer ID back out of `IA` is `OBS-04`'s measurement through a second door.**
+⚠ The 768-bit arithmetic is written out and added **no package** to the lockfile:
+`sha1` was already there for `OBS-08`, so the diff is one line.
+
+⭐ **All three modules were driven by something that is not this project's
+harness**: `curl` for the web seed, a `libtorrent`-encoded KRPC exchange for the
+DHT, and an MSE initiator written from the specification in Python using its own
+`pow`, `RC4` and `SHA-1`. ⭐ **The `implied_port` case is the payoff of the whole
+prerequisite chain**: the observer recorded the source port 37466 rather than the
+6881 in the message, and the driver independently reported the same number.
+⛔ **None of them is a stock client** and that limit is unchanged: each shares
+this project's reading of the protocol, which is what `OBS-07` exists to fix.
 
 ## Work order
 
