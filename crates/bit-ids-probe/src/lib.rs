@@ -27,6 +27,7 @@ pub mod peer_exchange;
 pub mod peer_wire;
 pub mod tracker_http;
 pub mod tracker_udp;
+pub mod web_seed;
 
 pub use peer_wire::{
     ExtendedOffer, ExtensionProtocol, Offer, PeerIdentity, PeerWire, Role, Stream,

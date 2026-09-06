@@ -20,8 +20,11 @@
 //! restated here from the specification, and its first words for seed zero are
 //! compared against the published reference implementation's own output.
 
+use std::net::{Ipv4Addr, SocketAddrV4};
+
 use bit_ids::canonical::Sha256Digest;
-use bit_ids_lab::torrent::{MAX_PAYLOAD_BYTES, MIN_PIECE_LENGTH, PIECE_HASH_LEN};
+use bit_ids_lab::bind;
+use bit_ids_lab::torrent::{MAX_PAYLOAD_BYTES, MIN_PIECE_LENGTH, PIECE_HASH_LEN, WebSeed};
 use bit_ids_lab::{SyntheticTorrent, TorrentError, TorrentSpec};
 use bit_ids_wire::bencode::{self, Value};
 use sha1::{Digest as _, Sha1};
@@ -42,6 +45,14 @@ fn furnished() -> TorrentSpec {
         announce: Some("http://127.0.0.1:6969/announce".to_owned()),
         private: true,
         created_at: 1_262_304_000,
+        // ⚠ One web seed, so "every optional field" stays a true sentence.
+        // `OBS-11` added the field and a helper claiming coverage it no longer
+        // had would be a false claim in a doc comment, which is the shape a
+        // claim audit exists to find.
+        web_seeds: vec![
+            WebSeed::new(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 8080), "/payload")
+                .expect("loopback is inside the allowed set"),
+        ],
     }
 }
 
@@ -281,6 +292,17 @@ fn changing_a_field_inside_the_info_dictionary_moves_the_info_hash_and_one_outsi
         {
             let mut spec = furnished();
             spec.created_at += 1;
+            spec
+        },
+        // ⭐ BEP 19's `url-list` sits beside `announce`, outside the info
+        // dictionary, so a web seed moves the file and must not move the value
+        // a client announces.
+        {
+            let mut spec = furnished();
+            spec.web_seeds = vec![
+                WebSeed::new(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9090), "/other")
+                    .expect("loopback"),
+            ];
             spec
         },
     ] {
@@ -582,4 +604,64 @@ fn a_generated_torrent_reports_the_spec_it_came_from() {
         torrent.metainfo(),
         "regenerating from the reported spec did not reproduce the file"
     );
+}
+
+/// ⛔ A spec naming no web seed writes no `url-list` key at all.
+///
+/// ⚠ **This is what keeps `OBS-11`'s new field free.** `capture.fixture` is a
+/// digest of the metainfo a run used, so a key written as an empty list would
+/// have moved the bytes of every torrent generated from a spec that never asked
+/// for a web seed, and every digest recorded against one. Nothing has been
+/// captured yet, which is the only reason such a change would have cost nothing
+/// today; it is still not one to make by accident.
+#[test]
+fn a_torrent_naming_no_web_seed_carries_no_url_list_key() {
+    let mut without = furnished();
+    without.web_seeds = Vec::new();
+    let torrent = generate(without.clone());
+    let document = bencode::decode(torrent.metainfo()).expect("it is bencode");
+    assert!(
+        document.get(b"url-list").is_none(),
+        "an empty web seed list wrote a key"
+    );
+
+    // ⭐ And the control: the key appears exactly when one is named, so this
+    // case cannot pass over a generator that never writes it.
+    let with = generate(furnished());
+    let document = bencode::decode(with.metainfo()).expect("it is bencode");
+    let Some(Value::List(urls)) = document.get(b"url-list") else {
+        panic!("a spec naming a web seed writes a list");
+    };
+    assert_eq!(urls.len(), 1);
+    assert_eq!(
+        urls[0],
+        Value::bytes(b"http://127.0.0.1:8080/payload".to_vec())
+    );
+    assert_ne!(torrent.digest(), with.digest());
+}
+
+/// ⛔ The third door, at the place a torrent opens it.
+///
+/// A `url-list` entry is where the build will fetch from, on its own socket, so
+/// nothing this crate guards is on that path. `WebSeed` is the only way to make
+/// one and its constructor is the check.
+#[test]
+fn a_web_seed_outside_the_allowed_set_cannot_be_put_in_a_torrent() {
+    for elsewhere in [
+        SocketAddrV4::new(Ipv4Addr::new(198, 51, 100, 7), 80),
+        SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 80),
+        SocketAddrV4::new(Ipv4Addr::new(93, 184, 216, 34), 80),
+    ] {
+        assert!(
+            matches!(
+                WebSeed::new(elsewhere, "/payload"),
+                Err(bind::BindError::NotReachable { .. })
+            ),
+            "{elsewhere} was not refused"
+        );
+    }
+    // ⚠ The control, so a constructor that refused everything would fail here.
+    let allowed = WebSeed::new(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 8080), "/payload")
+        .expect("loopback is inside the allowed set");
+    assert_eq!(allowed.url(), "http://127.0.0.1:8080/payload");
 }

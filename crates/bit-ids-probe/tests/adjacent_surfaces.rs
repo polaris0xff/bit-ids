@@ -22,6 +22,7 @@ use bit_ids_lab::adjacent::{Capability, Surface, endpoint_name};
 use bit_ids_lab::{Lab, bind};
 use bit_ids_probe::dht::{Dht, OfferedPeers};
 use bit_ids_probe::local_discovery::{self, GROUP_V4, GROUP_V6, LocalDiscovery};
+use bit_ids_probe::web_seed::WebSeedServer;
 use bit_ids_wire::{bencode, dht};
 
 const ANNOUNCE: &[u8] = b"BT-SEARCH * HTTP/1.1\r\nHost: 239.192.152.143:6771\r\nPort: 51413\r\nInfohash: 0123456789abcdef0123456789abcdef01234567\r\ncookie: bit-ids\r\n\r\n\r\n";
@@ -460,4 +461,101 @@ fn a_datagram_endpoint_answers_and_both_directions_are_recorded() {
     let journal = lab.shutdown();
     let name = Slug::parse("echo").expect("a canonical name");
     assert_eq!(journal.for_endpoint(&name).len(), 2, "in and back out");
+}
+
+/// ⭐ The web seed in a running lab, fetched over a real TCP connection.
+///
+/// ⛔ **The bytes served are the torrent's own payload**, so every piece hashes.
+/// A seed answering anything else would be blacklisted by the build and the run
+/// would measure a build reacting to a broken server rather than a build using a
+/// web seed. This drives the whole path: the torrent names the endpoint, the
+/// endpoint serves the payload, and the span asked for is the span returned.
+#[test]
+fn a_web_seed_fetch_is_answered_with_the_torrents_own_payload() {
+    use std::io::{Read as _, Write as _};
+
+    let torrent = bit_ids_lab::SyntheticTorrent::generate(bit_ids_lab::TorrentSpec::default())
+        .expect("the default spec describes a usable torrent");
+    let observer = WebSeedServer::new(
+        Capability::enable(Surface::WebSeed),
+        torrent.payload().to_vec(),
+    )
+    .expect("the capability names this surface");
+
+    let lab = Lab::builder()
+        .deadline(Duration::from_secs(10))
+        .stream(endpoint_name(Surface::WebSeed), observer.responder())
+        .expect("a canonical endpoint name")
+        .start()
+        .expect("loopback binds");
+    let endpoint = lab
+        .endpoint(endpoint_name(Surface::WebSeed))
+        .expect("it was added");
+    assert!(endpoint.address().ip().is_loopback());
+
+    // ⭐ And the torrent can name it, through the guard. This is the whole
+    // reason `TorrentSpec` grew the field.
+    let SocketAddr::V4(address) = endpoint.address() else {
+        panic!("the lab binds IPv4 loopback here");
+    };
+    let seed = bit_ids_lab::torrent::WebSeed::new(address, "/payload")
+        .expect("a lab endpoint is inside the allowed set");
+    assert!(seed.url().starts_with("http://127.0.0.1:"));
+
+    let mut stream = bind::dial(endpoint.address(), Duration::from_secs(5)).expect("it connects");
+    stream
+        .set_read_timeout(Some(Duration::from_secs(5)))
+        .expect("a read timeout");
+    let request = format!(
+        "GET /payload HTTP/1.1\r\nHost: {address}\r\nUser-Agent: bit-ids-driver/1\r\nRange: bytes=64-127\r\n\r\n"
+    );
+    stream
+        .write_all(request.as_bytes())
+        .expect("the endpoint is up");
+    stream.flush().expect("flushed");
+
+    // Read until the body is complete: 64 bytes plus whatever head precedes it.
+    let mut reply = Vec::new();
+    let mut buffer = [0_u8; 4096];
+    while reply.len() < 64 {
+        let read = stream.read(&mut buffer).expect("the observer answers");
+        if read == 0 {
+            break;
+        }
+        reply.extend_from_slice(&buffer[..read]);
+        if let Some(end) = bit_ids_wire::tracker_http::head_end(&reply)
+            && reply.len() - end >= 64
+        {
+            break;
+        }
+    }
+    let end = bit_ids_wire::tracker_http::head_end(&reply).expect("a reply has a head");
+    let head = String::from_utf8_lossy(&reply[..end]).into_owned();
+    assert!(head.starts_with("HTTP/1.1 206 Partial Content"), "{head}");
+    assert!(head.contains("Content-Range: bytes 64-127/65536"), "{head}");
+    assert!(head.contains("Accept-Ranges: bytes"), "{head}");
+
+    // ⛔ The bytes are the torrent's own, so a build's piece hashes would pass.
+    assert_eq!(&reply[end..end + 64], &torrent.payload()[64..128]);
+
+    let fetches = observer.fetches();
+    assert_eq!(fetches.len(), 1);
+    assert!(fetches[0].is_conforming(), "{:?}", fetches[0].refusals());
+    assert_eq!(
+        fetches[0].requested(),
+        bit_ids_probe::web_seed::Requested::Span {
+            first: 64,
+            last: 127
+        }
+    );
+    assert_eq!(fetches[0].user_agent(), Some(&b"bit-ids-driver/1"[..]));
+    assert_eq!(fetches[0].status(), Some(206));
+    assert_eq!(fetches[0].served(), 64);
+
+    drop(stream);
+    let journal = lab.shutdown();
+    let name = Slug::parse(endpoint_name(Surface::WebSeed)).expect("a canonical name");
+    // ⚠ Both directions recorded: the request as sent and the reply as written.
+    assert_eq!(journal.received(&name), request.as_bytes());
+    assert!(!journal.for_endpoint(&name).is_empty());
 }

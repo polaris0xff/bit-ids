@@ -406,6 +406,21 @@ field. ⚠ And the guard was proved only from the crate that calls it: blanking
 `check_offered` was refused by two cases in `bit-ids-probe` and by nothing in
 `bit-ids-lab`, which owns the rule. It has a case beside it now.
 
+⭐ **`bit_ids_probe::web_seed` is the fourth unit, and the surface where a
+build's identity is not the build's**: a BEP 19 fetch is an ordinary HTTP `GET`,
+so the user agent, the header order and the capitalisation belong to the HTTP
+library rather than the client, and two clients on one library look alike here
+and different everywhere else. `TorrentSpec` carries `web_seeds` now, so a
+torrent can name the endpoint. ⚠ **An empty list writes no key**, so every
+fixture digest recorded against a spec that names no web seed is unmoved.
+
+⭐ **Driven by `curl` 8.5.0, which produced a measurement rather than only a
+pass.** Its header order is `Host, Range, User-Agent, Accept` on a ranged fetch
+and `Host, User-Agent, Accept` on a plain one, which is exactly the
+library-shaped signal the surface exists to record. Both bodies were compared
+against the torrent's own payload and matched, so the seed serves bytes a
+build's piece hashes would accept rather than bytes of the right length.
+
 ## Work order
 
 1. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical

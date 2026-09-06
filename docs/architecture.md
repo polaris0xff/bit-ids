@@ -567,6 +567,25 @@ and the source port of the packet is used, so the announced port is a value that
 exists only in the packet header. A reading that took `port` regardless would
 record a number the build explicitly told it to disregard.
 
+⭐ **The web-seed observer is the one where the identity is not the client's.** A
+BEP 19 fetch is an ordinary HTTP `GET`, so the `User-Agent`, the header order and
+the capitalisation are the build's HTTP library's rather than the build's own,
+and two clients on one library look alike here and different everywhere else. It
+is read by the HTTP codec that already exists, the way local discovery is.
+
+⛔ **It serves the torrent's own payload**, because a seed answering anything
+else makes every piece fail its hash check and the build blacklists it, so the
+run would measure a build reacting to a broken server. A `Range` gets `206` and
+the exact span asked for; `200` with the whole file is legal HTTP and would
+change what the build does next.
+
+⚠ **`url-list` is the third door at its most direct**, which is why
+`TorrentSpec`'s `web_seeds` holds a checked address and a path rather than a URL
+string. There is then no URL to parse, and a parser that disagreed with the
+build's about where the authority ends cannot approve a URL the build resolves
+elsewhere. ⚠ An empty list writes no key, so a spec naming no web seed keeps the
+bytes, and the digest, it had before `OBS-11`.
+
 ⭐ **The switch is a value, not a flag.** `Capability::enable(surface)` is the
 only way to make a `Capability`, and an adjacent observer takes one. A boolean
 defaulting to false is turned on by a later `..Default::default()` in a struct

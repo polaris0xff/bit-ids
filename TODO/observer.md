@@ -1183,6 +1183,73 @@ each refused by a named case and none failed to compile: `check_offered`
 accepting anything, `OfferedPeers::of` skipping the guard, `implied_port` being
 ignored, and any token being accepted.
 
+### The web-seed observer, done on 2026-09-06
+
+⭐ **`bit_ids_probe::web_seed` answers BEP 19**, and it is the surface where a
+build's identity is not the build's. A `User-Agent` here is usually the HTTP
+library's own string rather than the client's, and so are the header order, the
+capitalisation and whether an `Accept-Encoding` or a `Connection` header appears
+at all. Two clients built on one library look alike here and different on every
+other surface, which is a distinction nothing else this project observes can
+draw.
+
+⭐ **The torrent names the endpoint, which is what the entry said this needed.**
+`TorrentSpec` carries `web_seeds` and the generator writes BEP 19's `url-list`.
+⚠ **An empty list writes no key at all**, so a spec that names no web seed
+produces exactly the bytes it produced before, and every `capture.fixture` digest
+recorded against such a spec is unmoved. A key written as an empty list would
+have moved all of them for no measurement.
+
+⛔ **A `url-list` entry is the third door at its most direct**: the torrent tells
+the build where to go and the build goes there on its own socket.
+`torrent::WebSeed` is the only way to make one and its constructor is
+`bind::check_offered`. ⭐ **It holds an address and a path rather than a URL
+string**, so there is no URL to parse: a parser that disagreed with the build's
+about where the authority ends would approve a URL the build resolves elsewhere.
+
+⛔ **It serves the torrent's own payload.** A seed answering anything else makes
+every piece fail its hash check, so the build blacklists the seed and the run
+measures a build reacting to a broken server. ⚠ A `Range` gets a `206` and the
+exact span, because answering `200` with the whole file is legal HTTP and changes
+what the build does next; a range past the end is clamped, which HTTP requires,
+and one starting past the end gets `416`, which is the protocol's own answer.
+
+⚠ **A multi-range request and a non-`bytes` unit are recorded and answered as
+though no range had been sent**, rather than with an error the build would then
+be measured reacting to. A `HEAD` is a finding rather than a refusal: a build
+that asks for the length first is doing something many do not.
+
+⭐ **Driven by `curl` 8.5.0, a complete HTTP client nobody here wrote**, over
+three fetches against `cargo run -p bit-ids-probe --example web-seed`. It
+produced a real measurement rather than only a pass: curl's header order is
+`Host, Range, User-Agent, Accept` on a ranged fetch and `Host, User-Agent,
+Accept` on a plain one, which is exactly the library-shaped signal this surface
+exists to record. The three answers were `206` with 64 bytes and
+`Content-Range: bytes 64-127/65536`, `416` over a range starting past the end,
+and `200` with all 65536. ⛔ **Both bodies were compared against the torrent's own
+payload and matched**, `payload[64..128]` and the whole file, so the seed serves
+bytes a build's piece hashes would accept rather than bytes that merely have the
+right length.
+
+⛔ **The driven run turned the gate red, and the cause was not this work.**
+`synthetic-torrent` defaulted its output path to `synthetic.torrent`, so running
+it the obvious way wrote a `.torrent` into the directory `cargo run` was invoked
+from, which is the repository root. `check-licences` reads `git ls-files` **and**
+the untracked files that are not ignored, so it refuses that file as an artifact
+this project may not redistribute, and the next `check-gate` goes red for
+something the example silently left behind. The path is required now and the
+example exits 2 with the reason. ⚠ **An ignore rule was the other repair and it
+is the wrong one**: `.gitignore`'s own header says an ignore is a deletion nobody
+notices, and hiding a redistributable-shaped artifact from the check that exists
+to find one is worse than the red gate. This is a driven-pass finding in the
+strict sense: nothing in the suite could have produced it, because no test runs
+that example from the repository root.
+
+Prove, run on 2026-09-06: the `web_seed` module is 11 unit cases and
+`a_web_seed_fetch_is_answered_with_the_torrents_own_payload` drives the whole
+path over a real TCP connection, through `bind::dial`, asserting the status line,
+the `Content-Range`, the served bytes and both journal directions.
+
 ## OBS-07: Known-client positive controls
 
 Source: reference sweep finding that self-consistency can hide observer bugs

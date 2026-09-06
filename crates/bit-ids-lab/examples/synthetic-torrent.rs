@@ -14,14 +14,34 @@
 //! ⚠ It writes one file and speaks to nothing. Handing the torrent to a client
 //! is a capture, and a capture needs a host the `docs/capture-host.md` guards
 //! permit.
+//!
+//! ⛔ **The path is required and there is no default, which is a correction.**
+//! It used to default to `synthetic.torrent`, so running this the obvious way
+//! wrote a `.torrent` into whatever directory `cargo run` was invoked from,
+//! which is the repository root. `check-licences` then refuses it: its rule
+//! about artifacts this project may not redistribute reads `git ls-files`
+//! **and** the untracked files that are not ignored, so the next `check-gate`
+//! run goes red for a file the example silently left behind. Measured on
+//! 2026-09-06 by exactly that route.
+//!
+//! ⚠ An ignore rule would have been the other repair and it is the wrong one.
+//! `.gitignore`'s own header says an ignore is a deletion nobody notices, and
+//! hiding a redistributable-shaped artifact from the check that exists to find
+//! one is worse than the red gate.
 
 use bit_ids_lab::torrent::MIN_PIECE_LENGTH;
 use bit_ids_lab::{SyntheticTorrent, TorrentSpec};
 
 fn main() {
-    let path = std::env::args()
-        .nth(1)
-        .unwrap_or_else(|| "synthetic.torrent".to_owned());
+    let Some(path) = std::env::args().nth(1) else {
+        eprintln!("usage: synthetic-torrent <path>");
+        eprintln!();
+        eprintln!("The path is required. A default landed the file in the working");
+        eprintln!("directory, which under `cargo run` is the repository root, and");
+        eprintln!("check-licences refuses a .torrent there. Write it outside the tree:");
+        eprintln!("  cargo run -p bit-ids-lab --example synthetic-torrent -- /tmp/f.torrent");
+        std::process::exit(2);
+    };
 
     // Declared here rather than defaulted, because every one of these is an
     // input the file's bytes are a function of, and the point of printing them
@@ -34,6 +54,10 @@ fn main() {
         announce: Some("http://127.0.0.1:6969/announce".to_owned()),
         private: true,
         created_at: 1_262_304_000,
+        // ⚠ Empty, so these bytes are the ones this example printed before
+        // `OBS-11` added the field. A web seed here would change the file and
+        // every digest recorded against it.
+        web_seeds: Vec::new(),
     };
 
     let torrent = match SyntheticTorrent::generate(spec.clone()) {

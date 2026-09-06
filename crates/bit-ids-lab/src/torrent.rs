@@ -42,6 +42,8 @@
 //! own first words for seed zero. Change it only by superseding the records
 //! that cite it.
 
+use std::net::{SocketAddr, SocketAddrV4};
+
 use bit_ids::canonical::Sha256Digest;
 use bit_ids_wire::bencode::{self, Value};
 use sha1::{Digest as _, Sha1};
@@ -60,6 +62,56 @@ pub const MIN_PIECE_LENGTH: u32 = 16 * 1024;
 /// down. 64 `MiB` is far above anything a capture needs to make a client
 /// announce and ask for a piece.
 pub const MAX_PAYLOAD_BYTES: u64 = 64 * 1024 * 1024;
+
+/// One BEP 19 web seed, which is an address the build will fetch from.
+///
+/// ⛔ **A `url-list` entry is the third door in
+/// [`crate::bind::check_offered`]'s sense**, and the most direct example of it:
+/// the torrent tells the build where to go and the build goes there on its own
+/// socket, so nothing this crate guards is on that path. `OBS-11` needed a web
+/// seed and this is what keeps one inside the lab.
+///
+/// ⭐ **It holds an address and a path rather than a URL string, so there is no
+/// URL to parse and no host to name.** A `String` field would need a parser to
+/// check, and a parser that disagreed with the build's about where the authority
+/// ends would approve a URL the build resolves elsewhere. An address that has
+/// been through the guard cannot be re-spelled into another one.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct WebSeed {
+    address: SocketAddrV4,
+    path: String,
+}
+
+impl WebSeed {
+    /// A web seed at `address`, serving `path`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`crate::bind::BindError::NotReachable`] for an address outside
+    /// the lab's allowed set.
+    pub fn new(address: SocketAddrV4, path: &str) -> Result<Self, crate::bind::BindError> {
+        crate::bind::check_offered(SocketAddr::V4(address))?;
+        Ok(Self {
+            address,
+            path: path.to_owned(),
+        })
+    }
+
+    /// The address, already checked.
+    #[must_use]
+    pub const fn address(&self) -> SocketAddrV4 {
+        self.address
+    }
+
+    /// The URL a build reads out of `url-list`.
+    ///
+    /// ⚠ An address literal, never a name, so nothing a build does with this
+    /// involves a resolver.
+    #[must_use]
+    pub fn url(&self) -> String {
+        format!("http://{}{}", self.address, self.path)
+    }
+}
 
 /// The declared inputs a torrent is generated from.
 ///
@@ -86,6 +138,13 @@ pub struct TorrentSpec {
     /// current time would have different bytes on every run, so two runs of one
     /// capture would cite different fixtures for the same experiment.
     pub created_at: i64,
+    /// The BEP 19 `url-list`, or empty for a torrent naming no web seed.
+    ///
+    /// ⚠ **Empty adds no key at all**, so a spec that names no web seed produces
+    /// exactly the bytes it produced before `OBS-11` added this field, and every
+    /// digest already recorded against such a spec is unmoved. A key written as
+    /// an empty list would have changed all of them for no measurement.
+    pub web_seeds: Vec<WebSeed>,
 }
 
 impl Default for TorrentSpec {
@@ -98,6 +157,7 @@ impl Default for TorrentSpec {
             announce: None,
             private: false,
             created_at: 0,
+            web_seeds: Vec::new(),
         }
     }
 }
@@ -214,6 +274,20 @@ impl SyntheticTorrent {
             document.push((
                 b"announce".to_vec(),
                 Value::bytes(announce.clone().into_bytes()),
+            ));
+        }
+        // ⚠ BEP 19 allows a bare string for one seed and a list for several.
+        // A list is written for both, because two spellings of one field is how
+        // a re-derivation from the record stops matching the bytes a run used.
+        if !spec.web_seeds.is_empty() {
+            document.push((
+                b"url-list".to_vec(),
+                Value::List(
+                    spec.web_seeds
+                        .iter()
+                        .map(|seed| Value::bytes(seed.url().into_bytes()))
+                        .collect(),
+                ),
             ));
         }
         document.sort_by(|left, right| left.0.cmp(&right.0));
