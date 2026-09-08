@@ -5,6 +5,26 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T18:52:06Z
+
+- ⛔ Client capture run 2 found two defects in code written the same day. The
+  adapters read `--version` through a pipe, so `head`'s status masked the
+  product's and the refusal was dead code; and `install-client` discarded the
+  adapter's stderr and then reported that no version arrived. Record:
+  [`TODO/clients.md`](TODO/clients.md).
+- ⭐ `qbittorrent` now fails in fifty seconds with a readable verdict rather than
+  in half an hour with none: the install succeeds and the `version` call
+  refuses.
+- ⚠ `aria2` hung again and the 900-second bound did not end the job. `-k` forces
+  a kill and the bound sits under the job timeout now, and neither is confirmed
+  to be the cause.
+- ⭐ The certain fix does not depend on that diagnosis: the workflow uploads the
+  install logs on `always()`, so the next hang leaves its own evidence whatever
+  kills the runner.
+- Deployment: nothing deployed. One capture exists and it is an evidence bundle,
+  not a record.
+
+
 ### 2026-09-08T17:54:06Z
 
 - ⭐ **The first client capture.** Client capture run 1 installed Transmission

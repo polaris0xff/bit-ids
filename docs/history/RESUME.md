@@ -27,10 +27,21 @@ adapter call, `NEEDRESTART_MODE=a` is set for apt, and `qbittorrent-nox
 --version` carries `--confirm-legal-notice` - which the `start` call had and the
 `version` call did not, a control on one of two paths into one product.
 
-**Next:** dispatch again and read it back. ⚠ Then what the first capture did NOT
-establish: a second route, a second connector, a record in the store, and the
-Windows half of each Prove. Every adapter is `sh` with no PowerShell twin, so a
-Windows client capture needs `CI-07`'s work first.
+⭐ **Run 2 answered for `qbittorrent` and not for `aria2`.** qbittorrent fails in
+fifty seconds now with a readable verdict: the install works and the `version`
+call refuses. ⛔ It also found two defects in the fix itself - the adapters read
+`--version` through a pipe, so `head`'s status masked the product's, and the
+caller discarded the adapter's stderr and then reported its absence. Both are
+fixed with cases. ⚠ `aria2` hung again for thirty-five minutes and the 900-second
+bound did not end the job, so the log went with the runner for the second time;
+`-k` and a bound under the job timeout are the guesses, and the certain fix is
+that the workflow uploads the install logs on `always()` now.
+
+**Next:** dispatch `aria2` and read the install log it will now leave, then
+`qbittorrent`'s `version` refusal, which will name itself. ⚠ Then what no capture
+has established: a second route, a second connector, a record in the store, and
+the Windows half of each Prove. Every adapter is `sh` with no PowerShell twin, so
+a Windows client capture needs `CI-07`'s work first.
 
 **Tree:** Re-measure it. This file is a claim about a tree that has moved. Check
 the branch, the remote, the clone depth, `git status` and `HEAD..origin/main`

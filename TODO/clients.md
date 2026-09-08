@@ -338,6 +338,44 @@ that silence:
 honest form: the log is gone. The next dispatch answers it, because a bounded
 call reports its own failure with the product's log beside it.
 
+### ⛔ Client capture run 2, and the two defects it found in the fix
+
+**It answered for one of the two and not the other**, which is worth stating in
+that order because the second is the more interesting failure.
+
+⭐ **`qbittorrent` now fails in fifty seconds with a readable verdict**:
+`installed through the package route but would not report a version`. The
+install itself succeeded in fourteen seconds; it is the `version` call that
+refuses. ⛔ **And the run could not say WHICH refusal fired, because of two
+defects in code written the same day:**
+
+1. **The adapters read `--version` through a pipe.** `LINE=$(... | head -1) ||
+   cannot` reads `head`'s status, and `head` exits 0 over anything, so the guard
+   was dead code and a build that refused to answer reached the parse instead of
+   the refusal. ⚠ This repository's oldest stated rule, broken in every adapter
+   at once, on the day they were written.
+2. **The caller discarded the adapter's stderr and then reported its absence.**
+   `install-client` ran `version` under `2>/dev/null`, so an adapter that said
+   exactly which of its three refusals fired arrived as a bare exit code.
+
+Both are fixed and both have a case: the exit code is read unpiped, the
+adapter's message is printed with the refusal, and the harness asserts a
+planted message reaches the log.
+
+⛔ **`aria2` is not answered, and the bound did not fire.** Its install step ran
+for thirty-five minutes under a 900-second bound and the job's own timeout killed
+the runner, taking the log with it for the second time. ⚠ **Two possibilities
+remain open and the run cannot separate them**: `timeout` sends `TERM` and then
+waits, so a child that blocks or ignores it is never killed; or the bound fired
+and something the adapter left running held the step open. Both are now
+addressed - `-k` forces a `KILL`, the bound sits at 420 seconds under a
+25-minute job so it reports with margin - and neither is confirmed.
+
+⭐ **The certain fix is the one that does not depend on the diagnosis.** The
+workflow uploads the install logs on `always()` now, so the next hang leaves its
+own evidence whatever kills the runner. ⚠ Two dispatches lost their diagnosis to
+a step whose only upload came after a capture that never happened.
+
 ## CLIENT-07: Deluge capture adapter
 
 Source: operator scope and upstream project

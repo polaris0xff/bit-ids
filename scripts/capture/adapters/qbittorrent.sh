@@ -119,10 +119,23 @@ case "$COMMAND" in
     # applied to one of two paths into the same product.
     # ⚠ Stdin is /dev/null as well, because a flag that stops one prompt is not
     # a flag that stops every prompt.
-    LINE=$("$BINARY" --confirm-legal-notice --version </dev/null 2>/dev/null | head -1) ||
-      cannot "qbittorrent-nox would not report its version"
+    # ⛔ THE EXIT CODE IS READ FROM THE PROCESS THAT PRODUCED IT, UNPIPED. This
+    # was `$(... | head -1) || cannot`, whose `||` reads HEAD's status: head
+    # exits 0 over anything, so the guard was dead code and a build that refused
+    # to answer reached the parse instead of the refusal. ⚠ Measured on
+    # 2026-09-08, when a client capture reported "would not report a version" and
+    # nothing said which of three refusals had fired. This repository's oldest
+    # stated rule, broken in every adapter at once.
+    # ⚠ stderr is KEPT here rather than discarded. A product that refuses to
+    # answer says why on it, and the caller prints what this prints.
+    OUTPUT=$("$BINARY" --confirm-legal-notice --version </dev/null 2>&1)
+    VERSION_RC=$?
+    [ "$VERSION_RC" = 0 ] ||
+      cannot "qbittorrent-nox --version exited $VERSION_RC: $(printf '%s' "$OUTPUT" | head -3 | tr '\n' ' ')"
+    LINE=$(printf '%s\n' "$OUTPUT" | grep -i qbittorrent | head -1)
+    [ -n "$LINE" ] || LINE=$(printf '%s\n' "$OUTPUT" | head -1)
     VERSION=$(printf '%s' "$LINE" | awk '{ print $NF }' | sed 's/^v//')
-    [ -n "$VERSION" ] || cannot "qbittorrent-nox reported no parseable version: $LINE"
+    [ -n "$VERSION" ] || cannot "qbittorrent-nox reported no parseable version: [$LINE]"
     printf '%s\n' "$VERSION"
     ;;
 

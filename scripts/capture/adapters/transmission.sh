@@ -130,10 +130,22 @@ case "$COMMAND" in
     # ⛔ THE BUILD SPEAKING. `transmission-daemon 4.0.5 (fac9a5f1c8)` is the
     # shape; the field taken is the version alone and the build hash beside it
     # is left where it is, because a version and a build are two facts.
-    LINE=$("$BINARY" --version 2>&1 | head -1) ||
-      cannot "transmission-daemon would not report its version"
+    # ⛔ THE EXIT CODE IS READ FROM THE PROCESS THAT PRODUCED IT, UNPIPED. This
+    # was `$(... | head -1) || cannot`, whose `||` reads HEAD's status: head
+    # exits 0 over anything, so the guard was dead code and a build that refused
+    # to answer reached the parse instead of the refusal. ⚠ Measured on
+    # 2026-09-08, when a client capture reported "would not report a version" and
+    # nothing said which of three refusals had fired. This repository's oldest
+    # stated rule, broken in every adapter at once.
+    # ⚠ Merged on purpose: this product prints its version to stderr, which
+    # shell.md section 3 names as the case where merging is the decision.
+    OUTPUT=$("$BINARY" --version 2>&1 </dev/null)
+    VERSION_RC=$?
+    [ "$VERSION_RC" = 0 ] ||
+      cannot "transmission-daemon --version exited $VERSION_RC"
+    LINE=$(printf '%s\n' "$OUTPUT" | head -1)
     VERSION=$(printf '%s' "$LINE" | awk '{ print $2 }')
-    [ -n "$VERSION" ] || cannot "transmission-daemon reported no parseable version: $LINE"
+    [ -n "$VERSION" ] || cannot "transmission-daemon reported no parseable version: [$LINE]"
     printf '%s\n' "$VERSION"
     ;;
 

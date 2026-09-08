@@ -104,8 +104,15 @@ done
 # this is the one call site every adapter passes through.
 #
 # ⭐ AND STDIN IS /dev/null, so a prompt gets end-of-file rather than a wait.
-INSTALL_SECONDS=${BIT_IDS_INSTALL_TIMEOUT:-900}
+# ⚠ THE BOUND SITS WELL UNDER THE WORKFLOW STEP'S OWN TIMEOUT, so this reports
+# rather than being killed with its log. Measured on 2026-09-08: a 900s bound
+# under a 30-minute job did not end the job, and the runner was killed at the
+# job timeout with the diagnosis still on it.
+# ⛔ AND -k IS NOT DECORATION. `timeout` sends TERM and then waits; a child that
+# blocks or ignores it is never killed at all, so the bound reports nothing.
+INSTALL_SECONDS=${BIT_IDS_INSTALL_TIMEOUT:-420}
 VERSION_SECONDS=${BIT_IDS_VERSION_TIMEOUT:-60}
+KILL_AFTER=${BIT_IDS_KILL_AFTER:-20}
 command -v timeout >/dev/null 2>&1 || cannot "timeout is not on this host"
 
 # ⛔ THE ROUTE VOCABULARY IS CLOSED. `docs/client-matrix.md` names two candidate
@@ -139,7 +146,7 @@ TARGET=$(sh "$ADAPTER" describe 2>/dev/null | awk -F= '$1 == "target" { print $2
 
 STARTED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-timeout "$INSTALL_SECONDS" sh "$ADAPTER" install "$ROUTE" "$WORKDIR" </dev/null
+timeout -k "$KILL_AFTER" "$INSTALL_SECONDS" sh "$ADAPTER" install "$ROUTE" "$WORKDIR" </dev/null
 INSTALL_RC=$?
 
 # ⚠ THE LOGS THE ROUTE WROTE ARE PRINTED ON EVERY FAILURE, INDENTED. Without
@@ -176,14 +183,29 @@ esac
 # ⛔ AND THE BUILD IS ASKED, HERE, WHILE THERE IS STILL SOMETHING TO DO ABOUT A
 # FAILURE. An install whose executable cannot answer is a route that did not
 # work, and finding that out under containment would be finding it out too late.
-VERSION=$(timeout "$VERSION_SECONDS" sh "$ADAPTER" version 2>/dev/null </dev/null)
+# ⛔ THE ADAPTER'S OWN MESSAGE IS KEPT, NOT DISCARDED. This read `2>/dev/null`,
+# so a refusal arrived here as a bare exit code and the step printed "would not
+# report a version" over an adapter that had said exactly which of its three
+# refusals fired. ⚠ Measured on 2026-09-08: a client capture reported that and
+# the cause could not be read from the run at all. Silencing the diagnosis and
+# then reporting its absence is one defect, not two.
+VERSION=$(timeout -k "$KILL_AFTER" "$VERSION_SECONDS" sh "$ADAPTER" version 2>"$WORKDIR/version.err" </dev/null)
 VERSION_RC=$?
+show_adapter_error() {
+  [ -s "$WORKDIR/version.err" ] || return 0
+  printf '          -- the adapter said\n' >&2
+  sed 's/^/          /' "$WORKDIR/version.err" >&2
+}
 case "$VERSION_RC" in
   0) : ;;
   124)
+    show_adapter_error
     refuse "$TARGET installed through the $ROUTE route and did not answer --version within ${VERSION_SECONDS}s"
     ;;
-  *) refuse "$TARGET installed through the $ROUTE route but would not report a version" ;;
+  *)
+    show_adapter_error
+    refuse "$TARGET installed through the $ROUTE route but would not report a version (adapter exit $VERSION_RC)"
+    ;;
 esac
 [ -n "$VERSION" ] ||
   refuse "$TARGET installed through the $ROUTE route and reported an empty version"

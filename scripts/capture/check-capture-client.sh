@@ -150,7 +150,12 @@ case "$COMMAND" in
     fi
     ;;
   version)
-    [ "${BIT_IDS_STUB_VERSION_RC:-0}" = 0 ] || exit "$BIT_IDS_STUB_VERSION_RC"
+    if [ "${BIT_IDS_STUB_VERSION_RC:-0}" != 0 ]; then
+      # A real adapter says WHICH of its refusals fired, on stderr. The caller
+      # is what decides whether anybody ever sees it.
+      printf 'stub-adapter: the product exited 7 and here is why\n' >&2
+      exit "$BIT_IDS_STUB_VERSION_RC"
+    fi
     [ "${BIT_IDS_STUB_HANG:-}" = version ] && exec tail -f /dev/null
     printf '%s\n' "${BIT_IDS_STUB_VERSION-1.2.3}"
     ;;
@@ -655,6 +660,15 @@ else
   install_case 1 "would not report a version" \
     "an install whose build will not report a version is refused" \
     --adapter "$STUB" --route package --workdir "$WORK/inst-noversion"
+  # ⛔ AND THE ADAPTER'S OWN MESSAGE REACHES THE LOG. The caller read the
+  # adapter's stderr into /dev/null and then reported that no version arrived,
+  # which is silencing a diagnosis and complaining about its absence. Measured
+  # on 2026-09-08 by a client capture whose cause could not be read at all.
+  if grep -q -F -e "the product exited 7 and here is why" "$WORK/err"; then
+    pass "the refusal carries what the adapter said"
+  else
+    fail "the refusal carries what the adapter said"
+  fi
   BIT_IDS_STUB_VERSION_RC=0
 
   BIT_IDS_STUB_VERSION=""

@@ -47,7 +47,7 @@ jobs:
   linux:
     name: Linux client capture (${{ matrix.adapter }})
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 25
     # ⛔ READ ONLY. A capture produces an artifact and never a commit.
     permissions:
       contents: read
@@ -99,6 +99,23 @@ jobs:
             --workdir "$RUNNER_TEMP/install-package" \
             --record "$RUNNER_TEMP/install-package.txt"
           cat "$RUNNER_TEMP/install-package.txt"
+
+      # ⛔ THE INSTALL'S OWN LOGS GO UP WHETHER OR NOT THE INSTALL WORKED, and
+      # this step exists because two dispatches lost their diagnosis. The
+      # evidence upload below runs only after a capture, so a job that never got
+      # past the install uploaded nothing at all - and when the job's own
+      # timeout killed the runner, the log went with it. ⚠ if-no-files-found is
+      # `warn` here rather than `error`: a job that failed before the workdir
+      # existed has nothing to upload, and failing this step would replace one
+      # missing diagnosis with another.
+      - name: Upload the install logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: install-${{ matrix.adapter }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/install-package
+          if-no-files-found: warn
+          retention-days: 30
 
       # ⛔ BOTH ADDRESS FAMILIES. A host with IPv4 unplugged and IPv6 up still
       # reaches the internet.

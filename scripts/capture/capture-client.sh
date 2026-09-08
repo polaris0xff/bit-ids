@@ -161,6 +161,9 @@ done
 #
 # ⭐ AND STDIN IS /dev/null on every one, so a prompt gets end-of-file.
 ADAPTER_SECONDS=${BIT_IDS_ADAPTER_TIMEOUT:-120}
+# ⛔ -k, because `timeout` sends TERM and then waits: a child that blocks or
+# ignores it is never killed and the bound reports nothing.
+ADAPTER_KILL_AFTER=${BIT_IDS_KILL_AFTER:-20}
 
 # ⛔ THE BUILD RAN BEFORE THE NETWORK WAS CUT, OR IT DID NOT RUN. `could not
 # run` rather than a guard refusing: nothing about the host is wrong.
@@ -223,7 +226,7 @@ mkdir -p "$WORKDIR" || cannot "cannot create $WORKDIR"
 # itself never launches a process at all. `describe` prints key=value lines: the
 # target it drives and whether it is a stock product or a stand-in.
 ADAPTER_DESC="$OUT/adapter.describe"
-timeout "$ADAPTER_SECONDS" sh "$ADAPTER" describe </dev/null \
+timeout -k "$ADAPTER_KILL_AFTER" "$ADAPTER_SECONDS" sh "$ADAPTER" describe </dev/null \
   >"$ADAPTER_DESC" 2>"$OUT/adapter.err" ||
   cannot "the adapter could not describe itself"
 
@@ -240,7 +243,7 @@ esac
 # ask it is `could not run`: there is no fixture fallback here, because a run
 # reporting `measured_build=none` beside `kind=client` would be the record
 # claiming a build it never identified.
-MEASURED_BUILD=$(timeout "$ADAPTER_SECONDS" sh "$ADAPTER" version </dev/null 2>>"$OUT/adapter.err")
+MEASURED_BUILD=$(timeout -k "$ADAPTER_KILL_AFTER" "$ADAPTER_SECONDS" sh "$ADAPTER" version </dev/null 2>>"$OUT/adapter.err")
 VERSION_RC=$?
 [ "$VERSION_RC" != 124 ] ||
   cannot "the installed build did not answer --version within ${ADAPTER_SECONDS}s"
@@ -288,11 +291,11 @@ fi
 # ⭐ THE CLIENT IS STARTED WITH THE TORRENT AND NOTHING ELSE. It learns the
 # tracker's address by reading the file, which is what a stock build does with
 # any torrent, so nothing here is a control the product does not already have.
-timeout "$ADAPTER_SECONDS" sh "$ADAPTER" start "$TORRENT" "$WORKDIR" "${PEER_PORT:-0}" \
+timeout -k "$ADAPTER_KILL_AFTER" "$ADAPTER_SECONDS" sh "$ADAPTER" start "$TORRENT" "$WORKDIR" "${PEER_PORT:-0}" \
   </dev/null >"$OUT/client.log" 2>&1
 START_RC=$?
 if [ "$START_RC" != 0 ]; then
-  timeout "$ADAPTER_SECONDS" sh "$ADAPTER" stop "$WORKDIR" </dev/null >/dev/null 2>&1
+  timeout -k "$ADAPTER_KILL_AFTER" "$ADAPTER_SECONDS" sh "$ADAPTER" stop "$WORKDIR" </dev/null >/dev/null 2>&1
   wait "$OBSERVER_PID" 2>/dev/null
   sed 's/^/          /' "$OUT/client.log" >&2
   if [ "$START_RC" = 124 ]; then
@@ -307,7 +310,7 @@ OBSERVER_RC=$?
 # ⚠ STOPPED WHATEVER HAPPENED ABOVE. A client left running holds a port and its
 # own executable open, and on a host that is about to upload evidence that is a
 # process writing into the directory being uploaded.
-timeout "$ADAPTER_SECONDS" sh "$ADAPTER" stop "$WORKDIR" </dev/null >>"$OUT/client.log" 2>&1
+timeout -k "$ADAPTER_KILL_AFTER" "$ADAPTER_SECONDS" sh "$ADAPTER" stop "$WORKDIR" </dev/null >>"$OUT/client.log" 2>&1
 STOP_RC=$?
 
 [ "$OBSERVER_RC" = "0" ] || {
