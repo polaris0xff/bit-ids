@@ -70,7 +70,13 @@ ME=check-formats
 # shellcheck source=scripts/corpus/store-lib.sh
 . "$ROOT/scripts/corpus/store-lib.sh"
 
-store_require cargo sha256sum
+# ⛔ python3 IS REQUIRED RATHER THAN OPTIONAL, and its sqlite3 module is why.
+# The queryable rendering has to be opened by a reader this project did not
+# write, and Python's is in the standard library - unlike `cbor2`, which needs
+# the package index and therefore stayed out of the gate. A host without
+# python3 exits 2 here, which the gate reads as a skip and never as a pass;
+# ubuntu-24.04 carries one and the Linux lane runs this with --strict.
+store_require cargo sha256sum python3
 BUILDER=$(store_build "$ROOT" build-store) || exit 2
 RENDERER=$(store_build "$ROOT" build-formats) || exit 2
 ASSEMBLER=$(store_build "$ROOT" assemble-release) || exit 2
@@ -81,6 +87,7 @@ trap 'rm -rf "$WORK"' EXIT INT TERM
 STORE="$WORK/store"
 SCHEME="fixture-client:-:3:3"
 CSV="formats/bit-ids-v1.csv"
+SQLITE="formats/bit-ids-v1.sqlite3"
 COMBINED="formats/bit-ids-v1.json"
 
 mkdir -p "$STORE" "$WORK/first" "$WORK/second" || exit 2
@@ -110,10 +117,20 @@ else
 fi
 
 RENDERED=$(tree_files "$WORK/first")
-if [ "$RENDERED" = "5" ]; then
-  pass "determinism  five files were rendered, so the comparison had something to compare"
+if [ "$RENDERED" = "6" ]; then
+  pass "determinism  six files were rendered, so the comparison had something to compare"
 else
-  fail "determinism  $RENDERED file(s) rendered, expected 5"
+  fail "determinism  $RENDERED file(s) rendered, expected 6"
+fi
+
+# ⭐ THE DATABASE IS COMPARED ON ITS OWN, not only inside the tree digest.
+# It is the one rendering whose bytes are an encoder's choice rather than this
+# project's, so a page order or a freelist that moved between two builds would
+# be lost in a digest over five other files that did not.
+if cmp -s "$WORK/first/$SQLITE" "$WORK/second/$SQLITE"; then
+  pass "determinism  two builds of the database are byte-identical"
+else
+  fail "determinism  the database differs between two builds of one store"
 fi
 
 # -- the record set is the views' ---------------------------------------------
@@ -185,7 +202,7 @@ else
 
   MISSING=0
   for name in bit-ids-v1.cbor bit-ids-v1.columns.json bit-ids-v1.csv \
-    bit-ids-v1.json bit-ids-v1.jsonl; do
+    bit-ids-v1.json bit-ids-v1.jsonl bit-ids-v1.sqlite3; do
     grep -q -F -e "formats/$name" "$WORK/first/MANIFEST.json" || MISSING=$((MISSING + 1))
   done
   if [ "$MISSING" = "0" ]; then
@@ -212,6 +229,142 @@ else
   else
     fail "release  sha256sum -c accepted a file that had changed"
   fi
+fi
+
+# -- ⭐ THE QUERYABLE RENDERING, READ BY SOMEBODY ELSE'S SQLITE ----------------
+#
+# `PUB-05` writes this file with a vendored SQLite 3.50.2 compiled into the
+# crate. Python's standard library carries its own, at whatever version this
+# host has, so opening the file here is two implementations agreeing rather than
+# one agreeing with itself - and the reader is older than the writer on the host
+# this was written on, which is the direction that matters for a published file.
+#
+# ⛔ THE ROUND TRIP IS AGAINST THE JSON RENDERING AND NOT AGAINST THE DATABASE.
+# A `document` column compared with the rows derived from it would agree with
+# itself; the combined JSON is a separate published file, so a database that
+# described a different record set is caught.
+#
+# ⚠ The script is written to a file and its path is passed. A prose payload does
+# not go through a shell - `docs/conventions/shell.md` section 1.
+cat >"$WORK/read-db.py" <<'PYTHON'
+"""Read a rendered formats tree with a SQLite this project did not write."""
+
+import json
+import sqlite3
+import sys
+
+tree = sys.argv[1]
+out = []
+
+
+def case(ok, text):
+    out.append(("PASS" if ok else "FAIL", text))
+
+
+con = sqlite3.connect(tree + "/formats/bit-ids-v1.sqlite3")
+case(
+    con.execute("PRAGMA integrity_check").fetchone()[0] == "ok",
+    "sqlite    integrity_check passes under python's sqlite3 %s" % sqlite3.sqlite_version,
+)
+case(not con.execute("PRAGMA foreign_key_check").fetchall(), "sqlite    every foreign key resolves")
+
+meta = dict(con.execute("SELECT key, value FROM meta"))
+combined = json.load(open(tree + "/formats/bit-ids-v1.json", encoding="utf-8"))
+case(
+    meta.get("records") == str(len(combined)),
+    "sqlite    meta names the same record count the combined JSON has",
+)
+case(con.execute("SELECT count(*) FROM omission").fetchone()[0] > 0,
+     "sqlite    the file says what it does not carry, in a table")
+
+rows = dict(con.execute("SELECT record, canonical FROM document"))
+by_id = {record["id"]: record for record in combined}
+case(set(rows) == set(by_id), "sqlite    it publishes exactly the record set the JSON rendering does")
+case(
+    all(json.loads(rows[key]) == by_id[key] for key in by_id if key in rows),
+    "sqlite    every stored document round-trips to the JSON rendering's record",
+)
+
+# ⛔ The columns are compared against the document they were derived from,
+# because a schema that dropped a section would still round-trip `document`.
+agree = True
+counted = 0
+for key, canonical in rows.items():
+    record = json.loads(canonical)
+    row = con.execute(
+        "SELECT schema, target, target_kind, version, platform, arch, package,"
+        " executable, capture, captured_at, supersedes FROM record WHERE id = ?",
+        (key,),
+    ).fetchone()
+    want = (
+        record["schema"],
+        record["target"]["id"],
+        record["target"]["kind"],
+        record["build"]["version"],
+        record["build"]["platform"],
+        record["build"]["arch"],
+        record["build"]["package"],
+        record["build"]["executable"],
+        record["capture"]["id"],
+        record["capture"]["captured_at"],
+        record.get("supersedes"),
+    )
+    agree = agree and row == want
+    for table, section in (
+        ("acquisition", "acquisition"),
+        ("observation", "observations"),
+        ("corroboration", "corroboration"),
+        ("normalization", "normalizations"),
+        ("evidence", "evidence"),
+    ):
+        held = con.execute(
+            "SELECT count(*) FROM %s WHERE record = ?" % table, (key,)
+        ).fetchone()[0]
+        agree = agree and held == len(record[section])
+        counted += held
+case(agree, "sqlite    every column and every list agrees with the document it came from")
+
+# ⚠ A count nothing compares is a count worth nothing: the tables the CSV cannot
+# hold have to be non-empty, or the case above passes over a database of zeroes.
+case(counted > 0, "sqlite    the sections the table cannot hold are tabulated here, and are not empty")
+
+for status, text in out:
+    print("%s %s" % (status, text))
+sys.exit(0 if all(status == "PASS" for status, _ in out) else 1)
+PYTHON
+
+python3 "$WORK/read-db.py" "$WORK/first" >"$WORK/read-db.out" 2>&1
+READ_RC=$?
+if [ "$READ_RC" = "2" ] || ! [ -s "$WORK/read-db.out" ]; then
+  fail "sqlite    the independent reader could not run (exit $READ_RC): $(head -3 "$WORK/read-db.out" | tr '\n' ' ')"
+else
+  # ⚠ Each of the reader's own cases is reported as a row here rather than as
+  # one pass, so a reader that answered six questions and a reader that answered
+  # one are not the same green.
+  while IFS= read -r line; do
+    case "$line" in
+      PASS\ *) pass "${line#PASS }" ;;
+      *) fail "${line#FAIL }" ;;
+    esac
+  done <"$WORK/read-db.out"
+fi
+
+# ⛔ AND THE READER HAS BEEN SEEN TO REFUSE. A verifier nobody has watched fail
+# is a verifier nobody knows works, and this one carries six of the cases above.
+# ⚠ The plant is a truncation rather than a byte flipped in the middle: SQLite
+# reads a page at a time, so a change inside an unread page is invisible to
+# `integrity_check` on a file this small.
+cp "$WORK/first/$SQLITE" "$WORK/plant.sqlite3" || exit 2
+mkdir -p "$WORK/planted/formats" || exit 2
+cp "$WORK/first/formats/bit-ids-v1.json" "$WORK/planted/formats/" || exit 2
+dd if="$WORK/plant.sqlite3" of="$WORK/planted/$SQLITE" bs=1 \
+  count=$(($(wc -c <"$WORK/plant.sqlite3") - 4096)) >/dev/null 2>&1
+python3 "$WORK/read-db.py" "$WORK/planted" >"$WORK/read-db2.out" 2>&1
+PLANT_RC=$?
+if [ "$PLANT_RC" = "0" ]; then
+  fail "sqlite    the independent reader accepted a truncated database"
+else
+  pass "sqlite    and it refuses a database whose bytes were truncated (exit $PLANT_RC)"
 fi
 
 PROBE=$(find "$STORE/profiles" -name '*.json' | LC_ALL=C sort | head -1)

@@ -25,8 +25,21 @@ formats/bit-ids-v1.sqlite3
 formats/bit-ids-v1.cbor
 ```
 
-⚠ `bit-ids-v1.sqlite3` is the one path here nothing writes yet. `PUB-05` owns it
-and is blocked on a dependency decision, not on work.
+⭐ **Every path here is written.** `PUB-05` closed the last one,
+`bit-ids-v1.sqlite3`, and it is the only rendering that needs a third-party
+encoder: [`../crates/bit-ids/src/sqlite.rs`](../crates/bit-ids/src/sqlite.rs) is
+the one file that does. ⛔ **It is not behind a feature and cannot be**, because
+`PUB-04` derives a consumer's caching contract from the set of published paths,
+so a build that could omit one would publish a manifest with a hole in it and
+say nothing.
+
+⭐ **The database is the only rendering that is both queryable and lossless.**
+The CSV cannot hold the acquisition routes, the observations, the corroboration
+or the evidence list, and publishes a columns document beside it saying so; this
+one tabulates all four and keeps each record's canonical bytes in a `document`
+table as well, so a consumer can re-derive the published record from the file
+rather than trusting its columns. ⚠ What it does not tabulate it says in an
+`omission` table, because a database can describe itself and a CSV cannot.
 
 ⛔ **`routes/v1/<target>/<version>/<platform>/<arch>.json` was in this layout and
 has been removed, because it cannot be written in that shape.** It omits

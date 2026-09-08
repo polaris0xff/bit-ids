@@ -1066,6 +1066,11 @@ non-injective layout section 4 describes, in a second place.
   [`capture-host.md`](capture-host.md) guards permit, which `CI-06` has now
   dispatched. What stands between here and a first capture of a *build* is a
   client adapter: what that workflow captures today is a fixture and says so.
+- ⭐ Every path [`publishing.md`](publishing.md) promises is written as of
+  `PUB-05`, whose SQLite rendering is the one place this workspace takes a
+  vendored C library. ⚠ It is required rather than optional: `PUB-04` derives a
+  consumer's caching contract from the set of published paths, so a build that
+  could omit one would publish a manifest missing a documented file.
 - ⚠ Nothing assembles a store yet. `PUB-01` builds the publication tree and
   `PUB-02` runs the append comparison over the fetched `data` branch; until both
   exist, the store and corpus checks are pointed at directories by hand or at

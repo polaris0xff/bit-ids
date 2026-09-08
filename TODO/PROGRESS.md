@@ -2,10 +2,10 @@
 
 State instant: 2026-09-08
 Total: 63
-Open: 25
+Open: 24
 In progress: 0
 Blocked: 0
-Done: 38
+Done: 39
 
 ⚠ Those five counts are compared against
 [`INDEX.md`](INDEX.md) by `check-project.sh` on every gate, so they cannot go
@@ -37,7 +37,7 @@ What exists is every layer a capture passes through, and each one is closed:
 | observers | `bit-ids-probe` | what each surface answers with, one module per surface |
 | store | `bit-ids` | where a record is filed, what a successor tree may do to it, and the views a consumer reads |
 | capture | `scripts/capture/`, `.github/workflows/capture.yml` | the host a capture is allowed to run on, the order that keeps it contained, and the evidence a run uploads |
-| publishing | `bit-ids`, `scripts/publishing/` | the assembled bundle, the append-only push, the renderings, and the access contract |
+| publishing | `bit-ids`, `scripts/publishing/` | the assembled bundle, the append-only push, the six renderings including the queryable one, and the access contract |
 | consuming | `bit-ids` | reading a publication back, verified, with no way to reach a network |
 | maintenance | `bit-ids`, `scripts/ci/` | what a new stable release creates, and what it must not create twice |
 
@@ -143,27 +143,27 @@ in order.
 
 ⭐ **`CI-06` is closed and the button has been pressed.** Both platforms captured
 green on run 2, so nothing below waits on a runner question any more.
+⭐ **`PUB-05` is closed too**, so every path `docs/publishing.md` promises is
+written and the dependency question under *Settled decisions* is spent.
 
-1. **`PUB-05`**, the SQLite rendering, which needs no capture and no runner. The
-   dependency question is settled below.
-2. **`LIB-02`**, the bit-cli adapter, which needs neither. Clone the public
-   repository into a scratch directory and run its suite there.
-3. **`CLIENT-01`, `CLIENT-06`, `CLIENT-05`**, the first complete vertical
+1. **`LIB-02`**, the bit-cli adapter, which needs no capture and no runner.
+   Clone the public repository into a scratch directory and run its suite there.
+2. **`CLIENT-01`, `CLIENT-06`, `CLIENT-05`**, the first complete vertical
    captures. ⭐ The workflow they run in is measured now rather than assumed.
    `TODO/clients.md` carries the acquisition routes.
-4. **`CI-09`**, the capture-to-publisher path. ⚠ A real capture artifact exists
+3. **`CI-09`**, the capture-to-publisher path. ⚠ A real capture artifact exists
    to hand the publisher's dry run, so this is unblocked; what it establishes is
    whether a v8 download reads a v7 upload.
-5. **`OBS-07` and `OBS-10`**, which need a stock client build and a second
+4. **`OBS-07` and `OBS-10`**, which need a stock client build and a second
    platform, so they follow the captures.
-6. **`CI-07`, `CI-08` and `FOUND-05`**, which harden the gate rather than extend
+5. **`CI-07`, `CI-08` and `FOUND-05`**, which harden the gate rather than extend
    it: the thirteen declared PowerShell rows, the host defaults the scripts
    inherit rather than state, and the three tools a session installs by hand.
    ⚠ `CI-08` gained the harness `CI-06` needed and did not write: nothing runs a
    capture step's body.
-7. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
+6. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
    bind attestations to.
-8. The remaining client and engine breadth, then refinements.
+7. The remaining client and engine breadth, then refinements.
 
 ## Settled decisions
 
@@ -172,7 +172,7 @@ anything.** They are recorded here so no session re-raises them.
 
 | question | answer |
 | --- | --- |
-| how the SQLite rendering gets written | `rusqlite` with the bundled feature, pinned, with the `unsafe` exception recorded against that one dependency rather than the workspace lint relaxed. Check the output opens in a reader this project did not write. `PUB-05`. |
+| how the SQLite rendering gets written | ⭐ **Spent.** `rusqlite` 0.37.0 with `bundled` and `serialize`, checked against python's own SQLite on every gate. `PUB-05` closed on it, and nothing was relaxed: `unsafe_code = "forbid"` binds this workspace's crates and a dependency compiles under its own. |
 | how `LIB-02` reaches bit-cli's tests | clone the public `Azathothas/bit-cli` into a scratch directory and run its suite there. ⛔ Nothing is written to it; rule 10 holds. |
 | whether Windows captures are permitted | yes. The guard pair exists and is mutation-proven; a hosted `windows-latest` runner is a fresh virtual machine per job, and its default routes are removed before the capture. `CI-03`. |
 | what happens to a first measured record | it publishes automatically once the capture is green. No manual gate. |

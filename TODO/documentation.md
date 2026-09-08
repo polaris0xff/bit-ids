@@ -46,8 +46,11 @@ running it would have said so.
 
 ### Decision: what is deliberately not on the page
 
-⚠ **No SQLite example**, because `PUB-05` is blocked on a dependency decision and
-nothing writes `formats/bit-ids-v1.sqlite3`. ⚠ **No fetched URL**, because
+⚠ **No SQLite example**, and after `PUB-05` that is a choice rather than an
+absence: the file is written now, and it is the one rendering that describes
+itself - any SQLite reads it and `sqlite_master` says what it carries.
+[`../docs/consuming.md`](../docs/consuming.md) names it and the cost it puts on
+a consumer. ⚠ **No fetched URL**, because
 nothing has been published; the forms live in `docs/publishing.md` and say they
 are unexercised. ⛔ **No measured profile**, because there are none. Each is
 named on the page rather than left as an absence a reader has to notice.
@@ -98,7 +101,9 @@ an unlinked page is not read, so it is not corrected.
   Rust block count is zero, but a page whose Rust block drifts from the test
   would pass. Extracting it needs a build script.
 - ⚠ Three of the Approach's four example subjects exist. Raw URLs and release
-  assets wait on a first publication, and SQLite waits on `PUB-05`.
+  assets wait on a first publication. ⭐ SQLite no longer waits on anything:
+  `PUB-05` writes the file, and the page names it rather than showing a query,
+  because a database carries its own schema.
 - ⚠ `DOC-02`, the contributor capture-run handbook, is separate and is `P2`.
 
 ## DOC-02: Contributor capture-run handbook

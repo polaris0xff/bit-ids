@@ -12,4 +12,9 @@ workspace = true
 [dependencies]
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
+# PUB-05 takes this deliberately and docs/supply-chain.md carries the argument.
+# `bundled` compiles a vendored SQLite so the published bytes do not depend on
+# whatever library a host happens to have, and `serialize` is what lets the
+# database be produced in memory: this crate owns no filesystem.
+rusqlite = { version = "0.37.0", features = ["bundled", "serialize"] }
 sha2 = "0.11.0"

@@ -134,8 +134,24 @@ redistribute = "refused"
 notice = ""
 
 [[dependencies]]
+name = "bitflags"
+version = "2.13.1"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
 name = "block-buffer"
 version = "0.12.1"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "cc"
+version = "1.4.5"
 licence = "MIT OR Apache-2.0"
 licence_source = "crate-manifest"
 redistribute = "refused"
@@ -182,6 +198,54 @@ redistribute = "refused"
 notice = ""
 
 [[dependencies]]
+name = "fallible-iterator"
+version = "0.3.0"
+licence = "MIT/Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "fallible-streaming-iterator"
+version = "0.1.9"
+licence = "MIT/Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "find-msvc-tools"
+version = "0.1.12"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "foldhash"
+version = "0.1.5"
+licence = "Zlib"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "hashbrown"
+version = "0.15.5"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "hashlink"
+version = "0.10.0"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
 name = "hybrid-array"
 version = "0.4.14"
 licence = "MIT OR Apache-2.0"
@@ -206,9 +270,25 @@ redistribute = "refused"
 notice = ""
 
 [[dependencies]]
+name = "libsqlite3-sys"
+version = "0.35.0"
+licence = "MIT"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = "The crate is MIT and it VENDORS SQLite 3.50.2, whose own source says the author disclaims copyright. Read out of the amalgamation in the package rather than from a summary of it. PUB-05 compiles that copy, so the published database is written by code this row covers."
+
+[[dependencies]]
 name = "memchr"
 version = "2.8.3"
 licence = "Unlicense OR MIT"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "pkg-config"
+version = "0.3.34"
+licence = "MIT OR Apache-2.0"
 licence_source = "crate-manifest"
 redistribute = "refused"
 notice = ""
@@ -225,6 +305,14 @@ notice = ""
 name = "quote"
 version = "1.0.47"
 licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "rusqlite"
+version = "0.37.0"
+licence = "MIT"
 licence_source = "crate-manifest"
 redistribute = "refused"
 notice = ""
@@ -278,6 +366,22 @@ redistribute = "refused"
 notice = ""
 
 [[dependencies]]
+name = "shlex"
+version = "2.0.1"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "smallvec"
+version = "1.16.0"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
 name = "syn"
 version = "3.0.4"
 licence = "MIT OR Apache-2.0"
@@ -297,6 +401,14 @@ notice = ""
 name = "unicode-ident"
 version = "1.0.24"
 licence = "(MIT OR Apache-2.0) AND Unicode-3.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "vcpkg"
+version = "0.2.15"
+licence = "MIT/Apache-2.0"
 licence_source = "crate-manifest"
 redistribute = "refused"
 notice = ""

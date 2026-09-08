@@ -5,6 +5,34 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T14:09:21Z
+
+- `PUB-05` closes: the SQLite rendering, and with it every path
+  [`docs/publishing.md`](docs/publishing.md) promises is written.
+  Record: [`TODO/publishing.md`](TODO/publishing.md).
+- ⭐ It is the only rendering that is both queryable and lossless. The CSV cannot
+  hold the acquisition routes, the observations, the corroboration or the
+  evidence list; this tabulates all of them, keeps each record's canonical bytes
+  in a `document` table, and says what it does not carry in an `omission` table
+  because a database can describe itself and a CSV cannot.
+- ⛔ It is not behind a cargo feature. `PUB-04` derives a consumer's caching
+  contract from the set of published paths, so a build that could omit one would
+  assemble a manifest with a hole in it. The cost is a vendored SQLite on every
+  consumer of the crate and [`docs/consuming.md`](docs/consuming.md) says so.
+- ⭐ The version was measured rather than taken: `rusqlite` 0.40.2 resolves
+  thirteen further packages that 0.37.0 does not, a WebAssembly stack this
+  project never builds for, for the same API and the same bundled library.
+- ⛔ Reproducible bytes are not free for this format. The page size is stated
+  rather than inherited from the library, the rows go in as one transaction in
+  ascending record order, and the file is vacuumed so no freelist encodes the
+  order rows happened to arrive in.
+- ⭐ Python's `sqlite3` is in the standard library, so unlike `cbor2` the
+  independent reader runs on every gate rather than once in an entry's evidence.
+  It is older than the writer, which is the direction that matters, and it has
+  been seen to refuse a truncated database.
+- Deployment: nothing deployed. No record was published and nothing was written
+  to the data branch.
+
 ### 2026-09-08T12:37:28Z
 
 - `CI-06` closes. Capture run 2 is green on both platforms, first attempt after

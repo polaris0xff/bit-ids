@@ -199,9 +199,17 @@ caller cannot hold a record this project would refuse to publish.
 
 ## 8. What is not here
 
-- ⚠ **No SQLite example.** `formats/bit-ids-v1.sqlite3` is promised by the
-  layout and nothing writes it; `PUB-05` owns it and is blocked on a dependency
-  decision.
+- ⚠ **`formats/bit-ids-v1.sqlite3` is written now**, by `PUB-05`, and it is the
+  one rendering a consumer needs no example for: any SQLite reads it, and
+  `sqlite_master` says what it carries. ⭐ It is also the only rendering that is
+  both queryable and lossless - the tables index the records and a `document`
+  table holds each record's canonical bytes, so a value the schema does not
+  tabulate is still there and an `omission` table says where.
+  ⛔ **The cost lands on you and is stated rather than hidden**: depending on the
+  `bit-ids` crate now compiles a vendored SQLite. It is not behind a feature,
+  because a build that could omit a published path would assemble a manifest
+  with a hole in it; [`../TODO/publishing.md`](../TODO/publishing.md) carries
+  that argument and the rejected alternative.
 - ⚠ **No fetched URL.** `PUB-04` proves the path set and every digest against a
   publication pushed to a bare repository and fetched back over git. The GitHub
   forms are unexercised until a first real publication exists.

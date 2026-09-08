@@ -281,9 +281,9 @@ assertion the wrong way would pass over a correction that had forgotten to.
 
 ### Residuals
 
-- ⚠ `PUB-05` owns the SQLite rendering and the dependency decision behind it.
-  Until it lands, `docs/publishing.md`'s layout lists a file nothing writes, and
-  it says so.
+- ⭐ `PUB-05` has landed, so `docs/publishing.md`'s layout no longer lists a file
+  nothing writes. It is the one rendering that needs a third-party encoder, and
+  its entry below carries what that cost and why the version was the older one.
 - ⚠ The CBOR encoder covers what a JSON document contains and refuses anything
   else under `E-FMT-03`. A float is the case that would need the one rule this
   subset does not hold, and the record model has no float today.
@@ -291,7 +291,7 @@ assertion the wrong way would pass over a correction that had forgotten to.
 ## PUB-05: SQLite rendering of the published records
 
 Source: split out of `PUB-03` on 2026-09-06
-Priority: P1 | Effort: M | Status: OPEN
+Priority: P1 | Effort: M | Status: DONE
 
 Problem: `docs/publishing.md` promises `formats/bit-ids-v1.sqlite3`, with
 indexed tables and foreign-key integrity, and nothing writes it. A consumer who
@@ -327,6 +327,139 @@ other renderings use, so no rendering can carry a field another does not.
 Prove: the database opens in a reader this project did not write, every record
 in it round-trips to the same normalized record as the JSON rendering, and two
 builds over one store produce byte-identical files.
+
+### ⭐ The version was measured rather than taken
+
+`rusqlite` 0.40.2 was the newest and `0.37.0` is what landed, because the newer
+one resolves **thirteen further packages**: `wasm-bindgen` and its macro crates,
+`js-sys`, `sqlite-wasm-rs`, `rsqlite-vfs`, `bumpalo`, `thiserror` and the rest of
+a WebAssembly stack this project never builds for.
+[`../docs/supply-chain.md`](../docs/supply-chain.md) carries the two counts.
+⚠ Measured by resolving both and comparing the lockfiles, not by reading a
+dependency graph.
+
+⛔ **Nothing was relaxed to take it.** `unsafe_code = "forbid"` is a lint on this
+workspace's own crates and a dependency compiles under its own, so the settled
+decision's "record the exception against this one dependency" is a supply-chain
+entry rather than a lint change. What was accepted is a vendored C library and a
+build script, and [`../docs/supply-chain.md`](../docs/supply-chain.md) carries
+the argument.
+
+### ⛔ Not behind a feature, and that is the design rather than laziness
+
+A cargo feature would make the published path set a build-configuration fact.
+`PUB-04` derives a consumer's caching contract from the paths that exist, so a
+release assembled without the feature would publish a manifest missing a
+documented file - silently, which is the class this project keeps finding. ⚠ The
+cost is real and is stated rather than hidden: every consumer of the `bit-ids`
+crate now compiles a vendored SQLite, and `docs/consuming.md` says so.
+
+### ⛔ Three things make the bytes reproducible, and none is free
+
+A release is assembled twice and compared, and `PUB-02` pushes nothing when a
+rebuild produces identical bytes - so a database that moved on every build would
+turn every run into a publication.
+
+- **The page size is stated.** It is a compile-time default of the bundled
+  library, so leaving it unsaid would move the published bytes under a
+  dependency bump with nothing saying why. That is the class
+  [`../docs/conventions/shell.md`](../docs/conventions/shell.md) section 8
+  records about a PowerShell default, in a second language.
+- **One transaction, in ascending record order**, which is the order the other
+  renderings publish in and is `CORPUS-03`'s rather than a map's iteration.
+- **`VACUUM` after the commit.** A freelist is a function of the insertion
+  history rather than of the data, so a file with free pages left in it encodes
+  the order rows happened to arrive.
+
+⭐ **And it is serialised out of memory rather than written to a path.**
+`docs/architecture.md` section 3 says this crate owns no filesystem, and a
+temporary file would also carry a journal this would then have to reason about.
+`serialize` is the feature that makes that possible.
+
+### ⭐ What the file carries that the CSV cannot
+
+The tabular view omits seven sections and publishes a columns document saying
+so. This one tabulates every list among them - `acquisition`, `observations`,
+`corroboration`, `normalizations` and `evidence` - keeps `supersedes` as a
+column and `adjudication` as its own row, and holds each record's canonical
+bytes in `document` besides.
+
+⛔ **`document` is what makes the rendering lossless**, so a value the schema
+does not tabulate is still reachable and a consumer can re-derive the published
+record from the file rather than trusting its columns. The tables are an index
+over those bytes and never a replacement for them.
+
+⭐ **The database says what it does not carry, in a table.** A CSV cannot
+describe itself, which is why `PUB-03` publishes a second file beside it; a
+database can, so `omission` carries each nested value and where to find it, and
+there is no second document to drift. ⚠ Every subject in it is nested rather
+than scalar: a column would either flatten it or hold a second encoding of it.
+
+⛔ **Every table is `STRICT`.** Without it SQLite stores whatever a caller binds,
+so a column declared `TEXT` would accept an integer and one query would answer
+with different types depending on which record it landed on.
+
+### The independent reader, and why this one is in the gate
+
+⭐ **Python's `sqlite3` is in the standard library**, so unlike `cbor2` - which
+needs the package index and therefore stayed in `PUB-03`'s evidence rather than
+in a check - the reader can run on every gate. `check-formats` opens the
+published file with it and asserts integrity, foreign keys, the record set, the
+round trip against the **combined JSON** rather than against the database's own
+rows, and that the tabulated sections are not empty.
+
+⚠ **The reader is older than the writer**, 3.45.1 against the bundled 3.50.2 on
+the host this was written on, which is the direction that matters for a
+published file.
+
+⛔ **And it has been seen to refuse.** A verifier nobody has watched fail is a
+verifier nobody knows works, and this one carries seven cases. The plant is a
+truncation rather than a byte flipped in the middle, because SQLite reads a page
+at a time and a change inside a page nothing reads is invisible to
+`integrity_check` on a file this small.
+
+### Acceptance, all run on 2026-09-08
+
+- `sh scripts/publishing/check-formats.sh`
+- `sh scripts/publishing/check-access.sh`
+- `sh scripts/publishing/check-release.sh`
+- `sh scripts/common/check-gate.sh`
+- `pwsh -NoProfile -File scripts/common/check-gate.ps1`
+- `cargo test --workspace --locked --all-targets`
+- `cargo clippy --workspace --locked --all-targets -- -D warnings`
+
+### Closure evidence, 2026-09-08
+
+| what | measured |
+| --- | --- |
+| `sh scripts/publishing/check-formats.sh` | 26 cases, 26 passed, 0 failed |
+| the independent reader | python's `sqlite3` 3.45.1 opens the file the bundled 3.50.2 wrote: `integrity_check` ok, `PRAGMA foreign_key_check` empty |
+| the round trip | every `document` row parses to the same record the combined JSON publishes, and every tabulated column and list count agrees with the document it came from |
+| determinism | two renders of one store produce a byte-identical database, compared on its own as well as inside the tree digest |
+| the access contract | driven over an assembled tree: `formats/bit-ids-v1.sqlite3` is classified, so `PUB-04` does not block on a path it cannot promise |
+| `cargo test --workspace --locked --all-targets` | 50 binaries, 547 passed, 0 failed |
+| the dependency cost | 14 new locked packages at `rusqlite` 0.37.0; 27 at 0.40.2, measured by resolving both |
+| guard mutation | `E-FMT-05` planted at the document level, where a file is the input: the first evidence entry's digest removed, refused by code, and the same document intact accepted. ⛔ It cannot be reached through `render`, because every document arriving there has already passed the validator |
+| the door sweep | `release.rs` already carried `("sqlite3", "application/vnd.sqlite3")`, so the assembler had a media type waiting; `access.rs` classifies the path under `formats/`, driven over an assembled tree rather than read |
+
+### Residuals
+
+- ⚠ **Every consumer of the `bit-ids` crate now compiles a vendored SQLite.**
+  That is the price of the rendering not being behind a feature, and the reason
+  it is not is above. A separate publisher crate would move the cost off
+  consumers and split the record model across two crates; it was rejected for
+  now and is the shape to revisit if `docs/consuming.md` grows a complaint.
+- ⚠ **`E-FMT-06` has never fired.** It reports a database that could not be
+  built, and every input reaching it has already passed the record validator, so
+  no fixture in the tree produces one. It is a refusal with no test, recorded
+  rather than removed, the way `PUB-01` records `entries.sort()`.
+- ⚠ **The file is large for what it holds**: 159744 bytes for two records
+  against 23146 for the combined JSON, because `VACUUM` leaves whole 4096-byte
+  pages and the schema carries ten indexes. It is a published artifact rather
+  than a transfer format, and nothing compresses it.
+- ⚠ **`sqlite3` the command-line tool is still not installed here**, so the
+  reader in the gate is Python's. A third implementation would be a stronger
+  control and needs a package this host does not have.
 
 ## PUB-04: Stable raw and index access paths
 

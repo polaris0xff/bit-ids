@@ -1,17 +1,17 @@
 # Work index
 
 Total: 63
-Open: 25
+Open: 24
 In progress: 0
 Blocked: 0
-Done: 38
+Done: 39
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | P0 | 0 | 0 | 0 | 24 | 24 |
-| P1 | 24 | 0 | 0 | 13 | 37 |
+| P1 | 23 | 0 | 0 | 14 | 37 |
 | P2 | 1 | 0 | 0 | 1 | 2 |
-| Total | 25 | 0 | 0 | 38 | 63 |
+| Total | 24 | 0 | 0 | 39 | 63 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -66,7 +66,7 @@ Done: 38
 | PUB-02 | P0 | L | DONE | Protected append-only data branch publisher |
 | PUB-03 | P1 | L | DONE | Multi-format GitHub release publisher |
 | PUB-04 | P1 | M | DONE | Stable raw and index access paths |
-| PUB-05 | P1 | M | OPEN | SQLite rendering of the published records |
+| PUB-05 | P1 | M | DONE | SQLite rendering of the published records |
 | CI-01 | P0 | L | DONE | Complete cross-platform quality gate |
 | CI-02 | P1 | L | DONE | Stable-release staleness monitor |
 | CI-03 | P1 | L | DONE | Trusted capture runner matrix |

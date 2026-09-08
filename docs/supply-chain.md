@@ -102,11 +102,32 @@ reader's own canonical encoding of what it read is byte-identical to ours, which
 is two implementations of RFC 8949 section 4.2.1 agreeing rather than one
 agreeing with itself.
 
-⛔ `PUB-05`, the SQLite rendering, is the decision this one did not take.
-`rusqlite` brings a vendored C library and a build script into a workspace whose
-lints say `unsafe_code = "forbid"`, and writing the file format here means new
-unaudited code in the component that publishes evidence. The entry carries both
-routes and a recommendation; it is blocked on the operator rather than on work.
+⛔ **`PUB-05` took `rusqlite` 0.37.0 with `bundled` and `serialize`, and it is
+the largest dependency this repository has taken.** The rejected route was
+writing the file format here, which means new unaudited code producing B-tree
+pages and varints in the component that publishes evidence - the argument
+`OBS-08` rejected for SHA-1, and stronger here because the format is larger.
+⚠ `unsafe_code = "forbid"` is a lint on this workspace's own crates and a
+dependency compiles under its own, so nothing was relaxed to take this; what was
+accepted is a vendored C library and a build script.
+
+⭐ **The version was chosen by measuring rather than by taking the newest.**
+`0.40.2` resolves 13 further packages that `0.37.0` does not - `wasm-bindgen`,
+`js-sys`, `sqlite-wasm-rs`, `rsqlite-vfs` and what they pull - which is a
+WebAssembly stack this project never builds for. Fourteen new packages against
+twenty-seven, for the same API and the same bundled library.
+
+⚠ **`bundled` is the point rather than a convenience.** The published bytes are
+what a digest names, so a database written against whatever SQLite a host
+happens to carry would make the release depend on the builder's machine.
+`serialize` is what lets the file be produced in memory, which the crate needs
+because it owns no filesystem.
+
+⛔ **`libsqlite3-sys` vendors SQLite itself and the register says so.** The
+crate is MIT; the amalgamation it carries states that its author disclaims
+copyright, read out of the package's own `sqlite3.c` rather than from a summary
+of it. That row is the one place in the register where the crate's licence is
+not the whole answer.
 
 `OBS-09` added `serde_json` 1.0.151 to `bit-ids-lab` as a **dev**-dependency, and
 no new package: `bit-ids` already depends on it, so the lockfile diff is one line

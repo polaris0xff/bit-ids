@@ -30,6 +30,13 @@
 //! the evidence list, so the columns and the omitted sections are published
 //! beside it. A consumer that reads only the CSV can then discover what it is
 //! not being told without reading this comment.
+//!
+//! ⭐ **THE QUERYABLE RENDERING IS THE ONE THAT IS BOTH INDEXED AND LOSSLESS**,
+//! and [`crate::sqlite`] owns it: it tabulates every list the CSV omits, keeps
+//! each record's canonical bytes beside them, and says what it does not carry in
+//! a table of its own rather than in a second file. ⚠ It is also the only
+//! rendering here that needs a third-party encoder, which is why it is a module
+//! rather than a section of this one.
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
@@ -55,6 +62,12 @@ pub const CSV_FILE: &str = "formats/bit-ids-v1.csv";
 
 /// Every record, as deterministic CBOR.
 pub const CBOR_FILE: &str = "formats/bit-ids-v1.cbor";
+
+/// Every record, as a queryable database.
+///
+/// ⚠ Re-exported rather than spelled twice: [`crate::sqlite`] owns the path
+/// because it owns the rendering.
+pub use crate::sqlite::SQLITE_FILE;
 
 /// What the tabular view carries and what it leaves out.
 pub const COLUMNS_FILE: &str = "formats/bit-ids-v1.columns.json";
@@ -139,6 +152,7 @@ pub struct Formats {
 /// | `E-FMT-03` | a value no deterministic CBOR encoding covers |
 /// | `E-FMT-04` | nothing to publish |
 /// | `E-FMT-05` | a tabular column whose value is not in the document |
+/// | `E-FMT-06` | the queryable rendering could not be built |
 pub fn render(corpus: &Corpus, indexes: &Indexes) -> Result<Formats, Violations> {
     let mut errors = Vec::new();
     let mut by_id: BTreeMap<RecordId, &Profile> = BTreeMap::new();
@@ -172,9 +186,10 @@ pub fn render(corpus: &Corpus, indexes: &Indexes) -> Result<Formats, Violations>
         return Violations::from_errors(errors).map(|()| unreachable!());
     }
 
-    // ⛔ THE CANONICAL DOCUMENT IS THE SOURCE FOR ALL FOUR. Every rendering
-    // below is a function of these bytes, so none of them can disagree with the
-    // record as published.
+    // ⛔ THE CANONICAL DOCUMENT IS THE SOURCE FOR EVERY RENDERING BELOW, which
+    // is a function of these bytes, so none of them can disagree with the record
+    // as published. ⚠ "every" rather than a count: this comment said "all four"
+    // until `PUB-05` added a fifth and a claim audit reached it.
     let mut documents: Vec<(&Profile, String, serde_json::Value)> =
         Vec::with_capacity(chosen.len());
     for profile in chosen {
@@ -224,12 +239,31 @@ pub fn render(corpus: &Corpus, indexes: &Indexes) -> Result<Formats, Violations>
         return Violations::from_errors(errors).map(|()| unreachable!());
     }
 
+    // ⛔ THE QUERYABLE RENDERING IS NOT OPTIONAL AND HAS NO FEATURE FLAG.
+    // `docs/publishing.md` promises the path and `PUB-04` derives a consumer's
+    // caching contract from the set of published paths, so a build that could
+    // omit one would publish a manifest missing a documented file - and it would
+    // do it silently, which is the class this project keeps finding. The cost is
+    // a vendored C library on every consumer of this crate, taken deliberately;
+    // `crate::sqlite` is the one file that needs it.
+    let database = match crate::sqlite::render(&documents) {
+        Ok(bytes) => bytes,
+        Err(found) => {
+            errors.extend(found);
+            Vec::new()
+        }
+    };
+    if !errors.is_empty() {
+        return Violations::from_errors(errors).map(|()| unreachable!());
+    }
+
     let mut files = vec![
         (path(CBOR_FILE), cbor),
         (path(COLUMNS_FILE), columns_document().into_bytes()),
         (path(CSV_FILE), table.into_bytes()),
         (path(JSON_FILE), combined_json(&documents).into_bytes()),
         (path(JSONL_FILE), jsonl(&documents).into_bytes()),
+        (path(crate::sqlite::SQLITE_FILE), database),
     ];
     files.sort_by(|left, right| left.0.cmp(&right.0));
 
@@ -474,7 +508,7 @@ fn write_cbor_array(
 mod tests {
     use super::{
         CBOR_FILE, COLUMNS_FILE, CSV_COLUMNS, CSV_FILE, CSV_OMITS, CSV_POINTERS, FORMATS_SCHEMA,
-        JSON_FILE, JSONL_FILE, render, write_value,
+        JSON_FILE, JSONL_FILE, SQLITE_FILE, render, write_value,
     };
     use crate::index::build;
     use crate::index::tests::{corpus_of, correction_at, record_at, schemes};
@@ -490,6 +524,7 @@ mod tests {
         assert_eq!(CSV_FILE, "formats/bit-ids-v1.csv");
         assert_eq!(CBOR_FILE, "formats/bit-ids-v1.cbor");
         assert_eq!(COLUMNS_FILE, "formats/bit-ids-v1.columns.json");
+        assert_eq!(SQLITE_FILE, "formats/bit-ids-v1.sqlite3");
         assert_eq!(
             CSV_COLUMNS.join(","),
             "record,schema,target,target_kind,version,platform,arch,package,executable,capture,\
@@ -646,5 +681,134 @@ mod tests {
         let indexes = build(&corpus, &schemes()).expect("a provisional store still indexes");
         let violations = render(&corpus, &indexes).expect_err("nothing to publish");
         assert!(violations.has("E-FMT-04"), "{violations}");
+    }
+
+    /// ⛔ **Every promised path is rendered, and the list is the document's.**
+    /// `docs/publishing.md` names six files under `formats/` and `PUB-04`
+    /// derives a consumer's caching contract from the set that exists, so a
+    /// rendering silently missing one publishes a manifest with a hole in it.
+    #[test]
+    fn every_promised_rendering_is_produced() {
+        let corpus = corpus_of(vec![record_at("1.2.3")]);
+        let indexes = build(&corpus, &schemes()).expect("one record indexes");
+        let formats = render(&corpus, &indexes).expect("a publishable store renders");
+        let produced: Vec<String> = formats
+            .files
+            .iter()
+            .map(|(path, _)| path.as_str().to_owned())
+            .collect();
+        for promised in [
+            CBOR_FILE,
+            COLUMNS_FILE,
+            CSV_FILE,
+            JSON_FILE,
+            JSONL_FILE,
+            SQLITE_FILE,
+        ] {
+            assert!(
+                produced.iter().any(|path| path == promised),
+                "{promised} was not rendered; got {produced:?}"
+            );
+        }
+        assert_eq!(produced.len(), 6, "{produced:?}");
+    }
+
+    /// ⛔ **The database is a real one and it is not empty.** A renderer that
+    /// returned a zero-length blob would satisfy the path check above, and
+    /// every later comparison is against a file that would then never open.
+    /// The header is SQLite's own, restated here rather than taken from the
+    /// writer.
+    #[test]
+    fn the_database_carries_the_records_and_a_sqlite_header() {
+        let corpus = corpus_of(vec![record_at("1.2.3")]);
+        let indexes = build(&corpus, &schemes()).expect("one record indexes");
+        let formats = render(&corpus, &indexes).expect("a publishable store renders");
+        let (_, bytes) = formats
+            .files
+            .iter()
+            .find(|(path, _)| path.as_str() == SQLITE_FILE)
+            .expect("the database is rendered");
+        assert_eq!(&bytes[..16], b"SQLite format 3\0");
+        // ⚠ The identifier is searched for in the bytes rather than queried,
+        // because this test may not open the file: reading it back with the
+        // library that wrote it is the writer checking itself, and
+        // `check-formats` hands it to python's sqlite3 instead.
+        let id = corpus
+            .profiles()
+            .first()
+            .expect("one record")
+            .profile
+            .id
+            .to_string();
+        let text = String::from_utf8_lossy(bytes);
+        assert!(text.contains(&id), "the database does not carry {id}");
+    }
+
+    /// ⛔ **Two renders of one store produce identical database bytes.** It is
+    /// the one rendering whose encoding is a dependency's choice, and
+    /// `PUB-02` pushes nothing when a rebuild produces identical bytes, so a
+    /// database that moved on every build would make every run a publication.
+    #[test]
+    fn two_renders_produce_one_database() {
+        // ⚠ A correction is in the set on purpose: it is the record that has an
+        // `adjudication` row and a `supersedes` value, so a build that ordered
+        // either of those by anything but the record identifier would differ
+        // here and nowhere else.
+        let original = record_at("1.2.3");
+        let fix = correction_at("1.3.0", "cap-re-run", original.id);
+        let corpus = corpus_of(vec![original, fix]);
+        let indexes = build(&corpus, &schemes()).expect("the store indexes");
+        let one = render(&corpus, &indexes).expect("the first render");
+        let two = render(&corpus, &indexes).expect("the second render");
+        let pick = |formats: &super::Formats| {
+            formats
+                .files
+                .iter()
+                .find(|(path, _)| path.as_str() == SQLITE_FILE)
+                .map(|(_, bytes)| bytes.clone())
+                .expect("the database is rendered")
+        };
+        assert_eq!(pick(&one), pick(&two));
+    }
+
+    /// ⛔ **A guard nobody has watched refuse is a guard nobody knows works.**
+    /// `E-FMT-05` on the database path cannot be reached through `render`,
+    /// because every document arriving there has already passed the validator -
+    /// which is the "refusal the deriving path cannot reach" shape
+    /// `docs/architecture.md` names. So the defect is planted at the document
+    /// level, where a file is the input, and the renderer is called directly.
+    #[test]
+    fn the_database_refuses_a_document_missing_a_value_it_tabulates() {
+        let record = record_at("1.2.3");
+        let canonical = record.to_json().expect("a record writes");
+        let mut value: serde_json::Value =
+            serde_json::from_str(&canonical).expect("its own document parses");
+        // ⚠ A section every record has, so the plant is not the fixture being
+        // unusual: the first evidence entry loses the digest it must carry.
+        value
+            .pointer_mut("/evidence/0")
+            .and_then(serde_json::Value::as_object_mut)
+            .expect("the fixture cites evidence")
+            .remove("sha256")
+            .expect("and that entry had a digest to remove");
+        let documents = vec![(&record, canonical, value)];
+        let errors = crate::sqlite::render(&documents).expect_err("a missing value is refused");
+        assert!(
+            errors.iter().any(|error| error.code() == "E-FMT-05"),
+            "{errors:?}"
+        );
+    }
+
+    /// ⚠ And the same input with nothing removed is accepted, so the case above
+    /// is the plant firing rather than the renderer refusing everything.
+    #[test]
+    fn the_database_accepts_the_document_the_plant_was_made_from() {
+        let record = record_at("1.2.3");
+        let canonical = record.to_json().expect("a record writes");
+        let value: serde_json::Value =
+            serde_json::from_str(&canonical).expect("its own document parses");
+        let documents = vec![(&record, canonical, value)];
+        let bytes = crate::sqlite::render(&documents).expect("an intact document renders");
+        assert_eq!(&bytes[..16], b"SQLite format 3\0");
     }
 }

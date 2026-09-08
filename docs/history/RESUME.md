@@ -8,15 +8,15 @@ the operator is answered in that file under *Settled decisions*. Do not re-raise
 them, and do not record a new blocker without running the command that would
 settle it.
 
-**In flight:** nothing. `CI-06` closed: the capture workflow has been dispatched,
-capture run 2 is green on both platforms, every bundle verifies under
-`sha256sum -c`, and CI run 62 is green on both lanes.
+**In flight:** nothing. `CI-06` and `PUB-05` both closed. The capture workflow
+has been dispatched and capture run 2 is green on both platforms with every
+bundle verified under `sha256sum -c`; the SQLite rendering is written, so every
+path `docs/publishing.md` promises now exists.
 
-**Next:** `PUB-05`, the SQLite rendering, which needs no capture and no runner.
-The dependency question is settled in `TODO/PROGRESS.md`: `rusqlite` with the
-bundled feature, pinned, with the `unsafe` exception recorded against that one
-dependency rather than the workspace lint relaxed, and the output opened by a
-reader this project did not write.
+**Next:** `LIB-02`, the bit-cli adapter, which needs no capture and no runner.
+`TODO/PROGRESS.md`'s *Settled decisions* says how: clone the public
+`Azathothas/bit-cli` into a scratch directory and run its suite there. ⛔ Nothing
+is written to it; rule 10 holds.
 
 **Tree:** Re-measure it. This file is a claim about a tree that has moved. Check
 the branch, the remote, the clone depth, `git status` and `HEAD..origin/main`
@@ -201,6 +201,10 @@ tree lacks.
 `libtorrent` and `torf` read a generated torrent, `curl` is a complete HTTP
 client, Python's `pow` is an arbitrary-precision modexp and its `hashlib`
 re-derives an identifier from a restated encoding.
+⭐ **Whether such a reader can be IN the gate turns on where it comes from.**
+`cbor2` needs the package index, so it stayed in an entry's evidence; Python's
+`sqlite3` is in the standard library, so `PUB-05`'s reader runs on every gate.
+Ask which one a control is before deciding it cannot be a check.
 
 ⭐ **A push path drives for real with no network and no credential.** A bare
 repository in a scratch directory is a remote as far as git is concerned.

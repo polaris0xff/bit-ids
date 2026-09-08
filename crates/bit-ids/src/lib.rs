@@ -42,6 +42,7 @@ pub mod record;
 pub mod release;
 pub mod resolution;
 pub mod sampling;
+pub mod sqlite;
 pub mod staleness;
 pub mod store;
 pub mod validate;
