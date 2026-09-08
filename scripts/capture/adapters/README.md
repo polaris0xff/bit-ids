@@ -35,6 +35,16 @@ or the route that installed it is not the build speaking, which is the rule
 adapter that cannot ask exits 2, and the capture is *could not run* rather than
 a fixture.
 
+⛔ **`version` prints the parsed field on stdout and the build's WHOLE answer on
+stderr.** Two routes can install builds that report one version and are not one
+build: measured on 2026-09-08, Ubuntu's aria2 1.37.0 and a 1.37.0 compiled from
+the vendor's own release tarball answer the same version and enable different
+features. ⚠ Features are what a build does on the wire, so a record holding only
+the version has dropped the evidence that would have separated them. ⭐ stderr
+costs nothing to keep: `install-client` writes it to `version.err` beside the
+install record and `capture-client` appends it to `adapter.err` inside the
+evidence bundle.
+
 ⛔ **So `version` is a pure read and is called when the target may not be there
 at all.** `install-client` asks it before the route runs, which is how a route
 that installed nothing is detected, and a target that is absent then is the

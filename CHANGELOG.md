@@ -5,6 +5,32 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T22:46:54Z
+
+- ⭐ Two independent acquisition routes for one target were held at once for the
+  first time, with no disposable host, because building and asking for a version
+  is not a capture: Ubuntu's aria2 1.37.0 and a 1.37.0 compiled from the vendor's
+  own release tarball. Record: [`TODO/acquisition.md`](TODO/acquisition.md).
+- ⛔ They report one version and are not one build. Their feature lists differ -
+  the package build enables Async DNS, Metalink, XML-RPC, SFTP and Firefox3
+  Cookie - and features are what a build does on the wire.
+- ⭐ So every adapter's `version` writes the build's whole answer to stderr, which
+  both callers already keep: `version.err` beside the install record and
+  `adapter.err` inside the evidence bundle. The parsed value on stdout is
+  unchanged.
+- ⛔ And `installed_executable` records a SHIM for that package route:
+  `/usr/bin/aria2c` is 14 kilobytes linking `libaria2.so.0`, so a per-route digest
+  comparison over a library-split package compares two launchers. `ACQ-03` carries
+  it as a residual.
+- ⭐ aria2 is the one target whose two routes currently resolve the same version;
+  Ubuntu trails upstream by a major version for both other clients, and rule 5
+  forbids backfilling to make a pair agree. The vendor publishes no Linux binary,
+  so that route is a source build: 19s to configure, 126s to `make -j4`.
+- ⚠ The `acquired=no` verdict fired on the real product for the first time, not
+  just on a stub: the real aria2 adapter through `install-client` on this host.
+- Deployment: nothing deployed. The release routes still fetch without installing.
+
+
 ### 2026-09-08T22:24:32Z
 
 - ⭐ `CI-08`'s second Prove half is done: the gate gives the same verdict under a

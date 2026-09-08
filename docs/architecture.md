@@ -813,6 +813,24 @@ refuses a kind carrying another kind's identity, and `E-ACQ-06` refuses an
 abbreviated commit, which is the shape `FOUND-02` measured passing an action-pin
 rule written to refuse floating refs.
 
+⛔ **Two of those identities are not enough, and both gaps were measured on
+2026-09-08 by acquiring one target twice.** Ubuntu's aria2 1.37.0 and a 1.37.0
+compiled from the vendor's own release tarball report the same version and are
+not the same build.
+
+⚠ **A source build's identity is the source AND how it was configured.** The same
+tarball configured with different dependencies produces builds enabling different
+features - Async DNS, Metalink, XML-RPC and SFTP in one, absent from the other -
+and features are what a build does. The configure options belong to the route the
+way a package's exact version does.
+
+⛔ **And `installed_executable` records what was INVOKED, which is not always what
+runs.** Ubuntu's `/usr/bin/aria2c` is a fourteen-kilobyte shim linking
+`libaria2.so.0`; the protocol code is in a shared library whose digest this model
+has nowhere to put. A per-route digest comparison over a library-split package is
+a comparison of two launchers, and reading it as a statement about the
+implementation is the error the split invites. `ACQ-03` carries it as a residual.
+
 ### Choosing which version to acquire
 
 Before any of that, something has to decide what the newest stable release *is*,

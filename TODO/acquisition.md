@@ -272,6 +272,44 @@ declare two independent resolvers, satisfy `E-ACQ-07` and `E-ACQ-08`, agree on
 the version because it is one binary, and arrive here as `byte_identical` - the
 strongest verdict this entry has, reached by acquiring nothing.
 
+### Two routes were actually acquired for one target, measured 2026-09-08
+
+⭐ **The first time this project has held two independent installs of one target
+at once**, and it needed no disposable host, because building and asking for a
+version is not a capture.
+
+| | route A | route B |
+| --- | --- | --- |
+| resolver | Ubuntu 24.04 package index | the vendor's GitHub release |
+| delivery | `apt-get install aria2` | `aria2-1.37.0.tar.bz2`, `sha256:a75c8534902ff1a64a23d7a47c033032329002553634251a89d53a9cb8b20efa`, configured and compiled |
+| reported version | `aria2 version 1.37.0` | `aria2 version 1.37.0` |
+| the executable | 14584 bytes, stripped, links `libaria2.so.0` | 2833064 bytes stripped, self-contained |
+| cost | seconds | 19s configure, 126s `make -j4` |
+
+⛔ **They report one version and they are not one build.** `aria2c --version`
+lists what each was compiled with, and the two lists differ: the package build
+enables Async DNS, Firefox3 Cookie, Metalink, XML-RPC and SFTP, and a source
+build configured without those dependencies does not. ⚠ Features are what a
+build DOES, so a record holding `1.37.0` and nothing else has dropped the only
+evidence that would have distinguished them. ⭐ Every adapter's `version` writes
+the build's whole answer to stderr now, which both callers already keep -
+`version.err` beside the install record and `adapter.err` inside the bundle.
+
+⛔ **And `installed_executable` records a SHIM for the package route.**
+`/usr/bin/aria2c` from Ubuntu is 14 kilobytes and links `libaria2.so.0`; the code
+that speaks the protocol is in `libaria2-0` at `1.37.0+debian-1build3`, whose
+digest this record model has nowhere to put. ⚠ So the per-route digest comparison
+this entry is built on is, for a library-split package, a comparison of two
+launchers. Neither `byte_identical` nor `unresolved` is wrong about what it
+measured; what is wrong is reading either as a statement about the implementation.
+⛔ **Residual**, and the sharpest one this entry has: a route's evidence needs the
+digest of what actually runs, not only of what was invoked.
+
+⚠ **A source route's identity is not the tarball alone.** The same bytes
+configured differently produce builds with different features, so the configure
+options belong to the route the way a package's exact version does. Nothing
+records them yet.
+
 ⚠ **Read out of `equivalence.rs` rather than inferred**: `classify` returns
 `ByteIdentical` when every route's `installed_executable` matches the first, and
 `ByteIdentical.publishable()` is true. The reason it records is *"every route

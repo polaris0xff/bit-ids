@@ -150,6 +150,21 @@ case "$COMMAND" in
     LINE=$(printf '%s\n' "$OUTPUT" | head -1)
     VERSION=$(printf '%s' "$LINE" | awk '{ print $2 }')
     [ -n "$VERSION" ] || cannot "transmission-daemon reported no parseable version: [$LINE]"
+    # ⛔ WHAT THE BUILD SAID ABOUT ITSELF IS KEPT, NOT ONLY THE FIELD PARSED OUT
+    # OF IT. Two routes can install builds that report ONE version and are not
+    # one build: measured on 2026-09-08, Ubuntu's aria2 1.37.0 and a 1.37.0 built
+    # from the vendor's own release tarball answer the same version and enable
+    # different features - the package build lists Async DNS, Metalink, XML-RPC,
+    # SFTP and Firefox3 Cookie, and a source build configured without those
+    # dependencies does not. ⚠ Features are what a build DOES on the wire, so a
+    # record holding only `1.37.0` has dropped the evidence that would have
+    # distinguished them.
+    # ⭐ stderr, because both callers already keep it: install-client writes it to
+    # `version.err` beside the install record and capture-client appends it to
+    # `adapter.err` inside the evidence bundle. Nothing about the parsed value on
+    # stdout changes.
+    printf '%s reported:\n' "$ME" >&2
+    printf '%s\n' "$OUTPUT" >&2
     printf '%s\n' "$VERSION"
     ;;
 

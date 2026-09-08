@@ -295,8 +295,32 @@ that says so now, `ACQ-03` carries what two such routes do to the two-route rule
 and the guard is proved by planting the derivation in
 [`../scripts/capture/check-capture-client.sh`](../scripts/capture/check-capture-client.sh).
 
+### The second route exists, and what it costs, measured 2026-09-08
+
+⭐ **aria2 is the one target in the matrix whose two routes currently resolve the
+SAME version.** Ubuntu 24.04 ships 1.37.0 and the vendor's newest release is
+`release-1.37.0`, published 2023-11-15 - aria2 has not released since. ⛔ The
+other two are not close: Ubuntu ships Transmission 4.0.5 against upstream 4.1.3,
+and qBittorrent 4.6.3 against upstream 5.2.3, and `AGENTS.md` rule 5 forbids
+backfilling an old version to make a pair agree. So the first two-route capture
+this project can attempt is this entry's, not `CLIENT-01`'s.
+
+⛔ **The vendor publishes no Linux binary**, which is a measured property of the
+target rather than a gap in the adapter: the 1.37.0 release carries source
+tarballs, two Windows zips and an Android build. A Linux release route is
+therefore a source build, and it was driven here: 19 seconds to configure and 126
+seconds to `make -j4`, producing a binary that answers `aria2 version 1.37.0`
+with BitTorrent enabled.
+
+⚠ **Two builds, one version, different features and different bytes.** `ACQ-03`
+carries the table and the consequence; the short form is that the package route's
+`/usr/bin/aria2c` is a 14-kilobyte shim over `libaria2.so.0` while the source
+build is self-contained, and their feature lists differ.
+
 ⛔ **Still not captured.** No run of this adapter has started a build, so the
-entry stays open on the same four gaps every client entry has.
+entry stays open on the same four gaps every client entry has, and the release
+route still fetches without installing - the adapters put nothing where `binary()`
+would find it, which is the next change rather than a dispatch.
 
 ## CLIENT-06: Transmission capture adapter
 

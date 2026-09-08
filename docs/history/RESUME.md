@@ -81,12 +81,23 @@ default nobody swept.
 `ubuntu-24.04` host a genuine install took 8s, the no-op repeat 3s, and `version`
 answered `1.37.0`. Two of its four unmeasured assumptions are measured.
 
-**Next:** the second route, which is what `ACQ-03`'s same-version gate has
-nothing to compare. ⛔ **Do not add one until a route can be shown to install**,
-per the block above: a second route added today would report the first route's
-binary and manufacture a `byte_identical` agreement. The `release` cases in all
-three adapters fetch an artifact and never make it the executable, which is the
-half to fix. ⚠ Then what no capture has established: a second connector, a record
+**Next:** the second route. ⭐ **Two routes for aria2 have now been acquired and
+compared, here, with no disposable host**, because building a product and asking
+its version is not a capture: Ubuntu's 1.37.0 and a 1.37.0 compiled from the
+vendor's release tarball, 19s to configure and 126s to `make -j4`. They report
+ONE version and are not one build - different features, different bytes, and the
+package one is a 14-kilobyte shim over `libaria2.so.0`. `ACQ-03` carries the
+table.
+
+⭐ **aria2 is the only target whose two routes currently resolve the same
+version**; Ubuntu trails upstream by a major version for Transmission and
+qBittorrent, and rule 5 forbids backfilling to make a pair agree. So the first
+two-route capture is `CLIENT-05`'s.
+
+⛔ **What is still missing is an install.** The `release` case in all three
+adapters fetches an artifact and never makes it the executable `binary()` finds,
+so a release route run today would report whatever the package route left on the
+path. That is the next change, and it needs no dispatch to write. ⚠ Then what no capture has established: a second connector, a record
 in the store, and the Windows half of each Prove. Every adapter is `sh` with no
 PowerShell twin, so a Windows client capture needs `CI-07`'s work first.
 
