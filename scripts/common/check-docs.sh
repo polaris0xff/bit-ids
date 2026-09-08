@@ -263,6 +263,27 @@ for f in $FILES; do
   grep -qxF "$f" "$LINKED.n" || report "$f is linked from nowhere. An unlinked page is not read, so it is not corrected."
 done
 
+# ⛔ AND EVERY SESSION RECORD IS IN THE INDEX THAT DESCRIBES THEM, which is a
+# stronger rule than the one above: a record linked only from `RESUME.md` is not
+# an orphan and is still missing from the page a reader goes to for the list.
+#
+# ⚠ MEASURED TWICE, ON ONE DAY. `docs/history/README.md` carries a note saying
+# three records were missing from it until 2026-09-08 - and a fourth,
+# `SESSION-2026-09-08-CLIENTS.md`, was missing from it by the end of that same
+# day, held in the tree only by a link from `RESUME.md`, which is overwritten
+# every session. ⛔ The note observed the pattern and changed nothing, because a
+# rule stated in a document and enforced by nobody is a preference. This is the
+# check that makes the observation true.
+HISTORY_INDEX=docs/history/README.md
+if [ -f "$HISTORY_INDEX" ]; then
+  for _rec in docs/history/SESSION-*.md; do
+    [ -f "$_rec" ] || continue
+    _base=${_rec##*/}
+    grep -qF "($_base)" "$HISTORY_INDEX" ||
+      report "$_rec is not listed in $HISTORY_INDEX. A record the index omits is one nobody finds from the page that exists to list them."
+  done
+fi
+
 # -- the character rule moved, it was NOT dropped -------------------------
 # ⛔ THE FIVE-CHARACTER ALLOWLIST AND THE EM-DASH RULE NOW LIVE IN
 # check-markers.sh, over EVERY tracked text file rather than over markdown

@@ -26,6 +26,15 @@ refute.
 shape a directory index takes when each session adds a file and nobody re-reads
 the page that describes them.
 
+⛔ **And a fourth went missing the same day that sentence was written.**
+`SESSION-2026-09-08-CLIENTS.md` was held in the tree only by a link from
+[`RESUME.md`](RESUME.md), which is overwritten every session, so it was one
+rewrite away from being an orphan and was already absent from this list. ⭐ The
+observation is a check now rather than a note: `check-docs` refuses a
+`SESSION-*.md` this page does not link, which is a stronger rule than the orphan
+one it sits beside - a record linked from `RESUME.md` alone passes that and still
+cannot be found from the page that exists to list them.
+
 [`SESSION-2026-09-05-EVIDENCE.md`](SESSION-2026-09-05-EVIDENCE.md) and
 [`SESSION-2026-09-05-OBSERVERS.md`](SESSION-2026-09-05-OBSERVERS.md) are the
 saved summaries of the sessions that built the evidence writer and the observer
@@ -39,3 +48,13 @@ three findings in it that were not about the code being written.
 summary of the session that pressed the capture workflow's button for the first
 time, wrote the queryable rendering, and built the adapter that answers what a
 tool asks about its own identity.
+
+[`SESSION-2026-09-08-CLIENTS.md`](SESSION-2026-09-08-CLIENTS.md) is the saved
+summary of the session that measured the first two stock clients, over four
+dispatches, and the seven defects none of which was found by reading.
+
+[`SESSION-2026-09-08-ROUTES.md`](SESSION-2026-09-08-ROUTES.md) is the saved
+summary of the session that read the aria2 hang out of an artifact rather than
+dispatching for it, found that no route in this tree had ever been shown to
+install anything, acquired one target twice, and turned three rules that existed
+only in prose into checks.

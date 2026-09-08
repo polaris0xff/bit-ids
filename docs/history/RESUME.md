@@ -8,129 +8,92 @@ the operator is answered in that file under *Settled decisions*. Do not re-raise
 them, and do not record a new blocker without running the command that would
 settle it.
 
-**In flight:** `CLIENT-01`, `CLIENT-06` and `CLIENT-05`, which share one body of
-machinery and now have all of it except a measurement. Written and proved
-earlier: an observer that hands a build the torrent naming its own tracker, an
-adapter contract with a file per target, an install step that runs before the
-route is cut, a capture runner that refuses to attest to a build it did not
-observe announce, a mutation harness in the gate that runs every shipped
-adapter's `describe`, and a second capture workflow that installs a product.
-
-⛔ **AND THE THING THE SECOND ROUTE HAS TO CLEAR FIRST: no route in this tree has
-been shown to acquire anything.** `aria2` ships on `ubuntu-24.04`, so its
-`package` route is an `apt-get install` that prints `already the newest version`
-and exits 0; and every `release` route fetches its artifact into the workdir
-without making it the executable `binary()` finds, so a release route reports
-whatever the package route left on the path. ⚠ Two routes in that state declare
-two independent resolvers, satisfy `E-ACQ-07` and `E-ACQ-08`, agree on the
-version because it is one binary, and reach `ACQ-03` as `byte_identical` - its
-STRONGEST verdict, over an acquisition that never happened. The evidence looks
-better the more completely nothing was acquired.
-
-⭐ **`install-client` measures that now**: it asks the adapter for a version
-before the route runs and records `preexisting_version` and `acquired`. Absent
-then present is an install, a changed version is an upgrade and also an install,
-the same version over a target that was already there is neither. ⛔ **Nothing
-refuses a pair on it yet**, and `ACQ-03` carries that as a residual.
-
-⭐ **Client capture run 1 was dispatched and one of its three jobs measured a
-build.** Transmission installed from the package index in under two minutes,
-announced twice under containment, and its bundle verified and uploaded.
-⛔ **The other two sat in the install step for over half an hour and reported
-nothing**, because no adapter call had a time limit: a hung install is
-indistinguishable from a slow one until the job's own timeout kills the runner
-and takes the log with it. Both are bounded now, stdin is `/dev/null` on every
-adapter call, `NEEDRESTART_MODE=a` is set for apt, and `qbittorrent-nox
---version` carries `--confirm-legal-notice` - which the `start` call had and the
-`version` call did not, a control on one of two paths into one product.
-
-⭐ **Run 2 answered for `qbittorrent` and not for `aria2`.** qbittorrent fails in
-fifty seconds now with a readable verdict: the install works and the `version`
-call refuses. ⛔ It also found two defects in the fix itself - the adapters read
-`--version` through a pipe, so `head`'s status masked the product's, and the
-caller discarded the adapter's stderr and then reported its absence. Both are
-fixed with cases. ⚠ `aria2` hung again for thirty-five minutes and the 900-second
-bound did not end the job, so the log went with the runner for the second time;
-`-k` and a bound under the job timeout are the guesses, and the certain fix is
-that the workflow uploads the install logs on `always()` now.
-
-⭐ **Run 3 got the product to say what was wrong**, which is what run 2's two
-fixes were for: `--confirm-legal-notice is an unknown command line parameter`. So
-that flag was never a control, and it was on both paths into qbittorrent. The
-acceptance is written into the profile now and is not measured either.
-
-⛔ **THE ARIA2 HANG IS ANSWERED AS FAR AS THESE FOUR RUNS CAN ANSWER IT, AND THE
-RECORDED CAUSE IS REFUTED.** The install logs were read out of the uploaded
-artifact - `install-aria2-<run>-1`, downloaded unauthenticated through rule 8's
-route - and both hung runs say `0 upgraded, 0 newly installed`. So the package
-route installed nothing, `needrestart` runs only after a package operation and
-therefore never ran, and the letter in `NEEDRESTART_MODE` cannot be the cause
-under any value: run 3 carried `a`, run 4 carried `l`, and the two jobs hung
-identically.
-
-⛔ **And it is not the install step.** In runs 3 and 4 the install SUCCEEDED in
-six seconds and the job stopped in *Upload the install logs*; in runs 1 and 2 it
-stopped in the install itself, unbounded and then under a bound that sent TERM
-and waited. ⚠ **The artifact that hung step produced is complete and
-downloadable**, so its work finished and the step still did not return. Nothing
-in four runs separates what holds a runner open after that, and naming a cause
-would be a guess with an artifact beside it. `CI-08` is the entry for a runner
-default nobody swept.
-
-⭐ **The adapter is not the problem and now has a driven pass**: on a real
-`ubuntu-24.04` host a genuine install took 8s, the no-op repeat 3s, and `version`
-answered `1.37.0`. Two of its four unmeasured assumptions are measured.
-
-**Next:** the second route. ⭐ **Two routes for aria2 have now been acquired and
-compared, here, with no disposable host**, because building a product and asking
-its version is not a capture: Ubuntu's 1.37.0 and a 1.37.0 compiled from the
-vendor's release tarball, 19s to configure and 126s to `make -j4`. They report
-ONE version and are not one build - different features, different bytes, and the
-package one is a 14-kilobyte shim over `libaria2.so.0`. `ACQ-03` carries the
-table.
-
-⭐ **aria2 is the only target whose two routes currently resolve the same
-version**; Ubuntu trails upstream by a major version for Transmission and
-qBittorrent, and rule 5 forbids backfilling to make a pair agree. So the first
-two-route capture is `CLIENT-05`'s.
-
-⭐ **aria2's release route installs now**, driven end to end here: fetch, unpack,
-configure, build, install into a prefix `binary()` prefers, 132 seconds, and the
-result answers `1.37.0`. qBittorrent's installs the AppImage; Transmission's
-refuses and says what a build would take rather than returning 0 over nothing.
-
-⭐ **And `acquired` is a digest comparison rather than a version comparison**,
-because the aria2 pair needed it: same version, two executables. `describe` names
-the binary it would ask and the install record carries both paths and both
-digests. ⚠ Measured, not argued - the same run reported `acquired=no` before that
-branch existed, over a route that had just compiled and installed a different
-program.
-
-⛔ **What is still missing is a capture.** Nothing has started a build against the
-lab through the release route, no record has been written into the store, and
-every capture so far is one route, one connector, one platform. ⚠ Then what no capture has established: a second connector, a record
-in the store, and the Windows half of each Prove. Every adapter is `sh` with no
-PowerShell twin, so a Windows client capture needs `CI-07`'s work first.
-
 **Tree:** Re-measure it. This file is a claim about a tree that has moved. Check
 the branch, the remote, the clone depth, `git status` and `HEAD..origin/main`
 before editing anything.
 
 ⚠ **The container may start on a `claude/*` branch with `user.name` set to an
-agent and a shallow clone.** All three were true at the start of the last three
+agent and a shallow clone.** All three were true at the start of the last four
 sessions. Correct them before any edit: the branch to `main` per rule 7, the
 identity to the operator's own per rule 11, and the clone with
 `git fetch --unshallow`. ⛔ Read the identity out of the history with
 `git log --format='%an <%ae>' | sort -u`; never type it into a tracked file,
 which is what `check-no-secrets --public` refuses.
 
-⭐ **Install `pwsh`, `shellcheck` and `shfmt` first, with one command:**
-`sh scripts/doctor/provision.sh`. It takes about four seconds on a host with none
-of them, verifies every download against a pinned digest before executing it, and
-`--check` reports what a host has without installing anything. ⛔ **Without
-`pwsh` the gate does not merely shrink - it goes RED**: `check-capture` FAILS and
-`check-twins` skips, so a session that skipped this step could read that failure
-as a defect in the tree.
+⭐ **Install the three tools with one command:** `sh scripts/doctor/provision.sh`.
+About four seconds on a host with none of them, every download verified against a
+pinned digest first, and `--check` reports what a host has without installing
+anything. ⛔ **Without `pwsh` the gate does not merely shrink - it goes RED**:
+`check-capture` FAILS and `check-twins` skips, so a session that skipped this
+step could read that failure as a defect in the tree.
+
+---
+
+## Where the work is
+
+**In flight:** `CLIENT-05` first, then `CLIENT-01` and `CLIENT-06`. They share one
+body of machinery and every layer under the product is written and proved.
+
+⭐ **The second route exists now and both halves of one were acquired here**, with
+no disposable host, because building a product and asking its version is not a
+capture. Ubuntu's aria2 1.37.0 and a 1.37.0 compiled from the vendor's release
+tarball report ONE version and are not one build: different features, different
+bytes, and the package one is a 14-kilobyte shim over `libaria2.so.0`.
+[`SESSION-2026-09-08-ROUTES.md`](SESSION-2026-09-08-ROUTES.md) has the table.
+
+⭐ **aria2 is the only target whose two routes currently resolve the same
+version.** Ubuntu ships Transmission 4.0.5 against upstream 4.1.3 and qBittorrent
+4.6.3 against upstream 5.2.3, and rule 5 forbids backfilling to make a pair
+agree. That is why the first two-route capture is `CLIENT-05`'s.
+
+⭐ **aria2's release route installs**, driven end to end: fetch, unpack,
+configure, build, install into a prefix `binary()` prefers, 132 seconds.
+qBittorrent's installs the AppImage. Transmission's refuses and says what a build
+would take, rather than returning 0 over nothing - which is what all three used
+to do.
+
+⭐ **And `acquired` is a digest comparison, not a version comparison**, because
+the aria2 pair needed it: `describe` names the executable it would ask, and the
+install record carries both paths and both digests. ⚠ Measured rather than
+argued - the same run reported `acquired=no` before that branch existed, over a
+route that had just compiled and installed a different program.
+
+**Next, in order:**
+
+1. ⛔ **Wire the second route into `capture-client.yml`.** It passes
+   `--route package` only. One route per host is the design, so the route belongs
+   in the matrix beside the adapter. ⚠ The open question is which asset a
+   resolver picks: `resolve-stable` orders versions and does not select assets,
+   and the answer is target knowledge, so it belongs in Rust or in the adapter
+   rather than in the workflow. Do not write it untested.
+2. **A record in the store.** That is what `CI-09` waits on and what `CLIENT-01`
+   still lacks. A single-route, single-connector capture VALIDATES and refuses to
+   publish - `not_corroborated` is a recordable state, not a reason to write
+   nothing.
+3. **`CI-07`**, the PowerShell halves for the fourteen declared rows.
+4. **`CI-08`'s harness gap**: nothing runs a capture step's body.
+
+---
+
+## The aria2 hang, as far as four runs can answer it
+
+⛔ **The recorded cause is refuted.** Both hung runs' install logs say
+`0 upgraded, 0 newly installed`: aria2 ships on the `ubuntu-24.04` image, so the
+package route installs nothing there, `needrestart` runs only after a package
+operation and therefore never ran, and the letter in `NEEDRESTART_MODE` cannot be
+the cause under any value. Run 3 used `a`, run 4 used `l`, and the jobs hung
+identically.
+
+⛔ **And it is not the install step.** In runs 3 and 4 that step SUCCEEDED in six
+seconds and the job stopped in *Upload the install logs*; in runs 1 and 2 it
+stopped in the install itself. ⚠ **The artifact that hung step produced is
+complete and downloadable**, so its work finished and the step still did not
+return. Nothing in four runs separates what holds a runner open after that, and
+naming a cause would be a guess with an artifact beside it. `CI-08` is the entry.
+
+⭐ **Read an artifact rather than dispatching.** The install logs came down
+through rule 8's route, unauthenticated - an artifact zip needs no `gh`, which is
+worth knowing before assuming a dispatch is the only way to learn something.
 
 ---
 
@@ -413,13 +376,31 @@ one.
 fix it. It is the one observed skip, and it is why the gate exits 1 under
 `--strict` here and 0 on the Linux lane.
 
+⛔ **No route in this tree had ever been shown to install anything until
+2026-09-08**, and two of them provably had not: `aria2`'s package route is a
+no-op on the image that ships it, and every `release` route fetched an artifact
+and returned 0. ⚠ Two routes in that state satisfy `E-ACQ-07`, `E-ACQ-08` and the
+version comparison, and reach `ACQ-03` as `byte_identical` - its STRONGEST
+verdict - having acquired nothing. `install-client` records `acquired` now, from
+a digest rather than a version.
+
 ⭐ This session's record is
+[`SESSION-2026-09-08-ROUTES.md`](SESSION-2026-09-08-ROUTES.md): the aria2 hang
+read out of an artifact, the routes that installed nothing, one target acquired
+twice, and three rules that existed only in prose.
+
+⭐ The session before it is
 [`SESSION-2026-09-08-CLIENTS.md`](SESSION-2026-09-08-CLIENTS.md): the first two
 clients, the four dispatches it took, and the seven defects none of which was
 found by reading.
 
-⭐ The earlier session records are
-[`SESSION-2026-09-08-DISPATCH.md`](SESSION-2026-09-08-DISPATCH.md) and
-[`SESSION-2026-09-06-ADJACENT.md`](SESSION-2026-09-06-ADJACENT.md). ⚠ They are
-linked from here and nowhere else, so a rewrite of this file that drops a link
-orphans one and `check-docs` refuses that.
+⭐ Every session record is listed in
+[`../history/README.md`](README.md), which is the page to go to for them.
+
+⛔ **This file used to claim they were "linked from here and nowhere else", and
+that was false**, measured on 2026-09-08: the index links them too. ⚠ It was
+false in the direction that mattered - the newest record was in fact missing from
+that index and held only by a link from THIS file, which is overwritten every
+session, so it was one rewrite from being an orphan. ⭐ `check-docs` refuses a
+`SESSION-*.md` the index does not link now, which is a stronger rule than the
+orphan one and is what makes the sentence above true rather than hopeful.

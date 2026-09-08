@@ -5,6 +5,30 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T23:16:05Z
+
+- ⛔ A third rule that existed only in prose. `docs/history/README.md` carries a
+  note saying three session records were missing from it until 2026-09-08; a
+  fourth was missing from it by the end of that same day, held in the tree only
+  by a link from `RESUME.md`, which is overwritten every session. The note
+  observed the pattern and changed nothing. Record:
+  [`docs/history/README.md`](docs/history/README.md).
+- ⭐ `check-docs` refuses a `SESSION-*.md` the index does not link, in both
+  halves, mutation-proved. It is a stronger rule than the orphan one beside it:
+  a record linked from `RESUME.md` alone passes that and is still absent from the
+  page that exists to list them. It fired on this session's own record first.
+- ⚠ And `RESUME.md` claimed those records were "linked from here and nowhere
+  else", which was false - the index links them - and false in the direction that
+  mattered, because the one record it was true of was the missing one.
+- ⭐ The line-endings rule added earlier today caught its own author within the
+  hour: writing that twin with a tool that emits LF left `check-docs.ps1` at
+  `w/lf` under `attr/text eol=crlf`, and the gate refused it. Before the rule
+  existed, the same state reached a commit and only `git` mentioned it.
+- ⭐ The session record is
+  [`docs/history/SESSION-2026-09-08-ROUTES.md`](docs/history/SESSION-2026-09-08-ROUTES.md).
+- Deployment: nothing deployed.
+
+
 ### 2026-09-08T23:05:56Z
 
 - ⛔ All three `release` routes fetched an artifact and returned 0 having

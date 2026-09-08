@@ -254,6 +254,23 @@ foreach ($rel in $files) {
     }
 }
 
+# ⛔ AND EVERY SESSION RECORD IS IN THE INDEX THAT DESCRIBES THEM, which is a
+# stronger rule than the orphan one above: a record linked only from RESUME.md is
+# not an orphan and is still missing from the page a reader goes to for the list.
+# ⚠ Measured twice on one day: docs/history/README.md carries a note saying three
+# records were missing from it until 2026-09-08, and a fourth was missing from it
+# by the end of that same day. The note observed the pattern and changed nothing.
+# ⛔ Keep this identical to the sh twin.
+$historyIndex = 'docs/history/README.md'
+if (Test-Path -LiteralPath $historyIndex) {
+    $indexText = Get-Content -Raw -LiteralPath $historyIndex
+    foreach ($record in @(Get-ChildItem -LiteralPath 'docs/history' -Filter 'SESSION-*.md' -File)) {
+        if (-not $indexText.Contains('(' + $record.Name + ')')) {
+            Add-Problem ('docs/history/' + $record.Name + ' is not listed in ' + $historyIndex + '. A record the index omits is one nobody finds from the page that exists to list them.')
+        }
+    }
+}
+
 # -- the character rule moved, it was NOT dropped -------------------------
 # ⛔ THE FIVE-CHARACTER ALLOWLIST AND THE EM-DASH RULE NOW LIVE IN
 # check-markers.ps1, over EVERY tracked text file rather than over markdown
