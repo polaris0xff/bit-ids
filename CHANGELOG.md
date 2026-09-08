@@ -5,6 +5,32 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T23:05:56Z
+
+- ⛔ All three `release` routes fetched an artifact and returned 0 having
+  installed nothing, so `version` answered from whatever was already on PATH.
+  A second route would have measured the FIRST route's build. Record:
+  [`TODO/clients.md`](TODO/clients.md).
+- ⭐ aria2's release route now unpacks, configures, builds and installs into a
+  prefix `binary()` prefers, refusing at each step: 132 seconds from URL to a
+  runnable `aria2c` answering `1.37.0`, driven end to end here.
+- ⭐ qBittorrent's installs the AppImage, which IS the program, with
+  `APPIMAGE_EXTRACT_AND_RUN=1` exported so a host without FUSE can run it.
+  ⛔ Neither branch is driven. Transmission's refuses outright and says what it
+  would take, because writing a second product's CMake build untested is
+  guessing.
+- ⛔ A version is not an identity. `describe` names the executable it would ask,
+  and `install-client` records both binaries and both digests: `acquired=yes`
+  now also when the version did not change and the executable did. That branch is
+  the aria2 pair, not a hypothetical - the same run recorded `acquired=no` before
+  it existed, over a route that had just compiled and installed a different
+  program. Record: [`TODO/acquisition.md`](TODO/acquisition.md).
+- ⚠ Two builds of one tarball at two prefixes differ, so a source route can never
+  reach `byte_identical`. That is a property of the route, and it is the same
+  conclusion `ACQ-03` reaches when it requires a capture per route.
+- Deployment: nothing deployed. Eighty harness cases pass, five of them new.
+
+
 ### 2026-09-08T22:46:54Z
 
 - ⭐ Two independent acquisition routes for one target were held at once for the

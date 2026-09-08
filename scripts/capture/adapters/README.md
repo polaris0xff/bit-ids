@@ -18,7 +18,7 @@ returns 0 for done, 1 for refused and 2 for could-not-run.
 
 | subcommand | when | must |
 | --- | --- | --- |
-| `describe` | any time | print `target=<slug>` and `kind=stock\|stub`, one per line |
+| `describe` | any time | print `target=<slug>` and `kind=stock\|stub`, one per line, plus `binary=<path>` when one is installed |
 | `install <route> <workdir>` | ⛔ **before the route is cut** | install the target through that route alone |
 | `version` | ⛔ **before the route runs, again after it, and again under containment** | ⛔ ask the **installed executable** and print exactly what it answered |
 | `start <torrent> <workdir> <peer-port>` | under containment | launch the build on that torrent and return; the build keeps running |
@@ -113,10 +113,23 @@ same-version gate compares what each installed build *reports*, which is why
 `version` asks the executable rather than the installer.
 
 ⛔ **And a route that RAN is not yet a route that INSTALLED.** `install-client`
-asks `version` once before the route runs and once after, and records
-`preexisting_version` and `acquired` beside the version. A target the host
-already had, at the version the route would have installed, is `acquired=no`
-however cleanly the route exited.
+asks `version` and `describe` once before the route runs and once after, and
+records `preexisting_version`, both executables, both digests and `acquired`
+beside the version.
+
+⛔ **A version is not an identity, which is why `describe` names the
+executable.** `aria2` ships on `ubuntu-24.04` at the same version the vendor
+publishes, so a release route there installs a genuinely different build - a
+2.8-megabyte self-contained program in place of a 14-kilobyte shim over
+`libaria2.so.0`, with a different feature list - and both answer `1.37.0`. ⚠ A
+verdict on version strings alone calls that no acquisition at all, which is
+measured rather than argued: it is what the first two-route capture would have
+recorded. The digest is what makes that branch reachable, and it has its own
+harness case.
+
+⚠ **An adapter that names no executable is not refused.** The key is omitted when
+nothing is installed, the two digest fields come back empty, and the verdict
+falls back to the version - a lower bound rather than a wrong answer.
 
 ⚠ **Both halves of that are measured rather than imagined.** `aria2` ships on
 the `ubuntu-24.04` image, so `apt-get install aria2` there prints `already the

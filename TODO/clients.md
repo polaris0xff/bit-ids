@@ -317,10 +317,18 @@ carries the table and the consequence; the short form is that the package route'
 `/usr/bin/aria2c` is a 14-kilobyte shim over `libaria2.so.0` while the source
 build is self-contained, and their feature lists differ.
 
-⛔ **Still not captured.** No run of this adapter has started a build, so the
-entry stays open on the same four gaps every client entry has, and the release
-route still fetches without installing - the adapters put nothing where `binary()`
-would find it, which is the next change rather than a dispatch.
+⭐ **The release route installs now, and was driven end to end here.** It fetches
+the tarball, unpacks it, configures, builds and installs into a prefix
+`binary()` prefers, and refuses at each step rather than returning 0 over an
+install it did not perform. 132 seconds from URL to a runnable `aria2c` that
+answers `1.37.0`. ⚠ It deliberately does not `apt-get` its build dependencies:
+that would make the release route reach the package index, and arguing afterwards
+about whether headers count as acquisition is worse than refusing.
+
+⛔ **Still not captured.** No run of this adapter has started a build against the
+lab, so the entry stays open on the same four gaps every client entry has. What
+changed is that the second route now exists rather than being fetched and
+discarded.
 
 ## CLIENT-06: Transmission capture adapter
 

@@ -13,14 +13,22 @@
 # the entry says must not create circular corroboration. This file is the target
 # half alone; nothing here observes anything.
 #
-# -- ⛔ WHAT THIS ASSUMES ABOUT THE PRODUCT, AND HAS NOT MEASURED --------------
+# -- ⛔ WHAT THIS ASSUMES ABOUT THE PRODUCT, AND WHAT IS NOW MEASURED ----------
 #
-# Nothing below has been run against an installed aria2. A session host is not
-# disposable, so this file was written from the product's documented interface
-# and driven only through a stub. Each line is a claim a dispatch settles:
+# ⭐ MEASURED on 2026-09-08, against installed aria2 1.37.0 - both an Ubuntu
+# package build and one compiled here from the vendor's release tarball.
+# Installing a product and asking its version is not a capture, so it needed no
+# disposable host:
 #
-#   * `aria2c --version` opens with `aria2 version <v>`, so the third field is
-#     the version;
+#   * `aria2c --version` opens with `aria2 version 1.37.0`, so the third field
+#     is the version - confirmed on both builds;
+#   * the package route installs without a prompt, and on `ubuntu-24.04` it
+#     installs NOTHING, because the image already ships aria2;
+#   * the release route builds: 19 seconds to configure, 126 seconds to
+#     `make -j4`, and the result answers with BitTorrent enabled.
+#
+# ⛔ STILL NOT MEASURED, because each needs a capture:
+#
 #   * `--enable-dht`, `--enable-dht6`, `--bt-enable-lpd` and
 #     `--enable-peer-exchange` are the switches for the three adjacent surfaces;
 #   * `--listen-port` refuses zero, which is why an unset peer port drops it;
@@ -57,6 +65,16 @@ binary() {
     printf '%s' "$BIT_IDS_ARIA2"
     return 0
   fi
+  # ⭐ THE RELEASE ROUTE'S OWN PREFIX, BEFORE THE PATH. Its default is
+  # `/usr/local`, which already precedes `/usr` on this platform's PATH, so this
+  # branch changes nothing for a normal install and is what lets a run point the
+  # route somewhere else and still be measuring the build that route produced.
+  # ⛔ Without it the two routes would race on PATH order, which is a property of
+  # the host rather than of the acquisition.
+  if [ -n "${BIT_IDS_PREFIX:-}" ] && [ -x "$BIT_IDS_PREFIX/bin/aria2c" ]; then
+    printf '%s' "$BIT_IDS_PREFIX/bin/aria2c"
+    return 0
+  fi
   command -v aria2c 2>/dev/null
 }
 
@@ -68,6 +86,18 @@ case "$COMMAND" in
   describe)
     printf 'target=aria2\n'
     printf 'kind=stock\n'
+    # ⭐ AND WHERE THE BUILD IS, WHEN THERE IS ONE. `install-client` asks twice -
+    # once before the route runs and once after - so a route that replaced the
+    # executable is visible as a changed path or a changed digest even when both
+    # builds report the same version. ⛔ That case is real rather than
+    # theoretical: `aria2` ships on `ubuntu-24.04` at the same version the vendor
+    # publishes, so a release route there installs a genuinely different build
+    # and a version comparison alone reports it as no acquisition at all.
+    # ⚠ The key is OMITTED when nothing is installed, which is an answer rather
+    # than an empty value: a caller that saw `binary=` could not tell a missing
+    # build from an adapter that declines to say.
+    _where=$(binary) || _where=""
+    [ -z "$_where" ] || printf 'binary=%s\n' "$_where"
     ;;
 
   install)
@@ -106,11 +136,67 @@ case "$COMMAND" in
         # E-ACQ-07 and E-ACQ-08 refuse two routes sharing a resolver or a
         # delivery mechanism, so a "second route" that asked another mirror of
         # the same index would be one route under two names.
+        #
+        # ⛔ AND IT INSTALLS WHAT IT FETCHED. This route used to `curl` the
+        # tarball into the workdir and return 0, which is a route that reports an
+        # install it did not perform: `version` then answered from whatever was
+        # already on PATH, so a second route would have measured the FIRST
+        # route's build and the two would have agreed for the most trivial reason
+        # available. Measured on 2026-09-08 and recorded in `ACQ-03`.
+        #
+        # ⛔ AN aria2 RELEASE CARRIES NO LINUX BINARY, which is a property of the
+        # target rather than a gap here: the 1.37.0 release publishes source
+        # tarballs, two Windows zips and an Android build. So the Linux release
+        # route is a source build. Measured on this project's own host: 19
+        # seconds to configure and 126 seconds to `make -j4`.
+        #
+        # ⚠ WHAT THIS ASSUMES AND HAS NOT MEASURED ON A RUNNER: that a C++
+        # toolchain and OpenSSL headers are already present. Both are true on the
+        # host this was driven on. If they are not, `configure` refuses and says
+        # so with its own log, which is a route that failed rather than one that
+        # silently produced nothing. ⛔ It deliberately does NOT apt-get its build
+        # dependencies: that would make this route reach the package index, and
+        # arguing afterwards about whether headers count as acquisition is worse
+        # than refusing.
         [ -n "${BIT_IDS_RELEASE_URL:-}" ] ||
           cannot "the release route needs BIT_IDS_RELEASE_URL, resolved before the route was cut"
         command -v curl >/dev/null 2>&1 || cannot "curl is not on this host"
+        for _need in tar make cc; do
+          command -v "$_need" >/dev/null 2>&1 ||
+            cannot "the release route builds from source and $_need is not on this host"
+        done
+        PREFIX=${BIT_IDS_PREFIX:-/usr/local}
         curl -fsSL --retry 2 -o "$WORKDIR/aria2.tar.bz2" "$BIT_IDS_RELEASE_URL" \
           </dev/null >"$WORKDIR/install.log" 2>&1 || refuse "the release route could not be fetched"
+        mkdir -p "$WORKDIR/src" || cannot "cannot create $WORKDIR/src"
+        tar -xjf "$WORKDIR/aria2.tar.bz2" -C "$WORKDIR/src" \
+          >>"$WORKDIR/install.log" 2>&1 || refuse "the release tarball could not be unpacked"
+        # ⚠ ONE DIRECTORY, FOUND RATHER THAN COMPOSED. The tarball's top-level
+        # name carries the version, and composing it here would be a second
+        # spelling of a value the archive already states.
+        SRCDIR=$(find "$WORKDIR/src" -mindepth 1 -maxdepth 1 -type d | head -1)
+        [ -n "$SRCDIR" ] || refuse "the release tarball unpacked no source directory"
+        # ⚠ THE CONFIGURE OPTIONS ARE PART OF WHAT THIS ROUTE INSTALLS. The same
+        # source configured differently is a build with different features, which
+        # `ACQ-03` measured: two 1.37.0 builds reporting one version and enabling
+        # different things. BitTorrent is the surface this project measures and it
+        # is on by default; the rest are dependencies a capture does not need.
+        # ⛔ `--prefix` puts the result ahead of the system one on PATH, which is
+        # what makes `binary()` find THIS build rather than a package.
+        (
+          cd "$SRCDIR" &&
+            ./configure --prefix="$PREFIX" --without-libxml2 --without-libexpat \
+              --without-sqlite3 --without-libcares --without-libssh2 --with-openssl \
+              --disable-nls
+        ) </dev/null >>"$WORKDIR/install.log" 2>&1 ||
+          refuse "the release route could not configure a build"
+        JOBS=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2)
+        (cd "$SRCDIR" && make -j"$JOBS") </dev/null >>"$WORKDIR/install.log" 2>&1 ||
+          refuse "the release route could not build aria2"
+        (cd "$SRCDIR" && make install) </dev/null >>"$WORKDIR/install.log" 2>&1 ||
+          refuse "the release route built aria2 and could not install it"
+        [ -x "$PREFIX/bin/aria2c" ] ||
+          refuse "the release route reported an install and left no aria2c in $PREFIX/bin"
         ;;
       *) cannot "unknown route: $ROUTE" ;;
     esac

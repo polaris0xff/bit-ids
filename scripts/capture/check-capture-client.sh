@@ -130,6 +130,7 @@ case "$COMMAND" in
     [ "${BIT_IDS_STUB_DESCRIBE_RC:-0}" = 0 ] || exit "$BIT_IDS_STUB_DESCRIBE_RC"
     [ -z "${BIT_IDS_STUB_TARGET:-}" ] || printf 'target=%s\n' "$BIT_IDS_STUB_TARGET"
     [ -z "${BIT_IDS_STUB_KIND:-}" ] || printf 'kind=%s\n' "$BIT_IDS_STUB_KIND"
+    [ -z "${BIT_IDS_STUB_BINARY:-}" ] || printf 'binary=%s\n' "$BIT_IDS_STUB_BINARY"
     ;;
   install)
     [ "${BIT_IDS_STUB_INSTALL_RC:-0}" = 0 ] || exit "$BIT_IDS_STUB_INSTALL_RC"
@@ -143,6 +144,15 @@ case "$COMMAND" in
     # rather than three separate flags that could disagree.
     [ -z "${BIT_IDS_STUB_VERSION_FILE:-}" ] ||
       printf '%s\n' "${BIT_IDS_STUB_VERSION-1.2.3}" >"$BIT_IDS_STUB_VERSION_FILE"
+    # ⭐ AND AN INSTALL THAT REPLACES THE EXECUTABLE WITHOUT CHANGING THE VERSION.
+    # That is the shape a version comparison cannot see and the one the aria2 pair
+    # actually is: a package build and a vendor build both reporting 1.37.0.
+    [ -z "${BIT_IDS_STUB_BINARY:-}" ] || {
+      cat "$BIT_IDS_STUB_BINARY" 2>/dev/null >"$BIT_IDS_STUB_BINARY.prev"
+      cat "$BIT_IDS_STUB_BINARY.prev" 2>/dev/null >"$BIT_IDS_STUB_BINARY"
+      printf 'installed via %s\n' "$1" >>"$BIT_IDS_STUB_BINARY"
+      chmod +x "$BIT_IDS_STUB_BINARY"
+    }
     # ⛔ THE HANG DOES NOT DEPEND ON STDIN, and that matters. The caller redirects
     # /dev/null into every adapter call, so a stub that blocked on `read` would
     # return at once and prove the redirect instead of the time limit. A product
@@ -664,6 +674,40 @@ else
       fail "an upgrade records $want"
     fi
   done
+  unset BIT_IDS_STUB_VERSION_FILE
+
+  # ⛔ SAME VERSION, DIFFERENT EXECUTABLE, AND THAT IS AN ACQUISITION. A version
+  # comparison alone cannot reach this branch, and it is the one the real pair
+  # needs: `aria2` ships on `ubuntu-24.04` at the version the vendor publishes,
+  # so a release route there installs a genuinely different build and reports the
+  # same number. ⚠ Without this case the digest half of the verdict would be
+  # written and never exercised, which is a guard nobody knows works.
+  BIT_IDS_STUB_VERSION_FILE="$WORK/host-same"
+  export BIT_IDS_STUB_VERSION_FILE
+  printf '1.2.3\n' >"$BIT_IDS_STUB_VERSION_FILE"
+  BIT_IDS_STUB_BINARY="$WORK/stub-build"
+  export BIT_IDS_STUB_BINARY
+  printf 'the build that was already here\n' >"$BIT_IDS_STUB_BINARY"
+  chmod +x "$BIT_IDS_STUB_BINARY"
+  install_case 0 "" "one version over two executables is still an acquisition" \
+    --adapter "$STUB" --route release --workdir "$WORK/inst-d" --record "$WORK/inst-d.txt"
+  for want in "preexisting_version=1.2.3" "reported_version=1.2.3" "acquired=yes"; do
+    if grep -q -x -F -e "$want" "$WORK/inst-d.txt" 2>/dev/null; then
+      pass "a replaced executable records $want"
+    else
+      fail "a replaced executable records $want"
+    fi
+  done
+  # ⛔ AND THE TWO DIGESTS IT COMPARED ARE IN THE RECORD, DIFFERENT. A verdict
+  # whose evidence is absent is a verdict nobody can re-derive.
+  _d1=$(sed -n 's/^preexisting_binary_sha256=//p' "$WORK/inst-d.txt")
+  _d2=$(sed -n 's/^installed_binary_sha256=//p' "$WORK/inst-d.txt")
+  if [ -n "$_d1" ] && [ -n "$_d2" ] && [ "$_d1" != "$_d2" ]; then
+    pass "the record carries the two digests the verdict compared"
+  else
+    fail "the record carries the two digests the verdict compared [$_d1] [$_d2]"
+  fi
+  unset BIT_IDS_STUB_BINARY
   unset BIT_IDS_STUB_VERSION_FILE
 
   # -- ⛔ THE SELF-CHECK, PROVED BY PLANTING THE DEFECT IT EXISTS TO CATCH ------

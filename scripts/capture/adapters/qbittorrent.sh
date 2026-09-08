@@ -38,6 +38,15 @@
 
 set -u
 
+# ⛔ AN AppImage MOUNTS ITSELF WITH FUSE, AND A CAPTURE HOST NEED NOT HAVE IT.
+# This makes the AppImage extract itself and run instead, which costs an
+# extraction per call and works on a host with FUSE as well as one without. ⚠ It
+# is exported here rather than at each call site so `version`, `start` and any
+# later subcommand inherit one answer; a build that is not an AppImage ignores
+# it. ⛔ Neither branch has been driven: nothing has installed through the
+# release route.
+export APPIMAGE_EXTRACT_AND_RUN=1
+
 ME=qbittorrent
 
 refuse() {
@@ -55,6 +64,14 @@ binary() {
     printf '%s' "$BIT_IDS_QBITTORRENT"
     return 0
   fi
+  # ⭐ THE RELEASE ROUTE'S OWN PREFIX, BEFORE THE PATH. Its default is
+  # `/usr/local`, which already precedes `/usr` on this platform's PATH, so this
+  # changes nothing for a normal install and is what stops the two routes racing
+  # on PATH order - a property of the host rather than of the acquisition.
+  if [ -n "${BIT_IDS_PREFIX:-}" ] && [ -x "$BIT_IDS_PREFIX/bin/qbittorrent-nox" ]; then
+    printf '%s' "$BIT_IDS_PREFIX/bin/qbittorrent-nox"
+    return 0
+  fi
   command -v qbittorrent-nox 2>/dev/null
 }
 
@@ -66,6 +83,18 @@ case "$COMMAND" in
   describe)
     printf 'target=qbittorrent\n'
     printf 'kind=stock\n'
+    # ⭐ AND WHERE THE BUILD IS, WHEN THERE IS ONE. `install-client` asks twice -
+    # once before the route runs and once after - so a route that replaced the
+    # executable is visible as a changed path or a changed digest even when both
+    # builds report the same version. ⛔ That case is real rather than
+    # theoretical: `aria2` ships on `ubuntu-24.04` at the same version the vendor
+    # publishes, so a release route there installs a genuinely different build
+    # and a version comparison alone reports it as no acquisition at all.
+    # ⚠ The key is OMITTED when nothing is installed, which is an answer rather
+    # than an empty value: a caller that saw `binary=` could not tell a missing
+    # build from an adapter that declines to say.
+    _where=$(binary) || _where=""
+    [ -z "$_where" ] || printf 'binary=%s\n' "$_where"
     ;;
 
   install)
@@ -105,10 +134,32 @@ case "$COMMAND" in
         [ -n "${BIT_IDS_RELEASE_URL:-}" ] ||
           cannot "the release route needs BIT_IDS_RELEASE_URL, resolved before the route was cut"
         command -v curl >/dev/null 2>&1 || cannot "curl is not on this host"
+        #
+        # ⛔ AND IT INSTALLS WHAT IT FETCHED. This route used to leave the
+        # AppImage in the workdir and return 0, which is a route reporting an
+        # install it did not perform: `version` then answered from whatever was
+        # already on PATH, so a second route would have measured the FIRST
+        # route's build and the two would have agreed for the most trivial reason
+        # available. Measured on 2026-09-08 and recorded in `ACQ-03`.
+        #
+        # ⭐ AN AppImage IS THE INSTALLED PROGRAM, so installing it is placing it
+        # where `binary()` looks. There is nothing to unpack and no prefix to
+        # configure, which is the one thing this route has that aria2's does not.
+        #
+        # ⚠ WHAT THIS ASSUMES AND HAS NOT MEASURED: that the AppImage can run on
+        # the capture host. An AppImage mounts itself with FUSE, and a runner
+        # without it needs `APPIMAGE_EXTRACT_AND_RUN=1`; that variable is set on
+        # every call this adapter makes into the build, which costs an extraction
+        # per call and works either way. ⛔ Neither branch has been driven: this
+        # adapter has never installed through this route.
+        PREFIX=${BIT_IDS_PREFIX:-/usr/local}
         curl -fsSL --retry 2 -o "$WORKDIR/qbittorrent-nox.AppImage" "$BIT_IDS_RELEASE_URL" \
           </dev/null >"$WORKDIR/install.log" 2>&1 || refuse "the release route could not be fetched"
-        chmod +x "$WORKDIR/qbittorrent-nox.AppImage" ||
-          refuse "the fetched AppImage could not be made executable"
+        mkdir -p "$PREFIX/bin" || cannot "cannot create $PREFIX/bin"
+        install -m755 "$WORKDIR/qbittorrent-nox.AppImage" "$PREFIX/bin/qbittorrent-nox" ||
+          refuse "the fetched AppImage could not be installed into $PREFIX/bin"
+        [ -x "$PREFIX/bin/qbittorrent-nox" ] ||
+          refuse "the release route reported an install and left no qbittorrent-nox in $PREFIX/bin"
         ;;
       *) cannot "unknown route: $ROUTE" ;;
     esac

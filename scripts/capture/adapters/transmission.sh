@@ -76,6 +76,18 @@ case "$COMMAND" in
   describe)
     printf 'target=transmission\n'
     printf 'kind=stock\n'
+    # ⭐ AND WHERE THE BUILD IS, WHEN THERE IS ONE. `install-client` asks twice -
+    # once before the route runs and once after - so a route that replaced the
+    # executable is visible as a changed path or a changed digest even when both
+    # builds report the same version. ⛔ That case is real rather than
+    # theoretical: `aria2` ships on `ubuntu-24.04` at the same version the vendor
+    # publishes, so a release route there installs a genuinely different build
+    # and a version comparison alone reports it as no acquisition at all.
+    # ⚠ The key is OMITTED when nothing is installed, which is an answer rather
+    # than an empty value: a caller that saw `binary=` could not tell a missing
+    # build from an adapter that declines to say.
+    _where=$(daemon) || _where=""
+    [ -z "$_where" ] || printf 'binary=%s\n' "$_where"
     ;;
 
   install)
@@ -121,8 +133,30 @@ case "$COMMAND" in
         [ -n "${BIT_IDS_RELEASE_URL:-}" ] ||
           cannot "the release route needs BIT_IDS_RELEASE_URL, resolved before the route was cut"
         command -v curl >/dev/null 2>&1 || cannot "curl is not on this host"
+        #
+        # ⛔ THIS ROUTE FETCHES AND REFUSES, RATHER THAN FETCHING AND REPORTING AN
+        # INSTALL IT DID NOT PERFORM. It used to leave the artifact in the workdir
+        # and return 0, so `version` answered from whatever was already on PATH
+        # and a second route would have measured the FIRST route's build - two
+        # routes agreeing for the most trivial reason available. Measured on
+        # 2026-09-08 and recorded in `ACQ-03`.
+        #
+        # ⛔ WHAT IT WOULD TAKE IS A BUILD, and it is not written. Transmission's
+        # newest release publishes `transmission-4.1.3.tar.xz`, two Windows
+        # installers and a macOS disk image; there is no Linux binary, so a Linux
+        # release route compiles - and 4.x builds with CMake against libcurl,
+        # libevent and a TLS library rather than with the autotools recipe aria2
+        # uses. ⚠ Writing it untested would be guessing at a second product's
+        # build system, and this route refusing is the honest state until it is
+        # driven.
+        #
+        # ⚠ AND THE VERSIONS WOULD NOT MEET ANYWAY. Ubuntu 24.04 ships 4.0.5
+        # against upstream 4.1.3, so this target has no same-version pair to
+        # compare today and `AGENTS.md` rule 5 forbids backfilling one.
+        # `CLIENT-06` carries it.
         curl -fsSL --retry 2 -o "$WORKDIR/transmission-release" "$BIT_IDS_RELEASE_URL" \
           </dev/null >"$WORKDIR/install.log" 2>&1 || refuse "the release route could not be fetched"
+        refuse "the release route fetched a source archive and this adapter cannot build it; a route that installs nothing must not report an install"
         ;;
       *) cannot "unknown route: $ROUTE" ;;
     esac

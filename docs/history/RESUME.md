@@ -94,10 +94,21 @@ version**; Ubuntu trails upstream by a major version for Transmission and
 qBittorrent, and rule 5 forbids backfilling to make a pair agree. So the first
 two-route capture is `CLIENT-05`'s.
 
-⛔ **What is still missing is an install.** The `release` case in all three
-adapters fetches an artifact and never makes it the executable `binary()` finds,
-so a release route run today would report whatever the package route left on the
-path. That is the next change, and it needs no dispatch to write. ⚠ Then what no capture has established: a second connector, a record
+⭐ **aria2's release route installs now**, driven end to end here: fetch, unpack,
+configure, build, install into a prefix `binary()` prefers, 132 seconds, and the
+result answers `1.37.0`. qBittorrent's installs the AppImage; Transmission's
+refuses and says what a build would take rather than returning 0 over nothing.
+
+⭐ **And `acquired` is a digest comparison rather than a version comparison**,
+because the aria2 pair needed it: same version, two executables. `describe` names
+the binary it would ask and the install record carries both paths and both
+digests. ⚠ Measured, not argued - the same run reported `acquired=no` before that
+branch existed, over a route that had just compiled and installed a different
+program.
+
+⛔ **What is still missing is a capture.** Nothing has started a build against the
+lab through the release route, no record has been written into the store, and
+every capture so far is one route, one connector, one platform. ⚠ Then what no capture has established: a second connector, a record
 in the store, and the Windows half of each Prove. Every adapter is `sh` with no
 PowerShell twin, so a Windows client capture needs `CI-07`'s work first.
 

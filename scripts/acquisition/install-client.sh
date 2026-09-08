@@ -187,6 +187,26 @@ PREEXISTING=$(timeout -k "$KILL_AFTER" "$VERSION_SECONDS" sh "$ADAPTER" version 
 PREEXISTING_RC=$?
 [ "$PREEXISTING_RC" = 0 ] || PREEXISTING=""
 
+# ⛔ AND THE EXECUTABLE ITSELF, BECAUSE A VERSION IS NOT AN IDENTITY. Measured on
+# 2026-09-08 with the real product: `aria2` ships on `ubuntu-24.04` at 1.37.0 and
+# the vendor's newest release is 1.37.0, so the release route there installs a
+# genuinely different build - different bytes, different features - and a
+# comparison of version strings alone calls that no acquisition at all. ⚠ That is
+# not a hypothetical; it is what the first two-route capture would have recorded.
+#
+# ⭐ `describe` names the executable it would ask, so the digest before and after
+# is available without a sixth subcommand. An adapter that names none simply
+# leaves the field empty and the verdict falls back to the version.
+adapter_binary() {
+  sh "$ADAPTER" describe 2>/dev/null | awk -F= '$1 == "binary" { print $2; exit }'
+}
+digest_of() {
+  [ -n "$1" ] && [ -f "$1" ] || return 0
+  sha256sum "$1" 2>/dev/null | cut -d' ' -f1
+}
+PRE_BINARY=$(adapter_binary)
+PRE_DIGEST=$(digest_of "$PRE_BINARY")
+
 timeout -k "$KILL_AFTER" "$INSTALL_SECONDS" sh "$ADAPTER" install "$ROUTE" "$WORKDIR" </dev/null
 INSTALL_RC=$?
 
@@ -256,10 +276,18 @@ esac
 # an install, and reading it as anything else would refuse the ordinary case of a
 # package index carrying a newer build than the image. The same version over a
 # target that was already there is neither, whatever the route reported.
-if [ -n "$PREEXISTING" ] && [ "$PREEXISTING" = "$VERSION" ]; then
-  ACQUIRED=no
-else
+POST_BINARY=$(adapter_binary)
+POST_DIGEST=$(digest_of "$POST_BINARY")
+if [ -z "$PREEXISTING" ]; then
   ACQUIRED=yes
+elif [ "$PREEXISTING" != "$VERSION" ]; then
+  ACQUIRED=yes
+elif [ -n "$PRE_DIGEST" ] && [ -n "$POST_DIGEST" ] && [ "$PRE_DIGEST" != "$POST_DIGEST" ]; then
+  # ⭐ SAME VERSION, DIFFERENT EXECUTABLE. This is the branch a version
+  # comparison cannot reach, and it is the one the aria2 pair actually needs.
+  ACQUIRED=yes
+else
+  ACQUIRED=no
 fi
 
 # ⚠ SAID OUT LOUD, ON stderr, WHERE THE STEP LOG KEEPS IT. A field in a file
@@ -284,6 +312,14 @@ if [ -n "$RECORD" ]; then
     # is a different fact from a target whose version could not be read. The
     # adapter's own words for the second are in `version-before.err` beside this.
     printf 'preexisting_version=%s\n' "$PREEXISTING"
+    # ⚠ EMPTY MEANS THE ADAPTER NAMED NO EXECUTABLE, which is a different fact
+    # from one it named and could not digest. Both read as empty here and the
+    # verdict falls back to the version either way; an adapter that names one is
+    # what makes the digest branch reachable.
+    printf 'preexisting_binary=%s\n' "$PRE_BINARY"
+    printf 'preexisting_binary_sha256=%s\n' "$PRE_DIGEST"
+    printf 'installed_binary=%s\n' "$POST_BINARY"
+    printf 'installed_binary_sha256=%s\n' "$POST_DIGEST"
     printf 'acquired=%s\n' "$ACQUIRED"
     printf 'adapter=%s\n' "$ADAPTER"
     printf 'adapter_sha256=%s\n' "$(sha256sum "$ADAPTER" | cut -d' ' -f1)"
@@ -297,7 +333,9 @@ if [ -n "$RECORD" ]; then
   # truncated part-way through the block would carry a correct
   # `reported_version` and no verdict at all, and a reader taking an absent
   # `acquired` for `yes` is the failure this whole change exists to remove.
-  for _field in target route reported_version preexisting_version acquired; do
+  for _field in target route reported_version preexisting_version \
+    preexisting_binary preexisting_binary_sha256 installed_binary \
+    installed_binary_sha256 acquired; do
     grep -q "^$_field=" "$RECORD" ||
       cannot "the install record was written without $_field"
   done
@@ -314,9 +352,19 @@ if [ -n "$RECORD" ]; then
   _pre=$(sed -n 's/^preexisting_version=//p' "$RECORD")
   _rep=$(sed -n 's/^reported_version=//p' "$RECORD")
   _acq=$(sed -n 's/^acquired=//p' "$RECORD")
+  _pred=$(sed -n 's/^preexisting_binary_sha256=//p' "$RECORD")
+  _postd=$(sed -n 's/^installed_binary_sha256=//p' "$RECORD")
   [ "$_rep" = "$VERSION" ] ||
     refuse "the install record says reported_version=[$_rep] over a build that said [$VERSION]"
-  if [ -n "$_pre" ] && [ "$_pre" = "$_rep" ]; then _want=no; else _want=yes; fi
+  if [ -z "$_pre" ]; then
+    _want=yes
+  elif [ "$_pre" != "$_rep" ]; then
+    _want=yes
+  elif [ -n "$_pred" ] && [ -n "$_postd" ] && [ "$_pred" != "$_postd" ]; then
+    _want=yes
+  else
+    _want=no
+  fi
   [ "$_acq" = "$_want" ] ||
     refuse "the install record says acquired=[$_acq] over preexisting [$_pre] and reported [$_rep]"
 fi

@@ -310,6 +310,32 @@ configured differently produce builds with different features, so the configure
 options belong to the route the way a package's exact version does. Nothing
 records them yet.
 
+⛔ **And a source route can never reach `byte_identical`, which is a property of
+the route rather than a failure.** Two builds of the same tarball at two prefixes
+were compared here and differ: `configure --prefix` is compiled in, so the bytes
+carry where they were going. ⚠ That is the argument this entry already makes for
+`build_equivalent` needing a capture per route, arriving from the other side -
+digest equality is unavailable for a route that compiles, so behaviour on the
+wire is the only thing left to compare.
+
+### What the install record carries now
+
+⭐ **The verdict is a digest comparison rather than a version comparison.**
+`install-client` asks `describe` before and after the route, records
+`preexisting_binary`, `preexisting_binary_sha256`, `installed_binary` and
+`installed_binary_sha256`, and reads `acquired=yes` when the target was absent,
+when the version changed, **or when the version did not change and the executable
+did**. ⛔ That third branch is not decoration: it is the aria2 pair. Driven on
+2026-09-08, the release route on a host already carrying the package build
+recorded one version, two paths, two digests and `acquired=yes`; the same run
+before the digest branch existed had recorded `acquired=no` over a route that had
+just compiled and installed a different program.
+
+⚠ **This is the install record, not the `Profile`.** The record type in
+`acquisition.rs` still carries one `installed_executable` per route and no
+digest of what it links, so the residual above stands: the shell layer measures
+it and the published record has nowhere to put it.
+
 ⚠ **Read out of `equivalence.rs` rather than inferred**: `classify` returns
 `ByteIdentical` when every route's `installed_executable` matches the first, and
 `ByteIdentical.publishable()` is true. The reason it records is *"every route

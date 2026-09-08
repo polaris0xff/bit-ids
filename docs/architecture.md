@@ -831,6 +831,21 @@ has nowhere to put. A per-route digest comparison over a library-split package i
 a comparison of two launchers, and reading it as a statement about the
 implementation is the error the split invites. `ACQ-03` carries it as a residual.
 
+⚠ **The acquisition step already measures more than the record can hold.** The
+install record written by
+[`../scripts/acquisition/install-client.sh`](../scripts/acquisition/install-client.sh)
+carries the executable and its digest from before the route ran and from after,
+because a route that installs a different build of the same version is otherwise
+indistinguishable from one that installed nothing. That is a fact about the
+shell layer; the `Profile` has one `installed_executable` per route and no
+before, so the two are not yet the same measurement.
+
+⛔ **A source route can never reach `byte_identical`.** Two builds of one tarball
+at two prefixes differ, because `configure --prefix` is compiled in. Digest
+equality is simply unavailable for a route that compiles, which is the same
+conclusion `ACQ-03` reaches from the other direction when it requires a capture
+per route for `build_equivalent`.
+
 ### Choosing which version to acquire
 
 Before any of that, something has to decide what the newest stable release *is*,
