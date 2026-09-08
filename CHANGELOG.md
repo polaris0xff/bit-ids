@@ -5,6 +5,31 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T04:49:30Z
+
+- The Windows disposable-host guard pair and its mutation harness, which is the
+  part of `CI-03` that does not need a runner. Record:
+  [`TODO/ci.md`](TODO/ci.md).
+- ⛔ A capture host was never the blocker nineteen entries were recorded as
+  waiting on. A hosted runner is a fresh VM per job, and the egress guard reads
+  `/proc/net/route` and refuses only because a default route exists. Measured
+  with the guard's own route-table argument, which made it settleable in one
+  command the whole time.
+- ⛔ Writing the harness found two defects in the guard on its first run.
+  `break` inside `ForEach-Object` unwinds the script rather than the pipeline,
+  so every misuse printed usage and exited 0; and a single-match pipeline yields
+  a scalar under `Set-StrictMode`, so the mode check threw.
+- ⚠ Both address families are checked. A host with IPv4 unplugged and IPv6 up
+  still reaches the internet.
+- ⭐ `check-runner` is a real row on the PowerShell gate lane now rather than a
+  declared gap.
+- ⛔ No repository owner or name is hardcoded anywhere in the tree. The project
+  moves to another owner once it is finished here, so workflows derive it, the
+  issue template uses a repository-relative path, and the README names no clone
+  URL.
+- All four operator decisions are settled and recorded, so no entry is blocked.
+- Deployment: nothing deployed. No capture was taken and nothing was published.
+
 ### 2026-09-08T04:19:03Z
 
 - `DOC-02`, the contributor handbook and the walkthrough that runs it. Record:

@@ -1,7 +1,7 @@
 # Current progress
 
-State instant: 2026-09-06
-Baseline commit: `a6c9336` on `main`
+State instant: 2026-09-08
+Baseline commit: `b0bbee3` on `main`
 Total: 58
 Open: 22
 In progress: 0
@@ -10,579 +10,143 @@ Done: 36
 
 ## Current state
 
-The whole `SCHEMA-*` group is closed, along with `FOUND-01` through `FOUND-03`,
-`ACQ-01` through `ACQ-04`. Foundations are finished, and acquisition has its
-record shape, a resolver that chooses the version, a verifier that says what two
-routes agreeing is worth, and a boundary that runs before anything is installed.
-All four core observer surfaces are done: both trackers, the peer handshake and
-BEP 10. ⭐ `OBS-08` and `OBS-09` are closed too, so the observer layer is
-complete: there is a torrent to point a client at, and a run's transcript now
-becomes the content-addressed evidence a manifest cites. ⭐ `CORPUS-01`
-through `CORPUS-03` and `PUB-01` and `PUB-02` are closed as well, so there is
-somewhere durable to put the answer, something that checks a whole store rather
-than one record, the consumer-facing views over it, a bundle assembled once and
-described by itself, and a publisher that appends it and reads the branch back. **A first vertical
-capture is possible from here**, on a host the `ACQ-04` guards permit, and what
-stands between is a client adapter rather than any missing machinery.
+No identity has been measured. Every record in the tree is synthetic and says
+so: the schema fixtures under
+[`../crates/bit-ids/tests/fixtures/`](../crates/bit-ids/tests/fixtures/) describe
+a target that does not exist, and the wire fixtures under
+[`../crates/bit-ids-wire/tests/fixtures/`](../crates/bit-ids-wire/tests/fixtures/)
+were written by hand from published BEPs. Nothing has been published and no
+capture has been taken.
 
-`OBS-01` was the one XL entry and was split, which is what its own approach line
-asked for if the acceptance could not stay atomic. It could not: the Prove named
-a known client fixture and a Linux-and-Windows comparison, and neither is
-available, so the entry could not have closed however well it was implemented.
-The supervisor stayed in `OBS-01` and is closed. The synthetic torrent is
-`OBS-08`, the durable evidence journal is `OBS-09`, and the cross-platform
-comparison is `OBS-10`, which names the three open entries that block it.
-Nothing was dropped in the split.
+What exists is every layer a capture passes through, and each one is closed:
 
-The `bit-ids-lab` crate is that supervisor. Every socket in it is created by one
-function, which refuses an address outside loopback before the syscall and reads
-the address back from the socket afterwards, because a bind request and a bound
-address are different facts. A lab holds a deadline and stops itself, records
-every byte each endpoint moved in the order it moved them with the direction it
-travelled, and releases every port on shutdown or on drop. It speaks no
-protocol: the observers supply a responder per surface, which is what lets one
-deadline, one loopback guard and one journal serve every surface rather than
-each observer growing its own.
+| layer | crate or scripts | what it owns |
+| --- | --- | --- |
+| record shape | `bit-ids` | the published record, the run manifest, agreement, sampling, and one validating read and write path |
+| acquisition | `bit-ids`, `scripts/acquisition/` | which version is newest, whether two routes agree, where an artifact came from, and the boundary that runs before an install |
+| wire | `bit-ids-wire` | byte-exact codecs for every observed surface and the fixture corpus each is parsed against |
+| lab | `bit-ids-lab` | the sockets, the deadline, the ordered byte record, the generated torrent, and the evidence a run leaves |
+| observers | `bit-ids-probe` | what each surface answers with, one module per surface |
+| store | `bit-ids` | where a record is filed, what a successor tree may do to it, and the views a consumer reads |
+| publishing | `bit-ids`, `scripts/publishing/` | the assembled bundle, the append-only push, the renderings, and the access contract |
+| consuming | `bit-ids` | reading a publication back, verified, with no way to reach a network |
+| maintenance | `bit-ids`, `scripts/ci/` | what a new stable release creates, and what it must not create twice |
 
-⭐ The lab also generates the torrent a capture hands a client, and generating it
-rather than committing it is what makes it citable: the bytes are a function of
-the declared spec, so `capture.fixture` in a record can be re-derived and
-checked. Two digests of two different things live there and confusing them is
-the trap: the info hash is SHA-1 of the encoded info dictionary, which is the
-value a client announces and the one algorithm this project does not choose, and
-`capture.fixture` is SHA-256 of the whole metainfo file.
+[`../docs/architecture.md`](../docs/architecture.md) is the technical authority
+for all of it. The rules below are the ones a reader gets wrong most often.
 
-⚠ **A generated fixture is only citable while its byte stream holds still.** The
-payload comes from `SplitMix64` seeded by the spec, and a drift in that
-arithmetic silently invalidates every fixture digest already recorded while
-staying reproducible, seed-dependent and prefix-stable, which is everything a
-naive test asserts. The acceptance suite compares the stream against the
-algorithm restated from its specification and anchored to the published
-reference's own first words for seed zero.
+### The rules that are load-bearing
 
-⭐ The lab also writes a run out. One artifact per endpoint, each a
-`bit-ids/transcript/1` document carrying every segment's bytes, direction,
-connection and offset, plus the manifest rows describing them. The digest is of
-the file rather than of the buffer and the file is compared against the buffer,
-because a writer that reports the digest of what it meant to write cannot detect
-a short write and a truncated file digests to a value matching itself.
+⛔ **A published value is observed from a running build.** Source code, client-ID
+tables, release notes, UI labels, self-reports and swarm statistics may set
+priority and may not populate a field.
+
+⛔ **A path is derived from the record's whole identity tuple, never composed.**
+A path built from fewer components files two measurements at one name.
+`store::StoreKey` is the one derivation, and `docs/publishing.md` records the two
+layouts that were found non-injective by comparing a derivation against a
+document rather than by reading either.
+
+⛔ **`VersionScheme::components` is the project's only version ordering and every
+caller uses it.** The resolver picks the newest release, `CORPUS-03` picks the
+newest record, and `CI-02` asks whether the first is newer than the second.
+Sorting version text answers `1.2.9` over `1.2.10`.
+
+⛔ **Valid and publishable are separate gates at every level.** A record carrying
+a disagreement validates, because refusing it would lose the evidence of the
+disagreement; `publishable` is what refuses it. The same split holds for a store
+and for a view.
+
+⛔ **Two documents describe a publication and they cover different sets.**
+`MANIFEST.json` describes everything but itself and `SHA256SUMS`; `SHA256SUMS`
+covers everything but itself. Exactly one published file is covered by neither,
+and a consumer establishes it out of band.
+
+⛔ **Every socket, every outbound datagram and every address handed to a build
+goes through one door.** `bind.rs` binds and dials, `bind::send_to` addresses,
+and `bind::check_offered` guards an address the lab puts *inside* a message for
+the target to dial itself. The third leaves the build's socket, so no guard on
+this project's own sockets can see it.
 
 ⛔ **A transcript is never scrubbed and the type has no argument for it.** The
-bytes a build put on the wire are the measurement, and a peer ID is exactly the
-sort of high-entropy token a scrubber reaches for. Scrubbing belongs to text a
-host produced, where every removal is declared with its count so `raw` cannot
-quietly mean `edited`, and the scrubber replaces what the caller names rather
-than guessing: a capture knows its own hostname and account, and only an IPv4
-address has a shape worth matching on.
+bytes a build put on the wire are the measurement. Scrubbing belongs to text a
+host produced, and every removal is declared with its count.
 
-The `bit-ids-probe` crate is where those responders live, one module per surface.
-Both tracker surfaces and the peer wire are done. The HTTP one keeps the exact head bytes and
-answers a bencoded response whose shape is read out of the announce, because a
-client that receives the wrong shape reports an error and changes what it does
-next, and that change would be recorded as identity when it is the observer's
-doing. The UDP one holds the BEP 15 exchange: a client connects before it
-announces, so an announce carrying a connection id the tracker never issued means
-the build reused a stale one, invented one, or skipped the connect, and each is
-answered with the protocol's error action and recorded with its reason. The peer-wire one holds both roles and BEP 10. Both roles, because a build can
-behave differently as the side that dialled and the side that accepted: driven with one
-external peer in both roles at once, the two sides produced different reserved
-blocks and different peer IDs. All three frame with the codec's own reader rather
-than a second one, keep the bytes of what they refuse, and bound every list they
-grow while counting what they stopped keeping.
+⛔ **A capture request's identifier is a digest of its key.** Two runs over the
+same facts derive the same identifier, so a tracker keyed on it cannot hold two.
 
-The lab grew what the peer wire needed. It dials, through the same loopback guard
-every bind goes through, and a responder is now told which connection it is
-serving: one responder serves every connection an endpoint accepts, so without an
-identity a peer observer would send a second handshake down the first connection.
-The journal carries the connection too, so a transcript of two concurrent peer
-connections can be separated back into them.
+⛔ **Nothing in the `bit-ids` crate can reach a network.** A consumer opens a
+publication over bytes it already holds; retrieval is a trait the caller
+implements, so the fetching lives in the consumer and the verifying in the
+library.
 
-⭐ What an observer offers is a condition of the measurement rather than a
-setting. A build sends an extended handshake because it was asked for one, and
-what it puts in its map may differ with what it was offered, so the offer is
-recorded beside the answer and the reserved block is derived from the same value
-the extended handshake is.
+### Limits, stated rather than implied
 
-⛔ No observer has been driven by a stock client. Each was driven by an
-independent client written from the specification, which shares this project's
-reading of the protocol and is a weaker control than `OBS-07`'s stock clients. It
-cannot be closed on a session host: `assert-disposable.sh --egress` refuses one
-with a public route, and running a client there would be the capture the boundary
-exists to refuse.
+⛔ **No observer has been driven by a stock client.** Each was driven by an
+independent implementation written from the specification, which shares this
+project's reading of the protocol. `OBS-07` owns the stock-client controls.
 
-`CORPUS-01` is the append-only store, and it is two rules. A record's path is
-derived from the identity tuple `RecordId` digests, in full and nothing else,
-because that is the only choice under which the path and the identifier cannot
-disagree. A published path then never changes and never disappears; a correction
-appends a record carrying `supersedes` rather than editing the one it corrects.
+⛔ **The publisher has never run against this repository's own remote** and must
+not until a measured record exists. Its acceptance runs against a bare
+repository the harness creates and deletes.
 
-⛔ **The published layout was not injective over that tuple and the derivation
-is what found it.** `docs/publishing.md` filed a profile with no `package`
-segment while the identity tuple carries one, so a `deb` and an `AppImage` of
-one version on one platform were two records at one file name. Whether their
-capture identifiers also differ is not the question: `capture.id` is only
-documented unique per target, version, platform and architecture, so the
-collision rested on a uniqueness rule nothing states or checks.
+⛔ **No published URL has ever been fetched**, because nothing has been
+published. `docs/publishing.md` carries the forms and says they are unexercised.
 
-⛔ **A version is a measurement and not an identifier, and `Version` accepts
-`../../etc`.** That is measured rather than assumed, and it has to stay that way:
-imposing a grammar on a version string would refuse builds that number
-themselves some other way. So the store refuses a version that cannot be a path
-segment instead, rather than escaping it, because an escape that is not
-injective merges two measurements into one directory and an injective one needs
-bytes `RelPath` refuses.
+⚠ **Nothing schedules the staleness monitor.** `CI-02` built the comparison and
+its driving surface; no capture request has ever been opened.
 
-⚠ Two more hazards make one file out of two paths on half of the capture matrix,
-and they are checked against a whole tree rather than at derivation.
-[`../docs/architecture.md`](../docs/architecture.md) section 4 says which and
-why.
-
-`CORPUS-02` is the store-level pass. ⛔ **Most of what its Problem names was
-already enforced per record**, by `SCHEMA-01`, `SCHEMA-03` and `ACQ-01` through
-`ACQ-03`. What nothing could answer was whether a citation resolves to bytes,
-and the reason is structural: `bind` compares the two documents, so a run that
-agreed with itself about an artifact nobody wrote passed everything this project
-had. Only a store turns a citation into bytes.
-
-⚠ Valid and publishable stay separate at store level too. `validate_corpus`
-refuses what must hold of any store; `publishable_view` reports which records may
-enter a published view, and a store of provisional records is a correct store.
-`CORPUS-03` builds the views on that report.
-
-⭐ The acceptance needed a corpus and the schema fixtures are not one: they
-declare digests for artifacts nobody wrote, which is the defect `E-CRP-03`
-refuses. `examples/build-store.rs` writes one instead, artifacts first, then each
-document rewritten to describe the bytes actually put down.
-
-⭐ `scripts/corpus/check-store.sh` and `check-corpus.sh` plant each refusal
-against a real filesystem and both are in the `sh` gate. They share
-`store-lib.sh` rather than a copy of it. ⚠ Both are named skips on the PowerShell
-half: the plants include a symbolic link and a named pipe, neither of which an
-unprivileged Windows session can create. The rules themselves are not
-platform-specific and the Rust suite exercises every one of them on both CI
-lanes.
-
-The `bit-ids` crate carries the published record shape, the six field states,
-the derived record identifier, the canonical value forms and the publication
-invariants, with one validating read path and one validating write path.
-[`../docs/architecture.md`](../docs/architecture.md) section 4 is the
-reference.
-
-The run manifest carries the rest of a capture: host, isolation, both clocks,
-every tool at the version that ran, the routes the build came through, the
-phases of the state machine the run walked, the content-addressed evidence and
-what was scrubbed from it. `bind` compares every value the manifest and the
-profile share, so the deliberate overlap between the two documents cannot
-drift.
-
-Corroboration keeps what each connector saw rather than a verdict, and a
-connector that cannot see a surface says so, so a field only one observer could
-reach is never called agreement. Validity and publishability are separate
-gates: a record carrying a disagreement reads and validates, which is what
-keeps the evidence of one, and `publishable` refuses it.
-
-A lifetime claim is a function of the samples. The manifest records what the
-run varied, the classifier says what those runs prove and `unknown` for
-everything they do not, and `bind` refuses a field claiming variation the run
-could not have produced.
-
-The new `bit-ids-wire` crate carries byte-exact codecs for the three surfaces an
-observer will speak, being the HTTP tracker, the UDP tracker and the peer wire,
-and the fixture
-corpus every observer from `OBS-02` onward parses against. One invariant holds
-all of it together: decode then encode reproduces the input byte for byte, which
-is the cheapest check that catches every retention rule in
-[`../docs/architecture.md`](../docs/architecture.md) section 5 at once. The
-codecs observe rather than impose, and none of them maps a peer-ID prefix to a
-client name.
-
-A route now says how it was independent rather than asserting that it was. It
-records what resolved it and what delivered it separately, and a record whose
-routes share either is refused: the two-route rule was otherwise satisfiable by
-asking one index twice under two names. The identity of what each route asked
-for is typed to its kind, so a release asset is a tag and a file name and a
-source build is a whole commit, and an installed version cites the process
-output the build printed rather than being asserted.
-
-Choosing the newest stable release is a decision that fails closed and keeps
-its reasoning. Version strings are not comparable in general, so a target
-declares how it spells them and a candidate the scheme cannot order blocks the
-resolution rather than being skipped, because a skip produces an older version
-selected confidently. A candidate published before the winner is settled by that
-second signal rather than by a guess. Every candidate keeps its verdict, and the
-bytes each source answered with are digested into the document.
-
-Equal version labels are the question, not the answer. Every route already has
-to report the version the record declares, so what remained was whether that is
-backed by anything. A run observes one installed build, the record now says
-which, and the executable digest is per route. Two routes that installed the
-same bytes are one build and publish; two that differ with only one of them
-observed are unresolved and do not, because nothing put the other bytes on the
-wire. Reaching a positive verdict over differing bytes takes a capture through
-each route.
-
-A client is installed only on a host a guard has refused to disqualify, and the
-guard runs before the install rather than in the record. The manifest already
-refused to record a capture on a host somebody keeps; that cannot stop one,
-because by the time a manifest exists an untrusted installer has run. Two
-independent guards now run first: one refuses a host that already ran a capture,
-which is how a survived host produces evidence of itself rather than being
-trusted to declare it, and one refuses a host with a route off loopback, read
-from the kernel's own table without probing anything.
-[`../docs/capture-host.md`](../docs/capture-host.md) carries both runner
-contracts. ⛔ The guards are Linux-only, so a Windows capture is not permitted
-yet.
-
-The supply chain is pinned at all three layers and each pin has a check behind
-it. [`../docs/supply-chain.md`](../docs/supply-chain.md) carries the layers and
-the update procedure. The observers added two workspace members and no new
-third-party crate; `OBS-08` added `sha1`, whose lockfile diff is one package
-because `sha2` already brought the same RustCrypto tree.
-
-No identity profile has been captured. The only records in the tree are
-synthetic: the schema fixtures under
-[`../crates/bit-ids/tests/fixtures/`](../crates/bit-ids/tests/fixtures/), which
-describe a target that does not exist, and the wire fixtures under
-[`../crates/bit-ids-wire/tests/fixtures/`](../crates/bit-ids-wire/tests/fixtures/),
-which were written by hand from published BEPs. Neither is evidence about
-anything.
-
-`CORPUS-03` is the consumer's side: lookups by target, measured peer prefix,
-measured client string, platform, version and capture instant, plus a latest view
-per build line. ⛔ **Every row names the record it came from**, so a reader who
-doubts one opens the measurement; a derived file that answered a question the
-records could not is a file that invented one.
-
-⛔ **The peer-prefix lookup is the opposite of the decoder table the codecs
-refuse, not an exception to it.** Its key is the fixed span of a peer ID this
-project measured, and it resolves to the record that measured it.
-
-⚠ A latest view needs an ordering and `Version` deliberately has none, so
-`ACQ-02`'s scheme comparison became public and both callers share it. The scheme
-is supplied on the command line rather than defaulted; moving it into
-`catalogue/clients.toml` is worth doing and belongs to `ACQ-02`.
-
-`PUB-01` assembles the bundle. Two documents describe it and they cover
-different sets on purpose: the manifest cannot state its own digest, so the
-checksums cover the manifest and the manifest covers everything else. ⭐ **A
-media type is looked up and never guessed**, and that rule paid on its first
-driven run by refusing a real evidence bundle over a file type the table did not
-carry.
-
-⭐ The strongest control on that bundle is not this project's code:
-`sha256sum -c` reads the checksum file back, so a run that agreed with itself
-about what it wrote is still caught.
-
-`PUB-02` appends that bundle to the data branch. The append rule is checked
-before the push rather than after, because a branch protection setting refuses a
-force and says nothing about a commit that deletes a file. Nothing re-enables
-force: no flag, a branch name carrying `+` or `:` is refused before a refspec
-exists, and the harness reads the publisher's own source for one. ⛔ **The
-publisher has never run against the real remote** and will not until there is a
-measured record to publish; its acceptance runs against a bare repository the
-harness creates and deletes.
-
-⛔ **Driving it found that the append rule and the derived files collided.** A
-second publication changes `MANIFEST.json`, `SHA256SUMS` and the indexes by
-design, and treating every published path as immutable made a correct second
-publication impossible. `CANONICAL_ROOTS` names the roots the rule is about.
-
-⭐ `CI-01` is closed, and with it the last open `P0`. ⛔ **Its Problem was largely
-overtaken before it started**, because the Linux lane already delegates to the
-gate and the Rust suite already covers the schema and the fixtures on both lanes.
-Its Prove was not. No lane could see a check that had stopped running, and
-nothing anywhere established that an injected defect turns the pipeline red.
-
-The first is answered by counting a gap the runner declares apart from a skip it
-observed, which is what made `--strict` usable on the lane that needed it most:
-that lane now reports zero skipped. The second is
-`scripts/ci/check-workflow.sh`, which plants eight classes of defect into a
-scratch copy of the working tree and runs the offending step against each. ⛔ It
-reads every command out of the workflow by job and step name, so it cannot drift
-from CI, and it is kept out of `check-gate.sh` because two of its cases run the
-gate.
-
-The publisher has a workflow now, carrying the job-scoped write permission and
-the concurrency group `PUB-02` left as residuals. ⛔ **It cannot fire on its
-own**, its dry run is the default, and it has never run: its first step wants a
-bundle from a capture run and there are no captures.
-
-⭐ `ACQ-05` is closed as well, so an artifact survives a source that moved: the
-identity is the digest, a new location is a retrieval against the artifact
-already known, and the cache keeps bytes only where the register permits, which
-today is nowhere. ⚠ Nothing writes a cache document yet, because the first one
-worth writing is a real acquisition's.
-
-⭐ `OBS-06` is closed over local discovery and peer exchange, and the three
-heavier surfaces are split out as `OBS-11`. ⛔ **The lab had no egress guard and
-the door sweep is what found it**: every socket went through `bind.rs` and every
-*send* did not, so a datagram endpoint answered on the address the sender wrote
-on the packet. There is one door for outbound datagrams now, `.send_to(` is on
-the sweep's needle list, and an adjacent surface is behind a capability that has
-to be constructed rather than a flag that defaults to false. ⚠ Nothing proves no
-packet left the host; that needs a capture on the interface and `CI-03` owns the
-host that could.
-
-⭐ `FOUND-04` is closed, so every catalogue target and every third-party package
-has a recorded licence disposition. ⛔ **Six of the nine targets with a GitHub
-upstream have no licence a detector can name**, and those rows say `unverified`
-rather than carrying an identifier nobody established. Every row refuses
-redistribution, which is the policy rather than a consequence of the licences,
-and `check-licences` also refuses an installer-shaped file in the tree.
-
-⭐ `PUB-03` is closed as well, so the record set has consumer-facing renderings:
-a combined JSON carrying each record's own bytes, one compact document per line,
-a tabular view that publishes what it omits, and deterministic CBOR. ⛔ **Which
-records they carry is `CORPUS-04`'s answer rather than a second filter**, so a
-retracted measurement leaves the table at the moment it leaves the lookups.
-⚠ The SQLite rendering is split out as `PUB-05` and is blocked on a dependency
-decision the operator owns.
-
-⭐ `CORPUS-04` is closed too, so a correction changes an answer rather than only
-being recordable. A superseded record leaves every view and keeps its path and
-its bytes, and the derived document carries the chain, so a consumer holding an
-identifier from last month can find what answers now. ⚠ Two counts are kept
-apart because they mean opposite things: an excluded record was never
-publishable, and a superseded one was.
-
-`OBS-11` is in flight and its carried-over prerequisite is done: ⭐ **a datagram
-responder is handed the source address of the packet it answers.** A DHT needs it
-to answer a query at all, and local discovery needed it to compare a claimed port
-against an observed one. ⛔ **The address reaches an observer's record and never
-a syscall**, which is what makes handing over an unverified value safe: a UDP
-source address is a claim by the sender, and what a responder *returns* is still
-addressed by `bind::send_to` and by nothing else.
-
-⛔ **A journal segment carries no source address, so the live and the recorded
-reading of one datagram differ**, and `PortClaim::NotObserved` is what an
-analysis pass over an evidence bundle gets rather than an invented value. ⚠ That
-is a limit rather than a finished answer: a DHT `announce_peer` with
-`implied_port: 1` publishes a port that exists only in the packet header, so
-re-deriving that field from a bundle would need `bit-ids/transcript/1` widened.
-`TODO/observer.md` carries the decision where the requirement is concrete.
-
-⚠ **`PortClaim` describes and never refuses.** BEP 14's `Port` is the peer port a
-build listens on and its announce leaves from whatever source port its multicast
-socket holds, so a mismatch is the ordinary case for a *conforming* build.
-Recording it as a refusal would have filed one against nearly every client this
-project will measure.
-
-⭐ **`bit_ids_wire::dht` is the second `OBS-11` unit**, so `Surface::Dht` has a
-codec and two committed fixtures and is no longer refused with `E-FIX-07`. KRPC
-is one bencoded dictionary per datagram, and the module keeps the whole decoded
-document rather than a struct of extracted fields: key order, transaction-id
-width, integer spelling and the keys a build invents are each identity, and named
-fields could not write any of them back. ⛔ **The `v` string stays bytes and is
-never resolved to a client name.**
-
-⛔ **The `E-FIX-07` negative control had to move and that is a finding.** Two
-places named `dht` as *the surface with no codec*, which stopped being true the
-moment the codec landed; a control that keeps passing while asserting the
-opposite of what it was written for is what a mutation pass exists to catch. Both
-name `mse` now. ⚠ In the same sweep, "peer ID" turned out to be the wrong name
-for what the corpus guard reads, since a KRPC message carries a *node* id, and
-**nothing checked a version string at all** until this surface put a `v` on a
-second one. Both are checked now.
-
-⭐ **`bit_ids_probe::dht` is the third `OBS-11` unit**, and the first observer on
-this side that answers at all: BEP 14 defines no reply so local discovery is
-silent, BEP 5 defines several, and a build that hears nothing back retries, backs
-off and stops, so a silent observer would measure a build talking to a black
-hole. Its token is issued and then checked the way the UDP tracker's connection
-id is, and `AnnouncedPort` reports whether a build announced its `port` argument
-or the source port `implied_port` points at.
-
-⛔ **Writing it found a third door, and it is not a socket.** A `find_node` or
-`get_peers` answer hands the build addresses it will then dial *itself*, so those
-packets leave the build's socket and `bind::send_to` is never called on them.
-Every guard this project had was blind to that. `bind::check_offered` is what
-closes it. [`../docs/architecture.md`](../docs/architecture.md) section 5 carries
-the three doors and why the third one cannot read back.
-
-⛔ **The hazard was already written down, against the wrong surface.**
-`adjacent::reaches` said `pex` hands out addresses a client will then dial and
-said nothing of the kind about `dht`, which does the same through a different
-field. ⚠ And the guard was proved only from the crate that calls it: blanking
-`check_offered` was refused by two cases in `bit-ids-probe` and by nothing in
-`bit-ids-lab`, which owns the rule. It has a case beside it now.
-
-⭐ **`bit_ids_probe::web_seed` is the fourth unit, and the surface where a
-build's identity is not the build's**: a BEP 19 fetch is an ordinary HTTP `GET`,
-so the user agent, the header order and the capitalisation belong to the HTTP
-library rather than the client, and two clients on one library look alike here
-and different everywhere else. `TorrentSpec` carries `web_seeds` now, so a
-torrent can name the endpoint. ⚠ **An empty list writes no key**, so every
-fixture digest recorded against a spec that names no web seed is unmoved.
-
-⭐ **Driven by `curl` 8.5.0, which produced a measurement rather than only a
-pass.** Its header order is `Host, Range, User-Agent, Accept` on a ranged fetch
-and `Host, User-Agent, Accept` on a plain one, which is exactly the
-library-shaped signal the surface exists to record. Both bodies were compared
-against the torrent's own payload and matched, so the seed serves bytes a
-build's piece hashes would accept rather than bytes of the right length.
-
-⭐ **`OBS-11` is closed**, so the observer layer covers every surface a build
-reaches for. `bit_ids_probe::mse` completes it: MSE comes first or not at all, so
-a build that encrypts sends its handshake inside `IA` and `OBS-04` sees nothing
-it recognises, which makes the offer a condition of the measurement. ⭐ **Reading
-the peer ID back out of `IA` is `OBS-04`'s measurement through a second door.**
-⚠ The 768-bit arithmetic is written out and added **no package** to the lockfile:
-`sha1` was already there for `OBS-08`, so the diff is one line.
-
-⭐ **All three modules were driven by something that is not this project's
-harness**: `curl` for the web seed, a `libtorrent`-encoded KRPC exchange for the
-DHT, and an MSE initiator written from the specification in Python using its own
-`pow`, `RC4` and `SHA-1`. ⭐ **The `implied_port` case is the payoff of the whole
-prerequisite chain**: the observer recorded the source port 37466 rather than the
-6881 in the message, and the driver independently reported the same number.
-⛔ **None of them is a stock client** and that limit is unchanged: each shares
-this project's reading of the protocol, which is what `OBS-07` exists to fix.
-
-⭐ **`CI-02` is closed**, so a new stable release creates one bounded piece of
-work. The monitor compares what `ACQ-02`'s resolver selected against what
-`CORPUS-03`'s latest view carries, per target and platform, and a request's
-identifier is a **digest of its key** rather than an allocated token. That is the
-whole of "no duplicate after repeated runs": two runs over the same facts derive
-the same identifier, so a tracker keyed on it cannot hold two. ⚠ Architecture and
-package are not in the key, because both are outcomes of the acquisition and are
-unknown when the request is opened.
-
-⛔ **Nothing in the monitor judges stability, and that is why its preview case is
-not a tautology.** `survey` takes the whole `Resolution` rather than a version,
-so a preview never reaches it: the resolver refused it, by either signal. Four
-verdicts open nothing and each is a comparison that did not hold, of which
-`regressed` is the one worth naming: a measurement newer than the selection means
-a request would ask a runner to capture a downgrade.
-
-⛔ **The guard mutation pass found a test whose name claimed more than it
-checked.** Two plants over the request key, dropping the platform and replacing
-the length prefixes with a separator join, left every Rust case green and were
-caught only by the harness's independent `python3` derivation. The collision test
-they slipped past holds for one pair under one separator. The encoding is pinned
-against its own restated specification now, and all five key plants are refused
-by the unit tests alone.
-
-⭐ **`PUB-04` is closed**, so a consumer is told where every published byte is
-and how long it is good for. Two facts per path and both derived: stability comes
-from `store::CANONICAL_ROOTS`, which is already what the append-only rule is
-about, and integrity is a function of the path. ⛔ **Exactly one published file is
-covered by neither document**, being `SHA256SUMS`, and the contract says so per
-path rather than leaving a reader to find the gap.
-
-⛔ **Deriving the documented set found a path nothing writes, and it cannot be
-written.** `routes/v1/<target>/<version>/<platform>/<arch>.json` omits
-`<package>` while the acquisition routes differ per package, so it is the
-non-injective layout `CORPUS-01` found in the profile path, in a second place.
-Both `routes/` entries are out of `docs/publishing.md` with the reason recorded.
-
-⛔ **And the mutation pass found three refusals nothing could reach.** `contract`
-derives stability, integrity and order, so `E-ACC-03` through `E-ACC-05` never
-fire on what the deriver produced; blanking each left the crate and the harness
-green. They are reachable from a file, which is the door a consumer's copy comes
-through, so they have document-level cases now. ⚠ The same pass reported a false
-SURVIVED first, because its test selection excluded the integration target the
-new cases live in.
-
-⭐ **`LIB-01` is closed**, so a Rust tool reads a published catalogue without
-carrying its own copy of the schema, the digest checks, the index shape or the
-selection rule. ⛔ **Nothing in the crate can reach a network**, which is swept
-for rather than promised: a `Catalogue` is opened over bytes the caller holds,
-and retrieval is a trait the consumer implements while the verifying stays here.
-⚠ The sweep's needle list is checked against `bit-ids-lab`, because a sweep whose
-needles have stopped matching reports the same clean answer over a crate full of
-sockets.
-
-⛔ **Building a consumer found two published documents with no reader, and one of
-the two was a live defect.** Without a reader for `MANIFEST.json`, a consumer
-compares a bundle against a manifest re-derived from that bundle, which agrees
-with itself: a described file that is missing is not described either. Two
-refusals existed and neither could fire. Both documents round-trip now.
-
-⛔ **Two guards reporting one code masked each other.** The per-file digest
-comparison and the manifest-against-the-bytes comparison both answer `E-LIB-02`,
-so deleting either left every case green. They are separated by the path a
-refusal names, with a case per shape. ⭐ One survivor of that pass was the design
-working rather than a gap: `Profile`'s hand-written `Deserialize` means the
-generic serde route validates too.
-
-⭐ **`DOC-01` is closed**, so there is a reader's page and every command on it is
-extracted from the page and run on each gate. ⛔ **A documented command that is a
-copy of a tested snippet is a copy that drifts**, and the copy a reader runs is
-the one nobody checked. ⭐ **It paid on its first run**, refusing an example
-written as `cmd && exit 1`, which under `set -e` exits on the failure the example
-was demonstrating.
-
-⚠ The field reference on that page is a pointer rather than a generated copy,
-because `docs/architecture.md` section 4 is the authority and a second copy is
-the hazard `check-one-home` exists to refuse. What the page carries is what a
-consumer needs.
-
-⛔ **`LIB-02` is blocked on repository access, measured rather than assumed.**
-Its Prove names `bit-cli`'s own identity consistency tests, and that repository
-is not reachable from this harness: the session's GitHub scope is this repository
-alone and a filtered repository listing returns nothing.
-
-⭐ **`DOC-02` is closed**, so there is a contributor's page whose walkthrough is
-executed rather than read. ⛔ **The harness contributes four names and nothing
-else**, which is what makes "without undocumented steps" a measurement: a step
-the page does not carry is a step the walkthrough does not have. ⭐ **Running it
-found a documented build command that uses the wrong compiler**, because
-`rust-toolchain.toml` is found by walking up from the working directory and the
-command had no `cd`.
-
-⛔ **Two of the handbook's checks could not fail, and a mutation pass is what
-said so.** The page's own validation steps could be deleted with everything
-staying green, because the harness validates the result independently; and the
-harness's own validation could be replaced by `true`, because an exit code of 0
-is what `true` produces. ⚠ A third survivor is a weakened assertion inside the
-harness, which no harness detects about itself and which is recorded rather than
-fixed.
+⚠ **`mse` and `web_seed` have protocol code and no fixture**, so a fixture on
+either is refused with `E-FIX-07`. `local_discovery` and `pex` have codecs and
+no fixture of their own, for reasons `docs/architecture.md` section 10 gives.
 
 ## Work order
 
-1. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
-   captures, on Linux only until `CI-03` provides the Windows guard pair.
-   ⛔ **They stay behind the corpus work on a measurement rather than a
-   preference:** their acceptance needs a capture, a capture needs a host
-   `assert-disposable.sh --egress` does not refuse, and a session host is
-   refused. `TODO/clients.md` carries the three routes that were tried on
-   2026-09-05. ⭐ Neither the observer layer nor the store blocks them any more;
-   `CI-03` and a host are what remain.
-2. ⭐ **`OBS-11` is closed**, so the observer layer covers every surface a build
-   reaches for. `OBS-07` and `OBS-10` are the other two observer entries and both
-   need a client build, so they wait on the same host the clients do.
-3. ⭐ **`CI-02` and `PUB-04` are both closed**, which were the two items the
-   ordering made look more blocked than they were. `CI-03` is what is next and is
-   the one that supplies the capture host everything else waits on; `CI-04`
-   follows it. ⛔ **Every remaining item is behind that host or behind the
-   operator decision below.**
-4. The remaining client and engine breadth, behind the same capture host.
-5. ⭐ **`PUB-04`, `LIB-01`, `DOC-01` and `DOC-02` are closed.** The publisher's
-   access contract was driven against a bare repository in a scratch directory,
-   which is a real remote as far as git is concerned; the consumer library reads
-   a publication back with no way to reach a network; and both documentation
-   pages have their commands executed on each gate rather than read. ⛔ **No
-   GitHub URL has been fetched** and none can be until a first real publication
-   exists. `PUB-05` is blocked on the operator decision above, and `LIB-02` on
-   read access to `bit-cli`.
+⛔ **Nothing here is blocked.** Every question an earlier session recorded as
+needing the operator is answered under *Settled decisions* below, and the capture
+host that nineteen entries were said to wait on was never a blocker. Take these
+in order.
 
-⛔ **Every remaining open entry is behind a capture host, the operator decision,
-or a repository this harness cannot open.** There is no unblocked item left in
-the work order.
+1. **`CI-03`, the capture runner matrix.** The Windows guard pair
+   (`assert-disposable.ps1`) and its mutation harness (`check-runner.ps1`) are
+   done and in both gate lanes. What remains is the capture workflow itself: a
+   `workflow_dispatch`-only job per platform that claims the host, builds
+   everything **before** cutting the network, deletes the default route in both
+   address families, runs the egress guard, captures, restores the route only to
+   upload, and uploads the evidence bundle. ⛔ There is no `pull_request`
+   trigger, and that absence is the fork guard. `TODO/ci.md` carries why, and
+   why `scripts/ci/check-workflow.sh` has to assert it.
+2. **`CLIENT-01`, `CLIENT-06`, `CLIENT-05`**, the first complete vertical
+   captures, once `CI-03` runs. `TODO/clients.md` carries the acquisition routes.
+3. **`OBS-07` and `OBS-10`**, which need a stock client build and a second
+   platform, so they follow the captures.
+4. **`PUB-05`**, the SQLite rendering, which needs no capture and can be taken at
+   any point. The dependency question is settled below.
+5. **`LIB-02`**, the bit-cli adapter, which needs no capture either. Clone the
+   public repository into a scratch directory and run its suite there.
+6. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
+   bind attestations to.
+7. The remaining client and engine breadth, then refinements.
 
-## Pending operator decisions
+## Settled decisions
 
-⛔ **One, and `PUB-05` carries it in full: how the SQLite rendering gets
-written.** `rusqlite` brings a vendored C library and a build script into a
-workspace whose lints say `unsafe_code = "forbid"`; writing the file format here
-means new unaudited code producing B-tree pages in the component that publishes
-evidence. The recommendation is the crate, pinned, with the exception recorded
-against that one dependency rather than the workspace lint relaxed. ⚠ Nothing
-is blocked behind the answer except that one rendering: `PUB-03` shipped the
-other four.
+⭐ **All four were settled by the operator on 2026-09-08 and none blocks
+anything.** They are recorded here so no session re-raises them.
 
-Candidate package routes and proprietary-client availability remain measurements
-for their acquisition entries, not bootstrap decisions.
+| question | answer |
+| --- | --- |
+| how the SQLite rendering gets written | `rusqlite` with the bundled feature, pinned, with the `unsafe` exception recorded against that one dependency rather than the workspace lint relaxed. Check the output opens in a reader this project did not write. `PUB-05`. |
+| how `LIB-02` reaches bit-cli's tests | clone the public `Azathothas/bit-cli` into a scratch directory and run its suite there. ⛔ Nothing is written to it; rule 10 holds. |
+| whether Windows captures are permitted | yes. The guard pair exists and is mutation-proven; a hosted `windows-latest` runner is a fresh virtual machine per job, and its default routes are removed before the capture. `CI-03`. |
+| what happens to a first measured record | it publishes automatically once the capture is green. No manual gate. |
+
+⛔ **A capture host was never the blocker it was recorded as, and that error
+stood for several sessions.** A hosted runner is a fresh virtual machine per job,
+so `--claim` passes; `--egress` reads `/proc/net/route`, sends no packet, and
+refuses only because a default route exists. Deleting the default route satisfies
+it. Measured on 2026-09-08 with the guard's own route-table argument: exit 0 over
+a table with the default route stripped, exit 1 over the same table with it.
+⚠ The guard was testable in one command the whole time and no session ran it.
 
 ## Known gaps in the local gate
 

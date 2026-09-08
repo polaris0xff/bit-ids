@@ -12,10 +12,10 @@ Split on 2026-09-04. The entry was authored at XL with the instruction to split
 transport services into follow-up entries before implementation if the
 acceptance could not remain atomic. It could not, for a reason the original
 Prove states in its own sentence: it asks for a known client fixture and for
-Linux and Windows agreement, and neither exists. No client adapter is written,
-and a Windows capture is not permitted at all until `CI-03` supplies the
-disposable-host guard pair. An entry whose acceptance cannot run is an entry
-nothing can close.
+Linux and Windows agreement, and neither existed. No client adapter is written.
+⚠ The Windows half is no longer the obstacle: the disposable-host guard pair
+exists for both platforms, and `CI-03`'s workflow is what runs them. An entry
+whose acceptance cannot run is an entry nothing can close.
 
 What moved out, each to its own entry with its own acceptance: the synthetic
 torrent to `OBS-08`, the durable evidence journal to `OBS-09`, and the
@@ -424,11 +424,10 @@ catches a platform difference in the observer, and it is blocked on two things
 this repository does not have: any client adapter, and a permitted Windows
 capture host.
 
-Premise: The blockers are named rather than assumed. `TODO/INDEX.md` carries
-`CLIENT-01` through `CLIENT-13` all open, so no adapter can be driven, and
-`docs/capture-host.md` states that the disposable-host guards read
-`/proc/net/route` and `/etc/machine-id`, so a Windows capture is not permitted
-until `CI-03` supplies the Windows pair.
+Premise: The blocker is named rather than assumed. `TODO/INDEX.md` carries
+`CLIENT-01` through `CLIENT-13` all open, so no adapter can be driven. ⚠ The
+second blocker this entry used to name is gone: the disposable-host guard pair
+covers both platforms now, and what remains is `CI-03`'s workflow.
 
 Approach: Once `OBS-02` through `OBS-05` and one client adapter exist, run the
 same lab and the same client build on both platforms, normalize the event

@@ -1,7 +1,12 @@
 # Do not ask for information you will not use. A long form on a project with
 # three open issues costs the reporter and buys nothing.
+#
+# The security link is a repository-relative path so that it follows the
+# repository rather than naming an owner. GitHub resolves it against whichever
+# repository serves the page, so moving the project does not leave a reporter
+# pointed at the old one.
 blank_issues_enabled: true
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/polaris0xff/bit-ids/security/advisories/new
+    url: /security/advisories/new
     about: Report privately. Do not open a public issue for a vulnerability.

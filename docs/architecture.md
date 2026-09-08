@@ -1074,10 +1074,10 @@ non-injective layout section 4 describes, in a second place.
   stock-client positive controls, and they need a host the
   [`capture-host.md`](capture-host.md) guards permit, which the session host
   this was written on is not.
-- ⛔ A Windows capture is not permitted. The disposable-host guards in
-  [`capture-host.md`](capture-host.md) read `/proc/net/route` and
-  `/etc/machine-id`, so there is no boundary to run before an install on
-  Windows. `CI-03` owns the pair.
+- ⚠ A Windows capture has not been run. The disposable-host guards cover both
+  platforms, [`capture-host.md`](capture-host.md) carries both contracts, and
+  what is missing is the workflow that runs them on a hosted Windows runner.
+  `CI-03` owns it.
 - ⚠ **`mse` and `web_seed` have protocol code and still no fixture**, so a
   fixture on either is refused with `E-FIX-07` and `mse` is what the negative
   control in the fixture suite names. A fixture needs a codec that round-trips a

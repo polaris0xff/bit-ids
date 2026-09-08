@@ -25,11 +25,12 @@ same stable version with two verified routes per host.
 before saying so.** It is the same shape as `OBS-01`'s: an acceptance naming a
 Windows capture that this repository is not permitted to perform at all.
 
-1. Run it whole. Refused: `sh scripts/acquisition/assert-disposable.sh --egress`
-   exits 1 here, so installing and driving a client would be the capture that
-   boundary exists to refuse, and `docs/capture-host.md`'s guard pair is
-   Linux-only so a Windows capture is not permitted at any host. `CI-03` owns
-   the runner and the Windows guards.
+1. Run it whole. Refused on a session host: `--egress` exits 1 there, so
+   installing and driving a client would be the capture that boundary exists to
+   refuse. ⚠ **That is a fact about a session host and never was one about
+   hosted runners.** A runner is a fresh virtual machine per job and its default
+   route can be deleted before the install, which is what `CI-03`'s workflow
+   does; the Windows guard pair exists now too.
 2. Run the Linux half alone. Refused for the first half of the same reason: a
    capture on one platform is still a capture, and the boundary does not care
    how much of the acceptance it satisfies.

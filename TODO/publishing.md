@@ -301,8 +301,10 @@ Premise: measured while closing `PUB-03`, not read. The other four renderings
 need no dependency at all. This one needs either a third-party crate or a
 hand-written encoder for a file format that is genuinely hard to get right.
 
-⛔ **It is blocked on an operator decision rather than on work.** Both routes
-cost something this project has been deliberate about:
+⚠ **The dependency question was settled on 2026-09-08 and this entry is not
+blocked.** The answer is the crate, and the reasoning below is kept because the
+cost it names is real and has to be paid deliberately. Both routes cost
+something this project has been deliberate about:
 
 - `rusqlite` brings `libsqlite3-sys`, a vendored C library and a build script,
   into a workspace whose lints say `unsafe_code = "forbid"`. It is the largest
@@ -313,11 +315,11 @@ cost something this project has been deliberate about:
   is the argument `OBS-08` rejected for SHA-1, and it is stronger here because
   the format is larger.
 
-Recommendation: take `rusqlite` with the bundled feature, pinned and checked
-against a database a reader this project did not write can open, and record the
-`unsafe` exception against this one dependency rather than relaxing the
-workspace lint. ⚠ `sqlite3` is not installed on a session host, so the
-independent reader has to be provisioned the way `cbor2` was.
+⭐ **Settled: take `rusqlite` with the bundled feature**, pinned, checked against
+a database a reader this project did not write can open, and record the `unsafe`
+exception against this one dependency rather than relaxing the workspace lint.
+⚠ `sqlite3` is not installed on a session host, so the independent reader is
+provisioned the way `cbor2` was: a virtualenv, or the `sqlite3` package.
 
 Approach: once decided, derive the tables from the same canonical documents the
 other renderings use, so no rendering can carry a field another does not.

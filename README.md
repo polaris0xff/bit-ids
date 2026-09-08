@@ -72,9 +72,10 @@ catalogue grows.
 
 ## Start here
 
+Clone this repository with the button above, or with `gh repo clone` from its
+page, then from inside the checkout:
+
 ```bash
-git clone https://github.com/polaris0xff/bit-ids
-cd bit-ids
 sh scripts/doctor/doctor.sh
 sh scripts/common/check-gate.sh --fast
 ```

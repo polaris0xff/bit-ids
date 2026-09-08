@@ -87,20 +87,33 @@ than indistinguishable from one that passed over the machine.
    fetches is public, and
    [`security/secrets.md`](security/secrets.md) is the rule.
 5. The account running the client owns nothing that outlives the host.
-6. After the run, the host is destroyed and the next job's
-   `assert-disposable.sh --fingerprint` differs.
+6. After the run, the host is destroyed and the next job's `--fingerprint`
+   differs.
+
+⚠ **A fingerprint is comparable only against one the same half produced.** The
+two guards digest different inputs, so a Linux job and a Windows job report
+different values for one machine and would report different values for two. A
+workflow comparing across platforms would read "a fresh host" from nothing at
+all. Compare a Linux job's against the previous Linux job's.
 
 ## Windows runner contract
 
-The same six rules. ⛔ **The executable guards are Linux-only today**, because
-they read `/proc/net/route` and `/etc/machine-id`. A Windows capture host needs
-its own pair reading `Get-NetRoute` and the machine GUID, and until it exists a
-Windows capture is not permitted: there is no boundary to run before the
-install, and the contract above is not satisfied by intending to satisfy it.
+The same six rules, and
+[`../scripts/acquisition/assert-disposable.ps1`](../scripts/acquisition/assert-disposable.ps1)
+is the pair that enforces them. `-Claim` writes an exclusively created marker
+under `ProgramData`, which survives a reboot so a host that rebooted rather than
+being destroyed still reads as claimed; `-Egress` reads `Get-NetRoute`;
+`-Fingerprint` digests the machine GUID with the install identity and the
+computer name.
 
-`CI-03` owns the trusted capture runner matrix and is where the Windows pair
-lands. `TODO/acquisition.md` carries it as a named residual rather than as an
-assumption.
+⛔ **Both address families are checked.** A host with IPv4 unplugged and IPv6 up
+still reaches the internet, and a guard reading only `0.0.0.0/0` would pass it.
+
+⚠ **`-RouteTable` makes the routing source a file**, which is how
+[`check-runner.ps1`](../scripts/acquisition/check-runner.ps1) proves the logic on
+a machine that has no `Get-NetRoute`. That the real cmdlet's output matches those
+fixtures is established by running the guard with no `-RouteTable` on a Windows
+host, which is `CI-03`'s workflow rather than this page.
 
 ## What this does not establish
 

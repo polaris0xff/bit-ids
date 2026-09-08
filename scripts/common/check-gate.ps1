@@ -144,13 +144,26 @@ Invoke-Check 'check-no-secrets -Public' 'check-no-secrets.ps1' @('-Public')
 # reads as a skip rather than a pass. Correct: nothing was verified.
 Invoke-Check 'check-remote-items' 'check-remote-items.ps1'
 
-# ⛔ DECLARED, NEVER OMITTED. check-runner mutation-proves the disposable-host
-# guards, and those guards read /proc/net/route, so they are Linux-only today.
-# A Windows capture host needs its own pair and ACQ-04 carries that as a named
-# residual. ⚠ Leaving the row out entirely would make this lane look like it
-# checked something it never looked at, which is the difference between a skip
-# and a pass that this whole runner is about.
-Add-Unavailable 'check-runner' 'the guards are Linux-only; ACQ-04 residual'
+# ⭐ A REAL ROW NOW, AND IT USED TO BE A DECLARED GAP. The disposable-host guards
+# were Linux-only because they read /proc/net/route and /etc/machine-id;
+# assert-disposable.ps1 reads Get-NetRoute and the machine GUID, and this runs
+# the harness that mutation-proves it. ⚠ Its route fixtures are files, so the
+# logic is provable on any host; that Get-NetRoute's real output matches them is
+# established by a Windows job rather than here.
+$runner = Join-Path $here '..' 'acquisition' 'check-runner.ps1'
+if (Test-Path -LiteralPath $runner -PathType Leaf) {
+    & pwsh -NoProfile -File $runner *> $logFile
+    $rc = $LASTEXITCODE
+    switch ($rc) {
+        0 { Add-Row '✅ ok    check-runner'; $pass++ }
+        2 { Add-Row 'SKIP  check-runner  (could not run)'; $skip++ }
+        default { Add-Row ('❌ FAIL  check-runner  (exit ' + $rc + ')'); $fail++ }
+    }
+}
+else {
+    Add-Row 'SKIP  check-runner  (not present)'
+    $skip++
+}
 
 # ⛔ DECLARED FOR THE SAME REASON. check-store plants a symbolic link and a
 # named pipe in a disposable tree, and neither is available to an unprivileged

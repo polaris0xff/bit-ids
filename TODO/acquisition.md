@@ -339,13 +339,12 @@ and when it claimed the host. `E-MAN-33` refuses a claim stamped after the run
 started, which is the distinction the whole entry rests on: a guard that ran
 after the install is a report, not a boundary.
 
-Residual: ⛔ **the executable guards are Linux-only**, because they read
-`/proc/net/route` and `/etc/machine-id`. A Windows capture host needs its own
-pair reading `Get-NetRoute` and the machine GUID, and until it exists a Windows
-capture is not permitted rather than permitted-with-a-warning: there is no
-boundary to run before the install. `CI-03` owns the runner matrix and is where
-that pair lands. [`../docs/capture-host.md`](../docs/capture-host.md) carries
-both contracts.
+Residual, closed: the executable guards were Linux-only, because they read
+`/proc/net/route` and `/etc/machine-id`. `assert-disposable.ps1` is the Windows
+pair, reading `Get-NetRoute` and the machine GUID, and
+[`../docs/capture-host.md`](../docs/capture-host.md) carries both contracts.
+⚠ What remains is the workflow that runs them on a Windows host, which `CI-03`
+owns.
 
 Residual: the guards prove they fire, not that they are sufficient. A host can
 be non-disposable in ways neither models, and

@@ -340,6 +340,96 @@ timeouts, retained evidence, and manual approval where terms require it.
 Prove: a forked change cannot reach capture credentials or runners; a trusted
 fixture capture attests isolation and uploads its complete evidence bundle.
 
+### ⛔ A hosted runner is a capture host, and recording otherwise was an error
+
+Earlier sessions recorded nineteen entries as waiting on a host that
+`assert-disposable.sh` would not refuse, and treated that as an external
+blocker. It is not one.
+
+- `--claim` writes a marker and refuses if one exists. A hosted runner is a fresh
+  virtual machine per job, so no marker exists and it passes.
+- `--egress` reads `/proc/net/route`, sends no packet, and refuses only because a
+  default route exists. Deleting the default route satisfies it, and runners have
+  passwordless sudo.
+
+Measured on 2026-09-08 with the guard's own optional route-table argument: exit 1
+over this host's real table, exit 0 over the same table with the default route
+stripped, exit 0 over a loopback-only table. ⚠ **The guard was testable in one
+command the whole time.** A blocker nobody tested is the shape this entry now
+exists to stop being.
+
+### The Windows guard pair, which is the part that is done
+
+`assert-disposable.ps1` is the twin of the sh guard: `-Claim` writes an
+exclusively created marker under `ProgramData`, `-Egress` reads `Get-NetRoute`,
+and `-Fingerprint` digests the machine GUID with the install identity and the
+computer name.
+
+⛔ **It checks both address families.** A Windows host with IPv4 unplugged and
+IPv6 up still reaches the internet, so a guard reading only `0.0.0.0/0` would
+pass it.
+
+⭐ **`-RouteTable` takes a file, which is what makes the logic provable on a host
+with no `Get-NetRoute` at all.** `check-runner.ps1` drives every case against
+fixtures, and `check-runner` is a real row on the PowerShell gate lane rather
+than a declared gap. ⚠ The count is not written here: this paragraph said
+"eleven" for as long as it took the claim audit to reach it, and the harness
+prints its own total. ⚠ What that does **not** establish is that `Get-NetRoute`'s
+real output matches the fixtures; only a Windows job running the guard with no
+`-RouteTable` does, and that is part of the workflow below.
+
+### Guard mutation over the Windows pair
+
+Seven plants, one at a time. Four were refused on the first pass and three
+survived; reading what each changed separated one real limit from two weak cases.
+
+⛔ **Two of the harness's own cases passed for the wrong reason.** Three of the
+guard's refusals share exit 2 and two share exit 1, so a case asserting the code
+alone passes when a different refusal fired: blanking the mode check left both
+mode cases green, because the branch they then fell into also answers 2. Every
+case that shares a code now asserts what the guard said as well.
+
+⚠ **One survivor is a guard nothing can refute and it is kept.** Rewriting the
+marker's exclusive create to a plain create changes no behaviour a test can
+observe, because the `Test-Path` check answers first on every constructible
+input. It matters only in the window between that check and the open, which is
+the race it exists for. Recorded rather than removed, the way `PUB-01` records
+`entries.sort()`.
+
+⛔ **Writing the harness found two defects in the guard on its first run.**
+`Show-Usage` used `break` inside `ForEach-Object`, which does not stop the
+pipeline: it breaks the enclosing loop, and with none it unwinds the script,
+which exits 0. Every misuse of the guard therefore printed usage and reported
+success. And `@(...) | Where-Object` yields a scalar for a single match under
+`Set-StrictMode`, so `.Count` threw and every invocation exited 1 with a property
+error.
+
+### What remains: the capture workflow
+
+A `workflow_dispatch`-only workflow with one job per platform:
+
+1. check out, then claim the host before anything else writes to it;
+2. install the toolchain and build **while the network still exists**, because
+   after the route goes nothing can be fetched and a capture that discovered a
+   missing dependency under containment would have to restore egress to fix it;
+3. delete the default route in both address families;
+4. run the egress guard, which must now pass;
+5. capture;
+6. restore the route only to upload, after the measurement is finished and on a
+   host that is destroyed either way;
+7. upload the evidence bundle and print the fingerprint the next job compares
+   against.
+
+⛔ **There is no `pull_request` trigger and that absence is the fork guard.** A
+fork cannot cause a workflow to run in the base repository, so there is no
+job-level condition for anyone to weaken. `check-workflow.sh` is where the
+absence is asserted, because an absence is what a later edit restores unnoticed.
+
+⚠ **A first draft of that workflow was written this session and removed**, because
+it called `capture-run.sh` and `capture-run.ps1`, which do not exist. A workflow
+naming a script nobody wrote is a file that reads as finished and fails on its
+first dispatch.
+
 ## CI-04: Build provenance and supply-chain hardening
 
 Source: public autonomous publisher threat model
