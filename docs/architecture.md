@@ -1078,12 +1078,13 @@ non-injective layout section 4 describes, in a second place.
   `PUB-02` runs the append comparison over the fetched `data` branch; until both
   exist, the store and corpus checks are pointed at directories by hand or at
   one written by `build-store`.
-- ⚠ No observer has been driven by a stock `BitTorrent` client. Each was driven
-  by an independent client written from the specification, which is a weaker
-  control: it shares this project's reading of the protocol. `OBS-07` owns the
-  stock-client positive controls, and they need a host the
-  [`capture-host.md`](capture-host.md) guards permit, which the session host
-  this was written on is not.
+- ⭐ The HTTP tracker observer has been driven by a stock `BitTorrent` client
+  once, on 2026-09-08: a hosted runner installed Transmission 4.0.5, deleted its
+  default route, and the build announced to the lab twice. ⚠ Every other
+  observer is still driven only by an independent client written from the
+  specification, which is a weaker control because it shares this project's
+  reading of the protocol. `OBS-07` owns the positive controls, and a session
+  host is not one the [`capture-host.md`](capture-host.md) guards permit.
 - ⭐ A fixture capture has now run on a hosted runner of each platform, and
   `CI-06` carries what it established. ⛔ **`Get-NetRoute`'s real output matches
   the fixtures the Windows guard is proved against**: the guard ran with no

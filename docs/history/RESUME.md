@@ -16,15 +16,21 @@ the route is cut, a capture runner that refuses to attest to a build it did not
 observe announce, a mutation harness in the gate that runs every shipped
 adapter's `describe`, and a second capture workflow that installs a product.
 
-⛔ **No adapter has ever installed anything.** A session host is not disposable,
-so the whole path was driven here against a stub adapter and `curl`. A dispatch
-of `capture-client.yml` is what establishes whether a stock build behaves the way
-the adapters assume, and until one has run every attestation in this tree still
-says `kind=fixture`.
+⭐ **Client capture run 1 was dispatched and one of its three jobs measured a
+build.** Transmission installed from the package index in under two minutes,
+announced twice under containment, and its bundle verified and uploaded.
+⛔ **The other two sat in the install step for over half an hour and reported
+nothing**, because no adapter call had a time limit: a hung install is
+indistinguishable from a slow one until the job's own timeout kills the runner
+and takes the log with it. Both are bounded now, stdin is `/dev/null` on every
+adapter call, `NEEDRESTART_MODE=a` is set for apt, and `qbittorrent-nox
+--version` carries `--confirm-legal-notice` - which the `start` call had and the
+`version` call did not, a control on one of two paths into one product.
 
-**Next:** dispatch it, read the run back, and fix what it teaches. ⚠ Then the
-Windows half of each Prove, which is untouched: every adapter is `sh` and none
-has a PowerShell twin, so a Windows client capture needs `CI-07`'s work first.
+**Next:** dispatch again and read it back. ⚠ Then what the first capture did NOT
+establish: a second route, a second connector, a record in the store, and the
+Windows half of each Prove. Every adapter is `sh` with no PowerShell twin, so a
+Windows client capture needs `CI-07`'s work first.
 
 **Tree:** Re-measure it. This file is a claim about a tree that has moved. Check
 the branch, the remote, the clone depth, `git status` and `HEAD..origin/main`
@@ -237,21 +243,26 @@ gate, and each refused a command on its first run.
 
 ## Facts a session must not restate wrongly
 
-⛔ **Nothing has been published and no BUILD has been measured.** Everything in
-the tree is synthetic and says so. The publisher must not run against this
-repository's own remote until a measured record exists. ⚠ Three **fixture**
-captures have run on hosted runners as of `CI-06`, and not one measured a client:
-nothing is installed, and every attestation says `kind=fixture`,
-`measured_build=none`, `stock_client=false`. `CLIENT-01` is what changes that.
+⛔ **Nothing has been published, and no measured record exists.** Everything in
+the store is synthetic and says so, and the publisher must not run against this
+repository's own remote until that changes. ⭐ **A build HAS now been measured**:
+on 2026-09-08 a hosted runner installed Transmission 4.0.5 and captured it, with
+`kind=client`, `measured_build=4.0.5`, `stock_client=true`. ⚠ What that produced
+is an evidence bundle and an attestation, not a `Profile`: nothing wrote it into
+the store, one route ran rather than two, one connector observed it rather than
+two, and Windows is untouched, so it does not close `CLIENT-06`.
 
 ⛔ **A hosted Windows runner's fingerprint is not a freshness signal.** Two fresh
 hosts report the same value; the two Linux runs differed. The claim marker is
 what detects a survived host. `docs/capture-host.md` carries why that cannot be
 patched by adding a varying input.
 
-⛔ **No observer has been driven by a stock client.** Every driver so far is an
-independent implementation written from a specification, which shares this
-project's reading of the protocol.
+⭐ **One observer has now been driven by a stock client, once.** Transmission
+4.0.5 announced twice to the HTTP tracker observer on a hosted runner with no
+default route. ⛔ Every other observer's driver is still an independent
+implementation written from a specification, which shares this project's reading
+of the protocol, and that one capture is a single route, a single platform and a
+single connector.
 
 ⛔ **The nine commit stamps before 2026-09-06T07:56Z are fabricated**, which is
 why `CHANGELOG.md`'s ordering is not monotonic there. They are not

@@ -279,6 +279,65 @@ returned, and the build would outlive the capture.
 source-derived peer-ID expectations are hypotheses, and the adapter contributes a
 running process rather than one.
 
+### ⭐ The first client capture, measured 2026-09-08
+
+**Client capture run 1, job `transmission`, on `ubuntu-24.04`.** The first time
+this project has observed a `BitTorrent` identity from a running build.
+
+| what | value |
+| --- | --- |
+| installed | `transmission-daemon` `4.0.5`, package route, `Linux 6.17.0-1022-azure x86_64` |
+| version asked of | the installed executable, by the adapter, before the route was cut |
+| containment | `no route off this host (read /proc/net/route)`, asserted after the deletion and again by `capture-client` |
+| announces | 2 |
+| peer ID on the wire | `2d5452343035302d756435383564356171646f73` |
+| transcript | 9 segments, 3 artifacts, verified by `sha256sum -c` |
+| restore | the inverted egress guard refused, which is the route proved back |
+| evidence | uploaded, 18 files |
+
+⛔ **The peer ID is the measurement and the prefix is not a lookup.** What this
+establishes is that a build reporting `4.0.5` put those exact bytes on the wire,
+which is section 4's peer-prefix rule inverted rather than waived: a prefix this
+project measured, against the run that measured it.
+
+⛔ **It does not close this entry, and four things are why.** One route ran
+rather than two, so `ACQ-03` has nothing to compare; one connector observed it,
+so `SCHEMA-03`'s overlap is `not_corroborated` by construction; nothing wrote a
+`Profile` into the store, so there is no record to cite; and the Prove names
+Windows, which is untouched.
+
+### ⛔ What the same run cost, and the defect it bought
+
+**Two of its three jobs sat in `Install the client` for over half an hour and
+reported nothing at all.** The job timeout killed the runner and took the log
+with it, so the cause is not recoverable from that run.
+
+⭐ **The defect is in the contract rather than in either adapter: no adapter call
+had a time limit.** A hung install and a slow one are indistinguishable until
+something bounds them, and `shell.md` section 9 already said so about any tool a
+script shells out to. Every adapter call is bounded now, in
+[`install-client`](../scripts/acquisition/install-client.sh) and
+[`capture-client`](../scripts/capture/capture-client.sh) rather than only in the
+adapters, because a convention in each adapter is a bound the next adapter
+forgets. ⚠ A refusal now names the timeout and prints the route's own log, since
+the workdir is uploaded only when the capture that follows succeeds.
+
+Three narrower causes were fixed with it, each of which would produce exactly
+that silence:
+
+- stdin is `/dev/null` on every adapter call, so a product that asks a question
+  gets end-of-file instead of a wait;
+- `NEEDRESTART_MODE=a` is set for apt, because Ubuntu 24.04 ships `needrestart`
+  and it opens an interactive dialog that `DEBIAN_FRONTEND` does not suppress;
+- ⛔ `qbittorrent-nox --version` carries `--confirm-legal-notice`, which the
+  `start` call had and the `version` call did not. That is a control on one of
+  two paths into the same product, which is the shape this project's reviews
+  call the most recurring hole there is.
+
+⚠ **Which of the four it actually was is not established**, and saying so is the
+honest form: the log is gone. The next dispatch answers it, because a bounded
+call reports its own failure with the product's log beside it.
+
 ## CLIENT-07: Deluge capture adapter
 
 Source: operator scope and upstream project

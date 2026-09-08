@@ -135,9 +135,23 @@ case "$COMMAND" in
     [ "${BIT_IDS_STUB_INSTALL_RC:-0}" = 0 ] || exit "$BIT_IDS_STUB_INSTALL_RC"
     mkdir -p "$2" || exit 2
     printf 'route=%s\n' "$1" >"$2/installed"
+    printf 'a route that hung would leave this\n' >"$2/install.log"
+    # ⛔ THE HANG DOES NOT DEPEND ON STDIN, and that matters. The caller redirects
+    # /dev/null into every adapter call, so a stub that blocked on `read` would
+    # return at once and prove the redirect instead of the time limit. A product
+    # can hang on a lock or a socket with nothing on stdin at all.
+    # ⚠ `exec`, so the process the caller's `timeout` signals is the one that is
+    # blocking rather than a shell waiting on a child it would leave behind.
+    [ "${BIT_IDS_STUB_HANG:-}" = install ] && exec tail -f /dev/null
+    # ⭐ And this reports whether stdin reached end-of-file, which is the other
+    # control and is proved by its own case rather than by this one.
+    if [ "${BIT_IDS_STUB_READ_STDIN:-}" = yes ]; then
+      if read -r _ignored; then printf 'stdin: read a line\n'; else printf 'stdin: eof\n'; fi
+    fi
     ;;
   version)
     [ "${BIT_IDS_STUB_VERSION_RC:-0}" = 0 ] || exit "$BIT_IDS_STUB_VERSION_RC"
+    [ "${BIT_IDS_STUB_HANG:-}" = version ] && exec tail -f /dev/null
     printf '%s\n' "${BIT_IDS_STUB_VERSION-1.2.3}"
     ;;
   start)
@@ -585,6 +599,46 @@ else
 
   install_case 2 "is not present" "an adapter that is not there is could-not-run" \
     --adapter "$WORK/no-such-adapter" --route package --workdir "$WORK/inst-none"
+
+  # ⛔ THE TIME LIMIT, WHICH THE FIRST CLIENT DISPATCH BOUGHT. Two of its three
+  # jobs sat in the install step for over half an hour and reported nothing,
+  # because a hung install is indistinguishable from a slow one until the job's
+  # own timeout kills the runner and takes the log with it. ⚠ 124 is coreutils'
+  # verdict for "it never answered" and is a separate refusal from a route that
+  # said no, because the fixes differ.
+  export BIT_IDS_STUB_HANG=install
+  BIT_IDS_INSTALL_TIMEOUT=2 install_case 1 "is hung, not slow" \
+    "a route that never answers is refused rather than waited on" \
+    --adapter "$STUB" --route package --workdir "$WORK/inst-hang"
+  # ⭐ And the route's own log is printed with the refusal, because the workdir
+  # is only uploaded when the capture that follows succeeds.
+  if grep -q -F -e "a route that hung would leave this" "$WORK/err"; then
+    pass "the refusal carries the route's own log"
+  else
+    fail "the refusal carries the route's own log"
+  fi
+
+  BIT_IDS_STUB_HANG=version
+  BIT_IDS_VERSION_TIMEOUT=2 install_case 1 "did not answer --version within" \
+    "a build that never answers --version is refused rather than waited on" \
+    --adapter "$STUB" --route package --workdir "$WORK/inst-hangv"
+  BIT_IDS_STUB_HANG=
+
+  # ⛔ THE SECOND CONTROL, PROVED SEPARATELY. The time limit above catches a
+  # product that hangs for any reason; this catches the specific one the first
+  # dispatch is most likely to have met, a product asking a question. An adapter
+  # call reads /dev/null, so a prompt gets end-of-file at once rather than a
+  # wait, and the case asserts the stub SAW that rather than asserting a run that
+  # finished quickly.
+  export BIT_IDS_STUB_READ_STDIN=yes
+  install_case 0 "" "an adapter that reads stdin gets end-of-file, not a wait" \
+    --adapter "$STUB" --route package --workdir "$WORK/inst-stdin"
+  if grep -q -F -e 'stdin: eof' "$WORK/out"; then
+    pass "the adapter's stdin is at end-of-file rather than open"
+  else
+    fail "the adapter's stdin is at end-of-file rather than open"
+  fi
+  BIT_IDS_STUB_READ_STDIN=
 
   BIT_IDS_STUB_INSTALL_RC=1
   export BIT_IDS_STUB_INSTALL_RC

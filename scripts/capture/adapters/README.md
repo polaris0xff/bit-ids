@@ -41,6 +41,31 @@ restore egress on the machine that exists to have none.
 [`../../acquisition/install-client.sh`](../../acquisition/install-client.sh) is
 the caller, and it runs in an earlier workflow step.
 
+## Every call is bounded, and the bound is the caller's
+
+⛔ **An adapter shells out to a product this project did not write, and a product
+that waits on a question waits forever.** Measured on 2026-09-08, client capture
+run 1: two of its three jobs sat in the install step for over half an hour and
+reported nothing at all, because a hung install is indistinguishable from a slow
+one until the job's own timeout kills the runner and takes the log with it.
+
+⭐ **So the callers bound every subcommand rather than each adapter bounding
+itself.** A convention in each adapter is a bound the next adapter forgets; the
+callers are the one place every adapter passes through. `124` is coreutils'
+verdict for *it never answered*, and it is reported as its own refusal because
+the fix differs from a route that said no.
+
+⛔ **And stdin is `/dev/null` on every call.** A product that asks a question
+gets end-of-file rather than a wait. ⚠ That is a second control and not the same
+one: it catches a prompt, the time limit catches everything else, and
+[`../check-capture-client.sh`](../check-capture-client.sh) proves each with its
+own case because a stub blocking on `read` would demonstrate only the redirect.
+
+⚠ **An adapter still owns the switches its own product needs.** Ubuntu's
+`needrestart` opens a dialog that `DEBIAN_FRONTEND` does not suppress, and
+`qbittorrent-nox` asks for its legal notice to be confirmed - on `--version` as
+well as on a run, which is a control on one of two paths into the same product.
+
 ## What an adapter must switch off
 
 ⛔ **Public peer discovery, on every route into it.** A capture host has no

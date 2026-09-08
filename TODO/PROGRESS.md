@@ -16,8 +16,10 @@ unreflected.
 
 ## Current state
 
-No identity has been measured. Every record in the tree is synthetic and says
-so: the schema fixtures under
+⭐ **One identity has now been observed from a running build**, and it is not
+in the store: the first client capture ran on 2026-09-08 and left an evidence
+bundle and an attestation, not a `Profile`. Nothing has been published. Every
+record in the tree is still synthetic and says so: the schema fixtures under
 [`../crates/bit-ids/tests/fixtures/`](../crates/bit-ids/tests/fixtures/) describe
 a target that does not exist, and the wire fixtures under
 [`../crates/bit-ids-wire/tests/fixtures/`](../crates/bit-ids-wire/tests/fixtures/)
@@ -91,9 +93,15 @@ library.
 
 ### Limits, stated rather than implied
 
-⛔ **No observer has been driven by a stock client.** Each was driven by an
-independent implementation written from the specification, which shares this
-project's reading of the protocol. `OBS-07` owns the stock-client controls.
+⭐ **The HTTP tracker observer has now been driven by a stock client.** On
+2026-09-08 a hosted runner installed Transmission 4.0.5 from the Ubuntu package
+index, cut its own default route, and handed the build a torrent naming this
+project's lab. It announced twice, carrying
+peer ID `2d5452343035302d756435383564356171646f73` on the wire.
+⛔ **That is one observer, one platform, one route and one connector.** Every other observer is
+still driven only by an implementation written from the specification, which
+shares this project's reading of the protocol, and `OBS-07` owns the controls
+that close the rest.
 
 ⛔ **The publisher has never run against this repository's own remote** and must
 not until a measured record exists. Its acceptance runs against a bare

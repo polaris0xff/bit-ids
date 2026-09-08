@@ -94,6 +94,20 @@ done
 [ -n "$WORKDIR" ] || cannot "--workdir is required"
 [ -f "$ADAPTER" ] || cannot "the adapter $ADAPTER is not present"
 
+# ⛔ EVERY ADAPTER CALL IS BOUNDED, AND THE BOUND IS HERE RATHER THAN ONLY IN THE
+# ADAPTER. An adapter shells out to a product this project did not write, and a
+# product that waits on a prompt waits forever: measured on 2026-09-08, the first
+# client dispatch had two of three jobs sit in this step for over half an hour
+# and report nothing at all, because a hung install is indistinguishable from a
+# slow one until the job's own timeout kills the runner and takes the log with
+# it. ⚠ A convention in each adapter would be a bound the next adapter forgets;
+# this is the one call site every adapter passes through.
+#
+# ⭐ AND STDIN IS /dev/null, so a prompt gets end-of-file rather than a wait.
+INSTALL_SECONDS=${BIT_IDS_INSTALL_TIMEOUT:-900}
+VERSION_SECONDS=${BIT_IDS_VERSION_TIMEOUT:-60}
+command -v timeout >/dev/null 2>&1 || cannot "timeout is not on this host"
+
 # ⛔ THE ROUTE VOCABULARY IS CLOSED. `docs/client-matrix.md` names two candidate
 # routes per target and `RouteKind` is the type they become, so a third spelling
 # arriving here would install through something no record can describe.
@@ -125,21 +139,50 @@ TARGET=$(sh "$ADAPTER" describe 2>/dev/null | awk -F= '$1 == "target" { print $2
 
 STARTED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-sh "$ADAPTER" install "$ROUTE" "$WORKDIR"
+timeout "$INSTALL_SECONDS" sh "$ADAPTER" install "$ROUTE" "$WORKDIR" </dev/null
 INSTALL_RC=$?
+
+# ⚠ THE LOGS THE ROUTE WROTE ARE PRINTED ON EVERY FAILURE, INDENTED. Without
+# this the job log carries the refusal and not its cause, and the workdir is
+# uploaded only when the capture that follows succeeds - so a route that failed
+# took its own diagnosis with it.
+show_route_logs() {
+  for _log in "$WORKDIR/update.log" "$WORKDIR/install.log"; do
+    [ -f "$_log" ] || continue
+    printf '          -- %s (last 20 lines)\n' "$_log" >&2
+    tail -20 "$_log" | sed 's/^/          /' >&2
+  done
+}
+
 case "$INSTALL_RC" in
   0) : ;;
-  1) refuse "the $ROUTE route did not install $TARGET" ;;
-  *) cannot "the $ROUTE route could not run (exit $INSTALL_RC)" ;;
+  # ⛔ 124 IS coreutils' VERDICT FOR "IT NEVER ANSWERED", and it is a different
+  # fact from a route that refused. A run that folded them together would report
+  # a package index as unavailable over a product that asked a question.
+  124)
+    show_route_logs
+    refuse "the $ROUTE route did not answer within ${INSTALL_SECONDS}s; it is hung, not slow"
+    ;;
+  1)
+    show_route_logs
+    refuse "the $ROUTE route did not install $TARGET"
+    ;;
+  *)
+    show_route_logs
+    cannot "the $ROUTE route could not run (exit $INSTALL_RC)"
+    ;;
 esac
 
 # ⛔ AND THE BUILD IS ASKED, HERE, WHILE THERE IS STILL SOMETHING TO DO ABOUT A
 # FAILURE. An install whose executable cannot answer is a route that did not
 # work, and finding that out under containment would be finding it out too late.
-VERSION=$(sh "$ADAPTER" version 2>/dev/null)
+VERSION=$(timeout "$VERSION_SECONDS" sh "$ADAPTER" version 2>/dev/null </dev/null)
 VERSION_RC=$?
 case "$VERSION_RC" in
   0) : ;;
+  124)
+    refuse "$TARGET installed through the $ROUTE route and did not answer --version within ${VERSION_SECONDS}s"
+    ;;
   *) refuse "$TARGET installed through the $ROUTE route but would not report a version" ;;
 esac
 [ -n "$VERSION" ] ||

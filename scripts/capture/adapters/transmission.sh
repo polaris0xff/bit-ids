@@ -91,14 +91,20 @@ case "$COMMAND" in
         # package list that was current when the image was built, and an install
         # against a stale one fails with a 404 on a version that has moved rather
         # than with anything naming the cause.
-        DEBIAN_FRONTEND=noninteractive apt-get update \
-          >"$WORKDIR/update.log" 2>&1 || refuse "the package index could not be refreshed"
+        # ⛔ NEEDRESTART_MODE=a IS NOT TIDINESS. Ubuntu 24.04 ships needrestart,
+        # which opens an interactive dialog after a package install listing the
+        # services to restart. DEBIAN_FRONTEND does not suppress it, and a
+        # dialog on a runner is a step that never returns.
+        # ⚠ Every apt call reads /dev/null, so anything that still asks gets
+        # end-of-file rather than a wait.
+        DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get update \
+          </dev/null >"$WORKDIR/update.log" 2>&1 || refuse "the package index could not be refreshed"
         # ⚠ BOTH HALVES, because the control surface is a separate binary. A
         # route that installed the daemon alone would leave `start` unable to
         # add a torrent and the failure would read as the build declining one.
-        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get install -y --no-install-recommends \
           transmission-daemon transmission-cli \
-          >"$WORKDIR/install.log" 2>&1 || refuse "the package route did not install transmission"
+          </dev/null >"$WORKDIR/install.log" 2>&1 || refuse "the package route did not install transmission"
         # ⚠ The distribution starts the daemon as a service on install. A
         # capture must own the only running copy, or it would measure whichever
         # one the torrent reached.
@@ -112,7 +118,7 @@ case "$COMMAND" in
           cannot "the release route needs BIT_IDS_RELEASE_URL, resolved before the route was cut"
         command -v curl >/dev/null 2>&1 || cannot "curl is not on this host"
         curl -fsSL --retry 2 -o "$WORKDIR/transmission-release" "$BIT_IDS_RELEASE_URL" \
-          >"$WORKDIR/install.log" 2>&1 || refuse "the release route could not be fetched"
+          </dev/null >"$WORKDIR/install.log" 2>&1 || refuse "the release route could not be fetched"
         ;;
       *) cannot "unknown route: $ROUTE" ;;
     esac

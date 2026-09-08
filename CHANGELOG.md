@@ -5,6 +5,33 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T17:54:06Z
+
+- ⭐ **The first client capture.** Client capture run 1 installed Transmission
+  4.0.5 from the Ubuntu package index on a hosted runner, deleted its default
+  route, and handed the build a torrent naming this project's lab; it announced
+  twice and its bundle verified under `sha256sum -c`. Record:
+  [`TODO/clients.md`](TODO/clients.md).
+- ⛔ It does not close `CLIENT-06`. One route ran rather than two, one connector
+  observed it, nothing wrote a `Profile` into the store, and the Prove names
+  Windows.
+- ⛔ Two of the run's three jobs sat in the install step for over half an hour
+  and reported nothing, because no adapter call had a time limit. Every one is
+  bounded now, in the callers rather than in each adapter, and a refusal names
+  the timeout and prints the route's own log.
+- ⛔ Three narrower causes were fixed with it: stdin is `/dev/null` on every
+  adapter call, `NEEDRESTART_MODE=a` is set for apt, and `qbittorrent-nox
+  --version` carries `--confirm-legal-notice` - which the `start` call had and
+  the `version` call did not. ⚠ Which of the four it was is not established, and
+  the log is gone.
+- ⭐ `check-no-secrets --public` allows a measured peer ID cited with its phrase
+  and backticks, which is the shape a published record will carry constantly.
+  Proved narrow in both twins: no phrase, no backticks, a longer run, and a
+  second bare run on the same line are each still refused.
+- Deployment: nothing deployed and nothing published. The capture produced an
+  evidence bundle and an attestation, not a record.
+
+
 ### 2026-09-08T17:02:04Z
 
 - The client capture path, every layer of it except a measurement:

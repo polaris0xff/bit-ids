@@ -148,9 +148,19 @@ ROOT=$(CDPATH='' cd -- "$ROOT/.." && pwd)
 GUARD="$ROOT/scripts/acquisition/assert-disposable.sh"
 [ -f "$GUARD" ] || cannot "$GUARD is not present"
 
-for tool in sha256sum awk od grep; do
+for tool in sha256sum awk od grep timeout; do
   command -v "$tool" >/dev/null 2>&1 || cannot "$tool not found"
 done
+
+# ⛔ EVERY ADAPTER CALL IS BOUNDED HERE AS WELL AS IN install-client, and for the
+# same measured reason: an adapter shells out to a product this project did not
+# write, and a product that waits on a prompt waits forever. ⚠ Under containment
+# it is worse than during an install, because the observer's own deadline expires
+# meanwhile and the run reports "the build announced nothing" over a build that
+# was never asked anything.
+#
+# ⭐ AND STDIN IS /dev/null on every one, so a prompt gets end-of-file.
+ADAPTER_SECONDS=${BIT_IDS_ADAPTER_TIMEOUT:-120}
 
 # ⛔ THE BUILD RAN BEFORE THE NETWORK WAS CUT, OR IT DID NOT RUN. `could not
 # run` rather than a guard refusing: nothing about the host is wrong.
@@ -213,7 +223,8 @@ mkdir -p "$WORKDIR" || cannot "cannot create $WORKDIR"
 # itself never launches a process at all. `describe` prints key=value lines: the
 # target it drives and whether it is a stock product or a stand-in.
 ADAPTER_DESC="$OUT/adapter.describe"
-sh "$ADAPTER" describe >"$ADAPTER_DESC" 2>"$OUT/adapter.err" ||
+timeout "$ADAPTER_SECONDS" sh "$ADAPTER" describe </dev/null \
+  >"$ADAPTER_DESC" 2>"$OUT/adapter.err" ||
   cannot "the adapter could not describe itself"
 
 TARGET=$(awk -F= '$1 == "target" { print $2; exit }' "$ADAPTER_DESC")
@@ -229,7 +240,11 @@ esac
 # ask it is `could not run`: there is no fixture fallback here, because a run
 # reporting `measured_build=none` beside `kind=client` would be the record
 # claiming a build it never identified.
-MEASURED_BUILD=$(sh "$ADAPTER" version 2>>"$OUT/adapter.err") ||
+MEASURED_BUILD=$(timeout "$ADAPTER_SECONDS" sh "$ADAPTER" version </dev/null 2>>"$OUT/adapter.err")
+VERSION_RC=$?
+[ "$VERSION_RC" != 124 ] ||
+  cannot "the installed build did not answer --version within ${ADAPTER_SECONDS}s"
+[ "$VERSION_RC" = 0 ] ||
   cannot "the adapter could not ask the installed build its version"
 [ -n "$MEASURED_BUILD" ] ||
   cannot "the adapter reported an empty version for the installed build"
@@ -273,12 +288,16 @@ fi
 # ⭐ THE CLIENT IS STARTED WITH THE TORRENT AND NOTHING ELSE. It learns the
 # tracker's address by reading the file, which is what a stock build does with
 # any torrent, so nothing here is a control the product does not already have.
-sh "$ADAPTER" start "$TORRENT" "$WORKDIR" "${PEER_PORT:-0}" >"$OUT/client.log" 2>&1
+timeout "$ADAPTER_SECONDS" sh "$ADAPTER" start "$TORRENT" "$WORKDIR" "${PEER_PORT:-0}" \
+  </dev/null >"$OUT/client.log" 2>&1
 START_RC=$?
 if [ "$START_RC" != 0 ]; then
-  sh "$ADAPTER" stop "$WORKDIR" >/dev/null 2>&1
+  timeout "$ADAPTER_SECONDS" sh "$ADAPTER" stop "$WORKDIR" </dev/null >/dev/null 2>&1
   wait "$OBSERVER_PID" 2>/dev/null
   sed 's/^/          /' "$OUT/client.log" >&2
+  if [ "$START_RC" = 124 ]; then
+    refuse "the adapter did not return from start within ${ADAPTER_SECONDS}s; it launches and returns"
+  fi
   refuse "the adapter could not start the build (exit $START_RC)"
 fi
 
@@ -288,7 +307,7 @@ OBSERVER_RC=$?
 # ⚠ STOPPED WHATEVER HAPPENED ABOVE. A client left running holds a port and its
 # own executable open, and on a host that is about to upload evidence that is a
 # process writing into the directory being uploaded.
-sh "$ADAPTER" stop "$WORKDIR" >>"$OUT/client.log" 2>&1
+timeout "$ADAPTER_SECONDS" sh "$ADAPTER" stop "$WORKDIR" </dev/null >>"$OUT/client.log" 2>&1
 STOP_RC=$?
 
 [ "$OBSERVER_RC" = "0" ] || {

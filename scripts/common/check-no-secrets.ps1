@@ -217,6 +217,12 @@ if ($Public) {
             # a rule allowing any backticked forty digits would allow a commit
             # SHA and anything shaped like one.
             $line = $line -creplace '(info hash `)[0-9a-f]{40}`', '${1}ALLOWED`'
+            # ⛔ Keep identical to the sh twin: a measured peer ID is twenty
+            # bytes, so forty hex digits, and it is the value this project
+            # publishes. ⚠ The phrase may sit earlier in the line than the
+            # value, which a table row does, so the span between them is
+            # anything but a backtick.
+            $line = $line -creplace '(peer[ _][Ii][Dd][^`]*`)[0-9a-f]{40}`', '${1}ALLOWED`'
             $line
         } |
         Where-Object { $_ -cmatch '\b[0-9a-f]{24,}\b' })

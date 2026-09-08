@@ -77,10 +77,16 @@ case "$COMMAND" in
         # package list that was current when the image was built, and an install
         # against a stale one fails with a 404 on a version that has moved rather
         # than with anything naming the cause.
-        DEBIAN_FRONTEND=noninteractive apt-get update \
-          >"$WORKDIR/update.log" 2>&1 || refuse "the package index could not be refreshed"
-        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qbittorrent-nox \
-          >"$WORKDIR/install.log" 2>&1 || refuse "the package route did not install qbittorrent-nox"
+        # ⛔ NEEDRESTART_MODE=a IS NOT TIDINESS. Ubuntu 24.04 ships needrestart,
+        # which opens an interactive dialog after a package install listing the
+        # services to restart. DEBIAN_FRONTEND does not suppress it, and a
+        # dialog on a runner is a step that never returns.
+        # ⚠ Every apt call reads /dev/null, so anything that still asks gets
+        # end-of-file rather than a wait.
+        DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get update \
+          </dev/null >"$WORKDIR/update.log" 2>&1 || refuse "the package index could not be refreshed"
+        DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get install -y --no-install-recommends qbittorrent-nox \
+          </dev/null >"$WORKDIR/install.log" 2>&1 || refuse "the package route did not install qbittorrent-nox"
         ;;
       release)
         # ⛔ THE VENDOR'S OWN ARTIFACT. CLIENT-01 measured on 2026-09-05 that the
@@ -92,7 +98,7 @@ case "$COMMAND" in
           cannot "the release route needs BIT_IDS_RELEASE_URL, resolved before the route was cut"
         command -v curl >/dev/null 2>&1 || cannot "curl is not on this host"
         curl -fsSL --retry 2 -o "$WORKDIR/qbittorrent-nox.AppImage" "$BIT_IDS_RELEASE_URL" \
-          >"$WORKDIR/install.log" 2>&1 || refuse "the release route could not be fetched"
+          </dev/null >"$WORKDIR/install.log" 2>&1 || refuse "the release route could not be fetched"
         chmod +x "$WORKDIR/qbittorrent-nox.AppImage" ||
           refuse "the fetched AppImage could not be made executable"
         ;;
@@ -106,7 +112,14 @@ case "$COMMAND" in
     # ⛔ THE BUILD SPEAKING. `qBittorrent v5.0.2` on its first line; the leading
     # `v` is stripped because a version is compared by VersionScheme::components
     # and a label carrying a sigil is a second spelling of one value.
-    LINE=$("$BINARY" --version 2>/dev/null | head -1) ||
+    # ⛔ --confirm-legal-notice IS ON THE VERSION CALL TOO, AND THAT IS WHAT THE
+    # FIRST DISPATCH BOUGHT. A fresh machine has no accepted notice, so asking
+    # this product its version can be the thing that opens the prompt; the
+    # `start` call carried the flag and this one did not, which is a control
+    # applied to one of two paths into the same product.
+    # ⚠ Stdin is /dev/null as well, because a flag that stops one prompt is not
+    # a flag that stops every prompt.
+    LINE=$("$BINARY" --confirm-legal-notice --version </dev/null 2>/dev/null | head -1) ||
       cannot "qbittorrent-nox would not report its version"
     VERSION=$(printf '%s' "$LINE" | awk '{ print $NF }' | sed 's/^v//')
     [ -n "$VERSION" ] || cannot "qbittorrent-nox reported no parseable version: $LINE"
