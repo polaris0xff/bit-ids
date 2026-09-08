@@ -5,6 +5,32 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T15:05:08Z
+
+- `LIB-02` closes: the bit-cli adapter, which is a comparison rather than a
+  generated table. Record: [`TODO/library.md`](TODO/library.md).
+- ⭐ The catalogue answers "what did you measure"; this answers the question a
+  client actually has, which is whether what it says about itself is what this
+  project measured.
+- ⛔ It fails closed. `Answer::agrees` is true for one variant, and every way of
+  not knowing - no record, no observation, a state that asserts nothing, a
+  measured absence, a value with no fixed span - is `Unmeasured` and never a
+  pass. Today every answer about a real client is `Unmeasured`, because nothing
+  has been measured; a design that let that read as agreement would report this
+  project's own emptiness as a clean bill of health.
+- ⛔ A disagreement anywhere outranks agreement everywhere else: a claim is one
+  constant in the tool's source, so it is a claim about every build of that
+  version, and counting a majority would be a vote over a measurement.
+- ⭐ The rejected interface is the one the Problem describes: emitting a Rust
+  source file for bit-cli to vendor puts a second copy of the measurement inside
+  the tool, drifting the same way and now with this project's name on it.
+- ⭐ Driven with a third party's real input: bit-cli's prefix `-CL0200-` was
+  derived from its own `peer_id.rs` and workspace version, and asked of a real
+  publication the adapter answers `NoRecord`. ⛔ No document here claims to have
+  measured bit-cli, and nothing was written to that repository.
+- Deployment: nothing deployed. No record was published and nothing was written
+  to the data branch.
+
 ### 2026-09-08T14:09:21Z
 
 - `PUB-05` closes: the SQLite rendering, and with it every path

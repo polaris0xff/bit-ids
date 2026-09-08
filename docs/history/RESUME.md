@@ -8,15 +8,17 @@ the operator is answered in that file under *Settled decisions*. Do not re-raise
 them, and do not record a new blocker without running the command that would
 settle it.
 
-**In flight:** nothing. `CI-06` and `PUB-05` both closed. The capture workflow
-has been dispatched and capture run 2 is green on both platforms with every
-bundle verified under `sha256sum -c`; the SQLite rendering is written, so every
-path `docs/publishing.md` promises now exists.
+**In flight:** nothing. `CI-06`, `PUB-05` and `LIB-02` all closed. The capture
+workflow has been dispatched and capture run 2 is green on both platforms with
+every bundle verified under `sha256sum -c`; the SQLite rendering is written, so
+every path `docs/publishing.md` promises now exists; and the bit-cli adapter is a
+comparison that fails closed.
 
-**Next:** `LIB-02`, the bit-cli adapter, which needs no capture and no runner.
-`TODO/PROGRESS.md`'s *Settled decisions* says how: clone the public
-`Azathothas/bit-cli` into a scratch directory and run its suite there. ⛔ Nothing
-is written to it; rule 10 holds.
+**Next:** `CLIENT-01`, `CLIENT-06` and `CLIENT-05`, the first complete vertical
+captures. ⭐ The workflow they run in is measured now rather than assumed, and
+`TODO/clients.md` carries the acquisition routes. ⚠ Everything below them in the
+work order needs a capture or a stock build; `CI-07`, `CI-08` and `FOUND-05` are
+the ones that do not.
 
 **Tree:** Re-measure it. This file is a claim about a tree that has moved. Check
 the branch, the remote, the clone depth, `git status` and `HEAD..origin/main`
@@ -120,6 +122,13 @@ the same language, a composite action carries its own steps, and a workflow may
 be `.yaml`. None of the three exists here, which is when a scope is easiest to
 get wrong: every reading agrees on every file in the tree. Plant the fixture the
 tree lacks.
+
+⛔ **Not knowing is not agreement, and a comparison has to say so in its
+type.** `LIB-02`'s adapter answers whether a tool's declared identity is what
+this project measured, and every way of not knowing is one variant that
+`agrees()` is false for. ⚠ Today **every** answer about a real client is *not
+measured*: a design where that read as a pass would have reported an empty
+catalogue as a clean bill of health for every client in it.
 
 ⛔ **A relative-path helper whose prefix depends on the path.** `Resolve-Path
 -Relative` prepends `./` to most paths and NOT to one already starting with a

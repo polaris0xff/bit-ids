@@ -14,11 +14,11 @@ mapping of its own and the two twins cannot hold different ones.
 | Clients | `CLIENT` | 13 | 0 | 0 | 0 | 13 |
 | Engines | `ENGINE` | 3 | 0 | 0 | 0 | 3 |
 | Corpus | `CORPUS` | 0 | 0 | 0 | 4 | 4 |
-| Library | `LIB` | 1 | 0 | 0 | 1 | 2 |
+| Library | `LIB` | 0 | 0 | 0 | 2 | 2 |
 | Publishing | `PUB` | 0 | 0 | 0 | 5 | 5 |
 | CI | `CI` | 4 | 0 | 0 | 5 | 9 |
 | Documentation | `DOC` | 0 | 0 | 0 | 2 | 2 |
-| Total | | 24 | 0 | 0 | 39 | 63 |
+| Total | | 23 | 0 | 0 | 40 | 63 |
 
 Effort inventory: 1 S, 13 M, 49 L, 0 XL. The observer-lab entry was the XL one and
 was split on 2026-09-04, because its acceptance named a client fixture and a

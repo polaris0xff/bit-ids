@@ -12,9 +12,11 @@
 //! nothing about a real publication, so the tree here goes through `assemble`
 //! exactly as `PUB-01` does.
 
+use bit_ids::adapter::{Answer, Claim, Shape, Unmeasured, check};
 use bit_ids::canonical::{RelPath, Sha256Digest, Slug, Version};
 use bit_ids::catalogue::{Bundle, Catalogue, INDEX_PATH, Retrieval, plan, retrieve};
 use bit_ids::index::{IndexKind, Indexes, build};
+use bit_ids::observation::FieldPath;
 use bit_ids::release::{CHECKSUMS_FILE, RELEASE_MANIFEST_FILE, assemble};
 use bit_ids::store::{Entry, ObjectRef, StoreKey, StoreTree};
 use bit_ids::{Corpus, Profile, RunManifest};
@@ -615,4 +617,226 @@ fn catalogue_lookups_answer_from_the_published_index() {
     );
     // And an identifier with nothing correcting it is its own current answer.
     assert_eq!(catalogue.current(record.id), Some(record.id));
+}
+
+// -- ⭐ LIB-02: what a tool asks about its OWN identity -----------------------
+//
+// `LIB-01` above answers "what did you measure". These answer the different
+// question `bit-cli` has, which is whether what it says about itself is what
+// this project measured, and the whole design is that not knowing is never a
+// pass.
+//
+// ⚠ The publication is `LIB-01`'s, unchanged. A second helper building a
+// second bundle would be a second spelling of a publication, and the shipped
+// fixture already carries every state the comparison distinguishes: a patterned
+// peer id, two constants, an absence of each kind, an unknown and a variable.
+
+/// The claim `bit-cli` would make, built the way its own `peer_id.rs` builds
+/// the bytes.
+///
+/// ⛔ **Read out of that repository rather than remembered.** `-CL`, then one
+/// character per version component from its `ALPHABET`, then the build slot and
+/// a dash. At its `0.2.0` that is `-CL0200-`. ⚠ Nothing here resolves `CL`
+/// through a client-ID table, and nothing in this repository records that
+/// prefix as a measurement: it is a third-party *claim*, which is exactly the
+/// side of the comparison a caller supplies.
+const BIT_CLI_PREFIX: &[u8] = b"-CL0200-";
+
+fn claim_of(target: &str, version: &str, field: &str, bytes: &[u8], shape: Shape) -> Claim {
+    Claim {
+        target: slug(target),
+        version: Version::parse(version).expect("a version"),
+        field: FieldPath::parse(field).expect("a field path"),
+        bytes: bytes.to_vec(),
+        shape,
+    }
+}
+
+#[test]
+fn adapter_confirms_a_prefix_the_record_measured() {
+    let (bundle, digest) = publication();
+    let catalogue = Catalogue::open(&bundle, Some(&digest)).expect("opens");
+    // The fixture's peer id is patterned with the fixed run `-XX0000-`.
+    let answer = check(
+        &catalogue,
+        &claim_of(
+            "fixture-client",
+            "1.2.3",
+            "peer_wire/peer_id",
+            b"-XX0000-",
+            Shape::Prefix,
+        ),
+    );
+    assert!(answer.agrees(), "{answer:?}");
+}
+
+#[test]
+fn adapter_contradicts_a_prefix_the_record_did_not_measure() {
+    let (bundle, digest) = publication();
+    let catalogue = Catalogue::open(&bundle, Some(&digest)).expect("opens");
+    let answer = check(
+        &catalogue,
+        &claim_of(
+            "fixture-client",
+            "1.2.3",
+            "peer_wire/peer_id",
+            BIT_CLI_PREFIX,
+            Shape::Prefix,
+        ),
+    );
+    assert!(answer.disagrees(), "{answer:?}");
+    assert!(!answer.agrees(), "{answer:?}");
+    // ⚠ And it says what WAS measured, so a caller has something to act on
+    // rather than a boolean.
+    match answer {
+        Answer::Disagrees { measured, .. } => assert_eq!(measured, "2d5858303030302d"),
+        other => panic!("{other:?}"),
+    }
+}
+
+#[test]
+fn adapter_refuses_a_whole_value_claim_over_a_value_that_varies() {
+    let (bundle, digest) = publication();
+    let catalogue = Catalogue::open(&bundle, Some(&digest)).expect("opens");
+    // ⛔ A disagreement rather than a gap: the tool says the value never
+    // changes and the measurement says it does.
+    let answer = check(
+        &catalogue,
+        &claim_of(
+            "fixture-client",
+            "1.2.3",
+            "peer_wire/peer_id",
+            b"-XX0000-",
+            Shape::Whole,
+        ),
+    );
+    assert!(answer.disagrees(), "{answer:?}");
+}
+
+#[test]
+fn adapter_compares_a_constant_as_a_whole_value_and_as_a_prefix() {
+    let (bundle, digest) = publication();
+    let catalogue = Catalogue::open(&bundle, Some(&digest)).expect("opens");
+    let whole = check(
+        &catalogue,
+        &claim_of(
+            "fixture-client",
+            "1.2.3",
+            "peer_wire/bep10.client",
+            b"fixture/0.0.0",
+            Shape::Whole,
+        ),
+    );
+    assert!(whole.agrees(), "{whole:?}");
+    // ⭐ A constant answers a prefix claim too. Refusing to compare here would
+    // report a client whose whole value is fixed as unmeasured.
+    let prefix = check(
+        &catalogue,
+        &claim_of(
+            "fixture-client",
+            "1.2.3",
+            "peer_wire/bep10.client",
+            b"fixture/",
+            Shape::Prefix,
+        ),
+    );
+    assert!(prefix.agrees(), "{prefix:?}");
+}
+
+/// ⛔ **Every way of not knowing, and not one of them agrees.** This is the
+/// fail-closed rule as a case rather than as a comment, and each reason is
+/// asserted by name because the thing to do about each differs.
+#[test]
+fn adapter_never_agrees_when_there_is_nothing_to_compare() {
+    let (bundle, digest) = publication();
+    let catalogue = Catalogue::open(&bundle, Some(&digest)).expect("opens");
+    let cases: Vec<(&str, &str, &str, Shape, Unmeasured)> = vec![
+        (
+            "fixture-client",
+            "1.2.3",
+            "dht/node_id",
+            Shape::Prefix,
+            Unmeasured::Absent {
+                state: "not_observed",
+            },
+        ),
+        (
+            "fixture-client",
+            "1.2.3",
+            "web_seed/user_agent",
+            Shape::Prefix,
+            Unmeasured::Absent {
+                state: "not_supported",
+            },
+        ),
+        (
+            "fixture-client",
+            "1.2.3",
+            "tracker_http/announce.query_order",
+            Shape::Prefix,
+            Unmeasured::Unknown,
+        ),
+        (
+            "fixture-client",
+            "1.2.3",
+            "mse/handshake_padding",
+            Shape::Prefix,
+            Unmeasured::NoFixedPrefix,
+        ),
+        (
+            "fixture-client",
+            "1.2.3",
+            "peer_wire/handshake.protocol",
+            Shape::Prefix,
+            Unmeasured::NoField,
+        ),
+        (
+            "fixture-client",
+            "9.9.9",
+            "peer_wire/peer_id",
+            Shape::Prefix,
+            Unmeasured::NoRecord,
+        ),
+    ];
+    for (target, version, field, shape, want) in cases {
+        let answer = check(
+            &catalogue,
+            &claim_of(target, version, field, b"-XX0000-", shape),
+        );
+        assert!(!answer.agrees(), "{field} agreed: {answer:?}");
+        assert!(!answer.disagrees(), "{field} disagreed: {answer:?}");
+        match answer {
+            Answer::Unmeasured { reason } => assert_eq!(reason, want, "{field}"),
+            other => panic!("{field}: {other:?}"),
+        }
+    }
+}
+
+/// ⛔ **The honest answer about a real client today, driven end to end.**
+/// `bit-cli` declares `-CL0200-` and this project has measured nothing, so the
+/// only correct answer is that there is no record - and it is emphatically not
+/// agreement. ⚠ No document anywhere in this repository claims to have measured
+/// `bit-cli`: the claim is the third-party input and the catalogue is this
+/// project's, which is the only arrangement that does not fabricate one.
+#[test]
+fn adapter_answers_not_measured_for_a_real_client_because_nothing_is_measured() {
+    let (bundle, digest) = publication();
+    let catalogue = Catalogue::open(&bundle, Some(&digest)).expect("opens");
+    let answer = check(
+        &catalogue,
+        &claim_of(
+            "bit-cli",
+            "0.2.0",
+            "peer_wire/peer_id",
+            BIT_CLI_PREFIX,
+            Shape::Prefix,
+        ),
+    );
+    assert_eq!(
+        answer,
+        Answer::Unmeasured {
+            reason: Unmeasured::NoRecord
+        }
+    );
+    assert!(!answer.agrees());
 }

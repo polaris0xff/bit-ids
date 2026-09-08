@@ -26,6 +26,7 @@
 
 pub mod access;
 pub mod acquisition;
+pub mod adapter;
 pub mod agreement;
 pub mod cache;
 pub mod canonical;

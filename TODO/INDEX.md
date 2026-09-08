@@ -1,17 +1,17 @@
 # Work index
 
 Total: 63
-Open: 24
+Open: 23
 In progress: 0
 Blocked: 0
-Done: 39
+Done: 40
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | P0 | 0 | 0 | 0 | 24 | 24 |
-| P1 | 23 | 0 | 0 | 14 | 37 |
+| P1 | 22 | 0 | 0 | 15 | 37 |
 | P2 | 1 | 0 | 0 | 1 | 2 |
-| Total | 24 | 0 | 0 | 39 | 63 |
+| Total | 23 | 0 | 0 | 40 | 63 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -61,7 +61,7 @@ Done: 39
 | CORPUS-03 | P0 | L | DONE | Deterministic indexes and latest views |
 | CORPUS-04 | P1 | M | DONE | Supersession and correction records |
 | LIB-01 | P1 | L | DONE | Rust consumer library |
-| LIB-02 | P1 | L | OPEN | bit-cli integration adapter |
+| LIB-02 | P1 | L | DONE | bit-cli integration adapter |
 | PUB-01 | P0 | L | DONE | Deterministic release assembler |
 | PUB-02 | P0 | L | DONE | Protected append-only data branch publisher |
 | PUB-03 | P1 | L | DONE | Multi-format GitHub release publisher |
