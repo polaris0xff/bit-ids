@@ -49,7 +49,7 @@ No arrow reads identity values from client source code.
 
 | component | owns | does not own |
 | --- | --- | --- |
-| `bit-ids` crate | public types, schema identity, validation, stable-version resolution, where a record is filed and what a successor tree may do to it, and eventually embedded/pinned catalogue access | capture, installation, network mutation, and the filesystem: the store rules are pure over a tree a caller has already read |
+| `bit-ids` crate | public types, schema identity, validation, stable-version resolution, what capture work a new release creates, where a record is filed and what a successor tree may do to it, and eventually embedded/pinned catalogue access | capture, installation, network mutation, and the filesystem: the store rules are pure over a tree a caller has already read |
 | `bit-ids-wire` crate | byte-exact codecs for the observed surfaces, and the fixture corpus every observer parses against | sockets, timing, and any mapping from a peer-ID prefix to a client name |
 | `bit-ids-lab` crate | the sockets: binding them on loopback and nowhere else, the run deadline, the ordered byte record, endpoint shutdown, the synthetic torrent a capture hands a client, and writing a run out as content-addressed evidence | every protocol, and assembling or publishing a store |
 | `bit-ids-probe` | what each surface answers with, and what an exchange was observed to carry, one module per surface | sockets, the run clock, and client launch or package installation |
@@ -825,6 +825,47 @@ not the requested version. It also records artifact digests. Different bytes
 may still represent the same version and become useful packaging observations;
 they are never silently collapsed.
 
+### What a selection creates, and what it must not create twice
+
+A resolution says what the newest stable release is. Whether that release is
+work is a second question, and
+[`../crates/bit-ids/src/staleness.rs`](../crates/bit-ids/src/staleness.rs)
+answers it. `CI-02` owns it and `bit-ids/capture-requests/1` is the document.
+
+⛔ **A capture request's identifier is a digest of its key.** Target, version,
+channel and platform, domain-separated and length-prefixed exactly as a record
+identifier is. Two runs over the same facts therefore derive the same
+identifier, so a tracker keyed on it cannot hold two, and that is the whole of
+the no-duplicate rule rather than a deduplication step somewhere downstream.
+⚠ Architecture and package are **not** in the key: both are outcomes of the
+acquisition and are unknown when a request is opened, so a key carrying them
+would multiply one release into a request per packaging that no route can
+satisfy. What a request asks is whether the selected version has a measurement
+on that platform at all.
+
+⛔ **The comparison is against the derived views and never against the store.**
+Section 4 makes an index the file a consumer reads instead of the records, and a
+monitor is a consumer: a record in the store and in no view is a measurement
+nobody can look up, so counting it as coverage closes work a consumer cannot see
+was done. ⭐ A superseded record leaves every view, so a correction re-opens its
+capture with nothing added here.
+
+⭐ **Nothing in the monitor judges stability.** It takes the whole `Resolution`
+rather than a version, so a candidate the resolver refused as a preview cannot
+reach a request, and a second stability rule would be a second place for that
+answer to differ.
+
+Four verdicts open nothing, and each is a comparison that did not hold rather
+than a skip: a measurement newer than the selection, because a request there
+asks for a downgrade; a resolution that failed closed, reported rather than
+skipped so a target blocked for a month does not read as a target with no work;
+two spellings that compare equal under the scheme, which is the resolution rule
+above applied here; and a measured version the scheme cannot order.
+⚠ `Staleness::opens_work` is the one answer to whether a verdict asks for a
+capture, and both the survey and the validator ask it, so a verdict wired into
+one and not the other becomes an `E-REQ-07` refusal rather than a silent
+request.
+
 ### Keeping the artifact, and what may be kept
 
 An upstream URL moves and a package index drops an old version, so an artifact
@@ -1004,6 +1045,10 @@ reports that it happened.
   each identity, and a struct of named fields could not write any of them back.
   ⛔ **The `v` string is kept as bytes and never resolved to a client name**, for
   the reason section 5 gives about peer-ID prefixes.
+- ⚠ Nothing schedules the staleness monitor. `CI-02` built the comparison and
+  its driving surface; the trigger that would run the resolvers and write a
+  tracked capture request is a named residual in that entry, and no request has
+  ever been opened.
 - Windows packet corroboration needs a route that works on hosted runners or a
   disposable self-hosted runner; `OBS-07` owns the independent-control
   decision and `CI-03` owns the runner.

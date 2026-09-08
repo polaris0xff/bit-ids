@@ -129,12 +129,18 @@ impl VersionScheme {
     /// padded to the scheme's width so two spellings of one release compare
     /// equal.
     ///
-    /// ⛔ **This is the project's only version ordering and both callers use
-    /// it.** `resolve` picks the newest release to acquire and `CORPUS-03`
-    /// picks the newest record to point at, which are different questions over
-    /// the same comparison. A second implementation of it would answer one of
-    /// them differently on the day it drifted, and the version that reads
-    /// wrongly is the one a consumer follows.
+    /// ⛔ **This is the project's only version ordering, and every caller uses
+    /// it.** `resolve` picks the newest release to acquire, `CORPUS-03` picks
+    /// the newest record to point at, and `CI-02` asks whether the first is
+    /// newer than the second. Those are different questions over one
+    /// comparison, and a second implementation of it would answer one of them
+    /// differently on the day it drifted, with the version that reads wrongly
+    /// being the one a consumer follows.
+    ///
+    /// ⚠ This sentence used to say "both callers" and name two. A third arrived
+    /// and the count went stale in the one place a reader checks before writing
+    /// a fourth implementation. It says "every" now, because a number in prose
+    /// is a value in two places with nothing comparing them.
     ///
     /// Returns `None` for text this scheme cannot order, which is what lets a
     /// caller block rather than guess.

@@ -40,6 +40,7 @@ pub mod record;
 pub mod release;
 pub mod resolution;
 pub mod sampling;
+pub mod staleness;
 pub mod store;
 pub mod validate;
 
@@ -53,6 +54,7 @@ pub use manifest::{MANIFEST_SCHEMA, RunManifest, bind, validate_manifest};
 pub use record::Profile;
 pub use release::{RELEASE_SCHEMA, Release, assemble, manifest_covers};
 pub use resolution::{RESOLUTION_SCHEMA, Resolution, resolve, validate_resolution};
+pub use staleness::{REQUEST_SCHEMA, RequestSet, survey, validate_requests};
 pub use store::{Entry, ObjectRef, StoreKey, StoreTree, append_only, validate_tree};
 pub use validate::{SchemaError, Violations, validate};
 
@@ -67,6 +69,32 @@ pub const PROFILE_SCHEMA: &str = "bit-ids/profile/1";
 pub enum ReleaseChannel {
     /// The vendor or upstream project declares this build stable.
     Stable,
+}
+
+impl ReleaseChannel {
+    /// The published spelling.
+    ///
+    /// ⛔ **Beside the type, because vocabulary has one home.** `CI-02` needed
+    /// this to digest a channel into a capture request's identifier and wrote it
+    /// inside `staleness` first, which is a spelling of the record's vocabulary
+    /// living in a consumer. The next consumer would have written a third, and
+    /// `docs/architecture.md` section 5 already made this rule for `Surface`.
+    ///
+    /// ⚠ It is a second spelling of what serde derives, and
+    /// `channel_spelling_agrees_with_the_serialized_form` holds the two
+    /// together. `Verdict::as_str` carries the same pairing and the same reason.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Stable => "stable",
+        }
+    }
+}
+
+impl core::fmt::Display for ReleaseChannel {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str(self.as_str())
+    }
 }
 
 /// Result of comparing overlapping observations from independent connectors.

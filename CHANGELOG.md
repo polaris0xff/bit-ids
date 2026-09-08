@@ -5,6 +5,39 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T01:39:27Z
+
+- `CI-02`, the stable-release staleness monitor. Record:
+  [`TODO/ci.md`](TODO/ci.md).
+- ⛔ A capture request's identifier is a digest of its key, never an allocated
+  token. Two runs over the same facts derive the same identifier, so a tracker
+  keyed on it cannot hold two; that is the whole of "no duplicate after repeated
+  runs". Length-prefixed and domain-separated, the way a record identifier is.
+- ⚠ Architecture and package are not in the key. Both are outcomes of the
+  acquisition and are unknown when the request is opened, so a key carrying them
+  would multiply one release into a request per packaging.
+- ⭐ `survey` takes the whole `Resolution` rather than a version, so nothing here
+  judges stability and a preview cannot reach a request. A second stability rule
+  would be a second place for the answer to differ.
+- ⛔ Some verdicts decline to answer, and none of those is a silent skip.
+  [`TODO/ci.md`](TODO/ci.md) names each one and what would make it fire.
+- ⛔ The mutation pass found a test whose name claimed more than it checked.
+  Dropping the platform from the key, and replacing the length prefixes with a
+  separator join, both left every Rust case green: the collision test they
+  slipped past holds for one pair under one separator, and nothing varied the
+  platform. The encoding is pinned against its restated specification now.
+- ⭐ The request identifier is re-derived by `python3`'s SHA-256 in the harness,
+  because a survey compared against its own encoder agrees with itself.
+- ⚠ `support/scheme.rs` split out of `support/reader.rs`. The first example to
+  need a store reader and no scheme parser compiled one nothing called, and the
+  dead-code lint is what said so.
+- Eighteen plants over `staleness.rs`, seventeen refused; the eighteenth did not
+  compile as first written, which is "could not run" and never "refused", and it
+  was rewritten until it did and then refused.
+- Deployment: nothing deployed. No capture was taken, nothing was published, and
+  no resolver was scheduled: the monitor's comparison and its driving surface
+  exist, and the trigger that would open a tracked issue is a named residual.
+
 ### 2026-09-06T23:10:00Z
 
 - `OBS-06`, the adjacent protocol observer suite, over local discovery and peer

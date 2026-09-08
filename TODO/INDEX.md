@@ -1,17 +1,17 @@
 # Work index
 
 Total: 58
-Open: 27
+Open: 26
 In progress: 0
 Blocked: 0
-Done: 31
+Done: 32
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | P0 | 0 | 0 | 0 | 24 | 24 |
-| P1 | 26 | 0 | 0 | 7 | 33 |
+| P1 | 25 | 0 | 0 | 8 | 33 |
 | P2 | 1 | 0 | 0 | 0 | 1 |
-| Total | 27 | 0 | 0 | 31 | 58 |
+| Total | 26 | 0 | 0 | 32 | 58 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -67,7 +67,7 @@ Done: 31
 | PUB-04 | P1 | M | OPEN | Stable raw and index access paths |
 | PUB-05 | P1 | M | OPEN | SQLite rendering of the published records |
 | CI-01 | P0 | L | DONE | Complete cross-platform quality gate |
-| CI-02 | P1 | L | OPEN | Stable-release staleness monitor |
+| CI-02 | P1 | L | DONE | Stable-release staleness monitor |
 | CI-03 | P1 | L | OPEN | Trusted capture runner matrix |
 | CI-04 | P1 | L | OPEN | Build provenance and supply-chain hardening |
 | CI-05 | P1 | S | DONE | Acceptance commands that cannot pass over nothing |

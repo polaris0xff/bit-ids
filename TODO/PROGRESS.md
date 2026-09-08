@@ -3,10 +3,10 @@
 State instant: 2026-09-06
 Baseline commit: `a6c9336` on `main`
 Total: 58
-Open: 27
+Open: 26
 In progress: 0
 Blocked: 0
-Done: 31
+Done: 32
 
 ## Current state
 
@@ -438,6 +438,30 @@ prerequisite chain**: the observer recorded the source port 37466 rather than th
 ⛔ **None of them is a stock client** and that limit is unchanged: each shares
 this project's reading of the protocol, which is what `OBS-07` exists to fix.
 
+⭐ **`CI-02` is closed**, so a new stable release creates one bounded piece of
+work. The monitor compares what `ACQ-02`'s resolver selected against what
+`CORPUS-03`'s latest view carries, per target and platform, and a request's
+identifier is a **digest of its key** rather than an allocated token. That is the
+whole of "no duplicate after repeated runs": two runs over the same facts derive
+the same identifier, so a tracker keyed on it cannot hold two. ⚠ Architecture and
+package are not in the key, because both are outcomes of the acquisition and are
+unknown when the request is opened.
+
+⛔ **Nothing in the monitor judges stability, and that is why its preview case is
+not a tautology.** `survey` takes the whole `Resolution` rather than a version,
+so a preview never reaches it: the resolver refused it, by either signal. Four
+verdicts open nothing and each is a comparison that did not hold, of which
+`regressed` is the one worth naming: a measurement newer than the selection means
+a request would ask a runner to capture a downgrade.
+
+⛔ **The guard mutation pass found a test whose name claimed more than it
+checked.** Two plants over the request key, dropping the platform and replacing
+the length prefixes with a separator join, left every Rust case green and were
+caught only by the harness's independent `python3` derivation. The collision test
+they slipped past holds for one pair under one separator. The encoding is pinned
+against its own restated specification now, and all five key plants are refused
+by the unit tests alone.
+
 ## Work order
 
 1. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
@@ -451,11 +475,12 @@ this project's reading of the protocol, which is what `OBS-07` exists to fix.
 2. ⭐ **`OBS-11` is closed**, so the observer layer covers every surface a build
    reaches for. `OBS-07` and `OBS-10` are the other two observer entries and both
    need a client build, so they wait on the same host the clients do.
-3. ⭐ **`CI-02` through `CI-04` are what is next**, and `CI-03` is the one that
-   supplies the capture host everything else waits on. ⚠ `CI-02`'s acceptance is
-   fixture-driven and `PUB-04`'s can be driven against a scratch bare repository,
-   so both are reachable on a session host and neither is as blocked as the
-   ordering suggests.
+3. ⭐ **`CI-02` is closed**, so a new stable release creates one bounded piece of
+   work and a repeated run creates none. `CI-03` is what is next in this group
+   and is the one that supplies the capture host everything else waits on;
+   `CI-04` follows it. ⚠ `PUB-04`'s acceptance can be driven against a scratch
+   bare repository, so it is reachable on a session host and is not as blocked
+   as the ordering suggests.
 4. The remaining client and engine breadth, behind the same capture host.
 5. `PUB-04` and `PUB-05`, then the consumer library, public documentation and
    refinements. ⚠ `PUB-04`'s Prove fetches every documented path and nothing has

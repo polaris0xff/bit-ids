@@ -10,49 +10,19 @@
 //! ⚠ It includes the walk itself, so an example that includes this must not
 //! also include `walk.rs`: the file would be compiled twice into one crate and
 //! the two `StoreTree` walks would be different types.
+//!
+//! ⚠ The `--scheme` parser lives in [`scheme.rs`](scheme.rs) rather than here.
+//! It was here until `survey-staleness` needed a store reader and no scheme
+//! parser, and compiled one nothing called.
 
 use std::path::Path;
 
-use bit_ids::canonical::{Label, Slug};
 use bit_ids::corpus::Corpus;
-use bit_ids::resolution::VersionScheme;
 use bit_ids::store::{is_manifest_path, is_profile_path};
 use bit_ids::{Profile, RunManifest};
 
 #[path = "walk.rs"]
 mod walked;
-
-/// Parses one `--scheme TARGET:PREFIX:MIN:MAX` argument.
-///
-/// `-` in the prefix position means the target publishes versions with no tag
-/// prefix. ⛔ Nothing here has a default: a scheme this cannot parse is refused
-/// rather than filled in, because a filled-in scheme orders versions under a
-/// shape nobody declared.
-pub fn scheme(text: &str) -> Result<(Slug, VersionScheme), String> {
-    let parts: Vec<&str> = text.split(':').collect();
-    let [target, prefix, min, max] = parts.as_slice() else {
-        return Err(format!("{text:?}: expected TARGET:PREFIX:MIN:MAX"));
-    };
-    let target = Slug::parse(target).map_err(|error| format!("{text:?}: {error}"))?;
-    let tag_prefix = if *prefix == "-" {
-        None
-    } else {
-        Some(Label::parse(prefix).map_err(|error| format!("{text:?}: {error}"))?)
-    };
-    let min_components: u8 = min.parse().map_err(|_| format!("{text:?}: min"))?;
-    let max_components: u8 = max.parse().map_err(|_| format!("{text:?}: max"))?;
-    if min_components == 0 || min_components > max_components {
-        return Err(format!("{text:?}: min must be 1 or more and at most max"));
-    }
-    Ok((
-        target,
-        VersionScheme {
-            tag_prefix,
-            min_components,
-            max_components,
-        },
-    ))
-}
 
 /// Reads every record and run the store carries into a corpus, reporting what
 /// it could not read rather than dropping it.

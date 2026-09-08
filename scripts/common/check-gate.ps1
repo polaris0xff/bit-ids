@@ -166,6 +166,14 @@ Add-Unavailable 'check-release' 'shares that harness; CI-03 residual'
 Add-Unavailable 'check-formats' 'shares that harness; CI-03 residual'
 Add-Unavailable 'check-publish' 'shares that harness; CI-03 residual'
 
+# ⚠ DECLARED FOR A DIFFERENT REASON, AND THE WORDING SAYS WHICH. check-staleness
+# plants nothing on a filesystem and needs no POSIX-only feature; it is an sh
+# harness with no PowerShell half, and it needs python3 for the independent
+# derivation of a request identifier. Copying the row above would have recorded a
+# reason that is not this one, and a documented gap whose reason is wrong closes
+# on the wrong event. CI-03 owns the Windows runner either way.
+Add-Unavailable 'check-staleness' 'an sh harness with no PowerShell half; CI-03 residual'
+
 # ⭐ THE SLOW ONE, and ⚠ it is the one part of this gate that needs a POSIX
 # shell: check-twins runs the sh half of every pair, so it cannot run on a host
 # without one. That is reported as a skip, never as a pass.

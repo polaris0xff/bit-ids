@@ -192,22 +192,29 @@ else
   SKIP=$((SKIP + 1))
 fi
 
-# ⛔ NOT IN common/ EITHER, AND IN THE GATE FOR THE SAME REASON. These seven
+# ⛔ NOT IN common/ EITHER, AND IN THE GATE FOR THE SAME REASON. These eight
 # mutation-prove the guards standing between this project and silently deleting
 # or rewriting published evidence, publishing a record whose evidence nothing
 # can resolve, pointing a consumer at a superseded build, publishing a retracted
 # measurement in a rendering the lookups had stopped naming, shipping two
-# different byte sets under one release label, and force-pushing over the data
-# branch, and keeping somebody else's installer in this repository. The first is
+# different byte sets under one release label, force-pushing over the data
+# branch, opening a capture request twice for one release, and keeping somebody
+# else's installer in this repository. The first is
 # unrecoverable afterwards and the rest are worse than errors, because each
-# answers confidently. ⭐ All seven are hermetic:
+# answers confidently. ⭐ All eight are hermetic:
 # check-publish creates its own bare repository in a scratch directory and
 # touches no real remote. ⚠ They need cargo, so they exit 2 on a host without
-# one, which is a skip and not a pass. None has a PowerShell half;
-# scripts/README.md carries why.
+# one, which is a skip and not a pass. ⚠ check-staleness needs python3 as well,
+# which is what re-derives a request identifier independently of the encoder
+# under test. None has a PowerShell half; scripts/README.md carries why.
+#
+# ⚠ ci/check-staleness IS IN THIS LIST AND ci/check-workflow IS NOT. They sit in
+# one directory and differ in one property: two of check-workflow's cases run
+# this gate, so a runner that listed it would re-enter itself. check-staleness
+# runs no gate.
 for spec in acquisition/check-cache corpus/check-store corpus/check-corpus \
   corpus/check-indexes publishing/check-release publishing/check-formats \
-  publishing/check-publish; do
+  publishing/check-publish ci/check-staleness; do
   PROVER="$HERE/../$spec.sh"
   NAME=${spec#*/}
   if [ -f "$PROVER" ]; then

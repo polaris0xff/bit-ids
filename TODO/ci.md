@@ -141,7 +141,7 @@ lacks it would pass on any workflow at all.
 ## CI-02: Stable-release staleness monitor
 
 Source: operator automatic maintenance requirement
-Priority: P1 | Effort: L | Status: OPEN
+Priority: P1 | Effort: L | Status: DONE
 
 Problem: New stable client versions must create bounded work without silently
 overwriting previous records or repeatedly opening duplicates.
@@ -150,8 +150,180 @@ Approach: Schedule source-specific resolvers, compare against data indexes,
 deduplicate by product/version/channel/platform, and open or update one tracked
 capture request.
 
-Prove: fixtures create one request for a new stable release, none for a preview
-or known release, and no duplicate after repeated runs.
+Prove: `sh scripts/ci/check-staleness.sh` and
+`cargo test -p bit-ids --locked --test staleness` both pass, with a new stable
+release opening one request, a preview and a release already measured opening
+none, and a second run over the tracker the first one filled opening nothing.
+
+### Decision: the identifier is derived, and that is the whole of "no duplicate"
+
+⛔ **A request identifier is a digest of its key, never an allocated token.** Two
+runs over the same facts derive the same identifier, so a tracker keyed on it
+cannot hold two; a counter, a timestamp or a random token would each make the
+second run's request a different request, which is the defect the Problem names.
+`RequestKey` digests the four components the Approach lists, domain-separated and
+length-prefixed the way `RecordKey` is, because joining them with a separator
+lets two tuples encode to one string the moment a component carries the
+separator.
+
+⚠ **Architecture and package are deliberately not in the key.** They are outcomes
+of the acquisition and are unknown when a request is opened, so a request that
+carried them would multiply one release into a request per packaging, most of
+which no route can satisfy. The question a request answers is whether the
+selected version has a measurement on the platform at all; a package variant
+lagging is coverage rather than staleness.
+
+### Decision: the survey takes the whole resolution, not a version
+
+⭐ **Nothing here judges stability, and that is why the preview case is not a
+tautology.** A preview is refused by `ACQ-02`'s resolver, and `survey` takes the
+`Resolution` rather than a `Version` so it cannot be handed a selection that came
+from somewhere else. Every case in both the suite and the harness therefore
+builds the release list a source would answer with and resolves it first.
+A second stability rule here would be a second place for the answer to differ.
+
+### Decision: the comparison is against the views, not the store
+
+⛔ **An index is what a consumer reads instead of the records, and a monitor is a
+consumer.** A record in the store and in no view is a measurement nobody can look
+up, so counting it as coverage closes work a consumer cannot see was done.
+⭐ The corollary is free: `CORPUS-04` drops a superseded record from every view,
+so a retracted measurement re-opens its capture with nothing added here.
+
+⚠ **The driving example re-derives the views rather than parsing the published
+index document.** `index::build` is the one derivation, and a second reader of
+that document would be a second reading of it. The `data` branch *is* the store,
+so pointing `survey-staleness` at a checkout of it is the real path.
+
+### ⛔ Four verdicts open nothing, and each is a comparison that did not hold
+
+`regressed` is the one worth naming: a measurement newer than the selection means
+the source dropped a release or the resolver read the wrong one, and a request
+there asks a runner to capture a downgrade. `unresolved` is reported rather than
+skipped, because a target whose resolution has been blocked for a month otherwise
+looks like a target with no work. `ambiguous` is `ACQ-02`'s rule applied here:
+`components` pads to the scheme's width, so `1.2.10` and `1.2.10.0` compare
+equal, and calling that current leaves a differently spelled measurement standing
+for the selection while calling it stale opens a request for a capture already
+taken. `unorderable` blocks for the reason the resolver blocks.
+
+⭐ `Staleness::opens_work` is the **one** answer to whether a verdict asks for a
+capture. `survey` filters on it and `validate_requests` checks against it, so a
+verdict wired into one and forgotten in the other is not expressible: it becomes
+an `E-REQ-07` refusal naming the verdict.
+
+### ⛔ What the guard mutation pass found, which nothing else could have
+
+Eighteen plants over `staleness.rs`, one at a time into a scratch copy, each
+compiled before being judged so that *could not run* stays separate from
+*refused*. ⚠ The first pass reported fourteen refusals and four non-results, and
+the four were the harness's own defects rather than surviving guards: three
+literals no longer matched the formatted source and one plant did not compile.
+They were repaired and re-run rather than counted either way, because a plant
+that did not apply says nothing about the guard it was aimed at.
+⛔ **Two of the refusals were by the harness alone, and that is the finding.**
+Removing the platform from the request key, and replacing the length prefixes
+with a separator join, both left every Rust case green:
+`request_key_components_are_length_prefixed_rather_than_joined` collides only
+under a `-` join and nothing varied the platform at all. ⚠ That is a test whose
+**name** claimed more than it **checked**, which
+[`../docs/methodology/reviews.md`](../docs/methodology/reviews.md) names as a
+shape to test for specifically.
+
+⭐ The repair is to pin the encoding rather than to add another collision pair.
+`request_key_bytes_are_the_encoding_restated_independently` compares
+`canonical_bytes` against the format restated from its own doc comment, so any
+dropped component, any reordering and any join moves the bytes;
+`a_request_id_moves_with_every_component_of_its_key` varies each of the four in
+turn. Re-measured after the repair: all five key plants, including two written
+only to check the repair, are refused by the unit tests alone.
+
+Re-measured after the repair, over the whole set: eighteen plants, eighteen
+refused, none surviving and none unable to run.
+
+### What the door sweep found, which the mutation pass could not
+
+Three, each about a door this entry opened rather than about the code it wrote.
+
+⛔ **`VersionScheme::components` said "both callers use it" and named two.**
+This is the third. A count in prose is a value in two places with nothing
+comparing them, and it went stale in the one paragraph a reader checks before
+writing a fourth implementation of the ordering. It says "every" now and names
+all three questions.
+
+⛔ **The channel's published spelling was written inside `staleness`.**
+`docs/architecture.md` section 5 already made this rule for `Surface`: the
+vocabulary has one home and it is the record's. A spelling of `ReleaseChannel`
+living in a consumer is the shape where the next consumer writes a third. It is
+`ReleaseChannel::as_str` beside the type now, with the serde pairing checked
+where it always was.
+
+⚠ **`scripts/README.md` said `store-lib.sh` is sourced by "all eight of the
+harnesses above".** Measured: nine harnesses source it, `publish-data.sh` does
+too and is not a harness, and `check-runner.sh` is listed above and does not
+source it. The sentence was describing a set two files differ from before this
+entry touched it. It carries the measured count and both exceptions now.
+
+⚠ A fourth was looked for and not found: nothing else in the tree reaches
+`survey`, `RequestId` or `validate_requests`, and `serde_json::to_string` over a
+`RequestSet` does bypass validation, which is the same open in-memory
+construction `Profile` has by design. For that to be a defect the write path
+would have to stop validating, and `staleness_writes_nothing_it_would_refuse_to_read`
+is what would fire.
+
+### Acceptance, all run on 2026-09-08
+
+- `sh scripts/ci/check-staleness.sh`
+- `cargo test -p bit-ids --locked --test staleness`
+- `sh scripts/common/check-gate.sh`
+- `pwsh -NoProfile -File scripts/common/check-gate.ps1`
+
+### Closure evidence, 2026-09-08
+
+| what | measured |
+| --- | --- |
+| `sh scripts/ci/check-staleness.sh` | 19 cases, 19 passed, 0 failed |
+| `cargo test -p bit-ids --locked --test staleness` | 29 passed, 0 failed |
+| `cargo test --workspace --locked --all-targets` | 46 binaries, 503 passed, 0 failed |
+| `sh scripts/common/check-gate.sh` | 21 checks, 20 passed, 0 failed, 1 skipped, 0 unavailable |
+| `pwsh -File scripts/common/check-gate.ps1` | 21 checks, 11 passed, 0 failed, 1 skipped, 9 unavailable |
+| guard mutation over `staleness.rs` | 18 plants, 18 refused, 0 survived, 0 could not run. ⚠ Two were refused by the harness alone before the tests were repaired |
+| driven pass | a real store at 1.2.10, a real release list carrying 1.3.0, resolved and surveyed: one request opened; the tracker filled from it and re-surveyed twice, the same identifier `already_open` both times and the two documents identical apart from the clock |
+| independent verification | `python3`'s SHA-256, over the encoding restated from the doc comment, re-derives `request:sha256:d6ce71ee…` byte for byte |
+
+⭐ **The strongest control here is not this project's code.** The request
+identifier is what the whole no-duplicate property rests on, and a survey
+compared against its own encoder agrees with itself. Python's `hashlib` is a
+SHA-256 this project did not write, and the harness carries that comparison as a
+case rather than leaving it to a session that ran it once.
+
+### Residuals
+
+- ⚠ **Nothing schedules this yet.** The Approach says "schedule source-specific
+  resolvers", and what exists is the comparison and its driving surface, not a
+  cron trigger or an issue writer. A workflow that opened issues would need
+  `issues: write` on this repository, and `docs/security/remote-ops.md` governs
+  that; the tracker's shape is `--open`'s JSON array, which any writer can
+  produce. It is a residual rather than a gap in the Prove: the Prove asks
+  whether a request is created, updated and not duplicated, and all three are
+  driven.
+- ⚠ `check-staleness` needs `python3`, so it exits 2 on a host without one.
+  Driven rather than asserted: run under a `PATH` carrying every other tool it
+  needs and no python3, it prints `python3 not found` and exits 2, which the gate
+  reads as a skip and never as a pass. The Linux lane runs the gate with
+  `--strict` and `ubuntu-24.04` carries python3.
+- ⚠ `survey-staleness` builds the views under the schemes its resolutions carry,
+  so a store holding a target no resolution covers blocks under `E-VIW-01`. That
+  is the right refusal and it means a real run monitors every target in the store
+  or none. It is a residual because nothing today has more than one target in a
+  store.
+- ⚠ The survey's exit code says whether a request was opened and says nothing
+  about a blocked line. The alternative, a third code, was rejected: a caller
+  that only wants to know about new work would have to special-case it. Blocked
+  lines are named in the summary and carried in the document.
+- ⚠ An open request for a line a run was not asked about is left alone rather
+  than retired. A survey that retired work outside its input would delete a
+  capture request because a target was left out of one run's arguments.
 
 ## CI-03: Trusted capture runner matrix
 

@@ -39,8 +39,11 @@ use bit_ids::resolution::VersionScheme;
 
 #[path = "support/reader.rs"]
 mod support;
+#[path = "support/scheme.rs"]
+mod support_scheme;
 
-use support::{read_store, scheme};
+use support::read_store;
+use support_scheme::scheme;
 
 struct Request {
     schemes: BTreeMap<Slug, VersionScheme>,

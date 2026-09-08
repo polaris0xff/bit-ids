@@ -39,7 +39,7 @@ will add.
 | Comparing a secret, token or signature with an equality operator | a timing attack |
 | A general-purpose hash used as a password hash | brute-forceable credentials |
 | A guard whose test has never been seen to fail | theatre. Plant the defect and read the exit code. |
-| A test whose name claims more than it checks | a green suite over a defect it was written to catch |
+| A test whose name claims more than it checks | a green suite over a defect it was written to catch. ⭐ The sharpest instance here is a **collision test standing in for an encoding**: `request_key_components_are_length_prefixed_rather_than_joined` compared one pair of tuples, and a mutation pass then replaced the length prefixes with a separator byte and separately dropped a whole component from the key, with every Rust case staying green. A collision pair proves injectivity for the pair it names and says nothing about the format. ⛔ The general fix is to pin the encoding against its own restated specification, byte for byte, and to vary each component in turn; `CI-02` carries both. |
 
 ## Fake anything
 

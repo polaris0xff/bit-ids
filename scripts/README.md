@@ -36,13 +36,23 @@ from any working directory.
 - [`publishing/check-publish.sh`](publishing/check-publish.sh) drives that
   publisher against a bare repository it creates in a scratch directory, so the
   push path runs for real with no network and no credential.
+- [`ci/check-staleness.sh`](ci/check-staleness.sh) drives the staleness monitor
+  over real stores and real resolutions: a new stable release opens one request,
+  a preview and a release already measured open none, and a second run over a
+  tracker holding the first run's request opens nothing. ⭐ It re-derives the
+  request identifier with `python3`'s SHA-256, which is an implementation this
+  project did not write.
 - [`ci/check-workflow.sh`](ci/check-workflow.sh) copies the working tree into a
   scratch repository, plants a defect of each class the pipeline exists to
   catch, and runs the offending workflow step against it. Every command it runs
   is read out of `.github/workflows/ci.yml` by job and step name, so a harness
   that has drifted from CI reports a missing step rather than a pass.
-- [`corpus/store-lib.sh`](corpus/store-lib.sh) is sourced by all eight of the
-  harnesses above and is never run. ⚠ It sits under `corpus/` because that is where the first harness
+- [`corpus/store-lib.sh`](corpus/store-lib.sh) is sourced by nine of the
+  harnesses above and by `publishing/publish-data.sh`, and is never run.
+  ⚠ The count is measured rather than "all of them": `acquisition/check-runner.sh`
+  is listed above and does **not** source it, and the publisher is not a harness
+  at all. A sentence saying "all of the harnesses above" was already describing a
+  set two files differ from, which is the shape a claim audit exists to find. ⚠ It sits under `corpus/` because that is where the first harness
   to need it was, and a publishing check sources it across directories rather
   than growing a second copy. It holds what a mutation harness needs: build an example, make a scratch
   tree, digest a directory, verify a plant landed, count a row.
@@ -74,8 +84,9 @@ contract and is where that lands, rather than a second implementation written
 now with nothing exercising it.
 
 `acquisition/check-runner.sh` and `acquisition/check-cache.sh`, the three
-`corpus/check-*.sh` harnesses and the three `publishing/check-*.sh` ones are the
-mutation provers, and none has a twin. All eight run in the `sh` gate and are reported as declared rows in the
+`corpus/check-*.sh` harnesses, the three `publishing/check-*.sh` ones and
+`ci/check-staleness.sh` are the
+mutation provers, and none has a twin. All nine run in the `sh` gate and are reported as declared rows in the
 PowerShell one. `check-runner` proves guards that read `/proc/net/route`, so it has nothing
 to prove on Windows until `CI-03` writes the Windows pair. The six corpus and publishing
 provers hold rules that are not platform-specific at all, and the Rust suite
@@ -85,7 +96,13 @@ available to an unprivileged Windows session. A second
 implementation that skipped those two plants would report a smaller pass under
 the same name, which is the shape `check-twins.sh` calls invisible drift.
 
-`ci/check-workflow.sh` is a ninth mutation prover and the one deliberately
+⚠ `check-staleness` is declared on the PowerShell lane for a **different**
+reason, and its row says which: it plants nothing on a filesystem and needs no
+POSIX-only feature. It is an `sh` harness with no PowerShell half, and it needs
+`python3` for the independent derivation. Copying the neighbouring reason would
+have recorded a gap that closes on the wrong event.
+
+`ci/check-workflow.sh` is a tenth mutation prover and the one deliberately
 kept **out** of the gate. Two of its cases run the workflow's own *Repository
 gate* step, so a runner listed in the gate that also invokes the gate would
 re-enter itself; `check-gate.sh` keeps `check-twins` out of its pair list for
