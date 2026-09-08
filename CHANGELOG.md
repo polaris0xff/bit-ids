@@ -5,6 +5,37 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T12:37:28Z
+
+- `CI-06` closes. Capture run 2 is green on both platforms, first attempt after
+  the fix. Record: [`TODO/ci.md`](TODO/ci.md).
+- ⭐ Every uploaded bundle verifies under `sha256sum -c`, and each attestation
+  names `kind=fixture`. `curl` put the bytes on the wire from both runner images
+  and the transcript carries the run-id token the driver knows it sent.
+- ⛔ The entry's own Prove asked that two runs of one platform report different
+  fingerprints, and on Windows they did not: two hosts that were both fresh, each
+  run's claim succeeding, reported the same value. The Linux pair differed.
+- ⭐ That is structural rather than a defect to patch, and
+  [`docs/capture-host.md`](docs/capture-host.md) carries the reasoning. The
+  workflow's Windows summary said "A repeat means the host was not destroyed" and
+  now says what the value actually identifies.
+- ⛔ A door sweep over the three new rules found the same defect inside them:
+  they matched `shell: pwsh` in `.github/workflows/*.yml` alone, while
+  `shell: powershell` is the same language, a composite action carries its own
+  steps and the same permissions, and a workflow may be `.yaml`. None of the
+  three exists here, which is when a scope is easiest to get wrong. The scope is
+  the action-pin rule's now, proved by planting each missing fixture.
+- ⛔ Widening it broke the PowerShell half and both halves went on agreeing on
+  the clean tree: `Resolve-Path -Relative` prepends `./` to most paths and not to
+  one already starting with a dot, so a fixed `Substring(2)` ate the `.g` of
+  `.github`. Seven of the fourteen per-plant cases named it at once. A file set
+  only shows in the output when something in it fails.
+- ⚠ The Linux lane went from 13.4 minutes to 24.4 of the 30 it had, because each
+  new plant runs the whole gate. Its budget is 45 now with the measurement beside
+  it; a lane that runs out of time reports as infrastructure, not as a defect.
+- Deployment: nothing deployed. Three fixture captures have run, no client was
+  installed, no record was published and nothing was written to the data branch.
+
 ### 2026-09-08T12:00:55Z
 
 - `CI-06` opens and the capture workflow is dispatched for the first time.

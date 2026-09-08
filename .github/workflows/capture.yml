@@ -166,6 +166,10 @@ jobs:
       # ⚠ A FINGERPRINT IS COMPARABLE ONLY AGAINST ONE THE SAME HALF PRODUCED.
       # The two guards digest different inputs, so this is compared against the
       # PREVIOUS LINUX capture's, never against the Windows job's below.
+      #
+      # ⭐ ON LINUX A REPEAT REALLY DOES MEAN A SURVIVED HOST, and CI-06 measured
+      # it: capture runs 1 and 2 reported different fingerprints here.
+      # ⛔ The Windows job's does NOT, and its own step says so. Read that one.
       - name: Report the host fingerprint
         run: |
           set -eu
@@ -293,6 +297,15 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+      # ⛔ THIS FINGERPRINT IS NOT A FRESHNESS SIGNAL AND THE SUMMARY MUST NOT
+      # SAY IT IS. Measured by CI-06: capture runs 1 and 2 reported the SAME
+      # Windows fingerprint on two hosts that were both fresh - run 2's claim
+      # succeeded, so the marker run 1 wrote was gone. ⚠ That is structural
+      # rather than a defect to patch. A fingerprint must differ between hosts
+      # AND survive a reboot within one, and on a cloned image every input with
+      # the second property is identical across every clone. ⭐ The claim marker
+      # is what detects a survived host, by finding its own marker rather than
+      # by comparing anything.
       - name: Report the host fingerprint
         shell: pwsh
         run: |
@@ -306,7 +319,7 @@ jobs:
           [void]$body.Add('')
           [void]$body.Add('host fingerprint `' + $print + '`')
           [void]$body.Add('')
-          [void]$body.Add('Compare against the previous **Windows** run. A repeat means the host was not destroyed.')
+          [void]$body.Add('This identifies the runner IMAGE and not the host: two fresh hosted runners report the same value, which CI-06 measured. The claim step is what refuses a survived host.')
           [void]$body.Add('')
           [void]$body.Add('```')
           $body.AddRange(@(Get-Content -LiteralPath "$env:RUNNER_TEMP/capture/attestation.txt"))

@@ -8,18 +8,15 @@ the operator is answered in that file under *Settled decisions*. Do not re-raise
 them, and do not record a new blocker without running the command that would
 settle it.
 
-**In flight:** `CI-06`. ⭐ **The capture workflow has now been dispatched.**
-Capture run 1 on `b992a35`: the Linux job is green end to end and the Windows job
-failed on *Restore the route*. ⛔ **The restore itself worked** - the inverted
-egress guard printed `a public route exists`, which is its refusal and therefore
-the proof the route came back - and the step failed anyway, because that refusal
-was left in `$LASTEXITCODE` and GitHub's `pwsh` wrapper reads the block's residual
-code as the step's verdict. The Linux half consumes its guard's status with `if`;
-the Windows half did not. That is the defect the dispatch existed to find.
+**In flight:** nothing. `CI-06` closed: the capture workflow has been dispatched,
+capture run 2 is green on both platforms, every bundle verifies under
+`sha256sum -c`, and CI run 62 is green on both lanes.
 
-**Next:** finish `CI-06`: fix the residue, extend the two `.ps1` rules to the
-`pwsh` blocks in workflows, re-dispatch, and compare the second run's fingerprints
-against the first's.
+**Next:** `PUB-05`, the SQLite rendering, which needs no capture and no runner.
+The dependency question is settled in `TODO/PROGRESS.md`: `rusqlite` with the
+bundled feature, pinned, with the `unsafe` exception recorded against that one
+dependency rather than the workspace lint relaxed, and the output opened by a
+reader this project did not write.
 
 **Tree:** Re-measure it. This file is a claim about a tree that has moved. Check
 the branch, the remote, the clone depth, `git status` and `HEAD..origin/main`
@@ -117,7 +114,19 @@ the argument for making them symmetrical.
 workflow.** All three of `check-project`'s PowerShell rules iterated
 `git ls-files '*.ps1'`, and `capture.yml`'s `pwsh` blocks broke two of them the
 whole time. ⚠ The rule that turned CI red twice had a second door open while it
-was being written.
+was being written. ⛔ **And the replacement had the same shape**: it matched
+`shell: pwsh` in `.github/workflows/*.yml` alone, while `shell: powershell` is
+the same language, a composite action carries its own steps, and a workflow may
+be `.yaml`. None of the three exists here, which is when a scope is easiest to
+get wrong: every reading agrees on every file in the tree. Plant the fixture the
+tree lacks.
+
+⛔ **A relative-path helper whose prefix depends on the path.** `Resolve-Path
+-Relative` prepends `./` to most paths and NOT to one already starting with a
+dot, so a fixed `Substring(2)` ate the `.g` of `.github` and a whole half
+examined nothing. ⚠ **Both halves agreed perfectly on the clean tree while that
+was true**, because a file set only appears in the output when something in it
+fails. Seven per-plant cases named it at once.
 
 ⛔ **A message a machine matches on does not go through a display layer.**
 PowerShell's `Write-Error` inside a script renders a source-context block and
@@ -204,12 +213,17 @@ gate, and each refused a command on its first run.
 
 ## Facts a session must not restate wrongly
 
-⛔ **Nothing has been published and no capture has been taken.** Everything in the
-tree is synthetic and says so. The publisher must not run against this
-repository's own remote until a measured record exists. ⚠ `CI-03` built the
-workflow that would take one; it has never been dispatched, and what it would
-capture even then is a **fixture** - no client is installed and its attestation
-says `kind=fixture`, `measured_build=none`, `stock_client=false`.
+⛔ **Nothing has been published and no BUILD has been measured.** Everything in
+the tree is synthetic and says so. The publisher must not run against this
+repository's own remote until a measured record exists. ⚠ Three **fixture**
+captures have run on hosted runners as of `CI-06`, and not one measured a client:
+nothing is installed, and every attestation says `kind=fixture`,
+`measured_build=none`, `stock_client=false`. `CLIENT-01` is what changes that.
+
+⛔ **A hosted Windows runner's fingerprint is not a freshness signal.** Two fresh
+hosts report the same value; the two Linux runs differed. The claim marker is
+what detects a survived host. `docs/capture-host.md` carries why that cannot be
+patched by adding a varying input.
 
 ⛔ **No observer has been driven by a stock client.** Every driver so far is an
 independent implementation written from a specification, which shares this

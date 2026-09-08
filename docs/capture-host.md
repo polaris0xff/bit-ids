@@ -95,14 +95,34 @@ directory moves - reporting a host nobody claimed as claimed.
    fetches is public, and
    [`security/secrets.md`](security/secrets.md) is the rule.
 5. The account running the client owns nothing that outlives the host.
-6. After the run, the host is destroyed and the next job's `--fingerprint`
-   differs.
+6. After the run, the host is destroyed. ⚠ On Linux the next job's
+   `--fingerprint` then differs; on Windows it does not, and the paragraph after
+   next says why.
 
 ⚠ **A fingerprint is comparable only against one the same half produced.** The
 two guards digest different inputs, so a Linux job and a Windows job report
 different values for one machine and would report different values for two. A
 workflow comparing across platforms would read "a fresh host" from nothing at
 all. Compare a Linux job's against the previous Linux job's.
+
+⛔ **And on a hosted Windows runner the comparison answers nothing.** Measured by
+`CI-06` across two dispatches: two Windows jobs on two hosts that were both fresh
+reported the **same** fingerprint, while the two Linux jobs reported different
+ones. The hosts really were fresh - each run's claim succeeded, so the marker the
+previous run wrote was gone.
+
+⭐ **That is structural rather than a defect to patch.** A fingerprint has to do
+two things at once: differ between two hosts, and survive a reboot within one, so
+that a machine which rebooted instead of being destroyed still reads as itself.
+Every input with the second property is a property of the **image**, and hosted
+runners are clones of one image, so on Windows the two requirements have no
+common solution. ⚠ Adding a per-boot value would buy the first by destroying the
+second, which is the failure the whole guard exists to catch.
+
+⛔ **The claim marker is the guard that actually answers it**, and always was: it
+detects a survived host by finding its own marker rather than by comparing a
+value against a previous run's. The fingerprint is an image identity recorded
+beside the measurement, and on Linux it happens to be a freshness signal too.
 
 ## Windows runner contract
 
@@ -138,9 +158,9 @@ per platform, and the step order is the containment:
 | cut the route off this host | both address families, with the routes saved first |
 | assert containment | the guard reads the kernel, not the step above. Those are two facts and only the second is evidence |
 | capture | `capture-run` re-reads the marker and the routing table itself |
-| restore the route | only to upload, after the measurement is on disk |
+| restore the route | only to upload, after the measurement is on disk. ⛔ Every path through it ends in an explicit `exit`, because the step's status is otherwise whatever the block left behind |
 | upload the evidence bundle | `if-no-files-found: error`, so an upload that found nothing is red |
-| report the host fingerprint | compared against the previous run **of the same platform** |
+| report the host fingerprint | compared against the previous run **of the same platform**, and on Windows that comparison answers nothing |
 
 ⛔ **There is no `pull_request` trigger and that absence is the fork guard.** A
 fork cannot cause a workflow to run in the base repository, so there is no

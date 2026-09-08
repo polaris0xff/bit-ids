@@ -25,7 +25,15 @@ jobs:
   linux:
     name: Linux gate
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # ⚠ THE BUDGET IS SPENT ALMOST ENTIRELY BY *Workflow acceptance*, and that
+    # step grows with every case that plants against the gate: each one runs the
+    # whole gate again. Measured on this lane: run 61 took 13.4 minutes in total,
+    # and run 62, with five more gate-planting cases, took 24.4 of the 30 it then
+    # had - 20.4 of them in that one step. ⛔ A lane that runs out of time reports
+    # as infrastructure rather than as a defect, and reads as a flake nobody
+    # root-causes. The headroom is deliberate, and a case that plants against the
+    # gate costs roughly two minutes here: add one as a decision.
+    timeout-minutes: 45
     permissions:
       contents: read
     steps:

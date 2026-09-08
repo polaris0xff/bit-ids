@@ -757,7 +757,7 @@ workflow, commit, lockfile, and checksum manifest.
 ## CI-06: The first dispatched capture run
 
 Source: `CI-03`'s residual, which is a workflow that has never been dispatched
-Priority: P1 | Effort: L | Status: IN_PROGRESS
+Priority: P1 | Effort: L | Status: DONE
 
 Problem: `.github/workflows/capture.yml` is checked in every way a reader can
 check it and has never run. Three facts only a dispatch establishes: that
@@ -895,23 +895,157 @@ their whole output** compared, because `check-twins` compares the pair on the
 tree it runs against and a rule that differs only on a defect this tree does not
 contain is invisible to it.
 
-Eleven cases: the tree as it stands; a block setting `Stop` with no native
+Fourteen cases: the tree as it stands; a block setting `Stop` with no native
 preference; `Write-Error` at a statement start; `Write-Error` after a pipe, which
 is the shape `assert-disposable.ps1` itself once used; the residual exit code
 verbatim; every needle in comment position; both needles in a step whose shell is
 not `pwsh`; a block that stops on nothing, asked for no preference it has no use
 for; a single-line `run:` with no block scalar; a block that reads
-`$LASTEXITCODE` and ends on an explicit `exit`; and the tree again after every
-restore. ⭐ **All eleven landed on the intended verdict and the two halves agreed
-on all eleven, character for character.** Each refusal was also checked to be
-named by the rule under test rather than by some other rule going red.
+`$LASTEXITCODE` and ends on an explicit `exit`; the three scope plants below; and
+the tree again after every restore. ⭐ **All fourteen landed on the intended
+verdict and the two halves agreed on all fourteen, character for character.**
+Each refusal was also checked to be named by the rule under test rather than by
+some other rule going red.
 
 ⭐ The five acceptances are the half that matters most here. A rule that refused
 a needle in a comment, or one in a `bash` step, is a rule somebody switches off.
 
+### ⛔ What the door sweep found in the new rules themselves
+
+The first version matched `shell: pwsh` in `.github/workflows/*.yml` and nothing
+else, which is the defect this entry is about, in the code written to catch it.
+`shell: powershell` is Windows PowerShell 5.1 rather than a different language; a
+composite action under `.github/actions/` carries its own steps and the same
+permissions, which is the argument `check-project`'s **action-pin rule already
+makes in a comment** two hundred lines above; and a workflow may be `.yaml`.
+⚠ **None of the three exists in this tree**, which is precisely when a scope is
+easiest to get wrong: every reading agrees with the correct rule on every file
+here. The scope is the pin rule's now, and it is proved by planting each of the
+three fixtures the tree lacks.
+
+### ⛔ And what the per-plant comparison found that a clean tree could not
+
+Widening the scope broke the PowerShell half outright, and **both halves went on
+agreeing perfectly on the clean tree** while it was broken. `Resolve-Path
+-Relative` prepends `./` to most paths and **not** to one that already begins
+with a dot, so a fixed `Substring(2)` ate the `.g` of `.github`, every file then
+failed its `Test-Path`, and that half examined nothing at all. A file set only
+appears in the output when something in it fails, so the clean tree could not
+show it. ⭐ **Seven of the fourteen cases went red at once and named it**, which
+is the whole argument for comparing the twins per planted mutation rather than on
+a clean tree - the argument `check-twins.sh` makes about itself and `CI-07`
+carries. The root is stripped now rather than a prefix assumed.
+
 ⚠ **The extractor was checked against what it hunts for**, because a reader
 answering "clean" over an empty set passes on any tree: it finds every `pwsh`
 step in the tree, which is the same set `shell: pwsh` appears on.
+
+### ⛔ What the claim audit found: this entry's own Prove, refuted on one platform
+
+The Prove asks that *the two runs of one platform report different
+fingerprints*, which is how a host that was not destroyed would be caught.
+Measured across the two dispatches:
+
+| platform | run 1 | run 2 | same? |
+| --- | --- | --- | --- |
+| Linux | `051ae9dd…` | `49f8714f…` | ⭐ different, as the Prove asks |
+| Windows | `c5cde27f…` | `c5cde27f…` | ⛔ **identical** |
+
+⛔ **And both Windows hosts were fresh.** Each run's *Claim the host* step
+succeeded, and that step writes an exclusively created marker under
+`ProgramData` and refuses if one is already there. Run 1 wrote one; run 2 found
+none. So the comparison the Prove asks for reports "a survived host" over two
+hosts that demonstrably were not.
+
+⭐ **That is structural, and recording it as a defect to patch would be the
+error.** A fingerprint has to differ between two hosts *and* survive a reboot
+within one, so that a machine which rebooted rather than being destroyed still
+reads as itself. Every input with the second property is a property of the
+**image**, and hosted runners are clones of one image. ⚠ Adding a per-boot value
+would buy the first requirement by destroying the second, which is the failure
+the guard exists to catch.
+
+⛔ **The claim marker is what actually answers the question, and always was.** It
+detects a survived host by finding its own marker rather than by comparing a
+value against a previous run's, which is the difference
+[`../docs/capture-host.md`](../docs/capture-host.md) draws between detecting a
+failure and trusting a claim. The workflow's Windows step summary said "A repeat
+means the host was not destroyed" and now says what the value is instead.
+
+⚠ **What is not established is WHICH of the guard's inputs is constant across
+clones.** The digest is over the machine GUID, the install date, the build label,
+the computer name, the OS version and the user name; at least one of the varying
+candidates does not vary, and nothing here says which. Settling it needs a mode
+that prints a digest per part and two more dispatches. ⚠ **The alternative was
+considered and rejected**: it widens `CI-03`'s mutation-proven guard for an
+answer that changes nothing, because the fix is the same whichever input it is.
+It is a residual below.
+
+### Acceptance, all run on 2026-09-08
+
+- `sh scripts/capture/check-capture.sh`
+- `sh scripts/ci/check-workflow.sh`
+- `sh scripts/common/check-gate.sh`
+- `pwsh -NoProfile -File scripts/common/check-gate.ps1`
+- `cargo test --workspace --locked --all-targets`
+- `cargo clippy --workspace --locked --all-targets -- -D warnings`
+
+### Closure evidence, 2026-09-08
+
+| what | measured |
+| --- | --- |
+| capture run 1, first dispatch ever | ⛔ Linux green, **Windows red on *Restore the route*** over a restore that had worked |
+| capture run 2, after the fix | ⭐ **both jobs green**, every step of both, first attempt |
+| `Get-NetRoute` against the fixtures | ⭐ the Windows guard ran with no `-RouteTable` on a real host and answered `no route off this host (read Get-NetRoute)`, in both runs |
+| the default route, deleted and put back | ⭐ both platforms, both runs. The inverted guard is the verdict: it refused after the restore, which is a routing table with a public route on it |
+| the evidence bundle through the upload | ⭐ every bundle survived: `sha256sum -c` exits 0 over each, naming the metainfo and the transcript |
+| the attestation | ⭐ `kind=fixture`, `measured_build=none`, `stock_client=false` in every artifact |
+| what put the bytes on the wire | `curl` 8.5.0 on the Linux runner and `curl` 8.16.0 with Schannel on the Windows one. The transcript carries the announce, its `User-Agent`, and `key=<run-id>`, the token the driver knows it sent |
+| the fingerprint comparison | ⭐ different on Linux; ⛔ identical on Windows, over two hosts whose claims both succeeded. The paragraph above is the finding |
+| `sh scripts/ci/check-workflow.sh` | 63 cases, 63 passed, 0 failed |
+| `sh scripts/common/check-gate.sh` | 26 checks, 25 passed, 0 failed, 1 skipped, 0 unavailable |
+| `pwsh -File scripts/common/check-gate.ps1` | 26 checks, 12 passed, 0 failed, 1 skipped, 13 unavailable |
+| `cargo test --workspace --locked --all-targets` | 50 binaries, 542 passed, 0 failed |
+| guard mutation, the three new rules | 14 cases, both halves on each, exit codes and whole output compared; all 14 on the intended verdict and the halves identical on all 14. ⛔ Seven of them went red first and caught a break in the PowerShell half that the clean tree agreed with perfectly |
+| driven pass, the restore blocks | 13 cases. Run 1's failure reproduced on this machine, and the fixed block exits 0 over the same input |
+| CI run 62 | ⭐ both lanes green on `1938672` |
+
+⭐ **The strongest control here is not this project's code.** `sha256sum -c` and
+`Get-FileHash` verified the evidence, `curl` put the bytes on the wire from both
+runner images, and the run that decided whether the fix works is GitHub's, on
+hosts this session cannot reach.
+
+### Residuals
+
+- ⚠ **Which of the Windows fingerprint's inputs is constant across clones is not
+  established.** A `-FingerprintParts` mode printing a digest per part would
+  settle it in two dispatches; it was rejected for now because it widens
+  `CI-03`'s mutation-proven guard for an answer that changes no decision. The
+  finding that matters - that the comparison is not a freshness signal there - is
+  measured and recorded.
+- ⛔ **Nothing in the tree runs a capture step's body.** `check-workflow.sh`
+  reads `capture.yml`'s step names, their order and the *Capture* step's
+  command, and executes steps out of `ci.yml` alone, so the restore blocks are
+  proved statically by `check-project` and dynamically only by a dispatch.
+  `CI-08` carries the harness that would close it, with its acceptance.
+- ⚠ **The `sh` restore step's three-code reading is not driven on a runner.**
+  `--egress` answers 2 only when it cannot read a routing table at all, which has
+  not happened on a hosted runner; the branch is driven against a stub here and
+  by nothing on the real path.
+- ⚠ **The upload/download pairing is still unexercised.** The capture uploads
+  with `actions/upload-artifact` v7 and the publisher downloads with
+  `actions/download-artifact` v8. `CI-09` owns it; what these two runs establish
+  is only that a v7 upload survives and can be fetched over the REST route.
+- ⚠ **What was captured is a fixture and every attestation says so.** No client
+  was installed, no stock build was observed, and nothing was published.
+  `CLIENT-01` points a real build at the same lab.
+- ⛔ **Reading the run back is what found the last one.** The five new cases each
+  run the whole gate, and the Linux lane went from 13.4 minutes on run 61 to
+  **24.4 of the 30 it then had** on run 62, 20.4 of them inside *Workflow
+  acceptance*. It passed, with under six minutes to spare, and a lane that runs
+  out of time reports as infrastructure rather than as a defect. The budget is 45
+  now and the measurement is in the workflow beside it. ⚠ The Windows lane is
+  unaffected at 2.6 minutes: it does not run this harness.
 
 ## CI-07: PowerShell halves for the declared gate rows
 
@@ -935,6 +1069,17 @@ Prove: `pwsh -NoProfile -File scripts/common/check-gate.ps1 -Strict` passes with
 fewer declared rows than it has today, each new half is mutation-proven against
 the same plants as its twin, and `check-twins` compares the pair per planted
 mutation rather than on a clean tree.
+
+⭐ **`CI-06` built and ran the last clause of that Prove and did not keep it.**
+Its three new rules were proved by planting into a scratch workflow, running both
+halves of `check-project` on each plant, and comparing their exit codes and their
+whole output: eleven cases, four refusals, six acceptances and a control either
+side, all agreeing character for character. ⚠ It lived in a session scratch
+directory and is therefore evidence rather than a control, which is exactly the
+gap this entry names. ⛔ **And it is the cheap half of what `CI-06` had to do
+instead**: `check-workflow.sh` proves the same three rules by running the whole
+gate per plant, which cost the Linux lane eleven minutes. A permanent per-plant
+twin harness would let that shrink back to one gate-level case.
 
 ## CI-08: Runner-default drift, swept rather than waited for
 

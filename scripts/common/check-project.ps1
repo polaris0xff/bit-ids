@@ -550,12 +550,35 @@ try {
     }
 
     $stream = [System.Collections.Generic.List[string]]::new()
-    # An uncommitted new workflow is part of the tree the next push carries, and
-    # it is also how check-workflow.sh plants against these three rules.
+    # THE SCOPE IS THE PIN RULE'S, FOR THE PIN RULE'S REASON. A composite action
+    # under .github/actions/ carries its own steps and the same permissions, and
+    # 'shell: powershell' is Windows PowerShell 5.1 rather than a different
+    # language. A rule matching only pwsh in only workflows/ would be a gate on
+    # one of several doors into the same mistake. There is no composite action
+    # here yet and no 'shell: powershell' line, which is when a scope is easiest
+    # to get wrong. A glob rather than git ls-files, so an uncommitted new
+    # workflow is read without asking for it separately.
     $workflowFiles = @(
-        & git ls-files '.github/workflows/*.yml'
-        & git ls-files --others --exclude-standard '.github/workflows/*.yml'
-    ) | Sort-Object -Unique
+        Get-ChildItem -Path '.github/workflows' -Filter '*.yml' -File -ErrorAction SilentlyContinue
+        Get-ChildItem -Path '.github/workflows' -Filter '*.yaml' -File -ErrorAction SilentlyContinue
+        Get-ChildItem -Path '.github/actions' -Filter 'action.yml' -File -Recurse -Depth 1 -ErrorAction SilentlyContinue
+        Get-ChildItem -Path '.github/actions' -Filter 'action.yaml' -File -Recurse -Depth 1 -ErrorAction SilentlyContinue
+    ) | ForEach-Object {
+        # ⚠ The label has to be the same string the sh half prints, so the path
+        # is made repository-relative with forward slashes rather than left as
+        # whatever this platform's provider returned.
+        #
+        # ⛔ THE ROOT IS STRIPPED RATHER THAN A PREFIX ASSUMED.
+        # `Resolve-Path -Relative` prepends `./` to most paths and NOT to one
+        # that already starts with a dot, so a fixed Substring(2) ate the `.g`
+        # of `.github` and every file then failed its Test-Path. ⚠ Both halves
+        # agreed perfectly on the clean tree while that was true, because a file
+        # set only shows in the output when something in it fails; the per-plant
+        # comparison is what caught it.
+        $full = $_.FullName
+        if ($full.StartsWith($root)) { $full = $full.Substring($root.Length) }
+        $full.TrimStart([char]'/', [char]'\') -replace '\\', '/'
+    } | Sort-Object -Unique
     foreach ($wf in $workflowFiles) {
         if (-not (Test-Path -LiteralPath $wf -PathType Leaf)) { continue }
         $state = [pscustomobject]@{
@@ -588,7 +611,7 @@ try {
             if ($state.Step -eq '') { continue }
             if ($ind -lt $keyInd) { & $emitBlock $state $wf $stream; continue }
             if ($ind -ne $keyInd) { continue }
-            if ($line -match '^ *shell:[ \t]*pwsh[ \t]*$') { $state.IsPwsh = $true; continue }
+            if ($line -match '^ *shell:[ \t]*(pwsh|powershell)[ \t]*$') { $state.IsPwsh = $true; continue }
             if ($line -match '^ *run:') {
                 $value = $line -replace '^ *run:[ \t]*', ''
                 if ($value -in @('|', '>', '|-', '>-')) {

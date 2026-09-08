@@ -3,9 +3,9 @@
 State instant: 2026-09-08
 Total: 63
 Open: 25
-In progress: 1
+In progress: 0
 Blocked: 0
-Done: 37
+Done: 38
 
 ⚠ Those five counts are compared against
 [`INDEX.md`](INDEX.md) by `check-project.sh` on every gate, so they cannot go
@@ -21,8 +21,10 @@ so: the schema fixtures under
 [`../crates/bit-ids/tests/fixtures/`](../crates/bit-ids/tests/fixtures/) describe
 a target that does not exist, and the wire fixtures under
 [`../crates/bit-ids-wire/tests/fixtures/`](../crates/bit-ids-wire/tests/fixtures/)
-were written by hand from published BEPs. Nothing has been published and no
-capture has been taken.
+were written by hand from published BEPs. Nothing has been published.
+⚠ **Three fixture captures have now run on hosted runners** and not one of them
+measured a build: no client is installed, and every attestation says
+`kind=fixture`, `measured_build=none`, `stock_client=false`.
 
 What exists is every layer a capture passes through, and each one is closed:
 
@@ -103,18 +105,26 @@ published. `docs/publishing.md` carries the forms and says they are unexercised.
 ⚠ **Nothing schedules the staleness monitor.** `CI-02` built the comparison and
 its driving surface; no capture request has ever been opened.
 
-⭐ **The capture workflow has been dispatched, and the first run bought a defect
-no reading had found.** Capture run 1 on `b992a35`: the Linux job green end to
-end with its bundle verified under `sha256sum -c`, and the Windows job red on
-*Restore the route*. ⛔ **The restore had worked.** The step ends by running the
-egress guard inverted - a host that can reach the network again is one the guard
-refuses - and that refusal's exit code was left in `$LASTEXITCODE`, which
-GitHub's `pwsh` wrapper reads as the step's verdict. A guard succeeding at its
-job failed the step and the evidence upload was skipped.
+⭐ **The capture workflow has been dispatched twice and run 2 is green on both
+platforms.** ⛔ **Run 1 bought a defect no reading had found**: its Windows job
+went red on *Restore the route* over a restore that had worked. That step runs
+the egress guard inverted - a host that can reach the network again is one the
+guard refuses - and the refusal's exit code was left in `$LASTEXITCODE`, which
+GitHub's `pwsh` wrapper reads as the step's verdict. Every path through both
+restore steps ends in an explicit `exit` now.
 
-⭐ **`Get-NetRoute`'s real output does match the fixtures.** *Assert containment*
-ran the Windows guard with no `-RouteTable` on a real host and agreed with the
-corpus `check-runner.ps1` proves it against. `CI-06` carries all of it.
+⭐ **`Get-NetRoute`'s real output does match the fixtures.** The Windows guard
+ran with no `-RouteTable` on a real host, in both runs, and agreed with the
+corpus `check-runner.ps1` proves it against.
+
+⛔ **The Windows host fingerprint is not a freshness signal and the workflow no
+longer says it is.** Two Windows jobs on two hosts that were both fresh - each
+run's claim succeeded - reported the same fingerprint, while the two Linux jobs
+reported different ones. ⚠ It is structural: a fingerprint must differ between
+hosts and survive a reboot within one, and on a cloned image every input with the
+second property is a property of the image. ⭐ The claim marker is what detects a
+survived host, by finding its own marker rather than by comparing anything.
+`CI-06` carries all of it.
 
 ⚠ **What that workflow captures is a fixture, and its attestation says so in
 fields.** `kind=fixture`, `measured_build=none`, `stock_client=false`. Nothing
@@ -131,30 +141,29 @@ needing the operator is answered under *Settled decisions* below, and the captur
 host that nineteen entries were said to wait on was never a blocker. Take these
 in order.
 
-1. **`CI-06`**, the first dispatched capture run. `CI-03` built the workflow and
-   nothing has ever pressed the button, so three facts stand unmeasured: whether
-   `Get-NetRoute`'s real output matches the fixtures the Windows guard is proved
-   against, whether a hosted runner's default route can be deleted and put back,
-   and whether the evidence bundle survives the upload. It is first because
-   every client capture depends on the answer.
-2. **`PUB-05`**, the SQLite rendering, which needs no capture and no runner. The
+⭐ **`CI-06` is closed and the button has been pressed.** Both platforms captured
+green on run 2, so nothing below waits on a runner question any more.
+
+1. **`PUB-05`**, the SQLite rendering, which needs no capture and no runner. The
    dependency question is settled below.
-3. **`LIB-02`**, the bit-cli adapter, which needs neither. Clone the public
+2. **`LIB-02`**, the bit-cli adapter, which needs neither. Clone the public
    repository into a scratch directory and run its suite there.
-4. **`CLIENT-01`, `CLIENT-06`, `CLIENT-05`**, the first complete vertical
-   captures, once `CI-06` has run. `TODO/clients.md` carries the acquisition
-   routes.
-5. **`CI-09`**, the capture-to-publisher path, once a real capture artifact
-   exists to hand the publisher's dry run.
-6. **`OBS-07` and `OBS-10`**, which need a stock client build and a second
+3. **`CLIENT-01`, `CLIENT-06`, `CLIENT-05`**, the first complete vertical
+   captures. ⭐ The workflow they run in is measured now rather than assumed.
+   `TODO/clients.md` carries the acquisition routes.
+4. **`CI-09`**, the capture-to-publisher path. ⚠ A real capture artifact exists
+   to hand the publisher's dry run, so this is unblocked; what it establishes is
+   whether a v8 download reads a v7 upload.
+5. **`OBS-07` and `OBS-10`**, which need a stock client build and a second
    platform, so they follow the captures.
-7. **`CI-07`, `CI-08` and `FOUND-05`**, which harden the gate rather than extend
+6. **`CI-07`, `CI-08` and `FOUND-05`**, which harden the gate rather than extend
    it: the thirteen declared PowerShell rows, the host defaults the scripts
    inherit rather than state, and the three tools a session installs by hand.
-   Each is independent of every capture.
-8. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
+   ⚠ `CI-08` gained the harness `CI-06` needed and did not write: nothing runs a
+   capture step's body.
+7. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
    bind attestations to.
-9. The remaining client and engine breadth, then refinements.
+8. The remaining client and engine breadth, then refinements.
 
 ## Settled decisions
 

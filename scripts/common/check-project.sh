@@ -520,11 +520,21 @@ done
 # two halves' --json on the tree it runs against; a rule differing only on a
 # defect this tree lacks is invisible to it, so the pair is compared per planted
 # mutation instead.
+# ⛔ THE SCOPE IS THE PIN RULE'S, FOR THE PIN RULE'S REASON. A composite action
+# under .github/actions/ carries its own steps and runs with the same
+# permissions, and `shell: powershell` is Windows PowerShell 5.1 rather than a
+# different language. A rule matching only `pwsh` in only `workflows/` would be a
+# gate on one of several doors into the same mistake, which is the defect this
+# whole entry is about. ⚠ There is no composite action here yet and no
+# `shell: powershell` line, and that is exactly when a scope is easiest to get
+# wrong and hardest to notice.
+#
+# ⭐ A GLOB RATHER THAN `git ls-files`, so an uncommitted new workflow is read
+# without asking for it separately: it is part of the tree the next push carries,
+# and it is how check-workflow.sh plants against these three rules.
 pwsh_blocks() {
-  for _wf in $({
-    git ls-files '.github/workflows/*.yml'
-    git ls-files --others --exclude-standard '.github/workflows/*.yml'
-  } | LC_ALL=C sort -u); do
+  for _wf in .github/workflows/*.yml .github/workflows/*.yaml \
+    .github/actions/*/action.yml .github/actions/*/action.yaml; do
     [ -f "$_wf" ] || continue
     awk -v WF="$_wf" '
       function indent(s,   i) { i = match(s, /[^ ]/); return i ? i - 1 : -1 }
@@ -559,7 +569,7 @@ pwsh_blocks() {
         if (stepname == "") next
         if (ind < keyind) { flush(); next }
         if (ind != keyind) next
-        if (line ~ /^ *shell:[ \t]*pwsh[ \t]*$/) { ispwsh = 1; next }
+        if (line ~ /^ *shell:[ \t]*(pwsh|powershell)[ \t]*$/) { ispwsh = 1; next }
         if (line ~ /^ *run:/) {
           v = line; sub(/^ *run:[ \t]*/, "", v)
           if (v == "|" || v == ">" || v == "|-" || v == ">-") { inrun = 1; runind = keyind + 2; next }
