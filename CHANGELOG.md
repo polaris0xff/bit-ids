@@ -5,6 +5,47 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T21:20:35Z
+
+- ⭐ A real capture bundle was read back outside the run that wrote it for the
+  first time: run 4's transmission artifact downloaded through rule 8's route,
+  and `sha256sum -c` reports `OK` for all three evidence files. Record:
+  [`TODO/ci.md`](TODO/ci.md).
+- ⛔ The capture-to-publisher pairing cannot be exercised at all. The publisher
+  downloads an artifact named `bundle`; the four uploads in this tree are
+  `install-*`, `capture-client-*`, `capture-linux-*` and `capture-windows-*`. Its
+  first step fails on every run that exists and every run that could be
+  dispatched, so the v7/v8 question is unreachable rather than merely untried.
+- ⛔ And a capture bundle is not a publication bundle: no `MANIFEST.json`, and
+  what sits between them is an assembler that reads records, of which none has
+  been written.
+- ⭐ `check-project` compares every `download-artifact` name against every
+  `upload-artifact` name in the tree, `${{ ... }}` normalised to `*` on both
+  sides. A missing producer may be declared with `bit-ids:no-producer=<ENTRY>`,
+  the entry must be one `INDEX.md` carries, and a declaration over a name that
+  has gained a producer is refused - so the marker cannot outlive its reason.
+- ⚠ That rule's own first version was wrong twice, and only planting found
+  either: it took the STEP's name for a step written `- with:` / `name:` /
+  `uses:`, which YAML permits, and it ignored `pattern:`, which
+  `download-artifact` also accepts. Neither shape exists in this tree. ⛔ The
+  first plant passed before the reported name was checked, because a rule that
+  never found the row and a rule that accepted it both exit 0.
+- ⭐ Six states, both halves, same verdict on each.
+- ⚠ `publishing.md` said the assembler consumes capture artifacts. It consumes a
+  tree built from the store, and that sentence is amended.
+- ⛔ A second sweep, a second value in two places: `check-project` compared IDs
+  and statuses between `INDEX.md` and the entries and never priority or effort.
+  `FOUND-05` was `P2` in the index and `P1` in its own entry, from the commit
+  that created both. It compares all four now, in both halves, and the index
+  carries `P1`. Record: [`TODO/foundation.md`](TODO/foundation.md).
+- ⚠ The index's priority table is derived from the index's own rows, so it had
+  agreed with the wrong half and corroborated nothing. An effort-only plant
+  fires the new check alone, which is what shows the two are not one guard.
+- Deployment: nothing deployed. The producer is absent on purpose: every record
+  in the store is synthetic, and a `bundle` artifact would be one boolean from
+  the data branch.
+
+
 ### 2026-09-08T21:03:10Z
 
 - ⭐ The aria2 install logs were read out of the uploaded artifact rather than

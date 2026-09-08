@@ -273,6 +273,20 @@ owns, and kill the previous run by PID: `pkill -f` matches the wrapper shell
 that carries the pattern on its own command line, so it kills the caller and
 leaves the target running.
 
+⛔ **A rule that never found the row and a rule that found it and accepted it
+both exit 0.** Measured on 2026-09-08 while adding the artifact-name rule: a
+planted step written `- with:` / `name:` / `uses:` passed, and the reason was not
+that the rule was satisfied but that it had taken the STEP's name and compared
+the wrong string. ⭐ Removing the declaration separated the two. A plant whose
+expected outcome is a PASS proves nothing; make the plant fail and read *which*
+failure it is.
+
+⚠ **And killing a long harness by PID leaves its children running.** Measured
+the same day: killing `check-workflow` left an orphaned `check-gate --strict`
+holding the CPU. ⭐ `check-workflow` plants into a scratch COPY of the tree
+rather than into the tree, so a killed run leaves the working tree intact - which
+is worth knowing before reaching for `git checkout` over a whole repository.
+
 ⛔ **`check-twins` cannot see a rule whose difference the tree does not
 exercise**, and that is written in `check-twins.sh` itself. A new rule over
 `.ps1` files differed between the halves on carriage returns, and no `.ps1` here
@@ -300,6 +314,20 @@ gate, and each refused a command on its first run.
 ---
 
 ## Facts a session must not restate wrongly
+
+⛔ **The publisher cannot run at all, and not only because it is forbidden to.**
+It downloads an artifact named `bundle`; the four uploads in this tree are
+`install-*`, `capture-client-*`, `capture-linux-*` and `capture-windows-*`. Its
+first step fails on every run that exists and every run that could be dispatched.
+⚠ The producer is absent on purpose - a `bundle` assembled from today's synthetic
+store would be one boolean from the data branch - and `check-project` refuses an
+undeclared download with no producer, refuses a declaration naming an entry
+`INDEX.md` does not carry, and refuses a declaration once a producer appears.
+
+⭐ **A real capture bundle has been read back outside the run that wrote it**:
+run 4's transmission artifact, downloaded unauthenticated through rule 8's route,
+verifies under `sha256sum -c`. ⛔ That is the only part of `CI-09` a session can
+reach without a record.
 
 ⛔ **Nothing has been published, and no measured record exists.** Everything in
 the store is synthetic and says so, and the publisher must not run against this

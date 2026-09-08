@@ -191,9 +191,14 @@ nothing is. The clone question under *Settled decisions* is spent too.
    dispatch and what it teaches: no adapter has ever installed a build, and the
    Windows half of each Prove is untouched because the adapters are `sh`.
    `TODO/clients.md` carries the routes and what each adapter assumes.
-2. **`CI-09`**, the capture-to-publisher path. ⚠ A real capture artifact exists
-   to hand the publisher's dry run, so this is unblocked; what it establishes is
-   whether a v8 download reads a v7 upload.
+2. **`CI-09`**, the capture-to-publisher path. ⭐ A real capture bundle has now
+   been downloaded and verified with `sha256sum -c` outside the run that wrote
+   it. ⛔ **The v7/v8 question cannot be reached**, because the publisher
+   downloads `bundle` and nothing in the tree produces that name, and a capture
+   bundle is not a publication bundle in any case: what sits between them is
+   `assemble-release`, which reads a store of records, and no record exists. The
+   gap is declared in the workflow and enforced by `check-project` now; closing
+   it needs `CLIENT-01`'s record rather than anything in this entry.
 3. **`OBS-07` and `OBS-10`**, which need a stock client build and a second
    platform, so they follow the captures.
 4. **`CI-07`, `CI-08` and `FOUND-05`**, which harden the gate rather than extend

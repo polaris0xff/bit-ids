@@ -55,12 +55,19 @@ try {
     $rows = @($index | Where-Object {
         $_ -match '^\| (FOUND|SCHEMA|OBS|ACQ|CLIENT|ENGINE|CORPUS|LIB|PUB|CI|DOC)-\d\d '
     })
+    # ⛔ EVERY FIELD THE TWO PLACES BOTH CARRY IS COMPARED, NOT THE STATUS ALONE.
+    # ⚠ Measured on 2026-09-08: FOUND-05 was P2 in the index and P1 in its own
+    # entry, and had been since the commit that created both - a value in two
+    # places that nothing had ever compared. The index's priority table is
+    # derived from the index's own rows, so it agreed with the wrong half.
+    # ⛔ Keep this identical to the sh twin.
     $indexPairs = @($rows | ForEach-Object {
         $parts = $_ -split '\|'
         [pscustomobject]@{
-            Id = $parts[1].Trim()
+            Id       = $parts[1].Trim()
             Priority = $parts[2].Trim()
-            Status = $parts[4].Trim()
+            Effort   = $parts[3].Trim()
+            Status   = $parts[4].Trim()
         }
     })
     $openRows = @($indexPairs | Where-Object Status -eq 'OPEN')
@@ -83,17 +90,17 @@ try {
         foreach ($line in Get-Content -LiteralPath $file.FullName) {
             if ($line -match '^## (?<id>(FOUND|SCHEMA|OBS|ACQ|CLIENT|ENGINE|CORPUS|LIB|PUB|CI|DOC)-\d\d):') {
                 $currentId = $Matches.id
-            } elseif ($currentId -and $line -match '^Priority: .* \| Status: (?<status>[A-Z_]+)$') {
-                $bodyPairs.Add("$currentId|$($Matches.status)")
+            } elseif ($currentId -and $line -match '^Priority: (?<priority>[^|]+) \| Effort: (?<effort>[^|]+) \| Status: (?<status>[A-Z_]+)$') {
+                $bodyPairs.Add("$currentId|$($Matches.priority.Trim())|$($Matches.effort.Trim())|$($Matches.status)")
                 $currentId = ''
             }
         }
     }
-    $indexPairText = @($indexPairs | ForEach-Object { "$($_.Id)|$($_.Status)" } | Sort-Object)
+    $indexPairText = @($indexPairs | ForEach-Object { "$($_.Id)|$($_.Priority)|$($_.Effort)|$($_.Status)" } | Sort-Object)
     $bodyPairText = @($bodyPairs | Sort-Object)
     if ($bodyPairText.Count -ne $indexPairText.Count -or
         @(Compare-Object $indexPairText $bodyPairText).Count -ne 0) {
-        $failures.Add('TODO IDs or statuses disagree between index and category bodies')
+        $failures.Add('TODO IDs, priorities, efforts or statuses disagree between index and category bodies')
     }
 
     function Get-DeclaredCount([string]$Path, [string]$Key) {
@@ -289,6 +296,123 @@ try {
     }
     if ($pinProblems.Count -gt 0) {
         $failures.Add('workflow action pin: ' + ($pinProblems -join '; '))
+    }
+
+    # ⛔ AN ARTIFACT A WORKFLOW DOWNLOADS IS ONE SOME WORKFLOW UPLOADS. Two
+    # workflows joined by a name nobody compares are not joined at all, and the
+    # failure is a dispatch that dies on its first step.
+    # ⚠ Measured in this tree on 2026-09-08: publish-data.yml downloads `bundle`
+    # and nothing here produces that name.
+    # ⭐ Names are templated, so every `${{ ... }}` becomes `*` on both sides and
+    # the download's shape is matched against each upload's. A download with no
+    # `name:` takes every artifact and names nothing to check.
+    # ⭐ A missing producer may be DECLARED with `bit-ids:no-producer=<ENTRY>`
+    # inside the step; the entry must be one TODO/INDEX.md carries, and a
+    # declaration over a name that has gained a producer is refused.
+    # ⛔ Keep this identical to the sh twin, scope included.
+    $artRows = [System.Collections.Generic.List[psobject]]::new()
+    foreach ($wf in $workflows) {
+        $n = 0
+        $stepIndent = -1
+        $withIndent = -1
+        $kind = ''
+        $val = ''
+        $marker = '-'
+        $at = 0
+        $newStep = -1
+        foreach ($line in (Get-Content -LiteralPath $wf.FullName)) {
+            $n++
+            $indent = ($line -replace '^([ \t]*).*$', '$1').Length
+            $body = $line -replace '^[ \t]*', ''
+            # ⚠ The prefix is stripped by the literal rather than by its length.
+            # The sh twin counted the characters first and was one out.
+            $declared = [regex]::Match($body, 'bit-ids:no-producer=[A-Z]+-[0-9]+')
+            if ($declared.Success) {
+                $marker = $declared.Value -replace '^bit-ids:no-producer=', ''
+                continue
+            }
+            if ($body -eq '' -or $body.StartsWith('#')) { continue }
+            $flush = $false
+            if ($body -match '^-[ \t]' -or $body -eq '-') {
+                if ($stepIndent -lt 0 -or $indent -le $stepIndent) { $flush = $true; $newStep = $indent }
+            } elseif ($stepIndent -ge 0 -and $indent -le $stepIndent) {
+                $flush = $true; $newStep = -1
+            }
+            if ($flush) {
+                if ($kind -ne '' -and $val -ne '') {
+                    $artRows.Add([pscustomobject]@{
+                            Kind    = $kind
+                            Where   = "$($wf.Name):$at"
+                            Name    = $val
+                            Pattern = [regex]::Replace($val, '\$\{\{[^}]*\}\}', '*')
+                            Marker  = $marker
+                        })
+                }
+                $kind = ''; $val = ''; $marker = '-'; $at = 0; $withIndent = -1
+                $stepIndent = $newStep
+            }
+            if ($body -match 'uses:[ \t]*actions/(upload|download)-artifact@') {
+                $kind = if ($body -clike '*upload-artifact*') { 'upload' } else { 'download' }
+                $at = $n
+            }
+            if ($withIndent -ge 0 -and $indent -le $withIndent) { $withIndent = -1 }
+            if ($body -match '^(-[ \t]+)?with:[ \t]*$') {
+                # THE COLUMN THAT MATTERS IS THE with: KEY, NOT THE LINE. In
+                # `- with:` the dash is part of the indent, so the key sits two
+                # columns further right than the line begins and the other keys
+                # of that step sit at the SAME column as the key.
+                $withIndent = $indent
+                if ($body -match '^-[ \t]') {
+                    $withIndent = ([regex]::Match($line, '^[ \t]*-[ \t]+')).Length
+                }
+                continue
+            }
+            if ($withIndent -ge 0 -and $indent -gt $withIndent -and $body -match '^(name|pattern):[ \t]') {
+                $val = ($body -replace '^(name|pattern):[ \t]*', '') -replace '[ \t]+$', ''
+                $val = $val -replace '^["'']', '' -replace '["'']$', ''
+                if ($at -eq 0) { $at = $n }
+            }
+        }
+        if ($kind -ne '' -and $val -ne '') {
+            $artRows.Add([pscustomobject]@{
+                    Kind    = $kind
+                    Where   = "$($wf.Name):$at"
+                    Name    = $val
+                    Pattern = [regex]::Replace($val, '\$\{\{[^}]*\}\}', '*')
+                    Marker  = $marker
+                })
+        }
+    }
+    $artUploads = @($artRows | Where-Object { $_.Kind -eq 'upload' } | ForEach-Object { $_.Pattern })
+    $indexLines = @()
+    if (Test-Path -LiteralPath 'TODO/INDEX.md') {
+        $indexLines = @(Get-Content -LiteralPath 'TODO/INDEX.md')
+    }
+    $artProblems = [System.Collections.Generic.List[string]]::new()
+    foreach ($row in @($artRows | Where-Object { $_.Kind -eq 'download' })) {
+        $found = $false
+        foreach ($up in $artUploads) {
+            # ⚠ -clike, not -like. PowerShell's wildcard match is
+            # case-INSENSITIVE by default and the sh twin's `case` is not.
+            if ($row.Pattern -clike $up) { $found = $true; break }
+        }
+        if ($found) {
+            if ($row.Marker -ne '-') {
+                $artProblems.Add("$($row.Where) declares no-producer=$($row.Marker) over [$($row.Name)], which an upload-artifact in this tree now produces")
+            }
+            continue
+        }
+        if ($row.Marker -eq '-') {
+            $artProblems.Add("$($row.Where) downloads [$($row.Name)], which no upload-artifact in this tree produces")
+            continue
+        }
+        $known = @($indexLines | Where-Object { $_.StartsWith("| $($row.Marker) |") })
+        if ($known.Count -eq 0) {
+            $artProblems.Add("$($row.Where) declares no-producer=$($row.Marker), which is not an entry in TODO/INDEX.md")
+        }
+    }
+    if ($artProblems.Count -gt 0) {
+        $failures.Add('workflow artifact name: ' + ($artProblems -join '; '))
     }
 
     # ⛔ A DEPENDENCY THIS PROJECT DID NOT REVIEW CANNOT REACH THE OBSERVER OR

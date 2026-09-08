@@ -1158,6 +1158,66 @@ Prove: the publisher's dry run completes against a real capture artifact, its
 `sh scripts/ci/check-workflow.sh` still asserts the publisher's dispatch-only
 trigger and its `dry_run` default.
 
+### What a real capture artifact answered on 2026-09-08, and what it refused
+
+⭐ **A v7 upload survives a download and verifies.** The transmission bundle from
+client capture run 4 was downloaded through `AGENTS.md` rule 8's route,
+unauthenticated, and `sha256sum -c SHA256SUMS` inside it reports `OK` for all
+three evidence files. That is the first time anything in this repository read a
+capture bundle back outside the run that wrote it, and it is a reader this
+project did not write.
+
+⛔ **But the pairing cannot be exercised, and that is stronger than this entry's
+premise.** The problem above says the publisher downloads a bundle *no run has
+produced*. It is worse: nothing in the tree **can** produce it. The four uploads
+here are `install-*`, `capture-client-*`, `capture-linux-*` and
+`capture-windows-*`, and the publisher asks for `bundle`. Its first step fails on
+every run that exists and on every run that could be dispatched today, so the
+v7/v8 question cannot be reached at all.
+
+⛔ **And a capture bundle is not a publication bundle**, so renaming would not
+join them either. A capture carries `capture/SHA256SUMS` over three evidence
+files and no `MANIFEST.json`; the publisher expects both documents at the root of
+what it downloaded, and `publish-data.sh` pushes that tree as the publication.
+What sits between them is `assemble-release`, which reads a **store of records** -
+and no record has been written, so there is nothing to assemble.
+
+⚠ **The producer is deliberately not stubbed, and this is the residual.** Every
+record in the store today is synthetic, so a job that assembled one and uploaded
+it as `bundle` would put a publishable-looking artifact one boolean away from
+being pushed to the data branch. The missing piece is a record, which is
+`CLIENT-01`'s remaining gap rather than this entry's.
+
+⭐ **What is fixed is that the gap can no longer be invisible.** `check-project`
+compares every `download-artifact` name against every `upload-artifact` name in
+the tree, with `${{ ... }}` normalised to `*` on both sides, and refuses a
+download nothing produces. The publisher declares this one with
+`bit-ids:no-producer=CI-09`, the declaration must name an entry `INDEX.md`
+really carries, and ⛔ **a declaration over a name that HAS gained a producer is
+refused too**, so the marker cannot outlive its reason: the day the producer
+lands, the gate says so.
+
+⚠ **The rule's own first version was wrong in two ways, and only planting found
+either.** It scanned forward from `uses:` and took the first `name:` it met, and
+it read `name:` alone:
+
+- a step written `- with:` / `name:` / `uses:`, which YAML permits because a
+  mapping has no key order, made it report the **step's** name as the artifact's;
+- `download-artifact` also accepts `pattern:`, so every download written that way
+  was skipped in silence.
+
+⛔ **Neither shape exists in this tree**, which is the condition
+[`reviews.md`](../docs/methodology/reviews.md) names as the easiest place to get
+a scope wrong: every reading agrees on every file. Both are planted now, and the
+artifact name is taken from inside `with:`, identified by the column of that key
+rather than by being the first one seen. ⚠ The first plant *passed* before the
+name was checked, because a rule that never found the row and a rule that found
+it and accepted it both exit 0; removing the declaration is what separated them.
+
+⭐ Six states, both halves, same verdict on each: the clean tree, a declaration
+removed, a declaration naming no real entry, a declaration gone stale, a
+`pattern:` download, and a reordered step.
+
 ## CI-05: Acceptance commands that cannot pass over nothing
 
 Source: found while closing `OBS-01` on 2026-09-05

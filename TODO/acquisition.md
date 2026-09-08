@@ -272,6 +272,15 @@ declare two independent resolvers, satisfy `E-ACQ-07` and `E-ACQ-08`, agree on
 the version because it is one binary, and arrive here as `byte_identical` - the
 strongest verdict this entry has, reached by acquiring nothing.
 
+⚠ **Read out of `equivalence.rs` rather than inferred**: `classify` returns
+`ByteIdentical` when every route's `installed_executable` matches the first, and
+`ByteIdentical.publishable()` is true. The reason it records is *"every route
+installed &lt;digest&gt;, so there is one build and observing one observed it"* -
+which is exactly true, and exactly the wrong conclusion, when what actually
+happened is that no route installed anything. ⛔ **The defect is not in this
+function.** It is that nothing upstream could tell it the difference, because the
+route type has no field for whether the install did anything.
+
 ⚠ **Measured, in the runs this repository already dispatched.** `aria2` ships on
 `ubuntu-24.04`, so client capture runs 3 and 4 recorded `route=package` over an
 `apt-get install` that installed nothing; and every `release` route in

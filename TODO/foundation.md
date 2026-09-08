@@ -343,3 +343,19 @@ Prove: on a container with none of the three, one command installs all three and
 only in `check-remote-items`; each download is verified against its pinned
 digest before it is executed; and the doctor reports the same versions the
 script pinned.
+
+⚠ **This entry said `P1` and the index said `P2`, from the commit that created
+both.** Found on 2026-09-08 by a sweep of every field the two places share, which
+found exactly one disagreement in sixty-three entries. The entry's own
+declaration is what the index now carries, on merit as well as on authority: a
+local gate that is quietly smaller than CI is required coverage rather than a
+refinement after coverage is operating, which is what `RULES.md` separates `P1`
+and `P2` on, and `PROGRESS.md`'s work order already grouped this with `CI-07`
+and `CI-08`, both `P1`.
+
+⛔ **The rejected alternative was to make the entry say `P2`**, which would have
+agreed with the index's priority table. That table is derived from the index's
+own rows, so it corroborated nothing: it agreed with whichever half it was
+computed from. `check-project` compares priority and effort between the two
+places now, in both halves, and an effort-only plant fires it alone - which is
+what shows it is not the priority table's check wearing a second name.

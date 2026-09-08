@@ -104,12 +104,26 @@ directory.
 
 ## Assembly
 
-One Rust assembler consumes checked capture artifacts, builds the publication
-tree once, and reads no wall clock. The data-branch job and release job consume
-the same uploaded tree. [`release`](../crates/bit-ids/src/release.rs) is that
-assembler, with `cargo run -p bit-ids --example assemble-release -- DIR` as its
-driving surface and
-[`check-release.sh`](../scripts/publishing/check-release.sh) as its prover.
+One Rust assembler builds the publication tree once and reads no wall clock. The
+data-branch job and release job consume the same uploaded tree.
+[`release`](../crates/bit-ids/src/release.rs) is that assembler, with
+`cargo run -p bit-ids --example assemble-release -- DIR` as its driving surface
+and [`check-release.sh`](../scripts/publishing/check-release.sh) as its prover.
+
+⛔ **What it consumes is a tree built from the STORE, and no job runs it.** This
+paragraph used to say the assembler consumes capture artifacts, and the distance
+between those two is the whole of `CI-09`: a capture bundle is evidence, a
+publication is assembled from records, and nothing yet turns the first into the
+second. Measured on 2026-09-08 - the publisher downloads an artifact named
+`bundle` and the four uploads in this tree are all capture evidence, so its first
+step cannot succeed on any run that exists or could be dispatched.
+
+⚠ **The producer is absent on purpose rather than missing by accident.** Every
+record in the store today is synthetic, so a job that assembled one and uploaded
+it under that name would leave a publishable-looking artifact one boolean away
+from the data branch. `check-project` refuses a `download-artifact` whose name no
+`upload-artifact` produces, this one is declared against `CI-09` in the workflow
+itself, and the declaration is refused the moment a producer appears.
 
 ⚠ `MANIFEST.json` describes every file's media type, schema and SHA-256 digest
 except its own and the checksum file's, and `SHA256SUMS` covers every file

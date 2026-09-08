@@ -50,11 +50,19 @@ TMP="${TMPDIR:-/tmp}/.check-project.$$"
 mkdir -p "$TMP" || exit 2
 trap 'rm -rf "$TMP"' EXIT INT TERM
 
+# ⛔ EVERY FIELD THE TWO PLACES BOTH CARRY IS COMPARED, NOT THE STATUS ALONE.
+# This read `id|status` and let priority and effort disagree freely. ⚠ Measured
+# on 2026-09-08: `FOUND-05` was `P2` in the index and `P1` in its own entry, and
+# had been since the commit that created both, so the disagreement was never a
+# drift the check missed - it was a value in two places that nothing had ever
+# compared. The index's priority TABLE is derived from the index's rows, so it
+# agreed with the wrong half and corroborated nothing.
 awk -F '|' '
   /^\| (FOUND|SCHEMA|OBS|ACQ|CLIENT|ENGINE|CORPUS|LIB|PUB|CI|DOC)-[0-9][0-9] / {
-    id=$2; status=$5
-    gsub(/^ +| +$/, "", id); gsub(/^ +| +$/, "", status)
-    print id "|" status
+    id=$2; priority=$3; effort=$4; status=$5
+    gsub(/^ +| +$/, "", id); gsub(/^ +| +$/, "", priority)
+    gsub(/^ +| +$/, "", effort); gsub(/^ +| +$/, "", status)
+    print id "|" priority "|" effort "|" status
   }
 ' TODO/INDEX.md | sort >"$TMP/index"
 
@@ -63,24 +71,29 @@ awk '
     id=$2; sub(/:$/, "", id); next
   }
   /^Priority: / && id != "" {
+    priority=$0; sub(/^Priority: /, "", priority); sub(/ \|.*$/, "", priority)
+    effort=$0; sub(/^.*Effort: /, "", effort); sub(/ \|.*$/, "", effort)
     status=$0; sub(/^.*Status: /, "", status)
-    print id "|" status; id=""
+    print id "|" priority "|" effort "|" status; id=""
   }
 ' TODO/*.md | sort >"$TMP/bodies"
 
 ROWS=$(wc -l <"$TMP/index" | tr -d ' ')
-OPEN_ROWS=$(awk -F '|' '$2 == "OPEN" { n++ } END { print n+0 }' "$TMP/index")
-IN_PROGRESS_ROWS=$(awk -F '|' '$2 == "IN_PROGRESS" { n++ } END { print n+0 }' "$TMP/index")
-BLOCKED_ROWS=$(awk -F '|' '$2 == "BLOCKED" { n++ } END { print n+0 }' "$TMP/index")
-DONE_ROWS=$(awk -F '|' '$2 == "DONE" { n++ } END { print n+0 }' "$TMP/index")
+# ⚠ THE STATUS IS FIELD 4 NOW, not field 2. Every reader below moved with the
+# record's shape; a reader left on the old index would have counted zero of
+# everything, which check-declared refuses rather than passes.
+OPEN_ROWS=$(awk -F '|' '$4 == "OPEN" { n++ } END { print n+0 }' "$TMP/index")
+IN_PROGRESS_ROWS=$(awk -F '|' '$4 == "IN_PROGRESS" { n++ } END { print n+0 }' "$TMP/index")
+BLOCKED_ROWS=$(awk -F '|' '$4 == "BLOCKED" { n++ } END { print n+0 }' "$TMP/index")
+DONE_ROWS=$(awk -F '|' '$4 == "DONE" { n++ } END { print n+0 }' "$TMP/index")
 
-INVALID_STATUS=$(awk -F '|' '$2 !~ /^(OPEN|IN_PROGRESS|BLOCKED|DONE)$/ { print $1 }' "$TMP/index")
+INVALID_STATUS=$(awk -F '|' '$4 !~ /^(OPEN|IN_PROGRESS|BLOCKED|DONE)$/ { print $1 }' "$TMP/index")
 [ -z "$INVALID_STATUS" ] || say_fail "TODO index has invalid statuses: $INVALID_STATUS"
 
 [ "$(wc -l <"$TMP/bodies" | tr -d ' ')" -eq "$ROWS" ] ||
   say_fail "TODO body count does not match index count"
 cmp -s "$TMP/index" "$TMP/bodies" ||
-  say_fail "TODO IDs or statuses disagree between index and category bodies"
+  say_fail "TODO IDs, priorities, efforts or statuses disagree between index and category bodies"
 [ -z "$(cut -d '|' -f 1 "$TMP/index" | uniq -d)" ] ||
   say_fail "TODO index contains duplicate IDs"
 
@@ -274,6 +287,146 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml \
   ' "$wf")"
 done
 [ -z "$PIN_OUT" ] || say_fail "workflow action pin: $PIN_OUT"
+
+# ⛔ AN ARTIFACT A WORKFLOW DOWNLOADS IS ONE SOME WORKFLOW UPLOADS. Two workflows
+# joined by a name nobody compares are not joined at all, and the failure is a
+# dispatch that dies on its first step with `Unable to find any artifacts`.
+#
+# ⚠ MEASURED IN THIS TREE ON 2026-09-08. `publish-data.yml` downloads `bundle`
+# and the four uploads here are `install-*`, `capture-client-*`, `capture-linux-*`
+# and `capture-windows-*`. `CI-09` recorded that the pairing was unexercised; what
+# no reading had established is that it cannot be exercised at all, because
+# nothing in the tree produces that name. The publisher's first step fails on
+# every run that exists and on every run that could be dispatched.
+#
+# ⭐ NAMES ARE TEMPLATED, SO THE COMPARISON IS OVER A PATTERN RATHER THAN A
+# STRING. Every `${{ ... }}` becomes `*` on both sides and the download's shape
+# is matched against each upload's; a literal comparison would work only for the
+# one name in this tree that happens to carry no expression, which is exactly the
+# scope that agrees with itself and rots.
+#
+# ⚠ A DOWNLOAD WITH NO `name:` TAKES EVERY ARTIFACT OF THE RUN and names nothing
+# to check, so it is skipped rather than refused.
+#
+# ⭐ AND A DOWNLOAD WHOSE PRODUCER DOES NOT EXIST YET IS DECLARED RATHER THAN
+# SILENT. `bit-ids:no-producer=<ENTRY>` inside the step says which entry owns the
+# missing half, the entry has to be one `TODO/INDEX.md` really carries, and ⛔ a
+# declaration over a name that HAS gained a producer is refused too. A marker
+# that outlives its reason is the thing this repository calls a preference stated
+# as a rule; this one cannot rot, because the day the producer lands the gate
+# says so.
+#
+# ⛔ THE SCOPE IS THE PIN RULE'S SCOPE, deliberately and identically: composite
+# actions carry their own steps, and a workflow may be `.yaml`. None of that
+# exists here, which is when a scope is easiest to get wrong.
+ART_ROWS=$(for wf in .github/workflows/*.yml .github/workflows/*.yaml \
+  .github/actions/*/action.yml .github/actions/*/action.yaml; do
+  [ -f "$wf" ] || continue
+  # ⛔ A STEP IS READ AS A WHOLE, NOT FROM `uses:` ONWARDS, because a YAML
+  # mapping has no required key order: `with:` may come before `uses:`, and a
+  # step may carry its own `name:` beside both. The first version scanned
+  # forward from `uses:` and took the first `name:` it met, which in
+  # `- uses:` / `name:` / `with:` order is the STEP's name. ⚠ Neither shape
+  # exists in this tree, which is exactly when a scope is easiest to get wrong,
+  # so both are planted rather than reasoned about.
+  #
+  # ⛔ THE ARTIFACT NAME IS THE ONE INSIDE `with:`, recognised by sitting deeper
+  # than that key rather than by being the first one seen.
+  #
+  # ⚠ `pattern:` COUNTS TOO. `download-artifact` accepts either, so a rule
+  # reading only `name:` would pass every download written the other way - a
+  # gate on one of two doors into the same operation.
+  awk -v FILE="$wf" '
+    function indent_of(s) { match(s, /^[ \t]*/); return RLENGTH }
+    function flush(   pattern) {
+      if (kind != "" && val != "") {
+        pattern = val
+        gsub(/\$\{\{[^}]*\}\}/, "*", pattern)
+        printf "%s\t%s:%d\t%s\t%s\t%s\n", kind, FILE, at, val, pattern, marker
+      }
+      kind = ""; val = ""; marker = "-"; at = 0; withind = -1
+    }
+    BEGIN { stepind = -1; withind = -1; marker = "-" }
+    {
+      i = indent_of($0)
+      line = $0
+      sub(/^[ \t]*/, "", line)
+      # ⚠ THE PREFIX IS STRIPPED BY THE LITERAL RATHER THAN BY ITS LENGTH. The
+      # first version counted the characters and was one out, so every marker
+      # read as `I-09` and the clean tree failed. A length written beside the
+      # string it describes is a value in two places.
+      if (match(line, /bit-ids:no-producer=[A-Z]+-[0-9]+/)) {
+        marker = substr(line, RSTART, RLENGTH)
+        sub(/^bit-ids:no-producer=/, "", marker)
+        next
+      }
+      if (line == "" || line ~ /^#/) next
+      if (line ~ /^-[ \t]/ || line == "-") {
+        if (stepind < 0 || i <= stepind) { flush(); stepind = i }
+      } else if (stepind >= 0 && i <= stepind) {
+        flush()
+        stepind = -1
+      }
+      if (line ~ /uses:[ \t]*actions\/(upload|download)-artifact@/) {
+        kind = (index(line, "upload-artifact") > 0) ? "upload" : "download"
+        at = NR
+      }
+      if (withind >= 0 && i <= withind) { withind = -1 }
+      # THE COLUMN THAT MATTERS IS THE with: KEY, NOT THE LINE. In `- with:`
+      # the dash is part of the indent, so the key sits two columns further
+      # right than the line begins, and the other keys of that step sit at the
+      # SAME column as the key rather than inside it. Recording the line indent
+      # made every step-level key look like a member of with:, and a planted
+      # `- with:` / `name:` / `uses:` step reported the STEP name as the
+      # artifact name.
+      # NOTE: no apostrophes in this block. It is inside a single-quoted awk
+      # program, and one would end the shell string - conventions/shell.md 1.
+      if (line ~ /^(-[ \t]+)?with:[ \t]*$/) {
+        withind = i
+        if (line ~ /^-[ \t]/) { match($0, /^[ \t]*-[ \t]+/); withind = RLENGTH }
+        next
+      }
+      if (withind >= 0 && i > withind && line ~ /^(name|pattern):[ \t]/) {
+        val = line
+        sub(/^(name|pattern):[ \t]*/, "", val)
+        gsub(/[ \t]+$/, "", val)
+        gsub(/^["'"'"']|["'"'"']$/, "", val)
+        if (at == 0) at = NR
+      }
+    }
+    END { flush() }
+  ' "$wf"
+done)
+
+ART_UPLOADS=$(printf '%s\n' "$ART_ROWS" | awk -F'\t' '$1 == "upload" { print $4 }')
+ART_OUT=""
+# ⚠ A HERE-DOCUMENT RATHER THAN A PIPE. conventions/shell.md section 4: the body
+# of a `while read` on the right of a pipe runs in a subshell and its assignments
+# are discarded, so ART_OUT would come back empty over a tree full of findings.
+while IFS="$(printf '\t')" read -r _kind _where _name _pattern _marker; do
+  [ "$_kind" = download ] || continue
+  _found=no
+  for _up in $ART_UPLOADS; do
+    # shellcheck disable=SC2254
+    case "$_pattern" in
+      $_up)
+        _found=yes
+        break
+        ;;
+    esac
+  done
+  if [ "$_found" = yes ]; then
+    [ "$_marker" = "-" ] ||
+      ART_OUT="$ART_OUT $_where declares no-producer=$_marker over [$_name], which an upload-artifact in this tree now produces;"
+  elif [ "$_marker" = "-" ]; then
+    ART_OUT="$ART_OUT $_where downloads [$_name], which no upload-artifact in this tree produces;"
+  elif ! grep -q "^| $_marker |" TODO/INDEX.md 2>/dev/null; then
+    ART_OUT="$ART_OUT $_where declares no-producer=$_marker, which is not an entry in TODO/INDEX.md;"
+  fi
+done <<ARTIFACTS
+$ART_ROWS
+ARTIFACTS
+[ -z "$ART_OUT" ] || say_fail "workflow artifact name:$ART_OUT"
 
 # ⛔ A DEPENDENCY THIS PROJECT DID NOT REVIEW CANNOT REACH THE OBSERVER OR THE
 # PUBLISHER. Cargo.lock is the inventory: a package with no `source` is a
