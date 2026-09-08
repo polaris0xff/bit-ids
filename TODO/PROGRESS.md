@@ -1,12 +1,18 @@
 # Current progress
 
 State instant: 2026-09-08
-Baseline commit: `b0bbee3` on `main`
 Total: 58
 Open: 22
 In progress: 0
 Blocked: 0
 Done: 36
+
+⚠ Those five counts are compared against
+[`INDEX.md`](INDEX.md) by `check-project.sh` on every gate, so they cannot go
+stale silently. ⛔ Nothing else in this header is checked, which is why no commit
+is named here: a hash written into the commit that changes it can only name the
+one before, and a session reading it would take this file's own work for
+unreflected.
 
 ## Current state
 
