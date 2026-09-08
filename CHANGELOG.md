@@ -5,6 +5,22 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T21:50:34Z
+
+- ⛔ A gate row this repository was documented as having did not exist.
+  `conventions/shell.md` section 5 says every tracked file's working-tree line
+  endings are compared against what `.gitattributes` resolves for it, naming
+  `git ls-files --eol`; nothing did. Record: [`TODO/ci.md`](TODO/ci.md).
+- ⚠ Found by breaking it: a file-writing tool that emits LF left
+  `check-project.ps1` at `w/lf` under `attr/text eol=crlf`, a full gate passed
+  over that tree, and only an incidental `git commit` warning said so. The index
+  is normalised either way, which is why nothing else could see it.
+- ⭐ The check is a row in both halves now, planted in both directions - LF where
+  CRLF is required and CRLF where LF is - because those are different branches
+  and `git diff` prints nothing for either.
+- Deployment: nothing deployed.
+
+
 ### 2026-09-08T21:20:35Z
 
 - ⭐ A real capture bundle was read back outside the run that wrote it for the

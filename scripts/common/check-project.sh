@@ -428,6 +428,45 @@ $ART_ROWS
 ARTIFACTS
 [ -z "$ART_OUT" ] || say_fail "workflow artifact name:$ART_OUT"
 
+# ⛔ EVERY TRACKED FILE'S WORKING-TREE ENDINGS AGREE WITH WHAT .gitattributes
+# RESOLVES FOR IT. `conventions/shell.md` section 5 has described this check for
+# as long as it has described the problem, and until 2026-09-08 it did not
+# exist: the document named a rule and nobody enforced it, which is the shape
+# this repository calls a preference stated as a rule.
+#
+# ⚠ IT WAS FOUND BY BEING BROKEN. A file written by a tool that emits LF left
+# `check-project.ps1` at `w/lf` under `attr/text eol=crlf`. The gate was green,
+# the index was correct - git normalises on the way in either way - and the only
+# thing that said so was an incidental warning from `git commit`. ⛔ A carriage
+# return in a file .gitattributes says is LF, and its absence where CRLF is
+# required, are both invisible to `git diff` for exactly that reason, so the
+# working tree is the only place this can be read.
+#
+# ⭐ GIT'S OWN ANSWER, NOT A SECOND TABLE. `git ls-files --eol` resolves the
+# attribute per path the way a checkout will, so a rule written here cannot
+# disagree with the file that states it.
+#
+# ⚠ `w/none` IS NOT A DISAGREEMENT. A file with no line ending at all - empty,
+# or one line with no terminator - carries no evidence either way, and refusing
+# it would fire on a correct tree.
+EOL_OUT=$(git ls-files --eol | awk '
+  {
+    tab = index($0, "\t")
+    if (tab == 0) next
+    head = substr($0, 1, tab - 1)
+    path = substr($0, tab + 1)
+    if (!match(head, /eol=[a-z]+/)) next
+    attr = substr(head, RSTART, RLENGTH)
+    sub(/^eol=/, "", attr)
+    split(head, field, / +/)
+    w = field[2]
+    sub(/^w\//, "", w)
+    if (w == "none") next
+    if (w != attr) printf "%s is w/%s under eol=%s; ", path, w, attr
+  }
+')
+[ -z "$EOL_OUT" ] || say_fail "line endings disagree with .gitattributes: $EOL_OUT"
+
 # ⛔ A DEPENDENCY THIS PROJECT DID NOT REVIEW CANNOT REACH THE OBSERVER OR THE
 # PUBLISHER. Cargo.lock is the inventory: a package with no `source` is a
 # member of this workspace, and every other one must come from the crates.io

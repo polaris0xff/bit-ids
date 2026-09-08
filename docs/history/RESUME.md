@@ -273,6 +273,15 @@ owns, and kill the previous run by PID: `pkill -f` matches the wrapper shell
 that carries the pattern on its own command line, so it kills the caller and
 leaves the target running.
 
+⛔ **A rule a document says this repository has is not a rule this repository
+has.** `conventions/shell.md` section 5 has described a line-endings check, by
+name and with the command, for as long as it has described the problem; nothing
+implemented it until 2026-09-08. ⚠ It was found by breaking it - a file-writing
+tool that emits LF left a `.ps1` at `w/lf` under `attr/text eol=crlf`, and a full
+gate passed over that tree - and `git diff` prints nothing for that state in
+either direction, so the working tree is the only place it can be read. ⭐ When a
+convention document names a check, grep for it before believing it runs.
+
 ⛔ **A rule that never found the row and a rule that found it and accepted it
 both exit 0.** Measured on 2026-09-08 while adding the artifact-name rule: a
 planted step written `- with:` / `name:` / `uses:` passed, and the reason was not

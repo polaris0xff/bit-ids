@@ -145,6 +145,17 @@ lacks it would pass on any workflow at all.
   it, and no count of them is written into prose anywhere. Found by a claim audit while closing `CI-03`, which
   is the pass that reads a sentence against the tree rather than against the
   sentence next to it.
+- ⛔ **A row this gate was documented as having did not exist.**
+  [`../docs/conventions/shell.md`](../docs/conventions/shell.md) section 5 says
+  the repository compares every tracked file's working-tree line endings against
+  what `.gitattributes` resolves for it, naming `git ls-files --eol` as the way.
+  Nothing did, until 2026-09-08. ⚠ Found by breaking it rather than by reading
+  it: a file-writing tool that emits LF left `check-project.ps1` at `w/lf` under
+  `attr/text eol=crlf`, a full gate passed over that tree, and the only thing
+  that reported it was an incidental warning from `git commit`. ⭐ The check is a
+  row in both halves now, planted in both directions - LF where CRLF is required
+  and CRLF where LF is - because they are different branches, and `git diff`
+  prints nothing for either.
 
 ## CI-02: Stable-release staleness monitor
 

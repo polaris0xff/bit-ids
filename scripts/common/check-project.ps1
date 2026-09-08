@@ -415,6 +415,38 @@ try {
         $failures.Add('workflow artifact name: ' + ($artProblems -join '; '))
     }
 
+    # ⛔ EVERY TRACKED FILE'S WORKING-TREE ENDINGS AGREE WITH WHAT .gitattributes
+    # RESOLVES FOR IT. conventions/shell.md section 5 described this check for as
+    # long as it described the problem, and until 2026-09-08 it did not exist.
+    # ⚠ Found by being broken: a tool that emits LF left check-project.ps1 at
+    # w/lf under attr/text eol=crlf, the gate was green, and only an incidental
+    # warning from git commit said so. A missing or extra carriage return is
+    # invisible to git diff because the index is normalised either way, so the
+    # working tree is the only place it can be read.
+    # ⭐ Git's own answer per path, not a second table. ⚠ w/none carries no
+    # evidence either way and is not a disagreement.
+    # ⛔ Keep this identical to the sh twin.
+    $eolProblems = [System.Collections.Generic.List[string]]::new()
+    $eolLines = @(& git ls-files --eol)
+    foreach ($line in $eolLines) {
+        $tab = $line.IndexOf("`t")
+        if ($tab -lt 0) { continue }
+        $head = $line.Substring(0, $tab)
+        $path = $line.Substring($tab + 1)
+        $attrMatch = [regex]::Match($head, 'eol=[a-z]+')
+        if (-not $attrMatch.Success) { continue }
+        $attr = $attrMatch.Value -replace '^eol=', ''
+        $fields = $head -split ' +'
+        $w = $fields[1] -replace '^w/', ''
+        if ($w -eq 'none') { continue }
+        if ($w -cne $attr) {
+            $eolProblems.Add("$path is w/$w under eol=$attr")
+        }
+    }
+    if ($eolProblems.Count -gt 0) {
+        $failures.Add('line endings disagree with .gitattributes: ' + ($eolProblems -join '; '))
+    }
+
     # ⛔ A DEPENDENCY THIS PROJECT DID NOT REVIEW CANNOT REACH THE OBSERVER OR
     # THE PUBLISHER. Cargo.lock is the inventory: a package with no `source` is
     # a member of this workspace, and every other one must come from the

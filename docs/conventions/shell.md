@@ -188,6 +188,22 @@ Two things fix it and neither is a manual step anybody has to remember:
 git ls-files --eol
 ```
 
+⛔ **That check is a row in `check-project`, in both halves, and until
+2026-09-08 it was only this paragraph.** The document named the rule and nothing
+enforced it, which is the shape this repository calls a preference stated as a
+rule - and it was found by being broken rather than by being read: a file-writing
+tool that emits LF left `check-project.ps1` at `w/lf` under `attr/text eol=crlf`,
+a full gate was green over it, and the only thing that said so was an incidental
+warning from `git commit`.
+
+⚠ **Both directions are planted, because they are different branches.** A `.ps1`
+given LF under `eol=crlf`, and a `.sh` given CRLF under `eol=lf` - the second
+being the case this section opens with. ⭐ `git diff` prints **nothing** for
+either, which is what makes the working tree the only place they can be read.
+
+⚠ **`w/none` is not a disagreement.** A file with no line ending at all carries
+no evidence either way, and refusing it would fire on a correct tree.
+
 ⚠ **`.ps1` is the one file type that keeps CRLF.** Windows PowerShell 5.1
 mis-parses a here-string whose terminator arrives with a bare LF. The simpler
 defence, and the one this template uses, is to write no here-strings in a
