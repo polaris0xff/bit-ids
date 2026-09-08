@@ -343,12 +343,12 @@ Residual, closed: the executable guards were Linux-only, because they read
 `/proc/net/route` and `/etc/machine-id`. `assert-disposable.ps1` is the Windows
 pair, reading `Get-NetRoute` and the machine GUID, and
 [`../docs/capture-host.md`](../docs/capture-host.md) carries both contracts.
-⚠ The workflow that runs them on a Windows host is `CI-03`'s and exists:
-[`../.github/workflows/capture.yml`](../.github/workflows/capture.yml). ⛔ It has
-never been dispatched, so what still stands open is not a missing file but a
-missing run: nothing yet establishes that `Get-NetRoute`'s real output matches
-the fixtures `check-runner.ps1` proves the guard against. That is `CI-03`'s
-residual and it is recorded there.
+⚠ The workflow that runs them on a Windows host is `CI-03`'s:
+[`../.github/workflows/capture.yml`](../.github/workflows/capture.yml). ⭐ **It
+has been dispatched, and the guard read the live cmdlet**: with no `-RouteTable`
+on a hosted `windows-2025` runner it answered `no route off this host (read
+Get-NetRoute)`, so the fixtures `check-runner.ps1` proves the logic against are
+the shapes the real output has. `CI-06` is that run.
 
 ⭐ **Both halves grew a `--marker` / `-Marker` mode while `CI-03` closed**, which
 prints the claim marker's path and is the only derivation of it. `capture-run`

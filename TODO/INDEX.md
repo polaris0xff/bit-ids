@@ -1,17 +1,17 @@
 # Work index
 
 Total: 63
-Open: 26
-In progress: 0
+Open: 25
+In progress: 1
 Blocked: 0
 Done: 37
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | P0 | 0 | 0 | 0 | 24 | 24 |
-| P1 | 25 | 0 | 0 | 12 | 37 |
+| P1 | 24 | 1 | 0 | 12 | 37 |
 | P2 | 1 | 0 | 0 | 1 | 2 |
-| Total | 26 | 0 | 0 | 37 | 63 |
+| Total | 25 | 1 | 0 | 37 | 63 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -72,7 +72,7 @@ Done: 37
 | CI-03 | P1 | L | DONE | Trusted capture runner matrix |
 | CI-04 | P1 | L | OPEN | Build provenance and supply-chain hardening |
 | CI-05 | P1 | S | DONE | Acceptance commands that cannot pass over nothing |
-| CI-06 | P1 | L | OPEN | The first dispatched capture run |
+| CI-06 | P1 | L | IN_PROGRESS | The first dispatched capture run |
 | CI-07 | P1 | L | OPEN | PowerShell halves for the declared gate rows |
 | CI-08 | P1 | L | OPEN | Runner-default drift, swept rather than waited for |
 | CI-09 | P1 | L | OPEN | The capture-to-publisher path, end to end |

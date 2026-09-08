@@ -2,8 +2,8 @@
 
 State instant: 2026-09-08
 Total: 63
-Open: 26
-In progress: 0
+Open: 25
+In progress: 1
 Blocked: 0
 Done: 37
 
@@ -103,14 +103,18 @@ published. `docs/publishing.md` carries the forms and says they are unexercised.
 ⚠ **Nothing schedules the staleness monitor.** `CI-02` built the comparison and
 its driving surface; no capture request has ever been opened.
 
-⛔ **The capture workflow has never been dispatched.** `CI-03` built it and
-everything about it that a reader can check is checked: the absent
-`pull_request` trigger, the step order, the scripts it names, and the two
-runners it calls, which are driven for real by `check-capture` on every gate.
-⚠ What only a dispatch establishes is on the record: that `Get-NetRoute`'s real
-output matches the fixtures `check-runner.ps1` proves the guard against, that
-deleting the default route on a hosted runner and putting it back works, and
-that an artifact upload survives the round trip.
+⭐ **The capture workflow has been dispatched, and the first run bought a defect
+no reading had found.** Capture run 1 on `b992a35`: the Linux job green end to
+end with its bundle verified under `sha256sum -c`, and the Windows job red on
+*Restore the route*. ⛔ **The restore had worked.** The step ends by running the
+egress guard inverted - a host that can reach the network again is one the guard
+refuses - and that refusal's exit code was left in `$LASTEXITCODE`, which
+GitHub's `pwsh` wrapper reads as the step's verdict. A guard succeeding at its
+job failed the step and the evidence upload was skipped.
+
+⭐ **`Get-NetRoute`'s real output does match the fixtures.** *Assert containment*
+ran the Windows guard with no `-RouteTable` on a real host and agreed with the
+corpus `check-runner.ps1` proves it against. `CI-06` carries all of it.
 
 ⚠ **What that workflow captures is a fixture, and its attestation says so in
 fields.** `kind=fixture`, `measured_build=none`, `stock_client=false`. Nothing

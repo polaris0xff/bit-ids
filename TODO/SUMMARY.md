@@ -16,9 +16,9 @@ mapping of its own and the two twins cannot hold different ones.
 | Corpus | `CORPUS` | 0 | 0 | 0 | 4 | 4 |
 | Library | `LIB` | 1 | 0 | 0 | 1 | 2 |
 | Publishing | `PUB` | 1 | 0 | 0 | 4 | 5 |
-| CI | `CI` | 5 | 0 | 0 | 4 | 9 |
+| CI | `CI` | 4 | 1 | 0 | 4 | 9 |
 | Documentation | `DOC` | 0 | 0 | 0 | 2 | 2 |
-| Total | | 26 | 0 | 0 | 37 | 63 |
+| Total | | 25 | 1 | 0 | 37 | 63 |
 
 Effort inventory: 1 S, 13 M, 49 L, 0 XL. The observer-lab entry was the XL one and
 was split on 2026-09-04, because its acceptance named a client fixture and a

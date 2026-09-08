@@ -348,8 +348,14 @@ control() { # job step label
 # FAILURES, and records which of the two hosts this is. The plants below still
 # read the exit code from the process that produced it; what this establishes is
 # whether that code is discriminating here.
+#
+# ⚠ THE SUBJECT IS AN ARGUMENT because not every control is over a clean tree.
+# The cases that prove a rule does NOT fire on correct usage plant something the
+# gate must accept, and reporting those as "accepts the clean tree" would name
+# the wrong input in the row a reader trusts.
 GATE_NOTE=""
-gate_control() { # label
+gate_control() { # label [subject]
+  _what=${2:-the clean tree}
   run_step linux "Repository gate"
   _rc=$?
   if [ "$_rc" = 127 ]; then
@@ -357,14 +363,14 @@ gate_control() { # label
     return
   fi
   if ! grep -q -E '^[0-9]+ checks: .*, 0 failed,' "$LOG"; then
-    fail "control  $1: the clean tree failed a check"
+    fail "control  $1: $_what failed a check"
     return
   fi
   if [ "$_rc" = 0 ]; then
-    pass "control  $1 accepts the clean tree (exit 0)"
+    pass "control  $1 accepts $_what (exit 0)"
   else
     GATE_NOTE=" (this host cannot reach exit 0; see the header)"
-    pass "control  $1 fails no check, and exits $_rc on a host with an observed skip"
+    pass "control  $1 fails no check over $_what, and exits $_rc on a host with an observed skip"
   fi
 }
 
@@ -776,6 +782,136 @@ else
   fail "plant    could not plant the unrunnable check"
 fi
 restore "$BROKEN" || exit 2
+
+# -- 8b. the three rules over a workflow's own pwsh blocks --------------------
+#
+# ⛔ THE RULES THE FIRST DISPATCH BOUGHT. check-project's three PowerShell rules
+# iterated `git ls-files '*.ps1'` and so never reached a `pwsh` block inside a
+# workflow, which is the same language with the same hazards; and the third rule
+# below exists only here, because only here does a harness read whatever
+# $LASTEXITCODE the block left behind.
+#
+# ⚠ EACH PLANT GOES INTO THE STEP THAT ACTUALLY BROKE. Capture run 1's Windows
+# job restored the route, the inverted egress guard refused as designed, and the
+# step failed on that refusal's exit code - so the evidence upload was skipped
+# over a guard doing its job. These are the plants that would have caught it.
+# ⭐ EACH PLANT IS A WHOLE WORKFLOW RATHER THAN AN EDIT TO capture.yml, for two
+# reasons that are not style. `replace_once` refuses a multi-line literal
+# outright - that is CORPUS-01's grep -F finding made structural - and every
+# needle here is a line whose neighbours are what make it a defect. And a
+# purpose-built file exercises the rules' SCOPE: they read every workflow, not
+# the one this harness happens to know about.
+#
+# ⚠ THE PLANT IS UNTRACKED IN THE SCRATCH REPOSITORY, which is deliberate. An
+# uncommitted new workflow is part of the tree the next push carries, so the
+# rules enumerate `git ls-files --others --exclude-standard` beside the tracked
+# set; a rule that read only the tracked set would pass over exactly this file.
+#
+# ⚠ NO `uses:` LINE ANYWHERE IN THESE. The action-pin rule globs the workflow
+# directory rather than asking git, so an unpinned plant would turn the gate red
+# for a reason that is not the rule under test - and the accepted cases below
+# would break outright.
+PLANT="$TREE/.github/workflows/zz-plant.yml"
+plant_head() { # step-name
+  cat <<YAML
+name: Plant
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  plant:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: $1
+YAML
+}
+
+# 8b-i. a pwsh block that stops on errors and says nothing about a native exit.
+{
+  plant_head "Stop with no native preference"
+  cat <<'YAML'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Write-Output 'nothing here says what a native exit code means'
+YAML
+} >"$PLANT"
+gate_refuses "a workflow pwsh block that stops without saying what a native exit means" \
+  "FAIL  check-project"
+rm -f "$PLANT"
+
+# 8b-ii. a pwsh block reporting through a display layer.
+{
+  plant_head "Report through Write-Error"
+  cat <<'YAML'
+        shell: pwsh
+        run: |
+          Write-Error 'a refusal a harness would match on, wrapped by host width'
+YAML
+} >"$PLANT"
+gate_refuses "a workflow pwsh block reporting through Write-Error" "FAIL  check-project"
+rm -f "$PLANT"
+
+# ⛔ 8b-iii. THE DEFECT VERBATIM, and the only case here that reproduces a
+# measured failure rather than constructing one. This is capture.yml's Windows
+# *Restore the route* block as it stood on capture run 1, minus nothing: the
+# logic is correct, the guard refuses exactly as designed, and the block ends on
+# that refusal's exit code. GitHub's pwsh wrapper reads it as the step's verdict,
+# so a restored route failed the step and the evidence upload was skipped.
+# ⚠ No reading caught it. A dispatch did.
+{
+  plant_head "Leave the guard's refusal in LASTEXITCODE"
+  cat <<'YAML'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          ./scripts/acquisition/assert-disposable.ps1 -Egress
+          if ($LASTEXITCODE -eq 0) {
+            [Console]::Error.WriteLine('the default routes were not restored')
+            exit 1
+          }
+YAML
+} >"$PLANT"
+gate_refuses "a workflow pwsh block leaving \$LASTEXITCODE as the step's verdict" \
+  "FAIL  check-project"
+rm -f "$PLANT"
+
+# ⛔ 8b-iv AND 8b-v ARE THE CASES THAT WOULD MAKE THESE RULES FIRE ON CORRECT
+# USAGE, and a rule that refused either is a rule somebody switches off. The
+# first has every needle in comment position and ends its status deliberately;
+# the second has them in command position in a step whose shell is not pwsh at
+# all, which is the scope half rather than the comment half.
+{
+  plant_head "The needles in comments, and an exit that is a decision"
+  cat <<'YAML'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          # Write-Error is named here as prose, and so is $LASTEXITCODE.
+          ./scripts/acquisition/assert-disposable.ps1 -Fingerprint
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          exit 0
+YAML
+} >"$PLANT"
+gate_control "the repository gate" "a pwsh block whose needles are comments"
+rm -f "$PLANT"
+
+{
+  plant_head "The needles in a step whose shell is not pwsh"
+  cat <<'YAML'
+        shell: bash
+        run: |
+          echo 'Write-Error is a word here and $LASTEXITCODE is another'
+YAML
+} >"$PLANT"
+gate_control "the repository gate" "a non-pwsh step carrying both needles"
+rm -f "$PLANT"
 
 # -- 9. the clean tree again --------------------------------------------------
 #

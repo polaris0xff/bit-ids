@@ -8,16 +8,18 @@ the operator is answered in that file under *Settled decisions*. Do not re-raise
 them, and do not record a new blocker without running the command that would
 settle it.
 
-**In flight:** nothing. `CI-03` closed: the capture workflow, both capture
-runners and the harness that mutation-proves them are in the tree, and CI run 60
-is green on both lanes.
+**In flight:** `CI-06`. ⭐ **The capture workflow has now been dispatched.**
+Capture run 1 on `b992a35`: the Linux job is green end to end and the Windows job
+failed on *Restore the route*. ⛔ **The restore itself worked** - the inverted
+egress guard printed `a public route exists`, which is its refusal and therefore
+the proof the route came back - and the step failed anyway, because that refusal
+was left in `$LASTEXITCODE` and GitHub's `pwsh` wrapper reads the block's residual
+code as the step's verdict. The Linux half consumes its guard's status with `if`;
+the Windows half did not. That is the defect the dispatch existed to find.
 
-**Next:** `CI-06`, the first dispatched capture run. ⛔ **The workflow has never
-been dispatched**, so three facts stand unmeasured: whether `Get-NetRoute`'s real
-output matches the fixtures the Windows guard is proved against, whether a hosted
-runner's default route can be deleted and put back, and whether the evidence
-bundle survives the upload. ⚠ That is a residual and not a blocker; nothing
-prevents a dispatch.
+**Next:** finish `CI-06`: fix the residue, extend the two `.ps1` rules to the
+`pwsh` blocks in workflows, re-dispatch, and compare the second run's fingerprints
+against the first's.
 
 **Tree:** Re-measure it. This file is a claim about a tree that has moved. Check
 the branch, the remote, the clone depth, `git status` and `HEAD..origin/main`
@@ -91,6 +93,31 @@ left the Windows lane green, over a script neither lane had changed. ⭐ Every
 `.ps1` states the behaviour it needs now, and `check-project` refuses one that
 does not. ⚠ The general lesson is the shape: a comment saying "X is the default"
 is a fact about one version being relied on as a promise.
+
+⛔ **A step's exit status is whatever the block LEFT BEHIND, unless it is a
+decision.** GitHub's `pwsh` wrapper reads the residual `$LASTEXITCODE`, so a
+block whose last command is a guard fails the step with that guard's code - even
+when the code was the outcome the step wanted. ⚠ The shape that bites is an
+INVERTED guard: the capture workflow's Windows restore step puts the routes back
+and then runs the egress guard, which must now REFUSE, because a host that can
+reach the network again is one that guard refuses. It refused, exit 1, exactly as
+designed, and that 1 failed the step and skipped the evidence upload. ⭐ The `sh`
+twin never had it, because `if guard; then …; fi` consumes the status. Found by
+the first dispatch and by nothing else; every reader in this repository had
+passed the file.
+
+⛔ **Two of a guard's three codes folded into one, on the half that was green.**
+The same step's `sh` twin asked `if --egress; then not-restored; fi`, which
+treats `2` (*could not run*) as `1` (*refuses*). A guard that never reached a
+routing table would have read as one that found a public route on it. ⚠ Found by
+making the two halves symmetrical rather than by either half failing, which is
+the argument for making them symmetrical.
+
+⛔ **A rule over `.ps1` files is not a rule over the same language in a
+workflow.** All three of `check-project`'s PowerShell rules iterated
+`git ls-files '*.ps1'`, and `capture.yml`'s `pwsh` blocks broke two of them the
+whole time. ⚠ The rule that turned CI red twice had a second door open while it
+was being written.
 
 ⛔ **A message a machine matches on does not go through a display layer.**
 PowerShell's `Write-Error` inside a script renders a source-context block and

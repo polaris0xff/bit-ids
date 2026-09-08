@@ -102,6 +102,12 @@ from any working directory.
   eleven files had the BOM and four did not, sixteen relied on a PowerShell
   default that changed in 7.5, and ten wrote to stderr directly while five did
   not. The last two were found by CI rather than by a reading.
+  ⛔ **The last two also read the `pwsh` blocks of every workflow**, which they
+  did not until `CI-06`'s first dispatch found `capture.yml` breaking both, one
+  door away from the rules that forbid them. A third rule lives only there: a
+  block that reads `$LASTEXITCODE` ends in an explicit `exit`, because GitHub's
+  wrapper reads whatever the block left behind as the step's verdict, so an
+  inverted guard fails the step by refusing exactly as it was designed to.
 - `common/check-licences.sh` and `common/check-licences.ps1` check the register
   in `catalogue/licences.toml` against the catalogue and the lockfile in both
   directions, refuse a row with no disposition, and refuse an installer-shaped

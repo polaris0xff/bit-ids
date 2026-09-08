@@ -119,9 +119,11 @@ still reaches the internet, and a guard reading only `0.0.0.0/0` would pass it.
 
 ⚠ **`-RouteTable` makes the routing source a file**, which is how
 [`check-runner.ps1`](../scripts/acquisition/check-runner.ps1) proves the logic on
-a machine that has no `Get-NetRoute`. That the real cmdlet's output matches those
-fixtures is established by running the guard with no `-RouteTable` on a Windows
-host, which is `CI-03`'s workflow rather than this page.
+a machine that has no `Get-NetRoute`. ⭐ **That the real cmdlet's output matches
+those fixtures is measured rather than assumed**: the guard ran with no
+`-RouteTable` on a hosted `windows-2025` runner whose default routes had just
+been removed, and answered `no route off this host (read Get-NetRoute)`. `CI-06`
+is the dispatch that established it.
 
 ## The workflow that runs on such a host
 

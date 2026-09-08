@@ -5,6 +5,38 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T12:00:55Z
+
+- `CI-06` opens and the capture workflow is dispatched for the first time.
+  Record: [`TODO/ci.md`](TODO/ci.md).
+- ⭐ Capture run 1 on `b992a35`: the Linux job green end to end, its bundle
+  verified under `sha256sum -c`, its transcript carrying the announce `curl`
+  made and the run-id token the driver knows it sent. The attestation says
+  `kind=fixture`, `measured_build=none`, `stock_client=false`.
+- ⭐ `Get-NetRoute`'s real output matches the fixtures `check-runner.ps1` proves
+  the Windows guard against, which no fixture could ever establish.
+  [`docs/capture-host.md`](docs/capture-host.md) carries what was measured.
+- ⛔ The Windows job went red on *Restore the route* and the restore had worked.
+  The step ends by running the egress guard inverted - a host that can reach the
+  network again is one that guard refuses - and that refusal's exit code was left
+  in `$LASTEXITCODE`, which GitHub's `pwsh` wrapper reads as the step's verdict.
+  A guard succeeding at its job failed the step and the upload was skipped.
+- ⭐ Both restore steps end in an explicit `exit` now, so a step's status is a
+  decision rather than a residue. The `sh` twin never had the defect, because
+  `if …; then` consumes the status.
+- ⛔ And the `sh` twin folded the guard's `2` into its `1`: *could not run* read
+  as *refuses*, so a guard that never reached a routing table would have looked
+  like one that read a restored route off it. Both halves read all three codes.
+- ⛔ `check-project`'s PowerShell rules iterated `git ls-files '*.ps1'` and never
+  reached a `pwsh` block inside a workflow, which is the same language with the
+  same hazards. `capture.yml` was carrying a live instance of each: a
+  `Write-Error`, and three blocks setting `$ErrorActionPreference = 'Stop'` with
+  nothing saying what a native exit code means.
+- ⭐ Both rules read every workflow's `pwsh` blocks now, and a third rule lives
+  only there: a block that reads `$LASTEXITCODE` ends in an explicit `exit`.
+- Deployment: nothing deployed. What was captured is a fixture, no client was
+  installed, no record was published and nothing was written to the data branch.
+
 ### 2026-09-08T07:07:54Z
 
 - `CI-03` closes: the capture workflow, the two capture runners it calls, and

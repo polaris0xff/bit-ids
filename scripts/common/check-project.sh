@@ -493,6 +493,148 @@ done
 [ -z "$WRITEERR" ] ||
   say_fail "a .ps1 reports through Write-Error, whose rendering wraps by host width:$WRITEERR"
 
+# -- ⛔ THE SAME LANGUAGE BEHIND A SECOND DOOR --------------------------------
+#
+# The three rules above iterate `git ls-files '*.ps1'`, so none of them ever
+# reached a `pwsh` block inside a workflow. ⚠ Those blocks are the same language
+# with the same two hazards, and `capture.yml` carried a live instance of each:
+# a Write-Error and three blocks setting `$ErrorActionPreference = 'Stop'` with
+# nothing saying what a native exit code means. A rule on one of several paths
+# into the same mistake is the one-gated-door defect
+# docs/methodology/reviews.md calls the most recurring hole there is.
+#
+# ⛔ AND A THIRD HAZARD THAT ONLY EXISTS HERE, found by CI-06's first dispatch.
+# GitHub's `pwsh` wrapper reads the block's residual $LASTEXITCODE as the step's
+# verdict. An INVERTED guard - one whose refusal is the outcome the step wants -
+# therefore fails the step by succeeding at its job. The Windows restore step
+# did exactly that: the route came back, the guard refused as designed, and the
+# evidence upload was skipped over a 1 nobody consumed. ⭐ A block that reads
+# $LASTEXITCODE ends in an explicit `exit`, so the step's status is a decision.
+# ⚠ Scoped to workflow blocks rather than to every .ps1: a .ps1's own exit code
+# is its author's to choose, and it is only here that a harness reads whatever
+# is left over.
+#
+# The stream below is one line per block, `##BLOCK <workflow>:<step>` followed
+# by the body with one space prefixed, so a body line cannot forge a header.
+# ⛔ check-project.ps1 emits the identical stream, and check-twins compares the
+# two halves' --json on the tree it runs against; a rule differing only on a
+# defect this tree lacks is invisible to it, so the pair is compared per planted
+# mutation instead.
+pwsh_blocks() {
+  for _wf in $({
+    git ls-files '.github/workflows/*.yml'
+    git ls-files --others --exclude-standard '.github/workflows/*.yml'
+  } | LC_ALL=C sort -u); do
+    [ -f "$_wf" ] || continue
+    awk -v WF="$_wf" '
+      function indent(s,   i) { i = match(s, /[^ ]/); return i ? i - 1 : -1 }
+      function reset(   j) {
+        for (j = 1; j <= nbody; j++) delete body[j]
+        nbody = 0; ispwsh = 0; stepname = ""; inrun = 0; runind = -1
+      }
+      function flush(   j) {
+        if (stepname != "" && ispwsh && nbody > 0) {
+          print "##BLOCK " WF ":" stepname
+          for (j = 1; j <= nbody; j++) print " " body[j]
+        }
+        reset()
+      }
+      BEGIN { reset(); keyind = -1 }
+      {
+        line = $0; sub(/\r$/, "", line); ind = indent(line)
+        if (inrun) {
+          if (ind < 0) { body[++nbody] = ""; next }
+          if (ind >= runind) { body[++nbody] = substr(line, runind + 1); next }
+          inrun = 0
+        }
+        if (ind < 0) next
+        if (line ~ /^ *- name:/) {
+          flush()
+          stepname = line
+          sub(/^ *- name:[ \t]*/, "", stepname)
+          gsub(/^["'"'"']|["'"'"']$/, "", stepname)
+          keyind = ind + 2
+          next
+        }
+        if (stepname == "") next
+        if (ind < keyind) { flush(); next }
+        if (ind != keyind) next
+        if (line ~ /^ *shell:[ \t]*pwsh[ \t]*$/) { ispwsh = 1; next }
+        if (line ~ /^ *run:/) {
+          v = line; sub(/^ *run:[ \t]*/, "", v)
+          if (v == "|" || v == ">" || v == "|-" || v == ">-") { inrun = 1; runind = keyind + 2; next }
+          body[++nbody] = v
+        }
+      }
+      END { flush() }
+    ' "$_wf"
+  done
+}
+
+PWSH_STREAM=$(pwsh_blocks)
+WF_NATIVE=""
+WF_WRITEERR=""
+WF_RESIDUE=""
+CUR=""
+HAS_STOP=0
+HAS_NATIVE=0
+HAS_CODE=0
+LAST=""
+close_block() {
+  [ -n "$CUR" ] || return 0
+  [ "$HAS_STOP" = 0 ] || [ "$HAS_NATIVE" = 1 ] || WF_NATIVE="$WF_NATIVE [$CUR]"
+  [ "$HAS_CODE" = 0 ] ||
+    case "$LAST" in
+      exit | exit\ *) ;;
+      *) WF_RESIDUE="$WF_RESIDUE [$CUR]" ;;
+    esac
+}
+while IFS= read -r _line; do
+  case "$_line" in
+    "##BLOCK "*)
+      close_block
+      CUR=${_line#\#\#BLOCK }
+      HAS_STOP=0
+      HAS_NATIVE=0
+      HAS_CODE=0
+      LAST=""
+      continue
+      ;;
+  esac
+  _body=${_line# }
+  _bare=$(printf '%s' "$_body" | sed 's/^[[:space:]]*//')
+  case "$_bare" in '#'*) continue ;; esac
+  [ -z "$_bare" ] || LAST=$_bare
+  case "$_body" in
+    *"ErrorActionPreference = 'Stop'"*) HAS_STOP=1 ;;
+  esac
+  case "$_body" in
+    *PSNativeCommandUseErrorActionPreference*) HAS_NATIVE=1 ;;
+  esac
+  # ⚠ SC2016 is the point rather than a mistake: the needle is the six-letter
+  # name a PowerShell block writes, and expanding it here would search for this
+  # shell's own empty variable and match every block.
+  # shellcheck disable=SC2016
+  case "$_body" in
+    *'$LASTEXITCODE'*) HAS_CODE=1 ;;
+  esac
+  printf '%s\n' "$_bare" | grep -qE '(^|[|;{])[[:space:]]*Write-Error([[:space:]]|$)' &&
+    case "$WF_WRITEERR" in
+      *"[$CUR]"*) ;;
+      *) WF_WRITEERR="$WF_WRITEERR [$CUR]" ;;
+    esac
+done <<STREAM
+$PWSH_STREAM
+STREAM
+close_block
+
+[ -z "$WF_NATIVE" ] ||
+  say_fail "a workflow pwsh block stops on errors without saying what a native exit code means:$WF_NATIVE"
+[ -z "$WF_WRITEERR" ] ||
+  say_fail "a workflow pwsh block reports through Write-Error, whose rendering wraps by host width:$WF_WRITEERR"
+[ -z "$WF_RESIDUE" ] ||
+  say_fail "a workflow pwsh block reads \$LASTEXITCODE and lets it fall through as the step's verdict:$WF_RESIDUE"
+
 if [ "$JSON" = 1 ]; then
   printf '{"schema":"check-project/2","failures":%s,"todo_entries":%s,"open":%s,"in_progress":%s,"blocked":%s,"done":%s}\n' \
     "$FAIL" "$ROWS" "$OPEN_ROWS" "$IN_PROGRESS_ROWS" "$BLOCKED_ROWS" "$DONE_ROWS"

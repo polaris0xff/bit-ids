@@ -519,6 +519,139 @@ try {
             ($writeErr -join ' '))
     }
 
+    # -- THE SAME LANGUAGE BEHIND A SECOND DOOR ------------------------------
+    #
+    # The three rules above iterate git ls-files '*.ps1', so none of them ever
+    # reached a pwsh block inside a workflow. Those blocks are the same language
+    # with the same two hazards, and capture.yml carried a live instance of
+    # each. A rule on one of several paths into the same mistake is the
+    # one-gated-door defect docs/methodology/reviews.md names.
+    #
+    # AND A THIRD HAZARD THAT ONLY EXISTS HERE, found by CI-06's first dispatch:
+    # GitHub's pwsh wrapper reads the block's residual $LASTEXITCODE as the
+    # step's verdict, so an INVERTED guard - one whose refusal is the outcome
+    # the step wants - fails the step by succeeding at its job. A block that
+    # reads $LASTEXITCODE ends in an explicit exit, so the status is a decision.
+    #
+    # The stream is one line per block, '##BLOCK <workflow>:<step>' followed by
+    # the body with one space prefixed, and check-project.sh emits it
+    # identically.
+    $emitBlock = {
+        param($state, $workflow, $sink)
+        if ($state.Step -ne '' -and $state.IsPwsh -and $state.Body.Count -gt 0) {
+            [void]$sink.Add('##BLOCK ' + $workflow + ':' + $state.Step)
+            foreach ($b in $state.Body) { [void]$sink.Add(' ' + $b) }
+        }
+        $state.Step = ''
+        $state.IsPwsh = $false
+        $state.Body.Clear()
+        $state.InRun = $false
+        $state.RunInd = -1
+    }
+
+    $stream = [System.Collections.Generic.List[string]]::new()
+    # An uncommitted new workflow is part of the tree the next push carries, and
+    # it is also how check-workflow.sh plants against these three rules.
+    $workflowFiles = @(
+        & git ls-files '.github/workflows/*.yml'
+        & git ls-files --others --exclude-standard '.github/workflows/*.yml'
+    ) | Sort-Object -Unique
+    foreach ($wf in $workflowFiles) {
+        if (-not (Test-Path -LiteralPath $wf -PathType Leaf)) { continue }
+        $state = [pscustomobject]@{
+            Step = ''
+            IsPwsh = $false
+            Body = [System.Collections.Generic.List[string]]::new()
+            InRun = $false
+            RunInd = -1
+        }
+        $keyInd = -1
+        foreach ($rawLine in [System.IO.File]::ReadAllLines($wf)) {
+            $line = $rawLine -replace "`r$", ''
+            $hit = [regex]::Match($line, '[^ ]')
+            $ind = if ($hit.Success) { $hit.Index } else { -1 }
+            if ($state.InRun) {
+                if ($ind -lt 0) { [void]$state.Body.Add(''); continue }
+                if ($ind -ge $state.RunInd) { [void]$state.Body.Add($line.Substring($state.RunInd)); continue }
+                $state.InRun = $false
+            }
+            if ($ind -lt 0) { continue }
+            if ($line -match '^ *- name:') {
+                & $emitBlock $state $wf $stream
+                $step = $line -replace '^ *- name:[ \t]*', ''
+                $step = $step -replace '^["'']', ''
+                $step = $step -replace '["'']$', ''
+                $state.Step = $step
+                $keyInd = $ind + 2
+                continue
+            }
+            if ($state.Step -eq '') { continue }
+            if ($ind -lt $keyInd) { & $emitBlock $state $wf $stream; continue }
+            if ($ind -ne $keyInd) { continue }
+            if ($line -match '^ *shell:[ \t]*pwsh[ \t]*$') { $state.IsPwsh = $true; continue }
+            if ($line -match '^ *run:') {
+                $value = $line -replace '^ *run:[ \t]*', ''
+                if ($value -in @('|', '>', '|-', '>-')) {
+                    $state.InRun = $true
+                    $state.RunInd = $keyInd + 2
+                    continue
+                }
+                [void]$state.Body.Add($value)
+            }
+        }
+        & $emitBlock $state $wf $stream
+    }
+
+    $wfNative = [System.Collections.Generic.List[string]]::new()
+    $wfWriteErr = [System.Collections.Generic.List[string]]::new()
+    $wfResidue = [System.Collections.Generic.List[string]]::new()
+    $current = ''
+    $hasStop = $false
+    $hasNative = $false
+    $hasCode = $false
+    $lastLine = ''
+    $closeBlock = {
+        if ($current -eq '') { return }
+        if ($hasStop -and -not $hasNative) { $wfNative.Add('[' + $current + ']') }
+        if ($hasCode -and $lastLine -notmatch '^exit(\s|$)') { $wfResidue.Add('[' + $current + ']') }
+    }
+    foreach ($streamLine in $stream) {
+        if ($streamLine.StartsWith('##BLOCK ')) {
+            & $closeBlock
+            $current = $streamLine.Substring(8)
+            $hasStop = $false
+            $hasNative = $false
+            $hasCode = $false
+            $lastLine = ''
+            continue
+        }
+        $bodyLine = if ($streamLine.StartsWith(' ')) { $streamLine.Substring(1) } else { $streamLine }
+        $bare = $bodyLine -replace '^\s+', ''
+        if ($bare.StartsWith('#')) { continue }
+        if ($bare -ne '') { $lastLine = $bare }
+        if ($bodyLine.Contains("ErrorActionPreference = 'Stop'")) { $hasStop = $true }
+        if ($bodyLine.Contains('PSNativeCommandUseErrorActionPreference')) { $hasNative = $true }
+        if ($bodyLine.Contains('$LASTEXITCODE')) { $hasCode = $true }
+        if ($bare -match '(^|[|;{])\s*Write-Error(\s|$)') {
+            $label = '[' + $current + ']'
+            if (-not $wfWriteErr.Contains($label)) { $wfWriteErr.Add($label) }
+        }
+    }
+    & $closeBlock
+
+    if ($wfNative.Count -gt 0) {
+        $failures.Add('a workflow pwsh block stops on errors without saying what a native exit code means: ' +
+            ($wfNative -join ' '))
+    }
+    if ($wfWriteErr.Count -gt 0) {
+        $failures.Add('a workflow pwsh block reports through Write-Error, whose rendering wraps by host width: ' +
+            ($wfWriteErr -join ' '))
+    }
+    if ($wfResidue.Count -gt 0) {
+        $failures.Add('a workflow pwsh block reads $LASTEXITCODE and lets it fall through as the step''s verdict: ' +
+            ($wfResidue -join ' '))
+    }
+
     if ($Json) {
         [ordered]@{
             schema = 'check-project/2'

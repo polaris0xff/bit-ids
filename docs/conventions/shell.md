@@ -351,7 +351,60 @@ rather than warns, over every tracked text file.
   spread to sixteen files.
 
   `check-project` refuses a `.ps1` that sets `$ErrorActionPreference = 'Stop'`
-  without also setting this one.
+  without also setting this one, **and it reads the `pwsh` blocks of every
+  workflow too.** ⚠ That second door was open the whole time: the rule iterated
+  `git ls-files '*.ps1'`, and `capture.yml` was carrying three blocks that set
+  the one preference and not the other.
+- ⛔ **A workflow's `pwsh` step ends in an explicit `exit`, because the residual
+  `$LASTEXITCODE` IS the step's verdict.** GitHub's wrapper reads whatever the
+  block left behind, so a block whose last command is a guard fails the step with
+  that guard's code - even when the code was the outcome the step wanted.
+
+  ⚠ **The shape that bites is an INVERTED guard**, one whose refusal is the
+  proof. Measured on 2026-09-08 on the first dispatch of the capture workflow:
+  its Windows *Restore the route* step puts the default routes back and then runs
+  the egress guard, which must now REFUSE, because a host that can reach the
+  network again is one that guard refuses. It refused, exit 1, exactly as
+  designed - and that 1 failed the step, so the evidence upload was skipped and a
+  finished capture was thrown away over a route that had already come back.
+
+  ⭐ The `sh` twin never had it, because `if some_guard; then …; fi` consumes the
+  status and an `if` whose condition is false has status 0. A convention held on
+  one of the two paths into one mistake, and only the path GitHub reads was
+  wrong.
+
+  ```powershell
+  ./scripts/acquisition/assert-disposable.ps1 -Egress
+  $egress = $LASTEXITCODE
+  if ($egress -eq 0) { [Console]::Error.WriteLine('the route did not come back'); exit 1 }
+  if ($egress -ne 1) { [Console]::Error.WriteLine("the guard could not run (exit $egress)"); exit 1 }
+  exit 0
+  ```
+
+  ⚠ **And read all three codes while you are there.** `0`, `1` and `2` are
+  *passed*, *refuses* and *could not run*; an `if` folds the last two together,
+  so a guard that never got as far as a routing table reads as one that read a
+  restored route off it. `check-project` refuses a workflow `pwsh` block that
+  reads `$LASTEXITCODE` and does not end in an `exit`. ⚠ The rule is scoped to
+  workflows rather than to every `.ps1`, because a script's own exit code is its
+  author's to choose and it is only here that something else reads the leftovers.
+
+  ⛔ **The wrapper is `pwsh -command ". '<file>'"`, and a dot-sourced script's
+  exit code COLLAPSES through it.** Measured on 2026-09-08, pwsh 7.4.6:
+
+  | the block exits | through `-command ". '<file>'"` | through `-File` |
+  | ---: | ---: | ---: |
+  | 0 | 0 | 0 |
+  | 1 | 1 | 1 |
+  | 2 | **1** | 2 |
+  | 3 | **1** | 3 |
+  | 42 | **1** | 42 |
+
+  ⚠ **So a `pwsh` step's exit code says *failed* and never says WHICH refusal
+  fired.** That is the second argument for `[Console]::Error.WriteLine` above:
+  the message is the only channel that survives the wrapper, so a block that
+  distinguishes its cases says which one it got in words rather than in a code
+  nobody downstream will see.
 - ⛔ **A message a machine matches on is written with
   `[Console]::Error.WriteLine`, never `Write-Error`.** Called inside a script,
   `Write-Error` renders a source-context block - the file, the line, a caret
@@ -373,7 +426,10 @@ rather than warns, over every tracked text file.
   CI runner**, which is what it did. Ten `.ps1` files here already wrote the
   bytes and five did not; `check-project` refuses the rest. ⚠ Its needle is the
   name in command position rather than the word, because the rule fired on its
-  own enforcing file first: the failure message contains the name.
+  own enforcing file first: the failure message contains the name. ⛔ **And the
+  rule reads a workflow's `pwsh` blocks as well**, which it did not until
+  `CI-06`'s dispatch found `capture.yml` reporting a refusal through exactly this
+  cmdlet, one door away from the rule that forbids it.
 - ⚠ **`Get-Command` finds cmdlets, functions and aliases too.** Filter to
   `Application` and `ExternalScript` when you mean an executable. A cmdlet
   looked for on PATH reports as missing on every machine that has it.

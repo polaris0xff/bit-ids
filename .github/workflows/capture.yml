@@ -134,10 +134,22 @@ jobs:
             # shellcheck disable=SC2086
             sudo ip -6 route add $route || echo "could not restore: $route" >&2
           done <"$RUNNER_TEMP/routes-v6"
-          if sh scripts/acquisition/assert-disposable.sh --egress; then
+          # ⛔ THE GUARD HAS THREE CODES AND THIS READS ALL THREE. 0 is the
+          # guard passing, which here means the route never came back; 1 is it
+          # refusing over a public route, which is the restore proved by the
+          # routing table; and 2 is `could not run`, which says nothing either
+          # way. ⚠ An `if` would fold 1 and 2 together and upload from a host
+          # nothing established was reachable.
+          sh scripts/acquisition/assert-disposable.sh --egress && egress=0 || egress=$?
+          if [ "$egress" = 0 ]; then
             echo 'the default route was not restored; the upload cannot work' >&2
             exit 1
           fi
+          if [ "$egress" != 1 ]; then
+            echo "the egress guard could not run (exit $egress)" >&2
+            exit 1
+          fi
+          exit 0
 
       # ⛔ if-no-files-found IS `error`. An upload that found nothing and exited
       # 0 is the "step that exits 0 having done nothing it was asked to do" row
@@ -202,6 +214,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
           $saved = @(Get-NetRoute -ErrorAction SilentlyContinue |
             Where-Object { $_.DestinationPrefix -in @('0.0.0.0/0', '::/0') })
           $saved | Export-Clixml -LiteralPath "$env:RUNNER_TEMP/routes.clixml"
@@ -226,10 +239,20 @@ jobs:
         run: |
           ./scripts/capture/capture-run.ps1 -RunId $env:RUN_ID -Out "$env:RUNNER_TEMP/capture" -Observer "$env:GITHUB_WORKSPACE/target/debug/examples/evidence-bundle.exe" -Seconds ([int]$env:SECONDS_TO_SERVE)
 
+      # ⛔ THIS STEP IS WHY CI-06 EXISTS. On the first dispatch the restore
+      # WORKED and the step failed anyway: the inverted guard below refuses,
+      # exit 1 is the proof the route came back, and that 1 was left in
+      # $LASTEXITCODE. GitHub's `pwsh` wrapper reads a block's residual code as
+      # the step's verdict, so the evidence upload was skipped over a guard that
+      # had said exactly what it was asked to say. ⭐ THE STEP'S STATUS IS A
+      # DECISION NOW RATHER THAN A RESIDUE: every path ends in an explicit exit.
+      # ⚠ The Linux twin never had this, because `if sh ...; then` consumes the
+      # status - a convention held on one of the two paths into one mistake.
       - name: Restore the route
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
           $saved = @(Import-Clixml -LiteralPath "$env:RUNNER_TEMP/routes.clixml")
           # ⛔ AN ADD THAT THROWS IS REPORTED AND DOES NOT END THE STEP, for the
           # reason the Linux job gives: ending here skips the upload and throws
@@ -247,10 +270,20 @@ jobs:
             }
           }
           ./scripts/acquisition/assert-disposable.ps1 -Egress
-          if ($LASTEXITCODE -eq 0) {
-            Write-Error 'the default routes were not restored; the upload cannot work'
+          $egress = $LASTEXITCODE
+          if ($egress -eq 0) {
+            [Console]::Error.WriteLine('the default routes were not restored; the upload cannot work')
             exit 1
           }
+          # ⛔ 2 IS `could not run` AND IS NOT THE REFUSAL THIS STEP WANTS. Only
+          # a 1 is the guard reading a routing table and finding a public route
+          # on it; a 2 means it never got that far, and calling that a restored
+          # route would upload from a host nothing established was reachable.
+          if ($egress -ne 1) {
+            [Console]::Error.WriteLine("the egress guard could not run (exit $egress)")
+            exit 1
+          }
+          exit 0
 
       - name: Upload the evidence bundle
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -264,6 +297,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
           ./scripts/acquisition/assert-disposable.ps1 -Fingerprint > "$env:RUNNER_TEMP/print"
           $print = (Get-Content -LiteralPath "$env:RUNNER_TEMP/print" -TotalCount 1)
           Write-Output "windows host fingerprint: $print"

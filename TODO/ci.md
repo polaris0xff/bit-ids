@@ -663,13 +663,12 @@ stays attributable. The clean tree either side is the control.
 
 ### Residuals
 
-- ⛔ **The workflow has never been dispatched, and that is the honest state.**
-  Everything about it a reader can check is checked and both runners are driven
-  for real on every gate, but three things only a run establishes: that
-  `Get-NetRoute`'s real output matches the fixtures `check-runner.ps1` proves
-  the guard against, that deleting and restoring a default route works on a
-  hosted runner, and that the artifact survives the upload. ⚠ It is a residual
-  and not a blocker: nothing prevents a dispatch.
+- ⭐ **Closed by `CI-06`, which dispatched it.** The three things only a run
+  establishes were all answered, and the run also found a defect in this file's
+  own Windows restore step that no reading here had: the inverted egress guard's
+  refusal was left in `$LASTEXITCODE` and GitHub reads that as the step's
+  verdict. ⚠ Everything this entry says about the workflow's *shape* still
+  stands; what it could not say is what a runner does with it.
 - ⚠ **What it captures is a fixture.** No client is installed and no stock build
   is observed; the attestation says `kind=fixture`, `measured_build=none`,
   `stock_client=false`. `CLIENT-01` points a real build at the same lab.
@@ -758,7 +757,7 @@ workflow, commit, lockfile, and checksum manifest.
 ## CI-06: The first dispatched capture run
 
 Source: `CI-03`'s residual, which is a workflow that has never been dispatched
-Priority: P1 | Effort: L | Status: OPEN
+Priority: P1 | Effort: L | Status: IN_PROGRESS
 
 Problem: `.github/workflows/capture.yml` is checked in every way a reader can
 check it and has never run. Three facts only a dispatch establishes: that
@@ -776,6 +775,143 @@ Prove: `sh scripts/capture/check-capture.sh` still passes, both dispatched jobs
 end green, each uploaded bundle verifies under `sha256sum -c`, the two runs of
 one platform report different fingerprints, and the attestation carried in each
 artifact names `kind=fixture`.
+
+### ⭐ Capture run 1, and the thing no reading had caught
+
+The first dispatch was on `b992a35`, the commit `CI-03` closed at. ⛔ **The Linux
+job was green end to end on the first attempt and the Windows job failed**, and
+the failure is worth more than the success.
+
+Three facts stood unmeasured and the dispatch answered all three:
+
+| fact | what the run said |
+| --- | --- |
+| `Get-NetRoute`'s real output matches the fixtures `check-runner.ps1` proves the guard against | ⭐ it does. *Assert containment* ran the guard with no `-RouteTable` on a real `windows-2025` host and printed `no route off this host (read Get-NetRoute)`, which is the guard reading the live cmdlet and agreeing with the fixture corpus |
+| a hosted runner's default route can be deleted and put back | ⭐ deleted on both platforms; restored on both. ⛔ The Windows *step* nevertheless failed, for a reason that is not the route |
+| the evidence bundle survives the upload | ⭐ on Linux, yes. On Windows the upload never ran, because the step before it failed |
+
+### ⛔ The defect: a restore that worked, and a step that failed on it
+
+`Restore the route` ends by running the egress guard **inverted**. A host that
+can reach the network again is one the guard REFUSES, so a refusal there is the
+proof the route came back and a pass would mean it had not. The Windows job's
+guard printed `assert-disposable: a public route exists; a capture host reaches
+loopback only` - its refusal, exit 1, exactly as designed - and the step then
+failed with `Process completed with exit code 1`.
+
+⛔ **Nothing in the block was wrong. What failed was what the block left
+behind.** GitHub's `pwsh` wrapper reads the residual `$LASTEXITCODE` as the
+step's verdict, so a guard succeeding at its job set the code that failed the
+step, the upload was skipped as a consequence, and a finished capture was thrown
+away over a route that had already come back. ⚠ The `Write-Error` branch never
+ran: the log carries no such line, which is how the two are told apart.
+
+⭐ **The Linux twin never had this**, because `if sh …; then` consumes the
+status and an `if` whose condition is false is a compound command with status 0.
+⛔ **One of two paths into one mistake**, which is the shape
+[`../docs/methodology/reviews.md`](../docs/methodology/reviews.md) calls the most
+recurring hole there is - and it was invisible to every check in the repository
+because the wrapper that reads the code is GitHub's, not this project's.
+
+Both restore steps now end in an explicit `exit`, so the step's status is a
+decision rather than a residue.
+
+### ⛔ And the same guard's three codes were folded into two, on the green half
+
+Reading the fix exposed a second defect in the half that had passed. The Linux
+step asked `if …; then route-not-restored; fi`, which treats the guard's **2**
+the same as its **1**. Those are `could not run` and `refuses`, and
+[`../docs/history/RESUME.md`](../docs/history/RESUME.md) has carried that
+distinction since a review pass counted one as the other. A guard that could not
+run says nothing about the routing table, and uploading on it is uploading from a
+host nothing established was reachable. Both halves now read all three codes and
+name which one they got.
+
+⚠ **This one was never going to fail a run.** `--egress` answers 2 only when it
+cannot read a routing table at all, which has not happened on a hosted runner. It
+is a latent conflation found by making the two halves symmetrical, and that is
+the argument for making them symmetrical.
+
+### ⛔ What the door sweep found: the same language behind a second door
+
+`check-project` carries three rules over PowerShell - a UTF-8 BOM, the native
+command preference beside `$ErrorActionPreference = 'Stop'`, and no `Write-Error`
+where a machine reads the message. ⛔ **All three iterate `git ls-files '*.ps1'`
+and none of them had ever reached a `pwsh` block inside a workflow**, which is
+the same language, on the same runners, with the same two hazards.
+
+⚠ **And `capture.yml` was carrying a live instance of each**: the `Write-Error`
+above, and three blocks setting `Stop` with nothing saying what a native exit
+code means. The rule that turned CI red twice last session had a whole second
+door open the entire time.
+
+⭐ The two rules now read the `pwsh` blocks of every workflow as well, and a
+third rule exists that has no `.ps1` counterpart: **a block that reads
+`$LASTEXITCODE` ends in an explicit `exit`.** That one is workflow-scoped on
+purpose - a `.ps1`'s own exit code is its author's to choose, and it is only in a
+workflow step that a harness reads whatever was left over.
+
+⚠ The rules enumerate `git ls-files --others --exclude-standard` beside the
+tracked set, as the `.ps1` rules already did. An uncommitted new workflow is part
+of the tree the next push carries, and it is also how `check-workflow.sh` plants
+against these three rules.
+
+### ⭐ What the driven pass measured that the dispatch could not
+
+⛔ **Nothing in this repository runs a capture step's body.**
+`check-workflow.sh` reads `capture.yml`'s step names, their order and the
+*Capture* step's command; it executes steps out of `ci.yml` alone. So the two
+restore blocks were driven by hand, each lifted verbatim and run against a stub
+guard exiting 0, 1 and 2 in turn, with the exit code read from the process that
+produced it.
+
+⛔ **The `pwsh` half has to be run the way GitHub runs it or the defect does not
+reproduce.** The wrapper prepends `$ErrorActionPreference = 'stop'` and
+**appends** `if ((Test-Path -LiteralPath variable:/LASTEXITCODE)) { exit
+$LASTEXITCODE }`, then invokes `pwsh -command ". '<file>'"`. That append is the
+entire mechanism. ⚠ A first version of the driver omitted it and reported the
+broken block **passing**, which would have been a harness saying the defect was
+not there over the block that had just failed on a runner.
+
+⭐ With the wrapper faithful: the block as it stood on capture run 1 exits **1**
+over a guard that refuses, which is run 1's failure reproduced on this machine;
+the block as it stands now exits **0** over the same input, and **1** over a
+guard that passes or one that could not run. The `sh` half answers identically
+on all three.
+
+⛔ **And a fact about the wrapper worth pinning: a dot-sourced script's exit code
+collapses.** Measured across 0, 1, 2, 3 and 42 on pwsh 7.4.6: through
+`-command ". '<file>'"` every non-zero value arrives as **1**, while `-File`
+preserves it exactly. ⚠ So a `pwsh` step's exit code says *failed* and never says
+which refusal fired - which is a second, independent argument for
+`[Console]::Error.WriteLine`, because the message is the only channel that
+survives. [`../docs/conventions/shell.md`](../docs/conventions/shell.md) section
+8 carries the table.
+
+### Guard mutation over the three new rules
+
+Both halves of `check-project` were run on every case and their **exit codes and
+their whole output** compared, because `check-twins` compares the pair on the
+tree it runs against and a rule that differs only on a defect this tree does not
+contain is invisible to it.
+
+Eleven cases: the tree as it stands; a block setting `Stop` with no native
+preference; `Write-Error` at a statement start; `Write-Error` after a pipe, which
+is the shape `assert-disposable.ps1` itself once used; the residual exit code
+verbatim; every needle in comment position; both needles in a step whose shell is
+not `pwsh`; a block that stops on nothing, asked for no preference it has no use
+for; a single-line `run:` with no block scalar; a block that reads
+`$LASTEXITCODE` and ends on an explicit `exit`; and the tree again after every
+restore. ⭐ **All eleven landed on the intended verdict and the two halves agreed
+on all eleven, character for character.** Each refusal was also checked to be
+named by the rule under test rather than by some other rule going red.
+
+⭐ The five acceptances are the half that matters most here. A rule that refused
+a needle in a comment, or one in a `bash` step, is a rule somebody switches off.
+
+⚠ **The extractor was checked against what it hunts for**, because a reader
+answering "clean" over an empty set passes on any tree: it finds every `pwsh`
+step in the tree, which is the same set `shell: pwsh` appears on.
 
 ## CI-07: PowerShell halves for the declared gate rows
 
@@ -821,6 +957,20 @@ Prove: a rule per stated default in `check-project`, both halves, each
 mutation-proven; and a driven pass that runs the gate under a deliberately
 hostile environment - a different locale, a narrow console, `CARGO_TARGET_DIR`
 set, and `TMPDIR` moved - with the same verdict.
+
+⭐ **`CI-06` added the first three rules of this shape and left a harness gap it
+owns rather than closes.** Nothing in the tree runs a capture step's *body*:
+`check-workflow.sh` reads `capture.yml`'s step names, their order and the
+*Capture* step's command, and executes steps out of `ci.yml` alone. So the two
+restore blocks are proved statically by `check-project` and dynamically only by a
+dispatch. ⚠ A harness that lifted each step body out of the workflow and ran it
+under GitHub's own wrapper form - prepending `$ErrorActionPreference = 'stop'`,
+appending `if ((Test-Path -LiteralPath variable:/LASTEXITCODE)) { exit
+$LASTEXITCODE }`, invoking `pwsh -command ". '<file>'"` - against stubbed guards
+would close it, and it is this entry's shape rather than `CI-06`'s: it is about
+what a script inherits from its host. Acceptance would be that harness refusing
+the *Restore the route* block as it stood on capture run 1 and accepting it as it
+stands.
 
 ## CI-09: The capture-to-publisher path, end to end
 
