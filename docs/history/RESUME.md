@@ -3,17 +3,16 @@
 **Task:** Take the work order in `TODO/PROGRESS.md` in dependency order,
 committing and pushing each green unit to `main`.
 
-**Resume point:** ⭐ **`CI-02` is closed**, so a new stable release creates one
-bounded piece of capture request and a repeated run creates none. `TODO/ci.md`
-carries it. ⚠ **`PUB-04` is the other item reachable without a capture host**,
-and a bare repository in a scratch directory is how its shape can be driven
-before anything has been published.
+**Resume point:** ⭐ **`CI-02` and `PUB-04` are both closed**, which were the two
+items the work order's ordering made look more blocked than they were.
+`TODO/ci.md` and `TODO/publishing.md` carry them.
 
-⛔ **Everything else in the work order is behind a capture host or an operator
-decision.** `CLIENT-01`, `CLIENT-06`, `CLIENT-05`, `OBS-07` and `OBS-10` need a
-host `assert-disposable.sh --egress` does not refuse; `CI-03` is what would
-supply one; `PUB-05` is blocked on the dependency decision below. Read
-`TODO/PROGRESS.md`'s work order rather than assuming this list.
+⛔ **Everything left in the work order is now behind a capture host or the
+operator decision below.** `CLIENT-01`, `CLIENT-06`, `CLIENT-05`, `OBS-07` and
+`OBS-10` need a host `assert-disposable.sh --egress` does not refuse; `CI-03` is
+what would supply one and is the next item; `CI-04` follows it; `PUB-05` is
+blocked on the dependency decision. Read `TODO/PROGRESS.md`'s work order rather
+than assuming this list.
 
 **In flight:** Nothing.
 
@@ -41,6 +40,21 @@ entirely, and replacing every length prefix with a separator byte, both left the
 whole Rust suite green; only the harness's independent `python3` derivation
 caught them. ⭐ The fix is general: pin the encoding against its own restated
 specification, byte for byte, and vary each component of the key in turn.
+
+⛔ **A refusal the deriver cannot reach is a refusal nothing tests.** `PUB-04`'s
+`contract` derives a path's stability, its integrity and its order, so three of
+its five refusals can never fire on anything it produced: the two halves agree by
+construction, and blanking each left the crate and the harness green. They are
+reachable from a **file**, which is the door a consumer's copy comes through, so
+they have document-level cases now. ⚠ The same pass reported a false SURVIVED
+before that was believed, because its test selection ran `--lib` and the new
+cases are an integration target.
+
+⛔ **A documented path with no producer is worth deriving rather than reading.**
+`docs/publishing.md` carried two `routes/` paths nothing had ever written, and
+they cannot be written: the layout omits `<package>` while the acquisition routes
+differ per package, which is `CORPUS-01`'s non-injective-path finding in a second
+place. Deriving the documented set from an assembled release is what found it.
 
 ⛔ **A count written in prose is a value in two places with nothing comparing
 them.** `VersionScheme::components` said "both callers use it" and named two;
@@ -121,7 +135,15 @@ restated in the source.
 
 ⭐ **A push path can be driven for real with no network and no credential.** A
 bare repository in a scratch directory is a remote as far as git is concerned,
-and `PUB-04` is the next entry that needs one.
+and both `check-publish` and `check-access` use one. ⚠ **An immutability claim
+needs two publications**: "this path never changes" is a comparison between
+trees, and a checker given one can only read a label off a document that asserted
+it. The other half is that at least one path must have moved, or the comparison
+passes over two identical publications.
+
+⛔ **No GitHub URL has ever been fetched**, because nothing has ever been
+published. `docs/publishing.md` carries the three forms and they are
+unexercised.
 
 ⚠ Read each CI run's failing **step** before its conclusion: a failure above
 *Rust check* is the runner's network rather than the tree.

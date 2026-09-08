@@ -3,10 +3,10 @@
 State instant: 2026-09-06
 Baseline commit: `a6c9336` on `main`
 Total: 58
-Open: 26
+Open: 25
 In progress: 0
 Blocked: 0
-Done: 32
+Done: 33
 
 ## Current state
 
@@ -462,6 +462,27 @@ they slipped past holds for one pair under one separator. The encoding is pinned
 against its own restated specification now, and all five key plants are refused
 by the unit tests alone.
 
+⭐ **`PUB-04` is closed**, so a consumer is told where every published byte is
+and how long it is good for. Two facts per path and both derived: stability comes
+from `store::CANONICAL_ROOTS`, which is already what the append-only rule is
+about, and integrity is a function of the path. ⛔ **Exactly one published file is
+covered by neither document**, being `SHA256SUMS`, and the contract says so per
+path rather than leaving a reader to find the gap.
+
+⛔ **Deriving the documented set found a path nothing writes, and it cannot be
+written.** `routes/v1/<target>/<version>/<platform>/<arch>.json` omits
+`<package>` while the acquisition routes differ per package, so it is the
+non-injective layout `CORPUS-01` found in the profile path, in a second place.
+Both `routes/` entries are out of `docs/publishing.md` with the reason recorded.
+
+⛔ **And the mutation pass found three refusals nothing could reach.** `contract`
+derives stability, integrity and order, so `E-ACC-03` through `E-ACC-05` never
+fire on what the deriver produced; blanking each left the crate and the harness
+green. They are reachable from a file, which is the door a consumer's copy comes
+through, so they have document-level cases now. ⚠ The same pass reported a false
+SURVIVED first, because its test selection excluded the integration target the
+new cases live in.
+
 ## Work order
 
 1. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
@@ -475,18 +496,17 @@ by the unit tests alone.
 2. ⭐ **`OBS-11` is closed**, so the observer layer covers every surface a build
    reaches for. `OBS-07` and `OBS-10` are the other two observer entries and both
    need a client build, so they wait on the same host the clients do.
-3. ⭐ **`CI-02` is closed**, so a new stable release creates one bounded piece of
-   work and a repeated run creates none. `CI-03` is what is next in this group
-   and is the one that supplies the capture host everything else waits on;
-   `CI-04` follows it. ⚠ `PUB-04`'s acceptance can be driven against a scratch
-   bare repository, so it is reachable on a session host and is not as blocked
-   as the ordering suggests.
+3. ⭐ **`CI-02` and `PUB-04` are both closed**, which were the two items the
+   ordering made look more blocked than they were. `CI-03` is what is next and is
+   the one that supplies the capture host everything else waits on; `CI-04`
+   follows it. ⛔ **Every remaining item is behind that host or behind the
+   operator decision below.**
 4. The remaining client and engine breadth, behind the same capture host.
-5. `PUB-04` and `PUB-05`, then the consumer library, public documentation and
-   refinements. ⚠ `PUB-04`'s Prove fetches every documented path and nothing has
-   ever been published, so its paths do not exist; a scratch bare repository is a
-   real remote and is how its shape can be driven before one does. `PUB-05` is
-   blocked on the operator decision above.
+5. ⭐ **`PUB-04` is closed**, driven against a bare repository in a scratch
+   directory, which is a real remote as far as git is concerned. ⛔ **No GitHub
+   URL has been fetched** and none can be until a first real publication exists.
+   `PUB-05` is blocked on the operator decision above. Then the consumer library,
+   public documentation and refinements.
 
 ## Pending operator decisions
 

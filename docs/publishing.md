@@ -16,8 +16,6 @@ SHA256SUMS
 raw/v1/<target>/<version>/<platform>/<arch>/<package>/<capture-id>/manifest.json
 raw/v1/<target>/<version>/<platform>/<arch>/<package>/<capture-id>/...
 profiles/v1/<target>/<version>/<platform>/<arch>/<package>/<capture-id>.json
-routes/v1/<target>/latest/<platform>/<arch>.json
-routes/v1/<target>/<version>/<platform>/<arch>.json
 indexes/v1/profiles.json
 formats/bit-ids-v1.json
 formats/bit-ids-v1.jsonl
@@ -29,6 +27,16 @@ formats/bit-ids-v1.cbor
 
 ⚠ `bit-ids-v1.sqlite3` is the one path here nothing writes yet. `PUB-05` owns it
 and is blocked on a dependency decision, not on work.
+
+⛔ **`routes/v1/<target>/<version>/<platform>/<arch>.json` was in this layout and
+has been removed, because it cannot be written in that shape.** It omits
+`<package>`, so the routes of a `deb` and an `AppImage` of one version on one
+platform would be two different route sets at one file name: the same
+non-injective layout `CORPUS-01` found in the profile path and for the same
+reason. Nothing ever wrote it, and `PUB-04` is what noticed, by deriving the
+documented path set from an assembled release rather than reading it here.
+⚠ A per-route view is still worth having; it needs the identity tuple in full,
+and it is a new rendering rather than a path this document can promise.
 
 ⛔ **A record's path carries its whole identity tuple, and `<package>` is in it
 because the record identifier digests it.** This layout omitted that segment
@@ -147,6 +155,62 @@ A tagged release will contain the manifest, checksums, each generated format,
 and deterministic `.tar.gz` and `.zip` archives. A published tag or asset is
 immutable. `latest` is the hosting platform's release pointer; no Git tag is
 moved.
+
+## Access paths, and how long each is good for
+
+`PUB-04` owns this and
+[`access`](../crates/bit-ids/src/access.rs) is where it is derived, with
+`cargo run -p bit-ids --example access-contract -- TREE` as the driving surface
+and [`check-access.sh`](../scripts/publishing/check-access.sh) as its prover.
+
+⛔ **A consumer is told two things per path and both are derived, not
+declared.** How long the bytes are good for, and which published document proves
+them.
+
+| class | which paths | what a consumer may do |
+| --- | --- | --- |
+| `immutable` | everything under `profiles/` and `raw/` | cache the bytes forever; the path never changes and never disappears, and a correction appends a new one |
+| `current` | `MANIFEST.json`, `SHA256SUMS`, `LICENSE`, `indexes/`, `formats/` | refetch and compare the digest; these exist in order to change |
+
+⛔ **The class comes from `store::CANONICAL_ROOTS` and never from a second
+list.** That constant is already what the append-only rule is about, so a path
+is immutable exactly when the publisher refuses to rewrite it. A second
+enumeration here would be the same rule spelled twice, and the copy that drifted
+would be the one telling a consumer to cache a file that moves.
+
+⚠ **A path this build cannot classify blocks the contract** under `E-ACC-01`,
+rather than being published with a guessed stability. That is `PUB-01`'s
+media-type rule applied to caching, and it is what refused the `routes/` path
+above.
+
+| integrity | which paths | what proves the bytes |
+| --- | --- | --- |
+| `manifest` | everything except the two below | `MANIFEST.json` carries the digest, and `SHA256SUMS` carries it too |
+| `checksums` | `MANIFEST.json` | `SHA256SUMS`, because no document states its own digest |
+| `out_of_band` | `SHA256SUMS` | nothing in the publication. A consumer takes it from the release asset listing or from a digest it recorded on an earlier fetch |
+
+⛔ **Exactly one published file is covered by neither document**, and a consumer
+that assumed either covered everything would find the gap precisely where the
+other one is. `exactly_one_published_file_is_covered_by_neither_document` is what
+pins that to one file.
+
+### The URL forms
+
+A path in the contract is relative to the `data` branch. ⚠ **No host appears in
+the crate**: a public URL built from a hardcoded host is dead everywhere except
+the machine that made it, so a caller composes one from a base it was given.
+
+```text
+raw bytes   https://raw.githubusercontent.com/<owner>/<repo>/data/<path>
+API         https://api.github.com/repos/<owner>/<repo>/contents/<path>?ref=data
+mirror      https://api.gh.pkgforge.dev/repos/<owner>/<repo>/contents/<path>?ref=data
+```
+
+⛔ **None of those has ever been fetched, because nothing has ever been
+published.** What `check-access.sh` proves is the path set, the two classes and
+every digest, against a publication pushed to a bare repository and fetched back
+over git. The URL forms above are unexercised and `TODO/publishing.md` carries
+that as a residual with the event that closes it.
 
 ## Read-back
 

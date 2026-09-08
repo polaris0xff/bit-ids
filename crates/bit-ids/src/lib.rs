@@ -24,6 +24,7 @@
 //! assembles one field at a time and a test needs to plant a defect in one.
 //! The write path is where that is caught.
 
+pub mod access;
 pub mod acquisition;
 pub mod agreement;
 pub mod cache;
@@ -44,6 +45,7 @@ pub mod staleness;
 pub mod store;
 pub mod validate;
 
+pub use access::{ACCESS_SCHEMA, AccessContract, contract, validate_contract};
 pub use acquisition::{AcquisitionRoute, RouteKind, SignatureStatus, SourceIdentity};
 pub use agreement::publishable;
 pub use corpus::{Corpus, publishable_view, validate_corpus};

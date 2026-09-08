@@ -329,7 +329,7 @@ builds over one store produce byte-identical files.
 ## PUB-04: Stable raw and index access paths
 
 Source: operator direct-GitHub access requirement
-Priority: P1 | Effort: M | Status: OPEN
+Priority: P1 | Effort: M | Status: DONE
 
 Problem: Consumers need documented immutable and current URLs without scraping
 the repository UI.
@@ -337,5 +337,108 @@ the repository UI.
 Approach: Publish versioned raw paths, content-addressed evidence paths, latest
 indexes, release assets, and integrity metadata with explicit stability rules.
 
-Prove: a link checker fetches every documented path through the approved
-GitHub read route and verifies its digest.
+Prove: `sh scripts/publishing/check-access.sh` and
+`cargo test -p bit-ids --locked --test access` both pass, with every documented
+path resolving in a publication fetched back over git, every stated digest
+recomputed by `sha256sum`, and every path the contract calls immutable
+byte-identical across two publications.
+
+### ⛔ What deriving the path set found: a documented path nothing writes
+
+`docs/publishing.md` carried `routes/v1/<target>/<version>/<platform>/<arch>.json`
+and `routes/v1/<target>/latest/<platform>/<arch>.json` in its layout, and nothing
+has ever written either. That alone is the "a file a summary claims that is not
+on disk" row.
+
+⛔ **And it cannot be written in that shape.** The path omits `<package>` while
+the acquisition routes differ per package, so a `deb` and an `AppImage` of one
+version on one platform would be two different route sets at one file name. That
+is exactly the non-injective layout `CORPUS-01` found in the profile path, in a
+second place, found here the same way: by deriving the documented set from an
+assembled release instead of reading it off the document. Both paths are removed
+from the layout, with the reason recorded there. ⚠ A per-route view is still
+worth having and needs the identity tuple in full; it is a new rendering rather
+than a path that document can promise.
+
+### Decision: two facts per path, and both derived
+
+A consumer is told how long a path's bytes are good for, and which published
+document proves them. Neither is declared per path.
+
+⛔ **Stability comes from `store::CANONICAL_ROOTS` and never from a second
+list.** That constant is already what the append-only rule is about, so a path is
+`immutable` exactly when the publisher refuses to rewrite it. A second
+enumeration would be one rule spelled twice, and the copy that drifted would be
+the one telling a consumer to cache a file that moves.
+
+⛔ **Integrity is a function of the path**, and exactly one published file is
+covered by neither document: `MANIFEST.json` describes everything but itself and
+`SHA256SUMS`, and `SHA256SUMS` covers everything but itself. So the checksum file
+is the one a consumer verifies out of band, and the contract says so per path
+rather than leaving a reader to work out where the gap is.
+
+⚠ **There is no default stability**, which is `PUB-01`'s media-type rule applied
+to caching. [`../docs/publishing.md`](../docs/publishing.md) carries the classes
+and the refusal; what matters here is that it fired on its first run, over
+`routes/`.
+
+### ⛔ What the mutation pass found: three refusals nothing could reach
+
+Twelve plants over `access.rs`. Eight were refused on the first pass and three
+survived, all three for one reason: `contract` derives a path's stability from
+`is_canonical_path`, its integrity from its kind, and its order by sorting, so
+`E-ACC-03`, `E-ACC-04` and `E-ACC-05` can never fire on anything the deriver
+produced. The two halves agree by construction, and blanking each left the whole
+crate and the whole harness green.
+
+⚠ **They are not dead code.** A contract arrives from a file as often as from a
+deriver, and `AccessContract::from_json` is the door a consumer's copy comes
+through. What was missing was a test where they are reachable, which is at the
+document level: `crates/bit-ids/tests/access.rs` builds a real contract, plants
+into the document, and reads the refusal. All three are refused there now, along
+with the two that were already reachable.
+
+⚠ **And the mutation harness reported a false SURVIVED before that was
+believed.** It ran `cargo test --lib`, and the new cases are an integration
+target, so the tests written to catch the plants were not run at all. A plant
+whose verdict comes from a selection that excludes its own test says nothing
+about the guard, which is the same class as a harness exit of 2.
+
+### Acceptance, all run on 2026-09-08
+
+- `sh scripts/publishing/check-access.sh`
+- `cargo test -p bit-ids --locked --test access`
+- `sh scripts/common/check-gate.sh`
+
+### Closure evidence, 2026-09-08
+
+| what | measured |
+| --- | --- |
+| `sh scripts/publishing/check-access.sh` | 16 cases, 16 passed, 0 failed |
+| `cargo test -p bit-ids --locked --test access` | 12 passed, 0 failed |
+| guard mutation over `access.rs` | 12 plants, 12 refused after the three unreachable refusals were given document-level cases. ⚠ One plant's literal had to be corrected before it applied; a plant that did not apply is neither a refusal nor a survivor |
+| driven pass | a one-record catalogue published to a bare repository and fetched back over git, then a two-record one; 20 contract paths on the first fetch, 11 immutable and 9 current, every path resolving and every digest recomputed |
+| immutability | every immutable path of the first publication byte-identical in the second, with 7 current paths moved and the immutable count going 11 to 22 |
+| independent verification | `sha256sum -c` recomputes every digest the contract states, over the bytes that came back from the remote |
+
+⭐ **The immutability rule needs two publications and nothing else can prove
+it.** "This path never changes" is a comparison between trees, so a checker given
+one publication can only read a label off a document that asserted it. ⚠ And a
+checker that only asserted the immutable paths did not move would pass over a
+second publication identical to the first, so "at least one current path moved"
+is a case rather than an assumption.
+
+### Residuals
+
+- ⛔ **No GitHub URL has been fetched, because nothing has ever been published.**
+  `docs/publishing.md` carries the three forms, and what is proved here is the
+  path set, both classes and every digest against a publication pushed to a bare
+  repository and fetched back over git. The URL forms close when a first real
+  publication exists, which needs a measured record, which needs a capture host.
+- ⚠ Release assets are named in the Approach and are `PUB-03`'s and `CI-04`'s.
+  The contract is over the `data` branch, which is what a consumer reads without
+  a release; a tagged release carries the same bytes under the platform's own
+  asset URLs and `CI-04` owns binding those to a workflow identity.
+- ⚠ `check-access` needs `python3`, so it exits 2 without one, which is a skip
+  and never a pass. `ubuntu-24.04` carries it and the Linux lane runs the gate
+  with `--strict`.

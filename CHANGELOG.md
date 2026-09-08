@@ -5,6 +5,34 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T02:28:10Z
+
+- `PUB-04`, the documented access paths and their stability rules. Record:
+  [`TODO/publishing.md`](TODO/publishing.md).
+- ⛔ A consumer is told two things per path and both are derived. Stability comes
+  from `store::CANONICAL_ROOTS`, which is already what the append-only rule is
+  about, so a path is immutable exactly when the publisher refuses to rewrite it.
+- ⛔ Exactly one published file is covered by neither `MANIFEST.json` nor
+  `SHA256SUMS`, and the contract names it per path rather than leaving a reader
+  to find where the gap is.
+- ⛔ `routes/v1/<target>/<version>/<platform>/<arch>.json` is out of the
+  published layout. Nothing ever wrote it, and it cannot be written in that
+  shape: the path omits `<package>` while the acquisition routes differ per
+  package. Found by deriving the documented set from an assembled release.
+- ⛔ Three of the five refusals were unreachable through the deriving path,
+  because `contract` derives stability, integrity and order and the two halves
+  agree by construction. They are reachable from a file, so they have
+  document-level cases now.
+- ⚠ A mutation harness reported a false SURVIVED before that was believed: its
+  test selection excluded the integration target the new cases live in.
+- ⭐ The immutability rule is proved by two publications rather than by a label.
+  A record published, fetched back over git, and still byte-identical after a
+  second publication is a comparison; a document asserting immutability is not.
+- ⚠ A store test named a `routes/` path as its example of a derived file. It
+  still passed and illustrated nothing, so it names `LICENSE` now.
+- Deployment: nothing deployed. No GitHub URL was fetched and nothing was
+  published; every case ran against a bare repository in a scratch directory.
+
 ### 2026-09-08T01:39:27Z
 
 - `CI-02`, the stable-release staleness monitor. Record:

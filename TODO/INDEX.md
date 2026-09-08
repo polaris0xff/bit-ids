@@ -1,17 +1,17 @@
 # Work index
 
 Total: 58
-Open: 26
+Open: 25
 In progress: 0
 Blocked: 0
-Done: 32
+Done: 33
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | P0 | 0 | 0 | 0 | 24 | 24 |
-| P1 | 25 | 0 | 0 | 8 | 33 |
+| P1 | 24 | 0 | 0 | 9 | 33 |
 | P2 | 1 | 0 | 0 | 0 | 1 |
-| Total | 26 | 0 | 0 | 32 | 58 |
+| Total | 25 | 0 | 0 | 33 | 58 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -64,7 +64,7 @@ Done: 32
 | PUB-01 | P0 | L | DONE | Deterministic release assembler |
 | PUB-02 | P0 | L | DONE | Protected append-only data branch publisher |
 | PUB-03 | P1 | L | DONE | Multi-format GitHub release publisher |
-| PUB-04 | P1 | M | OPEN | Stable raw and index access paths |
+| PUB-04 | P1 | M | DONE | Stable raw and index access paths |
 | PUB-05 | P1 | M | OPEN | SQLite rendering of the published records |
 | CI-01 | P0 | L | DONE | Complete cross-platform quality gate |
 | CI-02 | P1 | L | DONE | Stable-release staleness monitor |

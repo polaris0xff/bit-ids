@@ -969,11 +969,15 @@ mod tests {
     fn a_derived_file_may_change_and_a_record_may_not() {
         let record = path("profiles/v1/a/1.0/linux/x86-64/deb/c1.json");
         let evidence = path("raw/v1/a/1.0/linux/x86-64/deb/c1/observer/events.jsonl");
+        // ⚠ Every one of these is a path a publication really carries. This list
+        // named `routes/v1/a/latest/linux/x86-64.json` until `PUB-04` removed
+        // that from the layout as unwritable, and a case citing a path the
+        // project has said cannot exist still passes while illustrating nothing.
         let derived = [
             path("MANIFEST.json"),
             path("SHA256SUMS"),
+            path("LICENSE"),
             path("indexes/v1/profiles.json"),
-            path("routes/v1/a/latest/linux/x86-64.json"),
             path("formats/bit-ids-v1.csv"),
         ];
 

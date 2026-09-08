@@ -1005,6 +1005,34 @@ the store. `store::CANONICAL_ROOTS` is the list.
 was there, and every digest in its own `SHA256SUMS` verified, before the run
 reports that it happened.
 
+### What a consumer is promised about a published path
+
+[`../crates/bit-ids/src/access.rs`](../crates/bit-ids/src/access.rs) derives the
+contract and `PUB-04` owns it. Two facts per path, both derived rather than
+declared: how long the bytes are good for, and which published document proves
+them.
+
+⛔ **Stability is read from `store::CANONICAL_ROOTS` and never from a second
+list.**
+A path is immutable exactly when the append-only rule refuses to rewrite it, so
+the promise a consumer caches on and the rule the publisher enforces are one
+value. A second enumeration would drift in the direction that tells a consumer to
+cache a file that moves.
+
+⛔ **Exactly one published file is covered by neither document.** The manifest
+describes everything but itself and the checksum file, and the checksum file
+covers everything but itself, so `SHA256SUMS` is the one a consumer verifies out
+of band. That is a gap a reader finds precisely where the other document is, so
+it is on the record per path.
+
+⚠ **A path this build cannot classify blocks the contract** rather than being
+published with a guessed stability, which is the media-type rule above applied to
+caching. ⛔ **It refused a real documented path on its first run:**
+`routes/v1/<target>/<version>/<platform>/<arch>.json` was in
+[`publishing.md`](publishing.md)'s layout, nothing had ever written it, and it
+omits `<package>` while the acquisition routes differ per package. That is the
+non-injective layout section 4 describes, in a second place.
+
 ## 10. Limits
 
 - There are no measured profiles yet. The observer layer is complete: all four
@@ -1045,6 +1073,11 @@ reports that it happened.
   each identity, and a struct of named fields could not write any of them back.
   ⛔ **The `v` string is kept as bytes and never resolved to a client name**, for
   the reason section 5 gives about peer-ID prefixes.
+- ⛔ No published URL has ever been fetched, because nothing has ever been
+  published. `PUB-04` proves the path set, both stability classes and every
+  digest against a publication pushed to a bare repository and fetched back over
+  git; [`publishing.md`](publishing.md) carries the URL forms and they are
+  unexercised.
 - ⚠ Nothing schedules the staleness monitor. `CI-02` built the comparison and
   its driving surface; the trigger that would run the resolvers and write a
   tracked capture request is a named residual in that entry, and no request has
