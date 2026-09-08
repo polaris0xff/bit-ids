@@ -3,10 +3,10 @@
 State instant: 2026-09-06
 Baseline commit: `a6c9336` on `main`
 Total: 58
-Open: 25
+Open: 24
 In progress: 0
 Blocked: 0
-Done: 33
+Done: 34
 
 ## Current state
 
@@ -482,6 +482,28 @@ green. They are reachable from a file, which is the door a consumer's copy comes
 through, so they have document-level cases now. ⚠ The same pass reported a false
 SURVIVED first, because its test selection excluded the integration target the
 new cases live in.
+
+⭐ **`LIB-01` is closed**, so a Rust tool reads a published catalogue without
+carrying its own copy of the schema, the digest checks, the index shape or the
+selection rule. ⛔ **Nothing in the crate can reach a network**, which is swept
+for rather than promised: a `Catalogue` is opened over bytes the caller holds,
+and retrieval is a trait the consumer implements while the verifying stays here.
+⚠ The sweep's needle list is checked against `bit-ids-lab`, because a sweep whose
+needles have stopped matching reports the same clean answer over a crate full of
+sockets.
+
+⛔ **Building a consumer found two published documents with no reader, and one of
+the two was a live defect.** Without a reader for `MANIFEST.json`, a consumer
+compares a bundle against a manifest re-derived from that bundle, which agrees
+with itself: a described file that is missing is not described either. Two
+refusals existed and neither could fire. Both documents round-trip now.
+
+⛔ **Two guards reporting one code masked each other.** The per-file digest
+comparison and the manifest-against-the-bytes comparison both answer `E-LIB-02`,
+so deleting either left every case green. They are separated by the path a
+refusal names, with a case per shape. ⭐ One survivor of that pass was the design
+working rather than a gap: `Profile`'s hand-written `Deserialize` means the
+generic serde route validates too.
 
 ## Work order
 

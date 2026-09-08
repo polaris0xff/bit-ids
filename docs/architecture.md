@@ -49,7 +49,7 @@ No arrow reads identity values from client source code.
 
 | component | owns | does not own |
 | --- | --- | --- |
-| `bit-ids` crate | public types, schema identity, validation, stable-version resolution, what capture work a new release creates, where a record is filed and what a successor tree may do to it, and eventually embedded/pinned catalogue access | capture, installation, network mutation, and the filesystem: the store rules are pure over a tree a caller has already read |
+| `bit-ids` crate | public types, schema identity, validation, stable-version resolution, what capture work a new release creates, where a record is filed and what a successor tree may do to it, and reading a published catalogue back | capture, installation, the network in any form, and the filesystem: its rules are pure over bytes a caller has already read |
 | `bit-ids-wire` crate | byte-exact codecs for the observed surfaces, and the fixture corpus every observer parses against | sockets, timing, and any mapping from a peer-ID prefix to a client name |
 | `bit-ids-lab` crate | the sockets: binding them on loopback and nowhere else, the run deadline, the ordered byte record, endpoint shutdown, the synthetic torrent a capture hands a client, and writing a run out as content-addressed evidence | every protocol, and assembling or publishing a store |
 | `bit-ids-probe` | what each surface answers with, and what an exchange was observed to carry, one module per surface | sockets, the run clock, and client launch or package installation |
@@ -1004,6 +1004,29 @@ the store. `store::CANONICAL_ROOTS` is the list.
 ⚠ A push is not completion. The branch is fetched again, compared against what
 was there, and every digest in its own `SHA256SUMS` verified, before the run
 reports that it happened.
+
+### Reading a publication back
+
+[`../crates/bit-ids/src/catalogue.rs`](../crates/bit-ids/src/catalogue.rs) is the
+consumer's side and `LIB-01` owns it. A tool that wants a measured identity
+should not carry its own schema, digest checks, index shape or selection rule.
+
+⛔ **Nothing in the crate can reach a network.** A catalogue is opened over bytes
+a caller already holds, and opt-in retrieval is a trait the caller implements:
+the consumer fetches and the library decides whether what came back is the
+publication's. That is structural rather than a default, and it is swept for
+rather than promised.
+
+⛔ **Every byte is verified before any question is answered**, against the
+**published** manifest and not against one re-derived from the bundle. A
+consumer comparing a bundle with a manifest built from that bundle agrees with
+itself: a described file that is missing is not described either. Both documents
+are re-derived as well and compared against the published bytes, because that is
+what catches a manifest describing a different publication.
+
+⚠ **Which records are published is the index document's answer**, read back
+rather than re-derived, because the ordering a latest row rests on is section 7's
+version scheme and a publication does not carry one.
 
 ### What a consumer is promised about a published path
 

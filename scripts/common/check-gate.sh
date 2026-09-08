@@ -192,17 +192,18 @@ else
   SKIP=$((SKIP + 1))
 fi
 
-# ⛔ NOT IN common/ EITHER, AND IN THE GATE FOR THE SAME REASON. These nine
+# ⛔ NOT IN common/ EITHER, AND IN THE GATE FOR THE SAME REASON. These ten
 # mutation-prove the guards standing between this project and silently deleting
 # or rewriting published evidence, publishing a record whose evidence nothing
 # can resolve, pointing a consumer at a superseded build, publishing a retracted
 # measurement in a rendering the lookups had stopped naming, shipping two
 # different byte sets under one release label, force-pushing over the data
 # branch, opening a capture request twice for one release, telling a consumer it
-# may cache a path that moves, and keeping somebody
+# may cache a path that moves, handing a consumer a record no manifest describes,
+# and keeping somebody
 # else's installer in this repository. The first is
 # unrecoverable afterwards and the rest are worse than errors, because each
-# answers confidently. ⭐ All nine are hermetic:
+# answers confidently. ⭐ All ten are hermetic:
 # check-publish and check-access each create their own bare repository in a
 # scratch directory and touch no real remote. ⚠ They need cargo, so they exit 2 on a host without
 # one, which is a skip and not a pass. ⚠ check-staleness needs python3 as well,
@@ -215,7 +216,8 @@ fi
 # runs no gate.
 for spec in acquisition/check-cache corpus/check-store corpus/check-corpus \
   corpus/check-indexes publishing/check-release publishing/check-formats \
-  publishing/check-publish publishing/check-access ci/check-staleness; do
+  publishing/check-publish publishing/check-access publishing/check-catalogue \
+  ci/check-staleness; do
   PROVER="$HERE/../$spec.sh"
   NAME=${spec#*/}
   if [ -f "$PROVER" ]; then

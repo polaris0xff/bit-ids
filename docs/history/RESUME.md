@@ -3,16 +3,18 @@
 **Task:** Take the work order in `TODO/PROGRESS.md` in dependency order,
 committing and pushing each green unit to `main`.
 
-**Resume point:** ⭐ **`CI-02` and `PUB-04` are both closed**, which were the two
-items the work order's ordering made look more blocked than they were.
-`TODO/ci.md` and `TODO/publishing.md` carry them.
+**Resume point:** ⭐ **`CI-02`, `PUB-04` and `LIB-01` are closed.** The first two
+were the items the work order's ordering made look more blocked than they were;
+the third was reachable all along and nothing had noticed. `TODO/ci.md`,
+`TODO/publishing.md` and `TODO/library.md` carry them.
 
-⛔ **Everything left in the work order is now behind a capture host or the
-operator decision below.** `CLIENT-01`, `CLIENT-06`, `CLIENT-05`, `OBS-07` and
-`OBS-10` need a host `assert-disposable.sh --egress` does not refuse; `CI-03` is
-what would supply one and is the next item; `CI-04` follows it; `PUB-05` is
-blocked on the dependency decision. Read `TODO/PROGRESS.md`'s work order rather
-than assuming this list.
+⛔ **Everything left in the work order is behind a capture host or the operator
+decision below.** `CLIENT-01`, `CLIENT-06`, `CLIENT-05`, `OBS-07` and `OBS-10`
+need a host `assert-disposable.sh --egress` does not refuse; `CI-03` is what
+would supply one and is the next item; `CI-04` follows it; `PUB-05` is blocked on
+the dependency decision. ⚠ `LIB-02`, `DOC-01` and `DOC-02` are the three that may
+also be reachable without a host, and none was examined this session: read their
+entries rather than assuming either way.
 
 **In flight:** Nothing.
 
@@ -40,6 +42,23 @@ entirely, and replacing every length prefix with a separator byte, both left the
 whole Rust suite green; only the harness's independent `python3` derivation
 caught them. ⭐ The fix is general: pin the encoding against its own restated
 specification, byte for byte, and vary each component of the key in turn.
+
+⛔ **Two guards answering one code mask each other.** `LIB-01`'s per-file digest
+comparison and its manifest-against-the-bytes comparison both report `E-LIB-02`,
+so deleting either left every case green: the surviving one still produced the
+code the cases asserted. Separate them by the path a refusal names, and give
+each shape a case of its own.
+
+⛔ **A published document with a writer and no reader hides a live defect.**
+`Release::manifest_json` had none, so a consumer compared a bundle against a
+manifest re-derived from that bundle and agreed with itself: a described file
+that is missing is not described either. Two refusals existed and neither could
+fire. `Indexes::to_json` had the same gap with milder consequences.
+
+⭐ **A surviving plant is sometimes the design working.** Reading a record with
+`serde_json::from_str` rather than `Profile::from_json` changed nothing, because
+`Profile`'s hand-written `Deserialize` validates too. Read what a plant changed
+before calling it a gap.
 
 ⛔ **A refusal the deriver cannot reach is a refusal nothing tests.** `PUB-04`'s
 `contract` derives a path's stability, its integrity and its order, so three of
@@ -107,8 +126,11 @@ like the end of the work. ⚠ **The gate is not the whole of part (a)**: `cargo
 clippy`, `cargo fmt --check` and the test suite are separate rows, and a clippy
 failure passed the gate twice in an earlier session before being caught.
 ⚠ `check-workflow.sh` is not in the gate and is run separately, because two of
-its cases run the gate. `check-staleness.sh` **is** in the gate, because it runs
-no gate.
+its cases run the gate. `check-staleness.sh`, `check-access.sh` and
+`check-catalogue.sh` **are** in the gate, because none of them runs one.
+⛔ **It happened again this session**: the gate was green at 23 checks while
+`cargo clippy` was red over a `len() > 0` in a test. The gate is not the whole of
+part (a).
 
 ⛔ `check-remote-items` cannot be made to run here and installing `gh` does not
 fix it. It is the one observed skip, and it is why the gate exits 1 under
@@ -125,6 +147,12 @@ surviving plant is a question, not a verdict.
 
 ⚠ **Two twins agreeing is not two twins being right.** Compare them per planted
 input, and give every planted input a declared expected outcome.
+
+⛔ **A sweep proves a negative and its needle list is what rots.** `LIB-01`'s
+"no network access" is established by the crate having no way to reach one, and
+`check-catalogue.sh` checks its own needles against `bit-ids-lab`, which really
+does carry sockets. A needle list that has stopped matching reports the same
+clean answer over a crate full of them.
 
 ⭐ **The strongest control available here is a reader this project did not
 write.** `sha256sum -c` verifies a release, `cbor2` reads a canonical encoding,

@@ -620,6 +620,108 @@ impl Indexes {
         Sha256Digest::of(self.to_json().as_bytes())
     }
 
+    /// Reads a published index document back.
+    ///
+    /// ⛔ **`to_json` had no reader at all until `LIB-01` needed one**, and a
+    /// published document with a writer and nothing that parses it is a format
+    /// nobody has round-tripped. A consumer reads this file *instead of* the
+    /// records, so the shape it is written in has to be one this project can
+    /// also read; otherwise the only proof it is well formed is that the writer
+    /// produced it.
+    ///
+    /// ⚠ **It parses the document rather than the writer's spacing.** The bytes
+    /// are hand-written and their exact form is what a digest names, so a reader
+    /// that depended on the layout would refuse a document a later writer
+    /// reformatted while leaving the meaning alone.
+    /// `an_index_document_round_trips_through_its_own_reader` is what holds the
+    /// two together, in the direction that matters: bytes in, bytes out.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`crate::DocumentError::UnsupportedSchema`] for another
+    /// generation and [`crate::DocumentError::Malformed`] when the document is
+    /// not this shape.
+    pub fn from_json(document: &str) -> Result<Self, crate::DocumentError> {
+        use crate::DocumentError;
+        use serde_json::Value;
+
+        let root: Value = serde_json::from_str(document).map_err(DocumentError::Malformed)?;
+        let schema = reading::text(&root, "schema")?;
+        if schema != INDEX_SCHEMA {
+            return Err(DocumentError::UnsupportedSchema {
+                found: schema.to_owned(),
+                expected: INDEX_SCHEMA,
+            });
+        }
+
+        // ⛔ The kinds are read positionally against `IndexKind::ALL` and the
+        // spelling is checked, so a document listing them in another order, or
+        // carrying one this build does not know, is refused rather than silently
+        // mapped onto the wrong lookup.
+        let listed = reading::rows(&root, "indexes")?;
+        if listed.len() != IndexKind::ALL.len() {
+            return Err(reading::malformed(format!(
+                "expected {} indexes, found {}",
+                IndexKind::ALL.len(),
+                listed.len()
+            )));
+        }
+        let mut indexes = Vec::with_capacity(listed.len());
+        for (entry, kind) in listed.iter().zip(IndexKind::ALL) {
+            let declared = reading::text(entry, "kind")?;
+            if declared != kind.as_str() {
+                return Err(reading::malformed(format!(
+                    "index {} declares kind {declared:?}",
+                    kind.as_str()
+                )));
+            }
+            let mut parsed = Vec::new();
+            for row in reading::rows(entry, "rows")? {
+                parsed.push(IndexRow {
+                    key: reading::text(row, "key")?.to_owned(),
+                    record: reading::named(row, "record")?,
+                    path: reading::at(row)?,
+                });
+            }
+            indexes.push(Index {
+                kind: *kind,
+                rows: parsed,
+            });
+        }
+
+        let mut latest = Vec::new();
+        for row in reading::rows(&root, "latest")? {
+            latest.push(LatestRow {
+                target: reading::slug(row, "target")?,
+                platform: reading::slug(row, "platform")?,
+                arch: reading::slug(row, "arch")?,
+                package: reading::slug(row, "package")?,
+                version: Version::parse(reading::text(row, "version")?)
+                    .map_err(reading::malformed)?,
+                record: reading::named(row, "record")?,
+                path: reading::at(row)?,
+            });
+        }
+
+        let mut corrections = Vec::new();
+        for row in reading::rows(&root, "corrections")? {
+            corrections.push(CorrectionRow {
+                superseded: reading::named(row, "superseded")?,
+                by: reading::named(row, "by")?,
+                current: reading::named(row, "current")?,
+                path: reading::at(row)?,
+            });
+        }
+
+        Ok(Self {
+            indexes,
+            latest,
+            corrections,
+            excluded: reading::count(&root, "excluded")?,
+            superseded: reading::count(&root, "superseded")?,
+        })
+    }
+
     /// Every record these views are over, ascending.
     ///
     /// ⛔ **THE ONE ANSWER TO "WHICH RECORDS ARE PUBLISHED".** Only publishable
@@ -650,6 +752,59 @@ impl Indexes {
             .sum::<usize>()
             + self.latest.len()
             + self.corrections.len()
+    }
+}
+
+/// The reading helpers [`Indexes::from_json`] is built from.
+///
+/// ⚠ At module scope rather than nested inside it, because nine small readers
+/// inside one function is a function no reader can hold, and clippy's line
+/// ceiling is the check that said so.
+mod reading {
+    use serde_json::Value;
+
+    use crate::DocumentError;
+    use crate::canonical::{RelPath, Slug};
+    use crate::identity::RecordId;
+
+    pub(super) fn malformed(message: impl core::fmt::Display) -> DocumentError {
+        DocumentError::Malformed(serde_json::Error::io(std::io::Error::other(
+            message.to_string(),
+        )))
+    }
+
+    pub(super) fn text<'a>(value: &'a Value, key: &str) -> Result<&'a str, DocumentError> {
+        value
+            .get(key)
+            .and_then(Value::as_str)
+            .ok_or_else(|| malformed(format!("{key} is missing or not a string")))
+    }
+
+    pub(super) fn count(value: &Value, key: &str) -> Result<usize, DocumentError> {
+        value
+            .get(key)
+            .and_then(Value::as_u64)
+            .and_then(|n| usize::try_from(n).ok())
+            .ok_or_else(|| malformed(format!("{key} is missing or not a count")))
+    }
+
+    pub(super) fn rows<'a>(value: &'a Value, key: &str) -> Result<&'a Vec<Value>, DocumentError> {
+        value
+            .get(key)
+            .and_then(Value::as_array)
+            .ok_or_else(|| malformed(format!("{key} is missing or not a list")))
+    }
+
+    pub(super) fn named(value: &Value, key: &str) -> Result<RecordId, DocumentError> {
+        RecordId::parse(text(value, key)?).map_err(malformed)
+    }
+
+    pub(super) fn at(value: &Value) -> Result<RelPath, DocumentError> {
+        RelPath::parse(text(value, "path")?).map_err(malformed)
+    }
+
+    pub(super) fn slug(value: &Value, key: &str) -> Result<Slug, DocumentError> {
+        Slug::parse(text(value, key)?).map_err(malformed)
     }
 }
 

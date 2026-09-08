@@ -192,6 +192,106 @@ impl Release {
         out
     }
 
+    /// Reads a published `MANIFEST.json` back.
+    ///
+    /// ⛔ **`manifest_json` had no reader until `LIB-01` needed one**, and the
+    /// gap was not cosmetic: a consumer comparing a bundle against a manifest it
+    /// re-derived *from that bundle* agrees with itself, so a described file
+    /// that is missing and a carried file nobody described are both invisible.
+    /// Both refusals existed and neither could fire. Reading the published
+    /// document is what makes them reachable.
+    ///
+    /// ⚠ **A media type is checked against this build's table rather than
+    /// taken.** A manifest declaring a type this build does not know is a
+    /// document from a later generation wearing this schema, and accepting it
+    /// would hand a consumer bytes it cannot parse with a type it cannot check.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`crate::DocumentError::UnsupportedSchema`] for another
+    /// generation and [`crate::DocumentError::Malformed`] when the document is
+    /// not this shape.
+    pub fn from_json(document: &str) -> Result<Self, crate::DocumentError> {
+        use crate::DocumentError;
+        use serde_json::Value;
+
+        fn malformed(message: impl core::fmt::Display) -> DocumentError {
+            DocumentError::Malformed(serde_json::Error::io(std::io::Error::other(
+                message.to_string(),
+            )))
+        }
+
+        let root: Value = serde_json::from_str(document).map_err(DocumentError::Malformed)?;
+        let schema = root
+            .get("schema")
+            .and_then(Value::as_str)
+            .ok_or_else(|| malformed("schema is missing or not a string"))?;
+        if schema != RELEASE_SCHEMA {
+            return Err(DocumentError::UnsupportedSchema {
+                found: schema.to_owned(),
+                expected: RELEASE_SCHEMA,
+            });
+        }
+        let files = root
+            .get("files")
+            .and_then(Value::as_array)
+            .ok_or_else(|| malformed("files is missing or not a list"))?;
+
+        let mut entries = Vec::with_capacity(files.len());
+        for file in files {
+            let at = file
+                .get("path")
+                .and_then(Value::as_str)
+                .ok_or_else(|| malformed("a file has no path"))?;
+            let path = RelPath::parse(at).map_err(malformed)?;
+            let declared = file
+                .get("media_type")
+                .and_then(Value::as_str)
+                .ok_or_else(|| malformed(format!("{at} has no media type")))?;
+            let media_type = media_type(&path)
+                .filter(|known| *known == declared)
+                .ok_or_else(|| malformed(format!("{at} declares media type {declared:?}")))?;
+            // ⚠ The schema is derived from the path the same way it is written,
+            // and the declaration is compared against it. A document naming a
+            // schema for a path this build files differently is refused rather
+            // than believed.
+            let schema = schema_of(&path);
+            let stated = file
+                .get("schema")
+                .ok_or_else(|| malformed(format!("{at} has no schema field")))?;
+            let stated = if stated.is_null() {
+                None
+            } else {
+                Some(
+                    stated
+                        .as_str()
+                        .ok_or_else(|| malformed(format!("{at} has a non-string schema")))?,
+                )
+            };
+            if stated != schema {
+                return Err(malformed(format!("{at} declares schema {stated:?}")));
+            }
+            let bytes = file
+                .get("bytes")
+                .and_then(Value::as_u64)
+                .ok_or_else(|| malformed(format!("{at} has no size")))?;
+            let sha256 = Sha256Digest::parse(
+                file.get("sha256")
+                    .and_then(Value::as_str)
+                    .ok_or_else(|| malformed(format!("{at} has no digest")))?,
+            )
+            .map_err(malformed)?;
+            entries.push(ReleaseEntry {
+                path,
+                media_type,
+                schema,
+                bytes,
+                sha256,
+            });
+        }
+        Ok(Self { entries })
+    }
+
     /// The `SHA256SUMS` bytes, in the shape `sha256sum -c` reads.
     ///
     /// ⚠ It covers `MANIFEST.json` and the manifest does not cover it. The two

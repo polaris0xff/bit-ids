@@ -5,6 +5,30 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T03:18:05Z
+
+- `LIB-01`, the Rust consumer library. Record:
+  [`TODO/library.md`](TODO/library.md).
+- ⛔ Nothing in the crate can reach a network, and that is swept for rather than
+  promised. A catalogue is opened over bytes the caller holds; retrieval is a
+  trait the consumer implements while the verifying stays in the library.
+- ⚠ The sweep's needle list is checked against `bit-ids-lab`, which really does
+  carry sockets, because needles that have stopped matching report the same
+  clean answer over a crate full of them.
+- ⛔ `Indexes::to_json` and `Release::manifest_json` both wrote a document
+  nothing could read back. The manifest gap was a live defect: without a reader,
+  a consumer compares a bundle against a manifest re-derived from that bundle
+  and agrees with itself, so two refusals could never fire.
+- ⛔ Two guards answering one code masked each other, and a mutation pass is what
+  showed it. They are separated by the path a refusal names now.
+- ⭐ One plant that survived was the design working: `Profile`'s hand-written
+  `Deserialize` means the generic serde route validates as well.
+- ⚠ A 64-digit hex literal in a test was refused by `check-no-secrets --public`,
+  correctly. The absent identifier is derived rather than typed.
+- Deployment: nothing deployed. No network was reached, nothing was published,
+  and the "embedded minimal indexes" half of the Approach waits on there being a
+  published catalogue to embed.
+
 ### 2026-09-08T02:28:10Z
 
 - `PUB-04`, the documented access paths and their stability rules. Record:
