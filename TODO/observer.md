@@ -420,14 +420,17 @@ Priority: P1 | Effort: M | Status: OPEN
 
 Problem: The original `OBS-01` Prove asked that a known client fixture produce
 identical normalized events on Linux and Windows. That is the half of it that
-catches a platform difference in the observer, and it is blocked on two things
-this repository does not have: any client adapter, and a permitted Windows
-capture host.
+catches a platform difference in the observer, and what it needs is a client
+adapter.
 
-Premise: The blocker is named rather than assumed. `TODO/INDEX.md` carries
-`CLIENT-01` through `CLIENT-13` all open, so no adapter can be driven. ⚠ The
-second blocker this entry used to name is gone: the disposable-host guard pair
-covers both platforms now, and what remains is `CI-03`'s workflow.
+Premise: The blocker is named rather than assumed, and it is now **one** thing
+rather than two. `TODO/INDEX.md` carries `CLIENT-01` through `CLIENT-13` all
+open, so no adapter can be driven. ⭐ **The Windows half is no longer missing:**
+`CI-06` dispatched the capture workflow and its Windows job ran green end to
+end - the guard read the real `Get-NetRoute`, the route came off the host and
+went back, and the evidence bundle verified under `Get-FileHash` and then under
+`sha256sum -c` here. What that job captured is a fixture, which is exactly what
+this entry needs replaced by a client.
 
 Approach: Once `OBS-02` through `OBS-05` and one client adapter exist, run the
 same lab and the same client build on both platforms, normalize the event

@@ -256,6 +256,11 @@ one.
 fix it. It is the one observed skip, and it is why the gate exits 1 under
 `--strict` here and 0 on the Linux lane.
 
+⭐ This session's record is
+[`SESSION-2026-09-08-DISPATCH.md`](SESSION-2026-09-08-DISPATCH.md): the first
+dispatch and the exit code it left behind, the fingerprint that answers nothing,
+the queryable rendering, and the adapter that fails closed.
+
 ⭐ The earlier session record is
 [`SESSION-2026-09-06-ADJACENT.md`](SESSION-2026-09-06-ADJACENT.md). ⚠ It is linked
 from here and nowhere else, so a rewrite of this file that drops the link orphans
