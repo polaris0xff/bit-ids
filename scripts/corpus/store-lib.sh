@@ -217,6 +217,19 @@ store_report() { # schema noun json
   fi
 
   printf '\n%s\n' "$STORE_ROWS"
+
+  # ⛔ THE FAILING ROWS ARE REPRINTED AT THE END, AND THAT IS NOT DECORATION.
+  # check-gate.sh shows an excerpt of a failed check's log, and a harness like
+  # this prints dozens of passing rows before the one that failed. Measured on
+  # 2026-09-08: a red Linux lane reported `FAIL check-capture (exit 1)` followed
+  # by eleven PASSING rows, so the CI log did not contain the failure at all and
+  # the defect had to be reproduced locally to be seen. A report whose failure
+  # falls off the end of the excerpt does not say what went wrong.
+  if [ "$STORE_FAIL" -gt 0 ]; then
+    printf 'the case(s) that failed:\n'
+    printf '%s' "$STORE_ROWS" | grep -F -e '❌' || true
+  fi
+
   printf '%s %s: %s passed, %s failed\n' "$_total" "$2" "$STORE_PASS" "$STORE_FAIL"
   if [ "$STORE_PASS" -eq 0 ]; then
     printf -- '❌ NOTHING RAN. Zero cases passed, so this is red whatever else it says.\n'

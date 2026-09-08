@@ -35,13 +35,17 @@ The current state and work order live in
 7. Work on `main`, never a `claude/*` branch. If a clone is shallow, run
    `git fetch --unshallow`, then check `git rev-list --count HEAD..origin/main`
    before work. Reconcile a non-zero answer before editing.
-8. Prefer authenticated `gh` for GitHub reads. For a read-only GitHub REST
-   path not handled by `gh`, use
-   `https://api.gh.pkgforge.dev/<GH_API_PATH>`. GraphQL and authenticated-only
-   routes are the stated exceptions.
-9. Fetch an ordinary web source directly first. If it returns 401/403 or is
-   otherwise unreachable, use
-   `https://api.rv.pkgforge.dev/<ORIGINAL_URL>` and record which route answered.
+8. **Always** read GitHub through `https://api.gh.pkgforge.dev/<GH_API_PATH>`.
+   Every read-only REST path goes there, whether or not `gh` is present and
+   whether or not it is authenticated. GraphQL and routes that require
+   authentication are the only exceptions, and those stay with `gh`.
+   ⚠ Do not "try `api.github.com` first": an unauthenticated read of a private
+   or gated repository answers 403 or 404 rather than saying so, which reads as
+   a repository that does not exist.
+9. **Always** fetch an ordinary web source through
+   `https://api.rv.pkgforge.dev/<ORIGINAL_URL>`, except where the source
+   answers directly without a 401 or 403 - try direct once, and on any refusal
+   or route failure use the prefix. Record which route answered.
 10. This repository's own remote is the only remote that may be written. Every
     other repository is read-only. Never open an issue, pull request, comment,
     discussion, fork, review or star elsewhere.

@@ -78,6 +78,22 @@ run: mawk reads its INPUT in blocks, so there was no output to flush yet.
 `fflush` is about the wrong end of the pipe, and `cat` in the same position had
 three lines at the same instant. A `read` loop is what streams.
 
+⛔ **A green local gate does not mean a green lane, because a DEFAULT can
+change under you.** `$PSNativeCommandUseErrorActionPreference` is `$false` in
+pwsh 7.4 and `$true` from 7.5, where a native command's non-zero exit becomes a
+terminating error under `$ErrorActionPreference = 'Stop'` - so a guard that
+REFUSES stops being a code the caller can read. It turned the Linux lane red and
+left the Windows lane green, over a script neither lane had changed. ⭐ Every
+`.ps1` states the behaviour it needs now, and `check-project` refuses one that
+does not. ⚠ The general lesson is the shape: a comment saying "X is the default"
+is a fact about one version being relied on as a promise.
+
+⛔ **A red gate must say WHICH case failed.** The excerpt was the first twelve
+lines of a harness that prints its failures last, so a red CI log contained
+eleven passing rows and no failure at all. The excerpt is the tail now and
+`store_report` reprints the failing rows above its summary. ⚠ Until that was
+fixed, a CI failure could only be diagnosed by reproducing it locally.
+
 ⛔ **A PowerShell `param()` switch and a local of the same name are one
 variable.** Names are case-insensitive, so adding `[switch]$Marker` beside an
 existing `$marker` local made every invocation of that guard fail to bind. Found

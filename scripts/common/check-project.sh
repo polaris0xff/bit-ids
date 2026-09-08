@@ -434,6 +434,35 @@ done
 [ -z "$BOMLESS" ] ||
   say_fail "a .ps1 with non-ASCII and no UTF-8 BOM is mis-decoded by PowerShell 5.1:$BOMLESS"
 
+# ⛔ A .ps1 THAT STOPS ON ERRORS MUST ALSO SAY WHAT A NATIVE COMMAND'S EXIT CODE
+# MEANS. `$PSNativeCommandUseErrorActionPreference` is $false in PowerShell 7.4
+# and $true from 7.5, where a native command exiting non-zero becomes a
+# terminating error under `$ErrorActionPreference = 'Stop'`. ⚠ A guard that
+# REFUSES then stops being a code the caller can read and becomes an exception
+# nobody caught, which is this repository's oldest rule broken by an upgrade
+# rather than by an edit.
+#
+# ⛔ FOUND BY CI, NOT BY A READING. Sixteen files relied on the 7.4 default and
+# one of them carried a comment stating it as a guarantee. `capture-run.ps1` was
+# green on a 7.4 host and turned the ubuntu-24.04 lane red on exactly the two
+# cases that assert a refusal; the Windows lane, on an older pwsh, stayed green.
+# ⚠ Two lanes disagreeing about one script, for a reason neither printed.
+#
+# The rule takes no judgement: a file that sets the one preference sets the
+# other. A file that sets neither is not asked for either.
+NATIVE=""
+for _ps1 in $({
+  git ls-files '*.ps1'
+  git ls-files --others --exclude-standard '*.ps1'
+} | sort -u); do
+  [ -f "$_ps1" ] || continue
+  grep -q "ErrorActionPreference = 'Stop'" "$_ps1" || continue
+  grep -q 'PSNativeCommandUseErrorActionPreference' "$_ps1" ||
+    NATIVE="$NATIVE $_ps1"
+done
+[ -z "$NATIVE" ] ||
+  say_fail "a .ps1 stops on errors without saying what a native exit code means:$NATIVE"
+
 if [ "$JSON" = 1 ]; then
   printf '{"schema":"check-project/2","failures":%s,"todo_entries":%s,"open":%s,"in_progress":%s,"blocked":%s,"done":%s}\n' \
     "$FAIL" "$ROWS" "$OPEN_ROWS" "$IN_PROGRESS_ROWS" "$BLOCKED_ROWS" "$DONE_ROWS"

@@ -149,7 +149,13 @@ run() { # name  command...
     *)
       row "❌ FAIL  $_name  (exit $_rc)"
       FAIL=$((FAIL + 1))
-      [ "$JSON" = "1" ] || sed 's/^/          /' "$OUT/log" | head -12
+      # ⛔ THE TAIL, NOT THE HEAD. Every check here prints its verdict last, and
+      # the mutation harnesses print dozens of passing rows first. Measured on
+      # 2026-09-08: a red CI lane showed `FAIL check-capture` followed by eleven
+      # PASSING rows and nothing else, so the log did not contain the failure and
+      # it had to be reproduced locally to be found. store_report reprints the
+      # failing rows just above its summary so this excerpt lands on them.
+      [ "$JSON" = "1" ] || sed 's/^/          /' "$OUT/log" | tail -20
       ;;
   esac
 }

@@ -4,6 +4,12 @@ param([switch]$Json)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+# ⛔ A NATIVE COMMAND'S EXIT CODE IS THE VERDICT HERE, SO IT MUST NOT THROW.
+# This defaults to $true from PowerShell 7.5, which turns every non-zero exit
+# into a terminating error under $ErrorActionPreference = 'Stop': a guard that
+# REFUSES stops being a code a caller can read and becomes an exception nobody
+# caught. docs/conventions/shell.md section 8.
+$PSNativeCommandUseErrorActionPreference = $false
 $root = (& git -C (Split-Path -Parent $PSCommandPath) rev-parse --show-toplevel 2>$null)
 if ($LASTEXITCODE -ne 0 -or -not $root) {
     Write-Error 'check-project: not in a git repository'
@@ -466,6 +472,27 @@ try {
     if ($bomless.Count -gt 0) {
         $failures.Add('a .ps1 with non-ASCII and no UTF-8 BOM is mis-decoded by PowerShell 5.1: ' +
             ($bomless -join ' '))
+    }
+
+    # ⛔ A .ps1 THAT STOPS ON ERRORS MUST ALSO SAY WHAT A NATIVE COMMAND'S EXIT
+    # CODE MEANS. $PSNativeCommandUseErrorActionPreference is $false in 7.4 and
+    # $true from 7.5, where a non-zero exit becomes a terminating error under
+    # $ErrorActionPreference = 'Stop': a guard that REFUSES stops being a code the
+    # caller can read. ⛔ Found by CI, not by a reading - sixteen files relied on
+    # the 7.4 default. The rule takes no judgement: a file that sets the one
+    # preference sets the other.
+    $nativePref = [System.Collections.Generic.List[string]]::new()
+    foreach ($ps1 in $ps1Files) {
+        if (-not (Test-Path -LiteralPath $ps1 -PathType Leaf)) { continue }
+        $text = (Get-Content -LiteralPath $ps1 -Raw)
+        if ($null -eq $text) { continue }
+        if (-not $text.Contains("ErrorActionPreference = 'Stop'")) { continue }
+        if ($text.Contains('PSNativeCommandUseErrorActionPreference')) { continue }
+        $nativePref.Add($ps1)
+    }
+    if ($nativePref.Count -gt 0) {
+        $failures.Add('a .ps1 stops on errors without saying what a native exit code means: ' +
+            ($nativePref -join ' '))
     }
 
     if ($Json) {

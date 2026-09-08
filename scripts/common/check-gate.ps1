@@ -69,6 +69,12 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+# ⛔ A NATIVE COMMAND'S EXIT CODE IS THE VERDICT HERE, SO IT MUST NOT THROW.
+# This defaults to $true from PowerShell 7.5, which turns every non-zero exit
+# into a terminating error under $ErrorActionPreference = 'Stop': a guard that
+# REFUSES stops being a code a caller can read and becomes an exception nobody
+# caught. docs/conventions/shell.md section 8.
+$PSNativeCommandUseErrorActionPreference = $false
 
 # ⛔ RESOLVED FROM THIS SCRIPT'S OWN LOCATION, not from the working directory.
 # A runner found by a relative path runs a different set depending on who
@@ -121,8 +127,13 @@ function Invoke-Check([string]$Name, [string]$Script, [string[]]$ExtraArgs = @()
         default {
             Add-Row ("❌ FAIL  " + $Name + "  (exit " + $rc + ")")
             $script:fail++
+            # ⛔ THE TAIL, NOT THE HEAD. Every check prints its verdict last and
+            # the mutation harnesses print dozens of passing rows first, so a
+            # head excerpt of a red harness contains no failure at all. The sh
+            # half carries the measurement that found this.
             if (-not $Json -and (Test-Path -LiteralPath $logFile)) {
-                Get-Content -LiteralPath $logFile -TotalCount 12 -ErrorAction SilentlyContinue |
+                Get-Content -LiteralPath $logFile -ErrorAction SilentlyContinue |
+                    Select-Object -Last 20 |
                     ForEach-Object { Write-Output ('          ' + $_) }
             }
         }

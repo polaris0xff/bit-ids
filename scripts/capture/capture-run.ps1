@@ -53,6 +53,12 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+# ⛔ A NATIVE COMMAND'S EXIT CODE IS THE VERDICT HERE, SO IT MUST NOT THROW.
+# This defaults to $true from PowerShell 7.5, which turns every non-zero exit
+# into a terminating error under $ErrorActionPreference = 'Stop': a guard that
+# REFUSES stops being a code a caller can read and becomes an exception nobody
+# caught. docs/conventions/shell.md section 8.
+$PSNativeCommandUseErrorActionPreference = $false
 
 # ⛔ NO `break` INSIDE ForEach-Object; it unwinds the script and exits 0. That
 # defect shipped in assert-disposable.ps1 and made every misuse report success.

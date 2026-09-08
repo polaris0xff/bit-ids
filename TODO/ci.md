@@ -525,6 +525,47 @@ inside the harness written to stop exactly that. It is a second, mid-stream stub
 now, which substitutes as well as drops so that a missing `segments:` line and
 `segments: 0` are separate cases.
 
+### ⛔ What CI found that no local run could: a default that changed under us
+
+⛔ **Run 58's Linux lane went red on `check-capture` while the Windows lane went
+green, and the local gate had been green on both halves minutes earlier.** The
+cause is `$PSNativeCommandUseErrorActionPreference`, which is `$false` in
+PowerShell 7.4 and **`$true` from 7.5**. Under `$ErrorActionPreference = 'Stop'`
+it turns a native command's non-zero exit into a terminating error, so
+`capture-run.ps1` calling the guard and reading `$LASTEXITCODE` got an uncaught
+exception every time the guard **refused**. ⚠ The two cases that went red are
+exactly the two that assert a refusal.
+
+⚠ **It is this repository's oldest rule broken by an upgrade rather than by an
+edit.** Nothing in the tree changed; the runner image did. The Windows lane
+stayed green because its `pwsh` is older, so two lanes disagreed about one
+script for a reason neither of them printed.
+
+⭐ **Sixteen `.ps1` files relied on that default and one carried a comment
+stating it as a guarantee** - `check-control-bytes.ps1` said the preference "is
+false by default from pwsh 7.4", which is a fact about one version read as a
+promise. Every one of the sixteen sets it explicitly now, and `check-project`
+refuses a `.ps1` that sets `$ErrorActionPreference = 'Stop'` without it. The
+rule takes no judgement, so there is nothing to argue about per file.
+
+Four cases over the new rule, both halves run on each and their `--json`
+compared: the clean tree; the preference removed from one file, refused by both
+naming it; a `.ps1` that stops on nothing, accepted by both because it is not
+asked for a preference it has no use for; and the clean tree again. ⭐ And the
+end-to-end half, which is the one that matters: with the preference forced
+`$true`, `check-capture` reproduces run 58's two failures exactly; with it
+`$false`, the harness is green. The fix is what carries it, not the version.
+
+### ⛔ And a red gate that did not say what failed
+
+⚠ **Run 58's log reported `FAIL check-capture (exit 1)` and then eleven
+PASSING rows.** `check-gate` printed the first twelve lines of the failed
+check's log, and a mutation harness prints dozens of passing rows before the one
+that failed, so the CI log did not contain the failure at all and it had to be
+reproduced locally to be seen. The excerpt is the **tail** now, in both halves,
+and `store_report` reprints the failing rows immediately above its summary so
+the tail lands on them.
+
 ### Acceptance, all run on 2026-09-08
 
 - `sh scripts/capture/check-capture.sh`
@@ -550,6 +591,8 @@ now, which substitutes as well as drops so that a missing `segments:` line and
 | driven pass, sh | the guards refused in order on a real host: no claim, a claim naming another run, a table with a default route, an unbuilt observer, an output directory that already held a run. Then the capture ran: `curl` announced, the transcript carried its request including `User-Agent: curl/8.5.0`, `sha256sum -c` verified both artifacts, and the attestation was read back |
 | driven pass, PowerShell | the same set through `capture-run.ps1` under `pwsh` on Linux, against a `Get-NetRoute`-shaped fixture table. ⛔ It failed to bind on the first attempt and that is the `$Marker` collision above |
 | independent readers | `curl` 8.5.0 put the bytes on the wire, `sha256sum` verified the sh half's evidence and `Get-FileHash` the PowerShell half's. None of the three is this project's code |
+| CI run 58, first attempt | ⛔ **Linux lane RED**, Windows lane green, over the PowerShell 7.5 default described above. The local gate had been green on both halves minutes earlier, which is the whole point of recording it |
+| CI run 58, what it cost | one cycle, because the gate's failure excerpt was the first twelve lines of a harness that prints its failures last. Both are fixed |
 
 ### Guard mutation
 
@@ -598,6 +641,11 @@ stays attributable. The clean tree either side is the control.
   verdict, so an add is an attempt and the routing table is the fact. A guard
   that still passes there means the route never came back, which is a named
   failure rather than a network error naming nothing.
+- ⚠ **Nothing pins the runner's PowerShell version, and nothing should.** The
+  fix is that every `.ps1` states the behaviour it needs rather than inheriting
+  it, which is version-independent. ⚠ What remains unproved is the rest of the
+  7.5 surface: this found one default that changed by being bitten by it, and a
+  second would be found the same way.
 - ⚠ **The artifact pin is verified and the pairing is not.** The capture uploads
   with `actions/upload-artifact` v7.0.1 and the publisher downloads with
   `actions/download-artifact` v8.0.1. The pin was resolved and then re-read

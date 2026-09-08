@@ -23,6 +23,12 @@ param([switch]$Json, [switch]$Permitted)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+# ⛔ A NATIVE COMMAND'S EXIT CODE IS THE VERDICT HERE, SO IT MUST NOT THROW.
+# This defaults to $true from PowerShell 7.5, which turns every non-zero exit
+# into a terminating error under $ErrorActionPreference = 'Stop': a guard that
+# REFUSES stops being a code a caller can read and becomes an exception nobody
+# caught. docs/conventions/shell.md section 8.
+$PSNativeCommandUseErrorActionPreference = $false
 $root = (& git -C (Split-Path -Parent $PSCommandPath) rev-parse --show-toplevel 2>$null)
 if ($LASTEXITCODE -ne 0 -or -not $root) {
     Write-Error 'check-licences: not in a git repository'

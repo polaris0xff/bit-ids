@@ -45,6 +45,18 @@ Nothing is released yet. Entries accumulate here until the first
   have seen it: a `.ps1` keeps CRLF, the sh half read the carriage return as
   non-ASCII, and no `.ps1` in this tree is ASCII-only, so the branch that
   differed had nothing to exercise it.
+- ⛔ CI run 58 went red on the Linux lane and green on Windows, over a default
+  that changed: `$PSNativeCommandUseErrorActionPreference` is `$false` in
+  PowerShell 7.4 and `$true` from 7.5, where a native command's non-zero exit
+  becomes a terminating error under `$ErrorActionPreference = 'Stop'`. A guard
+  that REFUSES stopped being a code the caller could read. Sixteen `.ps1` files
+  relied on that default, one of them in a comment stating it as a guarantee;
+  all sixteen set it explicitly now and `check-project` refuses a `.ps1` that
+  does not.
+- ⛔ That run also showed a red gate that did not say what failed: the excerpt
+  was the first twelve lines of a harness that prints its failures last. The
+  excerpt is the tail now and `store_report` reprints the failing rows above its
+  summary.
 - ⚠ The capture workflow has never been dispatched, and what it would capture is
   a fixture: nothing installs a client, and the attestation says so in fields.
 - Deployment: nothing deployed. No capture was taken and nothing was published.

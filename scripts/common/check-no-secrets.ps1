@@ -40,6 +40,12 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+# ⛔ A NATIVE COMMAND'S EXIT CODE IS THE VERDICT HERE, SO IT MUST NOT THROW.
+# This defaults to $true from PowerShell 7.5, which turns every non-zero exit
+# into a terminating error under $ErrorActionPreference = 'Stop': a guard that
+# REFUSES stops being a code a caller can read and becomes an exception nobody
+# caught. docs/conventions/shell.md section 8.
+$PSNativeCommandUseErrorActionPreference = $false
 
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     [Console]::Error.WriteLine('check-no-secrets: git not found')

@@ -334,9 +334,24 @@ rather than warns, over every tracked text file.
 - ⛔ **`$args` inside a function is an automatic variable** and silently
   swallows a parameter of that name. Variable names are case-insensitive, so
   `$Args` collides too. Name locals so they cannot.
-- ⚠ **`$PSNativeCommandUseErrorActionPreference` defaults to false** from pwsh
-  7.4, so a native command writing to stderr does not terminate under
-  `$ErrorActionPreference = 'Stop'`.
+- ⛔ **`$PSNativeCommandUseErrorActionPreference` is set explicitly in every
+  `.ps1` here, and the reason is that its default CHANGED.** It is `$false` in
+  pwsh 7.4 and `$true` from 7.5, where a native command exiting non-zero becomes
+  a terminating error under `$ErrorActionPreference = 'Stop'`. ⚠ **A guard that
+  REFUSES then stops being a code the caller can read and becomes an exception
+  nobody caught**, which is this repository's oldest rule broken by an upgrade
+  rather than by an edit.
+
+  Measured on 2026-09-08: `capture-run.ps1` was green on a 7.4 host and turned
+  the `ubuntu-24.04` lane red, on the two cases that assert the guard's refusal.
+  The Windows lane, on an older pwsh, stayed green - so the two lanes disagreed
+  about the same script for a reason neither one printed. ⚠ This note used to
+  say only "defaults to false from pwsh 7.4", which is a fact about one version
+  being relied on as a guarantee; that sentence is what let the assumption
+  spread to sixteen files.
+
+  `check-project` refuses a `.ps1` that sets `$ErrorActionPreference = 'Stop'`
+  without also setting this one.
 - ⚠ **`Get-Command` finds cmdlets, functions and aliases too.** Filter to
   `Application` and `ExternalScript` when you mean an executable. A cmdlet
   looked for on PATH reports as missing on every machine that has it.

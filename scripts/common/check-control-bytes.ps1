@@ -44,15 +44,24 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+# ⛔ A NATIVE COMMAND'S EXIT CODE IS THE VERDICT HERE, SO IT MUST NOT THROW.
+# This defaults to $true from PowerShell 7.5, which turns every non-zero exit
+# into a terminating error under $ErrorActionPreference = 'Stop': a guard that
+# REFUSES stops being a code a caller can read and becomes an exception nobody
+# caught. docs/conventions/shell.md section 8.
+$PSNativeCommandUseErrorActionPreference = $false
 
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     [Console]::Error.WriteLine('check-control-bytes: git not found')
     exit 2
 }
 
-# ⚠ git writes progress to stderr on success and
-# $PSNativeCommandUseErrorActionPreference is false by default from pwsh 7.4,
-# so every git call here is judged on $LASTEXITCODE rather than on stderr.
+# ⚠ git writes progress to stderr on success, so every git call here is judged
+# on $LASTEXITCODE rather than on stderr. ⛔ THIS COMMENT USED TO SAY THE
+# PREFERENCE IS FALSE BY DEFAULT AND LEAVE IT AT THAT. It is false by default
+# in 7.4 and TRUE from 7.5, so the sentence was a fact about one version being
+# relied on as a guarantee. It is set explicitly at the top of this file now,
+# and in every other .ps1 here.
 $root = (& git rev-parse --show-toplevel 2>$null)
 if ($LASTEXITCODE -ne 0 -or -not $root) {
     [Console]::Error.WriteLine('check-control-bytes: not a git repository')
