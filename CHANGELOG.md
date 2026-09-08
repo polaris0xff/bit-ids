@@ -5,6 +5,23 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T16:52:00Z
+
+- `check-no-secrets --public` allows an info hash cited in this project's one
+  prose spelling, and refuses everything adjacent to it. Record:
+  [`TODO/clients.md`](TODO/clients.md).
+- ⛔ It turned CI run 67 red on both lanes, over a real measurement written into
+  a record the commit before: a torrent's identifier is forty hex digits and the
+  rule that hunts long hex could not tell it from a credential.
+- ⚠ The narrowing is the phrase and both backticks, not the shape. A bare
+  forty-digit run elsewhere in a sentence is still a finding, and a rule
+  allowing any backticked forty digits would have allowed a commit SHA.
+- ⭐ Proved by planting: a bare run, a backticked run under no phrase, a
+  forty-four digit run under the phrase and a token shape are each still
+  refused, and both twins agree on every one.
+- Deployment: nothing deployed. No record was published.
+
+
 ### 2026-09-08T16:21:40Z
 
 - `CLIENT-01` gains the observer half a stock build can actually be pointed at:

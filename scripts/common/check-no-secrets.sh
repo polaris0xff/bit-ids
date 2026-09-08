@@ -194,6 +194,16 @@ if [ "$PUBLIC" = "1" ]; then
   # docs/conventions/forbidden-patterns.md carries that row and names this as
   # the fix. Each expression below blanks one allowed item; whatever long hex
   # survives all of them is a finding.
+  #
+  # ⛔ The `info hash` expression is kept identical to the ps1 twin: a torrent's
+  # identifier is a measurement rather than a credential, and it is forty hex
+  # digits exactly. ⚠ The phrase and both backticks are required, so a bare
+  # forty-digit run elsewhere in a sentence is still a finding; a rule allowing
+  # any backticked forty digits would allow a commit SHA and everything shaped
+  # like one.
+  # shellcheck disable=SC2016  # the backticks in the `info hash` expression are
+  # markdown in the text being matched, not a substitution. Every expression
+  # here is a literal regex and none of them expands.
   _hex_out=$(list_files | tr '\n' '\0' |
     xargs -0 grep -nIE '\b[0-9a-f]{24,}\b' 2>/dev/null |
     sed -E \
@@ -205,7 +215,8 @@ if [ "$PUBLIC" = "1" ]; then
       -e 's#(peer_id|HexBytes::parse)\("[0-9a-f]+"#\1("ALLOWED"#g' \
       -e 's#(RFC[0-9]+_[A-Z0-9_]+: &str = )"[0-9a-f]{40}"#\1"ALLOWED"#g' \
       -e 's#(MSE_[A-Z0-9_]+: &str = )"[0-9a-f]{192}"#\1"ALLOWED"#g' \
-      -e 's#([Ii]nfohash: )[0-9a-f]{40}([^0-9a-f]|$)#\1ALLOWED\2#g' |
+      -e 's#([Ii]nfohash: )[0-9a-f]{40}([^0-9a-f]|$)#\1ALLOWED\2#g' \
+      -e 's#(info hash `)[0-9a-f]{40}`#\1ALLOWED`#g' |
     grep -E '\b[0-9a-f]{24,}\b' || true)
   [ -n "$_hex_out" ] && hit "a long hex identifier" "$_hex_out"
   # ⚠ Narrowed rather than switched off. `/home/linuxbrew/` and `/home/runner/`

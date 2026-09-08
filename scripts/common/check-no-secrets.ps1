@@ -209,6 +209,14 @@ if ($Public) {
             # longer run has its first forty blanked and the remainder falls
             # under the threshold.
             $line = $line -creplace '([Ii]nfohash: )[0-9a-f]{40}([^0-9a-f]|$)', '${1}ALLOWED${2}'
+            # ⛔ Keep identical to the sh twin: an info hash cited in prose, in
+            # this project's one spelling for it. A torrent's identifier is a
+            # measurement rather than a credential, and it is forty hex digits
+            # exactly. ⚠ The phrase and both backticks are required, so a bare
+            # forty-digit run somewhere else in a sentence is still a finding;
+            # a rule allowing any backticked forty digits would allow a commit
+            # SHA and anything shaped like one.
+            $line = $line -creplace '(info hash `)[0-9a-f]{40}`', '${1}ALLOWED`'
             $line
         } |
         Where-Object { $_ -cmatch '\b[0-9a-f]{24,}\b' })

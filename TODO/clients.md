@@ -117,6 +117,18 @@ answering.
 any host this project may capture on, so every run of it so far was driven by
 `curl`. The adapter is what changes that.
 
+### What the info hash cost, measured 2026-09-08
+
+⛔ **Writing that measurement into this record turned CI run 67 red on both
+lanes**, and the check was right to fire: an info hash is forty hex digits, and
+`check-no-secrets --public` hunts long hex because that is the shape of a
+credential. ⭐ The rule is narrowed rather than switched off, to the phrase and
+both backticks this project spells one with; a bare forty-digit run elsewhere in
+a sentence is still a finding. ⚠ A local gate had been green over this file
+minutes earlier, because the checks re-run after the edit were the ones the edit
+looked like it touched and `--public` is a second invocation of a check whose
+first invocation passes.
+
 ## CLIENT-02: qBittorrent Enhanced capture adapter
 
 Source: operator scope and upstream Enhanced Edition repository
