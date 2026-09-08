@@ -467,6 +467,28 @@ EOL_OUT=$(git ls-files --eol | awk '
 ')
 [ -z "$EOL_OUT" ] || say_fail "line endings disagree with .gitattributes: $EOL_OUT"
 
+# ⛔ THE SHFMT VERSION LIVES IN TWO RUNNING PLACES AND THEY AGREE. The Linux lane
+# installs it with `go install`, and `provision.sh` pins it for a session host;
+# neither can read the other, so the two are compared here rather than trusted to
+# stay level. ⚠ `FOUND-05` briefly made it five places - a script, a workflow and
+# three documents - and the two documents that only described it name it no more.
+#
+# ⛔ THE SCOPE IS WORKFLOWS AND SCRIPTS, NOT THE WHOLE TREE, and the exclusion is
+# a rule rather than convenience: `TODO/` closure evidence is a DATED measurement
+# that `RULES.md` forbids rewriting to match today, so a check that forced those
+# lines to track the current pin would demand exactly the falsification that rule
+# exists to prevent.
+SHFMT_PIN=$(awk -F= '$1 == "SHFMT_VERSION" { print $2; exit }' scripts/doctor/provision.sh 2>/dev/null)
+if [ -z "$SHFMT_PIN" ]; then
+  say_fail "scripts/doctor/provision.sh declares no SHFMT_VERSION to compare against"
+else
+  SHFMT_OUT=$(git ls-files '.github/workflows/*' '.github/actions/*' 'scripts/*' |
+    tr '\n' '\0' |
+    xargs -0 grep -nHoE 'mvdan\.cc/sh/v3/cmd/shfmt@v[0-9]+\.[0-9]+\.[0-9]+' 2>/dev/null |
+    awk -F'@v' -v want="$SHFMT_PIN" '$2 != want { printf "%s names v%s, not v%s; ", $1, $2, want }')
+  [ -z "$SHFMT_OUT" ] || say_fail "shfmt version disagrees with the pin: $SHFMT_OUT"
+fi
+
 # ⛔ A DEPENDENCY THIS PROJECT DID NOT REVIEW CANNOT REACH THE OBSERVER OR THE
 # PUBLISHER. Cargo.lock is the inventory: a package with no `source` is a
 # member of this workspace, and every other one must come from the crates.io

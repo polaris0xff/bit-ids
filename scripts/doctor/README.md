@@ -16,6 +16,24 @@ pwsh -NoProfile -File scripts/doctor/doctor.ps1
 On Windows prefer the PowerShell one. It needs no POSIX layer, so it answers
 on a machine with no Git Bash, no WSL and no msys.
 
+## The one file here that does change the host
+
+⛔ **`provision.sh` installs, and the doctor does not call it.** `FOUND-05` asked
+for "a provisioning script the doctor can call", and it is here beside the doctor
+because its subject is the same host - but the wiring was rejected. A read-only
+pass that installs software the moment somebody runs it is exactly the surprise
+this directory's first sentence exists to rule out, and a session that wants
+tools asks for them:
+
+```bash
+sh scripts/doctor/provision.sh
+```
+
+⭐ `--check` reports what the host has against what this project pins, installing
+nothing, which is the read-only half and is the part the doctor's answer already
+overlaps. Every download is verified against a pinned digest by `sha256sum -c`
+before anything is executed.
+
 ## Why it exists
 
 The defect it catches is an agent that assumes its environment. A session that

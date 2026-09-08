@@ -447,6 +447,40 @@ try {
         $failures.Add('line endings disagree with .gitattributes: ' + ($eolProblems -join '; '))
     }
 
+    # ⛔ THE SHFMT VERSION LIVES IN TWO RUNNING PLACES AND THEY AGREE. The Linux
+    # lane installs it with `go install`; provision.sh pins it for a session
+    # host. Neither can read the other, so they are compared rather than trusted.
+    # ⛔ THE SCOPE IS WORKFLOWS AND SCRIPTS, NOT THE WHOLE TREE: TODO/ closure
+    # evidence is a dated measurement RULES.md forbids rewriting to match today.
+    # ⛔ Keep this identical to the sh twin.
+    $shfmtPin = ''
+    if (Test-Path -LiteralPath 'scripts/doctor/provision.sh') {
+        $pinLine = Get-Content -LiteralPath 'scripts/doctor/provision.sh' |
+            Where-Object { $_ -cmatch '^SHFMT_VERSION=' } | Select-Object -First 1
+        if ($pinLine) { $shfmtPin = ($pinLine -replace '^SHFMT_VERSION=', '').Trim() }
+    }
+    if (-not $shfmtPin) {
+        $failures.Add('scripts/doctor/provision.sh declares no SHFMT_VERSION to compare against')
+    } else {
+        $shfmtProblems = [System.Collections.Generic.List[string]]::new()
+        $scanned = @(& git ls-files '.github/workflows/*' '.github/actions/*' 'scripts/*')
+        foreach ($file in $scanned) {
+            if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { continue }
+            $lineNo = 0
+            foreach ($line in (Get-Content -LiteralPath $file)) {
+                $lineNo++
+                foreach ($m in [regex]::Matches($line, 'mvdan\.cc/sh/v3/cmd/shfmt@v(?<ver>[0-9]+\.[0-9]+\.[0-9]+)')) {
+                    if ($m.Groups['ver'].Value -cne $shfmtPin) {
+                        $shfmtProblems.Add("${file}:${lineNo} names v$($m.Groups['ver'].Value), not v$shfmtPin")
+                    }
+                }
+            }
+        }
+        if ($shfmtProblems.Count -gt 0) {
+            $failures.Add('shfmt version disagrees with the pin: ' + ($shfmtProblems -join '; '))
+        }
+    }
+
     # ⛔ A DEPENDENCY THIS PROJECT DID NOT REVIEW CANNOT REACH THE OBSERVER OR
     # THE PUBLISHER. Cargo.lock is the inventory: a package with no `source` is
     # a member of this workspace, and every other one must come from the

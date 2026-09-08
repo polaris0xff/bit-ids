@@ -324,7 +324,7 @@ one.
 ## FOUND-05: The session host, provisioned by something rather than by memory
 
 Source: three tools installed by hand at the start of every session
-Priority: P1 | Effort: L | Status: OPEN
+Priority: P1 | Effort: L | Status: DONE
 
 Problem: `pwsh`, `shellcheck` and `shfmt` are absent on a fresh container, and
 without them this host runs a smaller gate than CI: every paired check loses its
@@ -359,3 +359,72 @@ own rows, so it corroborated nothing: it agreed with whichever half it was
 computed from. `check-project` compares priority and effort between the two
 places now, in both halves, and an effort-only plant fires it alone - which is
 what shows it is not the priority table's check wearing a second name.
+
+Closure evidence: run on 2026-09-08, on this session host, by taking all three
+tools away and putting them back.
+
+⭐ **One command, four seconds, from a host with none of them.**
+`sh scripts/doctor/provision.sh` reported `installed pwsh 7.4.6`,
+`installed shellcheck 0.10.0`, `installed shfmt 3.14.0`, exit 0, and a fresh
+shell then got those three versions out of the executables themselves.
+
+⭐ **The gate difference is exactly two rows, and one of them is a FAILURE
+rather than a skip.** With the three taken away, `check-gate.sh --strict`
+answered `24 passed, 1 failed, 2 skipped`: `FAIL check-capture (exit 1)` and
+`SKIP check-twins (no pwsh or powershell on PATH)`. With them back it answered
+`26 passed, 0 failed, 1 skipped`, the one skip being `check-remote-items`, which
+is the documented gap no session host can close. ⚠ A host without `pwsh` does not
+merely run a smaller gate; it runs a RED one, and a session could read that
+`check-capture` failure as a defect in the tree.
+
+⭐ **A wrong digest refuses and installs nothing.** With
+`SHELLCHECK_PINNED_SHA256` planted to sixty-four zeroes and `shellcheck` removed,
+the run printed `does not match its pinned digest; nothing was installed`, exited
+1 naming that tool alone, still installed the other two, and `shellcheck` was
+still absent afterwards.
+
+⭐ **A tool present at the wrong version is a third answer.** A stub `shfmt`
+earlier on `PATH` answering `v3.7.0` produced `differs shfmt 3.7.0 (pinned
+3.14.0)` and exit 1, so absent, wrong and right are three states rather than two.
+
+⭐ **The doctor agrees.** `sh scripts/doctor/doctor.sh` reports `shellcheck
+0.10.0`, `shfmt 3.14.0` and `pwsh 7.4.6`, all resolved from `/usr/local/bin`.
+⚠ `--fast` prints a `-` in the version column, so the version claim needs the
+full pass; the fast one establishes presence and path only.
+
+Driven pass, and what it found: ⛔ **the first version reported two tools wrong
+that it had installed correctly.** `fetch_verified` and `provide` both used
+`_want`, a POSIX shell function has no locals, and the caller therefore compared
+a version against the digest the callee had left behind - printing `pwsh answered
+[7.4.6] after installing 6f6015...` and exiting 1 over a host that was correct.
+⚠ Invisible to `shellcheck` and to reading either function alone. ⭐ `shfmt` was
+the row that reported correctly, because `go install` is the one route that never
+calls the fetcher, so the two tools that downloaded were exactly the two that
+lied. Every name in both functions is prefixed now. `PROGRESS.md` already carried
+this defect class from a sourced library; this is the same collision inside one
+file.
+
+Decision: **the doctor does not call it**, though this entry asked for a script
+"the doctor can call". A read-only pass that installs software the moment
+somebody runs it is the surprise `scripts/doctor/README.md`'s first sentence
+rules out. `--check` is the read-only half and installs nothing.
+
+Decision: **`shfmt` comes from `go install` when Go is present**, which is the
+route CI uses and is verified against Go's public checksum database, so both
+hosts run one build rather than two builds of one version. The pinned binary is
+the fallback. ⚠ The two places that now name that version are compared by
+`check-project`, in both halves, over workflows and scripts - and deliberately
+not over `TODO/`, because closure evidence is a dated measurement `RULES.md`
+forbids rewriting to match today.
+
+⚠ **The three pins are not the same kind of evidence and the file says so.**
+PowerShell publishes `hashes.sha256`; the digest here is the line that file
+carries, and it matched the bytes this project downloaded. `shellcheck` and
+`shfmt` publish no checksum file, so theirs are the bytes observed on
+2026-09-08, fetched twice and identical - immutability pins, not authenticity
+ones.
+
+⚠ **Residual: CI does not use this script and its `shellcheck` is unpinned.**
+The Linux lane pins `shfmt` and takes `shellcheck` and `pwsh` from the runner
+image, so the session host now runs a *more* pinned set than CI does. That is a
+runner-default question and `CI-08` owns it.

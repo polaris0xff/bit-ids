@@ -4,7 +4,10 @@ Project scripts resolve the repository from their own location and may be run
 from any working directory.
 
 - [`doctor/`](doctor/README.md) reports host capabilities without changing the
-  host.
+  host. ⛔ One file there is the exception and says so:
+  [`doctor/provision.sh`](doctor/provision.sh) installs the three tools the gate
+  needs, verifying each download against a pinned digest first. The doctor does
+  not call it.
 - [`acquisition/`](acquisition/fetch-releases.sh) retrieves a release listing
   and keeps the exact bytes. It does not parse, sort or decide.
 - [`acquisition/check-cache.sh`](acquisition/check-cache.sh) drives the artifact

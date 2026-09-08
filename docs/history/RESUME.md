@@ -102,10 +102,13 @@ identity to the operator's own per rule 11, and the clone with
 `git log --format='%an <%ae>' | sort -u`; never type it into a tracked file,
 which is what `check-no-secrets --public` refuses.
 
-⭐ **Install `pwsh`, `shellcheck` and `shfmt` first.** The commands are in
-`TODO/PROGRESS.md` under *Known gaps in the local gate*, and the `chmod +x` on
-the PowerShell tarball is needed exactly as that note says. Without them this
-host runs a smaller gate than CI.
+⭐ **Install `pwsh`, `shellcheck` and `shfmt` first, with one command:**
+`sh scripts/doctor/provision.sh`. It takes about four seconds on a host with none
+of them, verifies every download against a pinned digest before executing it, and
+`--check` reports what a host has without installing anything. ⛔ **Without
+`pwsh` the gate does not merely shrink - it goes RED**: `check-capture` FAILS and
+`check-twins` skips, so a session that skipped this step could read that failure
+as a defect in the tree.
 
 ---
 
@@ -272,6 +275,13 @@ sparse hole of spaces. ⚠ Read a gate summary out of a file that one process
 owns, and kill the previous run by PID: `pkill -f` matches the wrapper shell
 that carries the pattern on its own command line, so it kills the caller and
 leaves the target running.
+
+⛔ **A POSIX shell function has no locals, and two functions in ONE file collide
+just as a sourced library does.** `provision.sh`'s fetcher and its caller both
+used `_want`, so the caller compared a version against a digest and reported two
+tools wrong that it had installed correctly. ⚠ `shellcheck` cannot see it and
+neither can reading either function alone; running it is what showed it, and the
+one row that reported correctly was the one route that never called the fetcher.
 
 ⛔ **A rule a document says this repository has is not a rule this repository
 has.** `conventions/shell.md` section 5 has described a line-endings check, by

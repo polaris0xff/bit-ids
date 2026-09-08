@@ -25,9 +25,16 @@ agree, which is the drift these rules exist to prevent.
 
 ### The fourth layer is the loose one
 
-The Linux lane installs `shfmt` with `go install mvdan.cc/sh/v3/cmd/shfmt@v3.14.0`.
-That is a version tag, not a commit, and `check-project` does not see it: the
-pin rule reads `uses:` lines, not `run:` scripts.
+The Linux lane installs `shfmt` with `go install`, at the version
+[`ci.yml`](../.github/workflows/ci.yml) names. That is a version tag, not a
+commit, and the action-pin rule does not see it: that rule reads `uses:` lines,
+not `run:` scripts.
+
+⚠ **The version is not repeated here, and that is the point.** It lives in the
+workflow and in [`provision.sh`](../scripts/doctor/provision.sh), which is one
+copy more than ideal and exactly two more than nothing - so `check-project`
+compares them, over every workflow and script, and refuses a pair that has
+drifted. A third copy in this sentence would be a value nothing compares.
 
 ⭐ **It is a tag that cannot move underneath us, for a reason specific to Go.**
 `go install module@version` verifies the downloaded module against the public

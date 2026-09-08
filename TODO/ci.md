@@ -1060,7 +1060,7 @@ hosts this session cannot reach.
 
 ## CI-07: PowerShell halves for the declared gate rows
 
-Source: thirteen `n/a` rows on the Windows lane, each naming a missing half
+Source: every `n/a` row on the Windows lane, each naming a missing half
 Priority: P1 | Effort: L | Status: OPEN
 
 Problem: The Windows gate declares every mutation harness unavailable except
@@ -1069,6 +1069,13 @@ harness with no PowerShell implementation, so the guards they prove are proved
 on one platform and asserted on the other. ⛔ `--strict`
 permits a declared row forever, which is correct and is also why the gap does
 not shrink by itself.
+
+⚠ **This Source said `thirteen` and the runner declares fourteen.** Found by a
+claim audit on 2026-09-08, and it is the SECOND time a count of these rows has
+gone stale in prose: `CI-01` records the first, where six had become twelve, and
+its own fix says in as many words that no count of them is written into prose
+anywhere. One had survived here. The number is gone rather than corrected,
+because correcting it only resets the clock.
 
 Approach: Write the missing halves, starting with the ones whose subject is not
 platform-specific at all. ⚠ `check-store` plants a symbolic link and a named

@@ -5,6 +5,30 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T22:05:54Z
+
+- ⭐ `FOUND-05` closes. `sh scripts/doctor/provision.sh` installs `pwsh`,
+  `shellcheck` and `shfmt` in four seconds on a host with none of them, verifying
+  every download against a pinned digest with `sha256sum -c` before anything is
+  executed. Record: [`TODO/foundation.md`](TODO/foundation.md).
+- ⛔ A host without `pwsh` does not run a smaller gate, it runs a RED one:
+  measured by taking all three away, `--strict` answered `FAIL check-capture` and
+  `SKIP check-twins`. With them back the only row left is `check-remote-items`.
+- ⛔ The first version of the script reported two tools wrong that it had
+  installed correctly. `fetch_verified` and `provide` shared `_want`, because a
+  POSIX shell function has no locals, so the caller compared a version against a
+  digest. `shfmt` was the one row that reported correctly - `go install` is the
+  route that never calls the fetcher, so the two tools that downloaded were
+  exactly the two that lied. Found by running it; invisible to `shellcheck`.
+- ⭐ The commands left `PROGRESS.md`, the version left `supply-chain.md`, and the
+  two places that still name it - the workflow and the script - are compared by
+  `check-project` in both halves.
+- ⚠ `CI-07` said `thirteen` `n/a` rows and the runner declares fourteen. That is
+  the second time a count of those rows went stale in prose; the number is
+  removed rather than corrected. Record: [`TODO/ci.md`](TODO/ci.md).
+- Deployment: nothing deployed.
+
+
 ### 2026-09-08T21:50:34Z
 
 - ⛔ A gate row this repository was documented as having did not exist.

@@ -2,10 +2,10 @@
 
 State instant: 2026-09-08
 Total: 63
-Open: 23
+Open: 22
 In progress: 0
 Blocked: 0
-Done: 40
+Done: 41
 
 ⚠ Those five counts are compared against
 [`INDEX.md`](INDEX.md) by `check-project.sh` on every gate, so they cannot go
@@ -201,11 +201,15 @@ nothing is. The clone question under *Settled decisions* is spent too.
    it needs `CLIENT-01`'s record rather than anything in this entry.
 3. **`OBS-07` and `OBS-10`**, which need a stock client build and a second
    platform, so they follow the captures.
-4. **`CI-07`, `CI-08` and `FOUND-05`**, which harden the gate rather than extend
-   it: the thirteen declared PowerShell rows, the host defaults the scripts
-   inherit rather than state, and the three tools a session installs by hand.
+4. **`CI-07` and `CI-08`**, which harden the gate rather than extend it: the
+   declared PowerShell rows, and the host defaults the scripts inherit rather
+   than state. ⭐ **`FOUND-05` is closed**: `sh scripts/doctor/provision.sh`
+   installs the three tools a session used to install by hand, verifying each
+   download against a pinned digest first.
    ⚠ `CI-08` gained the harness `CI-06` needed and did not write: nothing runs a
-   capture step's body.
+   capture step's body. ⛔ And it gained a second question: CI pins `shfmt` and
+   takes `shellcheck` and `pwsh` from the runner image, so a session host now
+   runs a MORE pinned set of tools than the lane it is meant to match.
 5. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
    bind attestations to.
 6. The remaining client and engine breadth, then refinements.
@@ -239,25 +243,25 @@ touched" after writing a record passed while the lane went red on a forty-digit
 info hash. ⚠ Run `sh scripts/common/check-gate.sh`, which is the list; a subset
 chosen by hand is not the same gate twice.
 
-⭐ **`pwsh`, `shellcheck` and `shfmt` are absent on a fresh container and all
-three are worth installing before touching a script.** Without `pwsh` the
-PowerShell half of every paired check goes unexercised; without the other two,
-the CI lane runs shell checks this host never did. Both gaps turned CI red two
-sessions ago, once each, on defects a local run would have caught in seconds.
-
-⚠ The `chmod` is not optional. The PowerShell tarball extracts `pwsh` without
-the executable bit on this image, and the failure reads as
-`Permission denied` rather than as a missing file.
+⭐ **`pwsh`, `shellcheck` and `shfmt` are absent on a fresh container, and one
+command installs all three:**
 
 ```sh
-curl -fsSL -o /tmp/pwsh.tar.gz https://github.com/PowerShell/PowerShell/releases/download/v7.4.6/powershell-7.4.6-linux-x64.tar.gz
-mkdir -p /opt/pwsh && tar -xzf /tmp/pwsh.tar.gz -C /opt/pwsh
-chmod +x /opt/pwsh/pwsh && ln -sf /opt/pwsh/pwsh /usr/local/bin/pwsh
-curl -fsSL https://github.com/koalaman/shellcheck/releases/download/v0.10.0/shellcheck-v0.10.0.linux.x86_64.tar.xz | tar -xJ -C /tmp
-install -m755 /tmp/shellcheck-v0.10.0/shellcheck /usr/local/bin/shellcheck
-curl -fsSL -o /usr/local/bin/shfmt https://github.com/mvdan/sh/releases/download/v3.14.0/shfmt_v3.14.0_linux_amd64
-chmod +x /usr/local/bin/shfmt
+sh scripts/doctor/provision.sh
 ```
+
+⛔ **Run it before touching a script.** Without `pwsh` the PowerShell half of
+every paired check goes unexercised and `check-capture` **fails** rather than
+skipping; without the other two, the CI lane runs shell checks this host never
+did. ⚠ Measured on 2026-09-08 by taking all three away: a `--strict` gate
+reported `FAIL check-capture` and `SKIP check-twins`, and with them back the only
+row left is `check-remote-items`.
+
+⚠ **The commands used to live here as prose and no longer do**, which is what
+`FOUND-05` was for: every download is verified against a pinned digest before it
+is executed, the `chmod` the PowerShell tarball needs is in the script rather
+than in a sentence somebody re-types, and `--check` reports what a host has
+without installing anything.
 
 With those three present the whole CI pipeline runs locally except
 `check-remote-items`.
