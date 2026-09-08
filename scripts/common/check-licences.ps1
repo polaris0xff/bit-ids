@@ -1,4 +1,4 @@
-# Does every target and every dependency have a licence disposition, and does
+﻿# Does every target and every dependency have a licence disposition, and does
 # this repository carry an artifact it may not redistribute?
 #
 # ⭐ THE TWIN OF check-licences.sh. `FOUND-04` owns the register in

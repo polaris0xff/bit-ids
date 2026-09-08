@@ -5,6 +5,50 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T07:07:54Z
+
+- `CI-03` closes: the capture workflow, the two capture runners it calls, and
+  the harness that mutation-proves them. Record: [`TODO/ci.md`](TODO/ci.md).
+- ⛔ The step order is the containment, and `check-workflow.sh` asserts it.
+  Building after the route is deleted cannot work; capturing before the guard
+  measures a host nobody established was contained; uploading before the restore
+  is a step that cannot reach GitHub. Each reads as plausible in a diff and none
+  was visible to any other check here.
+- ⛔ Every `scripts/…` path a workflow names must be in the tree. That is the
+  rule that would have caught the draft deleted last session, which called two
+  scripts nobody had written.
+- ⛔ `capture-run` builds nothing, so a workflow whose build moved after the
+  containment is refused by name rather than by a cargo invocation reaching for
+  a network that is gone. It re-reads the claim marker and the routing table
+  itself, because a step order that dropped the claim would otherwise capture on
+  a host nothing claimed.
+- ⭐ The driver is `curl` and the verifier is `sha256sum -c` or `Get-FileHash`,
+  and the announce carries a token the driver knows it sent which the transcript
+  must hold. Without that last one, a bundle of empty artifacts verifies against
+  its own empty digests.
+- ⛔ Adding `[switch]$Marker` beside an existing `$marker` local made every
+  invocation of the Windows guard fail to bind: PowerShell variable names are
+  case-insensitive, so the parameter and the local were one variable. Found by
+  running it once.
+- ⛔ `awk '{ print; fflush() }'` streams nothing: mawk reads its input in blocks,
+  so there was no output to flush yet. Six harness cases reported the driver's
+  refusal instead of their own until the splitter became a `read` loop.
+- ⛔ Twelve declared rows on the PowerShell gate lane said `CI-03 residual`,
+  and `CI-01` said there were six of them and that they close when `CI-03`
+  lands. `CI-03` has landed and not one closed: they are `sh` harnesses needing
+  a PowerShell half. Each row names the event that would actually close it now,
+  and the count is no longer written down anywhere.
+- ⛔ A door sweep found the UTF-8 BOM rule for `.ps1` held in eleven files and
+  broken in four, all four carrying markers on hundreds of lines. Both halves of
+  `check-project` refuse it now, and the four files carry the BOM.
+- ⛔ Those two halves disagreed on their first run and `check-twins` could not
+  have seen it: a `.ps1` keeps CRLF, the sh half read the carriage return as
+  non-ASCII, and no `.ps1` in this tree is ASCII-only, so the branch that
+  differed had nothing to exercise it.
+- ⚠ The capture workflow has never been dispatched, and what it would capture is
+  a fixture: nothing installs a client, and the attestation says so in fields.
+- Deployment: nothing deployed. No capture was taken and nothing was published.
+
 ### 2026-09-08T04:49:30Z
 
 - The Windows disposable-host guard pair and its mutation harness, which is the

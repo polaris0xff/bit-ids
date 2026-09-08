@@ -1062,8 +1062,10 @@ non-injective layout section 4 describes, in a second place.
   core surfaces have observers, the lab generates the torrent that makes a
   client announce about anything at all, and a run's transcript becomes the
   content-addressed evidence a manifest cites. There is now somewhere durable to
-  put a record as well. What stands between here and a first capture is a client
-  adapter and a host the [`capture-host.md`](capture-host.md) guards permit.
+  put a record as well, and a workflow that runs a capture on a host the
+  [`capture-host.md`](capture-host.md) guards permit. What stands between here
+  and a first capture is a client adapter, and a dispatch of that workflow: it
+  has never been run.
 - ⚠ Nothing assembles a store yet. `PUB-01` builds the publication tree and
   `PUB-02` runs the append comparison over the fetched `data` branch; until both
   exist, the store and corpus checks are pointed at directories by hand or at
@@ -1074,10 +1076,12 @@ non-injective layout section 4 describes, in a second place.
   stock-client positive controls, and they need a host the
   [`capture-host.md`](capture-host.md) guards permit, which the session host
   this was written on is not.
-- ⚠ A Windows capture has not been run. The disposable-host guards cover both
-  platforms, [`capture-host.md`](capture-host.md) carries both contracts, and
-  what is missing is the workflow that runs them on a hosted Windows runner.
-  `CI-03` owns it.
+- ⚠ No capture has been run on a hosted runner of either platform. The
+  disposable-host guards cover both, [`capture-host.md`](capture-host.md)
+  carries both contracts, and `CI-03`'s workflow runs them; what is missing is a
+  dispatch. ⛔ **Until one happens, nothing establishes that `Get-NetRoute`'s
+  real output matches the fixtures the Windows guard is proved against**, which
+  is a fixture corpus testing only the shapes it contains.
 - ⚠ **`mse` and `web_seed` have protocol code and still no fixture**, so a
   fixture on either is refused with `E-FIX-07` and `mse` is what the negative
   control in the fixture suite names. A fixture needs a codec that round-trips a
@@ -1107,7 +1111,9 @@ non-injective layout section 4 describes, in a second place.
   ever been opened.
 - Windows packet corroboration needs a route that works on hosted runners or a
   disposable self-hosted runner; `OBS-07` owns the independent-control
-  decision and `CI-03` owns the runner.
+  decision. `CI-03` closed the runner question: a hosted runner is a fresh
+  virtual machine per job and its default routes are deleted before the
+  capture.
 - Proprietary clients may have only one legitimate acquisition route. Such a
   target remains open until a second independent route is verified; the rule
   is not weakened.

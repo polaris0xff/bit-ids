@@ -8,10 +8,12 @@ the operator is answered in that file under *Settled decisions*. Do not re-raise
 them, and do not record a new blocker without running the command that would
 settle it.
 
-**In flight:** `CI-03`. Its Windows guard pair and mutation harness are done,
-green and in both gate lanes. Its capture workflow is not written;
-[`../../TODO/ci.md`](../../TODO/ci.md) carries the step order and why the order
-is forced.
+**In flight:** nothing. `CI-03` closed: the capture workflow, both capture
+runners and the harness that mutation-proves them are in the tree and green.
+⛔ **The workflow has never been dispatched**, which is a residual on the record
+in [`../../TODO/ci.md`](../../TODO/ci.md) and not a blocker: everything about it
+a reader can check is checked, and both runners are driven for real on every
+gate. The next item is `PUB-05`.
 
 **Tree:** Re-measure it. This file is a claim about a tree that has moved. Check
 the branch, the remote, the clone depth, `git status` and `HEAD..origin/main`
@@ -65,6 +67,21 @@ blocked, run the thing that would prove it.
 ⛔ **Two guards answering one code mask each other.** Deleting either leaves every
 case green, because the survivor produces the code the cases assert. Separate them
 by the path or the message a refusal names, and give each shape a case.
+⚠ It happens between guards over one *input* too, not only over one code:
+`check-capture`'s first run reported a segment-count guard proved by a stub that
+had removed the evidence rows, and the evidence guard, which runs earlier, is
+what refused it.
+
+⛔ **A tool that streams is not the same as a tool that flushes.** A stub
+observer piped through `awk '{ print; fflush() }'` produced nothing for a whole
+run: mawk reads its INPUT in blocks, so there was no output to flush yet.
+`fflush` is about the wrong end of the pipe, and `cat` in the same position had
+three lines at the same instant. A `read` loop is what streams.
+
+⛔ **A PowerShell `param()` switch and a local of the same name are one
+variable.** Names are case-insensitive, so adding `[switch]$Marker` beside an
+existing `$marker` local made every invocation of that guard fail to bind. Found
+by running it once; invisible to reading.
 
 ⛔ **A refusal the deriving path cannot reach is a refusal nothing tests.** Where a
 builder derives a field and a validator checks it, the two agree by construction
@@ -97,6 +114,22 @@ fixture data.
 carries what it hunts for, or it reports the same clean answer over a tree full of
 them.
 
+⛔ **A killed run and a new one writing to one file with `>` produce a report
+that describes neither.** The second truncates at open and the first keeps
+writing at its own offset, so a summary line no run ever printed appeared in the
+middle of the output - `2 skipped` where both runs said `1` - padded with a
+sparse hole of spaces. ⚠ Read a gate summary out of a file that one process
+owns, and kill the previous run by PID: `pkill -f` matches the wrapper shell
+that carries the pattern on its own command line, so it kills the caller and
+leaves the target running.
+
+⛔ **`check-twins` cannot see a rule whose difference the tree does not
+exercise**, and that is written in `check-twins.sh` itself. A new rule over
+`.ps1` files differed between the halves on carriage returns, and no `.ps1` here
+is ASCII-only, so the comparison agreed on every file while the halves disagreed
+about the case none of them is. Prove a scope rule by planting the fixture the
+tree lacks.
+
 ⭐ **The strongest control available is a reader this project did not write.**
 `sha256sum -c` verifies a release, `cbor2` reads a canonical encoding,
 `libtorrent` and `torf` read a generated torrent, `curl` is a complete HTTP
@@ -116,7 +149,10 @@ gate, and each refused a command on its first run.
 
 ⛔ **Nothing has been published and no capture has been taken.** Everything in the
 tree is synthetic and says so. The publisher must not run against this
-repository's own remote until a measured record exists.
+repository's own remote until a measured record exists. ⚠ `CI-03` built the
+workflow that would take one; it has never been dispatched, and what it would
+capture even then is a **fixture** - no client is installed and its attestation
+says `kind=fixture`, `measured_build=none`, `stock_client=false`.
 
 ⛔ **No observer has been driven by a stock client.** Every driver so far is an
 independent implementation written from a specification, which shares this

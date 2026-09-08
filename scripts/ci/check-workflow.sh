@@ -243,6 +243,58 @@ triggers() { # workflow
   ' "$1"
 }
 
+# Every script path a workflow names, one per line, deduplicated.
+#
+# ⛔ A WORKFLOW NAMING A SCRIPT NOBODY WROTE READS AS FINISHED AND FAILS ON ITS
+# FIRST DISPATCH. That is not hypothetical: a draft of the capture workflow was
+# written and deleted because it called two scripts that did not exist, and
+# nothing in this repository would have caught it. A `run:` block is not
+# compiled, not linted and, on a dispatch-only workflow, not executed by any
+# push, so the file can sit in `main` looking complete for as long as nobody
+# presses the button.
+#
+# ⚠ It scans the whole file rather than only `run:` bodies, because a path can
+# reach a step through `with:`, an `env:` value or a composite input, and a rule
+# that read one of those places would be a gate on one of several doors.
+scripts_named() { # workflow
+  grep -o -E 'scripts/[A-Za-z0-9_./-]+\.(sh|ps1)' "$1" 2>/dev/null | LC_ALL=C sort -u
+}
+
+# The ordered step names of one job, one per line.
+#
+# ⚠ Bounded to the jobs: block the way jobs_missing is. Without that, the
+# `workflow_dispatch:` key under `on:` reads as a job at the same indent.
+job_steps() { # workflow job
+  awk -v WANTJOB="$2" '
+    function indent(s,   i) { i = match(s, /[^ ]/); return i ? i - 1 : -1 }
+    /^jobs:[ \t]*$/ { injobs = 1; next }
+    !injobs { next }
+    {
+      line = $0
+      sub(/\r$/, "", line)
+      ind = indent(line)
+      if (ind < 0) next
+      if (ind == 0) { injobs = 0; next }
+      if (ind == 2 && line ~ /^ *[A-Za-z0-9_-]+:[ \t]*$/) {
+        job = line; sub(/^ +/, "", job); sub(/:.*$/, "", job); next
+      }
+      if (job == WANTJOB && line ~ /^ *- name:/) {
+        s = line
+        sub(/^ *- name:[ \t]*/, "", s)
+        gsub(/^["'"'"']|["'"'"']$/, "", s)
+        print s
+      }
+    }
+  ' "$1"
+}
+
+# The 1-based position of a step in its job, or nothing when the job has no such
+# step. ⛔ THE TWO ANSWERS ARE KEPT APART BY THE CALLER: a step that is missing
+# is a failure and never an ordering that happens to hold.
+step_index() { # workflow job step
+  job_steps "$1" "$2" | grep -n -x -F -e "$3" | head -1 | cut -d: -f1
+}
+
 # The declared default of one workflow_dispatch input.
 input_default() { # workflow input
   awk -v WANT="$2" '
@@ -415,6 +467,20 @@ for wf in "$ROOT"/.github/workflows/*.yml; do
   else
     fail "workflow  $wfname declares no concurrency group"
   fi
+
+  # ⛔ EVERY SCRIPT IT NAMES IS ON DISK. See scripts_named above for why this is
+  # the rule a dispatch-only workflow most needs: nothing else in the pipeline
+  # ever executes one.
+  MISSING=""
+  for s in $(scripts_named "$wf"); do
+    [ -f "$ROOT/$s" ] || MISSING="$MISSING $s"
+  done
+  if [ -z "$MISSING" ]; then
+    NAMED=$(scripts_named "$wf" | grep -c . || true)
+    pass "workflow  $wfname: all $NAMED script(s) it names are in the tree"
+  else
+    fail "workflow  $wfname names scripts that do not exist:$MISSING"
+  fi
 done
 
 # -- 0c. the publisher cannot fire on its own ---------------------------------
@@ -441,6 +507,68 @@ if [ -f "$PUBWF" ]; then
   fi
 else
   fail "workflow  there is no publisher workflow to check"
+fi
+
+# -- 0c-bis. the capture workflow cannot be started by a fork -----------------
+#
+# ⛔ THE FORK GUARD IS AN ABSENCE, WHICH IS WHY IT IS ASSERTED HERE. A fork
+# cannot cause a workflow to run in the base repository, so a capture workflow
+# with no `pull_request` trigger has no path from a fork at all: there is no
+# job-level condition to weaken and no `if:` to get subtly wrong. ⚠ An absence
+# is exactly what a later edit restores unnoticed, and a comment in the file
+# saying so is not a check.
+#
+# ⛔ AND NO `push` OR `schedule` EITHER. This is the file a client installer
+# lands in, and a capture host is a machine whose route off itself has been
+# deleted. Neither belongs one merge away.
+CAPWF="$ROOT/.github/workflows/capture.yml"
+if [ -f "$CAPWF" ]; then
+  CAPTRIG=$(triggers "$CAPWF" | tr '\n' ' ' | sed 's/ *$//')
+  if [ "$CAPTRIG" = "workflow_dispatch" ]; then
+    pass "workflow  the capture runner can only be dispatched by hand"
+  else
+    fail "workflow  the capture runner has other triggers: $CAPTRIG"
+  fi
+
+  # ⛔ THE STEP ORDER IS THE CONTAINMENT, AND NOTHING ELSE ENFORCES IT. Building
+  # after the route is deleted cannot work: there is no network left to fetch a
+  # crate from, and the only way to repair it under containment is to restore
+  # the route, on the host that exists to have none. Capturing before the guard
+  # would measure a host nobody established was contained. Uploading before the
+  # restore is a step that cannot reach GitHub. ⚠ Each of those reads as a
+  # plausible ordering in a diff, and none of them is visible to any other check
+  # in this repository.
+  order_case() { # job earlier later
+    _a=$(step_index "$CAPWF" "$1" "$2")
+    _b=$(step_index "$CAPWF" "$1" "$3")
+    if [ -z "$_a" ]; then
+      fail "workflow  capture $1 has no step named [$2]"
+    elif [ -z "$_b" ]; then
+      fail "workflow  capture $1 has no step named [$3]"
+    elif [ "$_a" -lt "$_b" ]; then
+      pass "workflow  capture $1: [$2] precedes [$3]"
+    else
+      fail "workflow  capture $1: [$2] comes AFTER [$3]"
+    fi
+  }
+
+  for job in linux windows; do
+    order_case "$job" "Claim the host" "Build the observer"
+    order_case "$job" "Build the observer" "Cut the route off this host"
+    order_case "$job" "Cut the route off this host" "Assert containment"
+    order_case "$job" "Assert containment" "Capture"
+    order_case "$job" "Capture" "Restore the route"
+    order_case "$job" "Restore the route" "Upload the evidence bundle"
+
+    # ⚠ And the capture step must call the runner this entry built. Every rule
+    # above holds over a workflow whose Capture step runs `true`.
+    case "$(step_command "$CAPWF" "$job" Capture)" in
+      *capture-run*) pass "workflow  capture $job runs the capture runner" ;;
+      *) fail "workflow  capture $job: the Capture step does not run capture-run" ;;
+    esac
+  done
+else
+  fail "workflow  there is no capture workflow to check"
 fi
 
 # -- 0d. the static readers, refuted ------------------------------------------
@@ -488,6 +616,52 @@ if [ -f "$PUBWF" ]; then
   else
     pass "probe    the input-default reader follows the declared default"
   fi
+fi
+
+# ⚠ The script-name reader is checked against a workflow naming a script that is
+# NOT in the tree, because a reader that reported every path present would pass
+# the case above on any workflow at all. That is the exact failure the deleted
+# draft of the capture workflow would have needed catching.
+sed 's|scripts/capture/capture-run.sh|scripts/capture/no-such-script.sh|' "$WORKFLOW" >"$MUTWF"
+printf '        run: sh scripts/capture/no-such-script.sh\n' >>"$MUTWF"
+MISSING=""
+for s in $(scripts_named "$MUTWF"); do
+  [ -f "$ROOT/$s" ] || MISSING="$MISSING $s"
+done
+if [ -n "$MISSING" ]; then
+  pass "probe    the script-name reader sees a script that is not in the tree"
+else
+  fail "probe    the script-name reader missed a script that is not in the tree"
+fi
+
+# ⚠ AND THE ORDER READER IS REFUTED BY SWAPPING TWO STEP NAMES rather than by
+# reading a workflow that is already correct. A reader that answered "in order"
+# over any input would pass all twelve ordering cases above.
+if [ -f "$CAPWF" ]; then
+  sed -e 's/- name: Build the observer/- name: BIT-IDS-PROBE-SWAP/' \
+    -e 's/- name: Cut the route off this host/- name: Build the observer/' \
+    -e 's/- name: BIT-IDS-PROBE-SWAP/- name: Cut the route off this host/' \
+    "$CAPWF" >"$MUTWF"
+  if cmp -s "$CAPWF" "$MUTWF"; then
+    fail "probe    the ordering mutation did not change the workflow"
+  else
+    _a=$(step_index "$MUTWF" linux "Build the observer")
+    _b=$(step_index "$MUTWF" linux "Cut the route off this host")
+    if [ -n "$_a" ] && [ -n "$_b" ] && [ "$_a" -gt "$_b" ]; then
+      pass "probe    the order reader sees a build moved after the route is cut"
+    else
+      fail "probe    the order reader missed a build moved after the route is cut"
+    fi
+  fi
+
+  # ⚠ And a workflow that gained a pull_request trigger, which is the direction
+  # that matters: the fork guard is the absence, so the reader has to be able to
+  # see the absence end.
+  awk '/^on:$/ { print; print "  pull_request:"; next } { print }' "$CAPWF" >"$MUTWF"
+  case "$(triggers "$MUTWF" | tr '\n' ' ')" in
+    *pull_request*) pass "probe    the trigger reader sees an added pull_request trigger" ;;
+    *) fail "probe    the trigger reader missed an added pull_request trigger" ;;
+  esac
 fi
 
 # -- the controls -------------------------------------------------------------

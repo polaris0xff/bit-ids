@@ -343,8 +343,19 @@ Residual, closed: the executable guards were Linux-only, because they read
 `/proc/net/route` and `/etc/machine-id`. `assert-disposable.ps1` is the Windows
 pair, reading `Get-NetRoute` and the machine GUID, and
 [`../docs/capture-host.md`](../docs/capture-host.md) carries both contracts.
-⚠ What remains is the workflow that runs them on a Windows host, which `CI-03`
-owns.
+⚠ The workflow that runs them on a Windows host is `CI-03`'s and exists:
+[`../.github/workflows/capture.yml`](../.github/workflows/capture.yml). ⛔ It has
+never been dispatched, so what still stands open is not a missing file but a
+missing run: nothing yet establishes that `Get-NetRoute`'s real output matches
+the fixtures `check-runner.ps1` proves the guard against. That is `CI-03`'s
+residual and it is recorded there.
+
+⭐ **Both halves grew a `--marker` / `-Marker` mode while `CI-03` closed**, which
+prints the claim marker's path and is the only derivation of it. `capture-run`
+re-reads the claim at the moment of capture rather than trusting that an earlier
+workflow step ran, and a caller that composed `$STATE_DIR/host-claimed` itself
+would be a second spelling that goes on reading the old place the day the state
+directory moves. `check-runner` has a case for it in each half.
 
 Residual: the guards prove they fire, not that they are sufficient. A host can
 be non-disposable in ways neither models, and

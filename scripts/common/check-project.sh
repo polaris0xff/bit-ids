@@ -394,6 +394,46 @@ GIT_DEP=$({
 } | sort -u | xargs grep -nE '(^|[{,][[:space:]]*)git[[:space:]]*=' 2>/dev/null || true)
 [ -z "$GIT_DEP" ] || say_fail "git dependency in a manifest: $GIT_DEP"
 
+# ⛔ A .ps1 CARRYING NON-ASCII NEEDS A UTF-8 BOM, and this was a convention
+# rather than a rule until a door sweep counted. Windows PowerShell 5.1 decodes
+# a BOM-less file as the system ANSI code page, so every marker in it is
+# mis-decoded; docs/conventions/shell.md section 8 states the rule and says the
+# alternative is to keep the file ASCII-only.
+#
+# ⚠ ELEVEN FILES HAD THE BOM AND FOUR DID NOT, which is the shape
+# docs/methodology/reviews.md calls the most recurring hole there is: a rule
+# enforced on most of the paths into the same mistake. Nothing was failing,
+# because every lane runs pwsh 7 and pwsh 7 does not care - and check-twins
+# still falls back to `powershell` when pwsh is absent, which is where it would
+# have bitten.
+#
+# ⭐ THE TEST IS ON THE BYTES, not on a list of files. A file that is entirely
+# ASCII needs nothing, so a contributor who writes one is not asked for a BOM it
+# has no use for, and one who pastes a marker in is.
+# ⛔ TAB, CR AND LF ARE STRIPPED FIRST, AND THE FIRST VERSION DID NOT STRIP CR.
+# A `.ps1` keeps CRLF by .gitattributes, so `[^ -~<tab>]` matched the carriage
+# return on EVERY line and this half demanded a BOM for a file that is pure
+# ASCII. The PowerShell half excludes 9, 10 and 13 explicitly and did not.
+# ⚠ check-twins could not have caught it: it compares the two halves on the tree
+# it runs against, and no `.ps1` in this tree is ASCII-only, so the branch that
+# differed had nothing to exercise it. That blind spot is written in
+# check-twins.sh itself. Found by planting the fixture the tree lacks.
+#
+# ⚠ The pipeline's status is grep's, which is the value wanted here: this is a
+# predicate rather than a check reporting a verdict.
+BOMLESS=""
+for _ps1 in $({
+  git ls-files '*.ps1'
+  git ls-files --others --exclude-standard '*.ps1'
+} | sort -u); do
+  [ -f "$_ps1" ] || continue
+  LC_ALL=C tr -d '\011\012\015' <"$_ps1" | LC_ALL=C grep -q '[^ -~]' || continue
+  [ "$(head -c3 "$_ps1" | od -An -tx1 | tr -d ' \n')" = "efbbbf" ] ||
+    BOMLESS="$BOMLESS $_ps1"
+done
+[ -z "$BOMLESS" ] ||
+  say_fail "a .ps1 with non-ASCII and no UTF-8 BOM is mis-decoded by PowerShell 5.1:$BOMLESS"
+
 if [ "$JSON" = 1 ]; then
   printf '{"schema":"check-project/2","failures":%s,"todo_entries":%s,"open":%s,"in_progress":%s,"blocked":%s,"done":%s}\n' \
     "$FAIL" "$ROWS" "$OPEN_ROWS" "$IN_PROGRESS_ROWS" "$BLOCKED_ROWS" "$DONE_ROWS"

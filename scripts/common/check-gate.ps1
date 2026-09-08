@@ -169,27 +169,40 @@ else {
 # named pipe in a disposable tree, and neither is available to an unprivileged
 # Windows session; check-corpus shares its harness. ⚠ The rules they prove are
 # not Linux-only and the Rust suite exercises every one of them on both lanes;
-# what this lane does not do is plant them against a real filesystem. CI-03
-# owns the Windows runner.
-Add-Unavailable 'check-cache' 'shares that harness; CI-03 residual'
-Add-Unavailable 'check-store' 'the plants need a POSIX filesystem; CI-03 residual'
-Add-Unavailable 'check-corpus' 'shares that harness; CI-03 residual'
-Add-Unavailable 'check-indexes' 'shares that harness; CI-03 residual'
-Add-Unavailable 'check-release' 'shares that harness; CI-03 residual'
-Add-Unavailable 'check-formats' 'shares that harness; CI-03 residual'
-Add-Unavailable 'check-publish' 'shares that harness; CI-03 residual'
+# what this lane does not do is plant them against a real filesystem.
+#
+# ⛔ EVERY ROW BELOW SAID `CI-03 residual`, AND THAT NAMED THE WRONG EVENT.
+# CI-03 is the capture runner matrix; landing it does not give an unprivileged
+# Windows session a named pipe, and it does not write a PowerShell half for any
+# harness here. These close when somebody writes that half, and the reason now
+# says so. ⚠ A documented gap whose reason is wrong is worse than an undocumented
+# one, because --strict permits it forever on the strength of a sentence nobody
+# re-read. Found by a claim audit while CI-03 was being closed.
+Add-Unavailable 'check-cache' 'shares that harness; no PowerShell half'
+Add-Unavailable 'check-store' 'the plants need a POSIX filesystem; no PowerShell half'
+Add-Unavailable 'check-corpus' 'shares that harness; no PowerShell half'
+Add-Unavailable 'check-indexes' 'shares that harness; no PowerShell half'
+Add-Unavailable 'check-release' 'shares that harness; no PowerShell half'
+Add-Unavailable 'check-formats' 'shares that harness; no PowerShell half'
+Add-Unavailable 'check-publish' 'shares that harness; no PowerShell half'
 
 # ⚠ DECLARED FOR A DIFFERENT REASON, AND THE WORDING SAYS WHICH. check-staleness
 # plants nothing on a filesystem and needs no POSIX-only feature; it is an sh
 # harness with no PowerShell half, and it needs python3 for the independent
 # derivation of a request identifier. Copying the row above would have recorded a
-# reason that is not this one, and a documented gap whose reason is wrong closes
-# on the wrong event. CI-03 owns the Windows runner either way.
-Add-Unavailable 'check-access' 'shares that harness; CI-03 residual'
-Add-Unavailable 'check-catalogue' 'shares that harness; CI-03 residual'
-Add-Unavailable 'check-examples' 'an sh harness with no PowerShell half; CI-03 residual'
-Add-Unavailable 'check-handbook' 'an sh harness with no PowerShell half; CI-03 residual'
-Add-Unavailable 'check-staleness' 'an sh harness with no PowerShell half; CI-03 residual'
+# reason that is not this one.
+Add-Unavailable 'check-access' 'shares that harness; no PowerShell half'
+Add-Unavailable 'check-catalogue' 'shares that harness; no PowerShell half'
+Add-Unavailable 'check-examples' 'an sh harness with no PowerShell half'
+Add-Unavailable 'check-handbook' 'an sh harness with no PowerShell half'
+Add-Unavailable 'check-staleness' 'an sh harness with no PowerShell half'
+
+# ⚠ AND THIS ONE IS DECLARED WHILE ITS SUBJECT IS EXERCISED ANYWAY, which is the
+# third kind of reason on this lane. check-capture is an sh harness, so it cannot
+# run here; what it drives includes capture-run.ps1, which the Windows job of the
+# capture workflow runs on a real Windows host with no route table argument. That
+# is a stronger control than this lane could give and it happens elsewhere.
+Add-Unavailable 'check-capture' 'an sh harness; the capture workflow exercises the PowerShell half'
 
 # ⭐ THE SLOW ONE, and ⚠ it is the one part of this gate that needs a POSIX
 # shell: check-twins runs the sh half of every pair, so it cannot run on a host

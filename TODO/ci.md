@@ -135,8 +135,16 @@ lacks it would pass on any workflow at all.
 - ⚠ `append_once` verifies that a file changed but has not itself been refuted,
   the way `replace_once` has. Every plant that uses it did land, which is
   evidence and not a proof.
-- ⚠ `CI-03` still owns the Windows capture runner, and the six `n/a` rows on that
-  lane close only when it lands.
+- ⛔ **This entry said the `n/a` rows on the Windows lane "close only when
+  `CI-03` lands", and that named the wrong event.** `CI-03` has landed and not
+  one of them closed: they are `sh` harnesses, and what they need is a
+  PowerShell half, which the capture runner matrix was never going to write.
+  ⚠ The count was wrong too: it said six, and the runner had twelve rows
+  carrying that label by the time anyone re-read it. Both are corrected in
+  `check-gate.ps1`, where each row now names the event that would actually close
+  it, and no count of them is written into prose anywhere. Found by a claim audit while closing `CI-03`, which
+  is the pass that reads a sentence against the tree rather than against the
+  sentence next to it.
 
 ## CI-02: Stable-release staleness monitor
 
@@ -328,7 +336,7 @@ case rather than leaving it to a session that ran it once.
 ## CI-03: Trusted capture runner matrix
 
 Source: proprietary clients, multiple host families, and active observation
-Priority: P1 | Effort: L | Status: OPEN
+Priority: P1 | Effort: L | Status: DONE
 
 Problem: Public pull-request jobs cannot safely run installers, privileged
 network isolation, or publication credentials.
@@ -404,15 +412,17 @@ success. And `@(...) | Where-Object` yields a scalar for a single match under
 `Set-StrictMode`, so `.Count` threw and every invocation exited 1 with a property
 error.
 
-### What remains: the capture workflow
+### The capture workflow, which is the rest of it
 
-A `workflow_dispatch`-only workflow with one job per platform:
+[`../.github/workflows/capture.yml`](../.github/workflows/capture.yml) is
+`workflow_dispatch`-only with one job per platform, and the step order is the
+containment rather than a convention:
 
 1. check out, then claim the host before anything else writes to it;
 2. install the toolchain and build **while the network still exists**, because
    after the route goes nothing can be fetched and a capture that discovered a
    missing dependency under containment would have to restore egress to fix it;
-3. delete the default route in both address families;
+3. delete the default route in both address families, saving them first;
 4. run the egress guard, which must now pass;
 5. capture;
 6. restore the route only to upload, after the measurement is finished and on a
@@ -425,10 +435,220 @@ fork cannot cause a workflow to run in the base repository, so there is no
 job-level condition for anyone to weaken. `check-workflow.sh` is where the
 absence is asserted, because an absence is what a later edit restores unnoticed.
 
-⚠ **A first draft of that workflow was written this session and removed**, because
-it called `capture-run.sh` and `capture-run.ps1`, which do not exist. A workflow
-naming a script nobody wrote is a file that reads as finished and fails on its
-first dispatch.
+⚠ **A first draft of that workflow was written the previous session and
+removed**, because it called `capture-run.sh` and `capture-run.ps1`, which did
+not exist. A workflow naming a script nobody wrote is a file that reads as
+finished and fails on its first dispatch. ⭐ **The scripts exist now, and so does
+the rule that would have caught the draft**: `check-workflow.sh` pulls every
+`scripts/…` path out of every workflow and refuses one that is not in the tree.
+It is refuted against a copy naming a script that is not there, because a reader
+answering "present" over any input would have passed the case on the draft too.
+
+### ⛔ The step order is enforced, because every wrong order reads as plausible
+
+Building after the route is deleted cannot work, and the only way to repair it
+under containment is to restore the route on the host that exists to have none.
+Capturing before the guard measures a host nobody established was contained.
+Uploading before the restore is a step that cannot reach GitHub. ⚠ **None of
+those is visible to any other check in this repository**, and each is a
+two-line move in a diff. So `check-workflow.sh` reads the ordered step names of
+each capture job and asserts every precedence the containment rests on, with a
+step it names and the workflow no longer has reported rather than passed over. The reader is
+refuted against a copy with two step names swapped.
+
+⚠ **And a capture job whose `Capture` step ran `true` would satisfy all six.**
+That is a separate case: the step's command must name the runner.
+
+### The runner itself, and the three things it refuses that no workflow can
+
+`capture-run.sh` and `capture-run.ps1` take an already built observer and a host
+that a previous step claimed and contained.
+
+⛔ **It builds nothing, and a missing observer is `could not run`.** That is what
+makes the step order enforced rather than remembered: a workflow that moved the
+build after the containment gets a refusal naming the binary, not a cargo
+invocation reaching for a network that is gone.
+
+⛔ **It re-reads the claim marker and the routing table itself.** Both were
+already checked by earlier steps, and that is the point: a step order that
+dropped the claim leaves the capture running on a host nothing claimed, and a
+gate on one of two paths into the same action is the one-gated-door defect. ⭐ The
+marker's path is asked for through `assert-disposable --marker`, which is a new
+mode added for this and is the only derivation of that path; composing
+`$STATE_DIR/host-claimed` a second time would go on reading the old place the
+day the state directory moves.
+
+⭐ **The driver and the verifier are both somebody else's code.** `curl` is a
+complete HTTP client on both runner images and puts real bytes through the
+tracker observer; `sha256sum -c` and `Get-FileHash` test the digests the
+observer declared. The bundle writer already reads its files back against the
+buffer it wrote, which is the writer checking itself.
+
+⛔ **And the announce carries `key=<run-id>`, a token the driver knows it
+sent.** Every other check here is satisfied by a bundle of empty artifacts that
+verify against their own empty digests. This is the only one that says a
+client's bytes reached the record, and it is the same argument `OBS-09` makes
+about reading a bundle back with the client that wrote it.
+
+⚠ **What it captures is a fixture and the attestation says so in fields rather
+than in prose**: `kind=fixture`, `measured_build=none`, `stock_client=false`.
+Nothing is installed and no stock build is observed; `CLIENT-01` is what points
+a real one at the same lab. A bundle that outlived its context would otherwise
+read as a measurement of a client.
+
+### ⛔ What driving the PowerShell half found, in one command
+
+`[switch]$Marker` collided with the existing `$markerPath` local, which was
+called `$marker`. PowerShell variable names are case-insensitive, so the
+`param()` switch and the local were **one variable**: the script assigned a
+string to a `SwitchParameter` and every single invocation of the guard, in every
+mode, failed to bind. ⚠ It is the exact hazard
+[`../docs/conventions/shell.md`](../docs/conventions/shell.md) section 8 records
+about `$args`, and it was found by running the guard once rather than by reading
+it.
+
+### ⚠ And what the harness found about itself on its first run
+
+`check-capture.sh`'s stub observer streamed the real observer's output through
+`awk`, with `fflush()` after every line. **`fflush` is about the wrong end of the
+pipe**: mawk reads its INPUT in blocks, so a second into a five-second run the
+log held nothing, the runner dialled a port whose process had already gone, and
+six cases reported the driver's refusal instead of their own. Measured against
+`cat` in the same pipeline, which had three lines at the same instant. The
+splitter is a `read` loop now.
+
+⛔ **And a `no-segments` mode written into the wrong stub fired the wrong
+guard.** The runner checks the segment count before the evidence, so removing
+the evidence rows produced `described no evidence` and the segment guard stayed
+untested. Two guards over one input with the earlier one masking the later,
+inside the harness written to stop exactly that. It is a second, mid-stream stub
+now, which substitutes as well as drops so that a missing `segments:` line and
+`segments: 0` are separate cases.
+
+### Acceptance, all run on 2026-09-08
+
+- `sh scripts/capture/check-capture.sh`
+- `sh scripts/acquisition/check-runner.sh`
+- `pwsh -NoProfile -File scripts/acquisition/check-runner.ps1`
+- `sh scripts/ci/check-workflow.sh`
+- `sh scripts/common/check-gate.sh`
+- `pwsh -NoProfile -File scripts/common/check-gate.ps1`
+- `cargo test --workspace --locked --all-targets`
+
+### Closure evidence, 2026-09-08
+
+| what | measured |
+| --- | --- |
+| `sh scripts/capture/check-capture.sh` | 41 cases, 41 passed, 0 failed |
+| `sh scripts/acquisition/check-runner.sh` | 13 guard cases, 13 passed, 0 failed |
+| `pwsh -File scripts/acquisition/check-runner.ps1` | 15 guard cases, 15 passed, 0 failed |
+| `sh scripts/ci/check-workflow.sh` | 58 cases, 58 passed, 0 failed |
+| `sh scripts/common/check-gate.sh` | 26 checks, 25 passed, 0 failed, 1 skipped, 0 unavailable |
+| `pwsh -File scripts/common/check-gate.ps1` | 26 checks, 12 passed, 0 failed, 1 skipped, 13 unavailable |
+| `cargo test --workspace --locked --all-targets` | 50 binaries, 542 passed, 0 failed |
+| `cargo clippy --workspace --locked --all-targets -- -D warnings` | clean |
+| driven pass, sh | the guards refused in order on a real host: no claim, a claim naming another run, a table with a default route, an unbuilt observer, an output directory that already held a run. Then the capture ran: `curl` announced, the transcript carried its request including `User-Agent: curl/8.5.0`, `sha256sum -c` verified both artifacts, and the attestation was read back |
+| driven pass, PowerShell | the same set through `capture-run.ps1` under `pwsh` on Linux, against a `Get-NetRoute`-shaped fixture table. ⛔ It failed to bind on the first attempt and that is the `$Marker` collision above |
+| independent readers | `curl` 8.5.0 put the bytes on the wire, `sha256sum` verified the sh half's evidence and `Get-FileHash` the PowerShell half's. None of the three is this project's code |
+
+### Guard mutation
+
+Eleven plants into the two capture runners, one at a time, each verified to have
+changed the file before it was judged: the claim-marker check, the claimed-run
+comparison, the egress refusal, the existing-output refusal, the observer-present
+refusal, the segment-count refusal, the zero-segment refusal, the digest
+verification and the driver-token check in the `sh` half, and the claim and token
+checks in the PowerShell one. ⛔ **Eleven refused, none survived, none failed to
+apply, and in every case the harness row that went red was the one the plant was
+aimed at** rather than some other row going red for its own reasons.
+
+⚠ **The plant verifier reproduced this repository's own `grep -F` defect on its
+first run.** Five of the eleven literals span two lines, `grep -o -F | wc -l`
+counted each as 2, and all five were reported NOT-PLANTED over plants that would
+have applied. `store-lib.sh`'s `replace_once` carries the same finding from
+`CORPUS-01`, in a comment the harness author had read. Counted with something
+that understands a multi-line literal, all eleven are unique.
+
+Three more over the workflow, planted together rather than one at a time: an
+added `pull_request` trigger, the build step moved after the route is cut, and
+the capture step pointed at a script that is not in the tree. ⚠ **Together is
+defensible here and would not be for the eleven above**: each is a different
+property, read by a different reader, reported on its own line, so a refusal
+stays attributable. The clean tree either side is the control.
+
+### Residuals
+
+- ⛔ **The workflow has never been dispatched, and that is the honest state.**
+  Everything about it a reader can check is checked and both runners are driven
+  for real on every gate, but three things only a run establishes: that
+  `Get-NetRoute`'s real output matches the fixtures `check-runner.ps1` proves
+  the guard against, that deleting and restoring a default route works on a
+  hosted runner, and that the artifact survives the upload. ⚠ It is a residual
+  and not a blocker: nothing prevents a dispatch.
+- ⚠ **What it captures is a fixture.** No client is installed and no stock build
+  is observed; the attestation says `kind=fixture`, `measured_build=none`,
+  `stock_client=false`. `CLIENT-01` points a real build at the same lab.
+- ⚠ **The restore step is the least proved thing in the file.** `ip route add`
+  over a line `ip route show default` printed works on the hosts this was
+  written against and is not exercised anywhere: `check-capture` runs against a
+  route table it wrote itself and never touches the machine's. ⭐ Two things
+  make that survivable. A failed add is **reported and does not end the step**,
+  because under `set -e` the first refusal would skip the upload and throw away
+  a finished capture over a route; and the inverted egress guard after it is the
+  verdict, so an add is an attempt and the routing table is the fact. A guard
+  that still passes there means the route never came back, which is a named
+  failure rather than a network error naming nothing.
+- ⚠ **The artifact pin is verified and the pairing is not.** The capture uploads
+  with `actions/upload-artifact` v7.0.1 and the publisher downloads with
+  `actions/download-artifact` v8.0.1. The pin was resolved and then re-read
+  through a second route, `raw.githubusercontent.com`, which confirms the commit
+  carries the *Upload a Build Artifact* action and accepts every input this
+  workflow passes it. What no read establishes is that a v8 download reads a v7
+  upload: neither workflow has ever run.
+- ⚠ **Cancelling a dispatch between *Cut the route* and *Restore the route*
+  spends the host.** The concurrency group does not cancel in flight, which stops
+  a second dispatch doing it, and nothing stops a person pressing the button.
+- ⚠ `capture-run` reads the observer's report from its stdout, so the observer's
+  output contract is a shape held in two places. `check-capture`'s stub is what
+  compares them, and it compares them against the runner rather than against a
+  written specification.
+- ⚠ The new BOM rule below has no fixture in the tree that exercises its
+  ASCII-only branch, because every `.ps1` here carries markers. The mutation
+  pass plants one; nothing holds it permanently, which is the same shape
+  `check-twins.sh` warns about and the reason that pass found the drift in the
+  first place.
+
+### ⛔ What the door sweep found, one file away from this entry
+
+Writing `capture-run.ps1` raised the question of whether a `.ps1` needs a UTF-8
+BOM. [`../docs/conventions/shell.md`](../docs/conventions/shell.md) section 8
+says one carrying non-ASCII does, because Windows PowerShell 5.1 decodes a
+BOM-less file as the system ANSI code page. ⚠ **Eleven files had it and four did
+not**, and every one of the four carries this project's markers on hundreds of
+lines. Nothing was failing, because both CI lanes run `pwsh` 7 - and
+`check-twins` still falls back to `powershell` when `pwsh` is absent, which is
+where it would have bitten.
+
+⭐ **A convention held in eleven places and broken in four is the one-gated-door
+defect**, so the fix is both: the four files carry the BOM now, and
+`check-project` refuses a `.ps1` that has non-ASCII and no BOM, in both halves.
+The test is on the bytes rather than on a list, so an ASCII-only file is never
+asked for a BOM it has no use for.
+
+⛔ **The two halves disagreed on their first run and `check-twins` could not
+have seen it.** A `.ps1` keeps CRLF, so the sh half's `[^ -~<tab>]` matched the
+carriage return on every line and demanded a BOM for a file that is pure ASCII;
+the PowerShell half excluded 9, 10 and 13 explicitly. ⚠ `check-twins` compares
+the two on the tree it runs against, and **no `.ps1` in this tree is
+ASCII-only**, so the branch that differed had nothing to exercise it. That blind
+spot is written in `check-twins.sh` itself, and the fixture that found it is the
+one the tree lacks.
+
+Five cases, both halves run on each, exit codes and `--json` compared: the clean
+tree; a BOM stripped from a file that carries markers, refused by both naming
+that file; a new ASCII-only `.ps1` with no BOM, accepted by both; a new `.ps1`
+with one marker and no BOM, refused by both naming it; and the clean tree again
+after every restore. All five agree, character for character.
 
 ## CI-04: Build provenance and supply-chain hardening
 

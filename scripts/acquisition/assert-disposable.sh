@@ -39,10 +39,19 @@
 #   sh scripts/acquisition/assert-disposable.sh --claim <run-id>
 #   sh scripts/acquisition/assert-disposable.sh --egress [routing-table]
 #   sh scripts/acquisition/assert-disposable.sh --fingerprint
+#   sh scripts/acquisition/assert-disposable.sh --marker
 #
 # --claim prints the host fingerprint it recorded. --fingerprint prints the
 # current one without claiming, so the next job can compare and see a different
 # host.
+#
+# ⛔ --marker PRINTS THE MARKER'S PATH AND IS THE ONLY DERIVATION OF IT. A
+# caller that wants to know whether this host was claimed, and by which run,
+# reads the file this names rather than composing `$STATE_DIR/host-claimed` a
+# second time. Two spellings of one path is the shape `docs/publishing.md`
+# records twice: the copies agree until the state directory moves, and then the
+# reader looks in the old place and reports a host nobody claimed as fresh.
+# `capture-run.sh` is the caller this exists for.
 #
 # ⚠ BOTH GUARDS PRINT THE INPUT THEY READ, and that is not decoration. The
 # routing table is an optional argument and the marker directory an environment
@@ -121,6 +130,15 @@ case "${1:-}" in
       exit 2
     }
     fingerprint
+    exit 0
+    ;;
+
+  --marker)
+    [ $# -eq 1 ] || {
+      usage >&2
+      exit 2
+    }
+    printf '%s\n' "$MARKER"
     exit 0
     ;;
 

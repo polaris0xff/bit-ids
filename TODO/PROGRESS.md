@@ -2,10 +2,10 @@
 
 State instant: 2026-09-08
 Total: 58
-Open: 22
+Open: 21
 In progress: 0
 Blocked: 0
-Done: 36
+Done: 37
 
 ⚠ Those five counts are compared against
 [`INDEX.md`](INDEX.md) by `check-project.sh` on every gate, so they cannot go
@@ -34,6 +34,7 @@ What exists is every layer a capture passes through, and each one is closed:
 | lab | `bit-ids-lab` | the sockets, the deadline, the ordered byte record, the generated torrent, and the evidence a run leaves |
 | observers | `bit-ids-probe` | what each surface answers with, one module per surface |
 | store | `bit-ids` | where a record is filed, what a successor tree may do to it, and the views a consumer reads |
+| capture | `scripts/capture/`, `.github/workflows/capture.yml` | the host a capture is allowed to run on, the order that keeps it contained, and the evidence a run uploads |
 | publishing | `bit-ids`, `scripts/publishing/` | the assembled bundle, the append-only push, the renderings, and the access contract |
 | consuming | `bit-ids` | reading a publication back, verified, with no way to reach a network |
 | maintenance | `bit-ids`, `scripts/ci/` | what a new stable release creates, and what it must not create twice |
@@ -102,6 +103,19 @@ published. `docs/publishing.md` carries the forms and says they are unexercised.
 ⚠ **Nothing schedules the staleness monitor.** `CI-02` built the comparison and
 its driving surface; no capture request has ever been opened.
 
+⛔ **The capture workflow has never been dispatched.** `CI-03` built it and
+everything about it that a reader can check is checked: the absent
+`pull_request` trigger, the step order, the scripts it names, and the two
+runners it calls, which are driven for real by `check-capture` on every gate.
+⚠ What only a dispatch establishes is on the record: that `Get-NetRoute`'s real
+output matches the fixtures `check-runner.ps1` proves the guard against, that
+deleting the default route on a hosted runner and putting it back works, and
+that an artifact upload survives the round trip.
+
+⚠ **What that workflow captures is a fixture, and its attestation says so in
+fields.** `kind=fixture`, `measured_build=none`, `stock_client=false`. Nothing
+installs a client yet; `CLIENT-01` is what points a real build at the same lab.
+
 ⚠ **`mse` and `web_seed` have protocol code and no fixture**, so a fixture on
 either is refused with `E-FIX-07`. `local_discovery` and `pex` have codecs and
 no fixture of their own, for reasons `docs/architecture.md` section 10 gives.
@@ -113,26 +127,23 @@ needing the operator is answered under *Settled decisions* below, and the captur
 host that nineteen entries were said to wait on was never a blocker. Take these
 in order.
 
-1. **`CI-03`, the capture runner matrix.** The Windows guard pair
-   (`assert-disposable.ps1`) and its mutation harness (`check-runner.ps1`) are
-   done and in both gate lanes. What remains is the capture workflow itself: a
-   `workflow_dispatch`-only job per platform that claims the host, builds
-   everything **before** cutting the network, deletes the default route in both
-   address families, runs the egress guard, captures, restores the route only to
-   upload, and uploads the evidence bundle. ⛔ There is no `pull_request`
-   trigger, and that absence is the fork guard. `TODO/ci.md` carries why, and
-   why `scripts/ci/check-workflow.sh` has to assert it.
-2. **`CLIENT-01`, `CLIENT-06`, `CLIENT-05`**, the first complete vertical
-   captures, once `CI-03` runs. `TODO/clients.md` carries the acquisition routes.
-3. **`OBS-07` and `OBS-10`**, which need a stock client build and a second
-   platform, so they follow the captures.
-4. **`PUB-05`**, the SQLite rendering, which needs no capture and can be taken at
-   any point. The dependency question is settled below.
-5. **`LIB-02`**, the bit-cli adapter, which needs no capture either. Clone the
+1. **`PUB-05`**, the SQLite rendering, which needs no capture and no runner.
+   The dependency question is settled below.
+2. **`LIB-02`**, the bit-cli adapter, which needs neither either. Clone the
    public repository into a scratch directory and run its suite there.
-6. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
+3. **`CLIENT-01`, `CLIENT-06`, `CLIENT-05`**, the first complete vertical
+   captures. ⚠ These are what the capture workflow was built for and they are
+   third rather than first for one measured reason: `.github/workflows/capture.yml`
+   **has never been dispatched**. Everything about it that a reader can check is
+   checked, and what a dispatch would establish is on the record in `TODO/ci.md`
+   as the residual it is. A client adapter written against a workflow nobody has
+   run puts two unproven things in one change. `TODO/clients.md` carries the
+   acquisition routes.
+4. **`OBS-07` and `OBS-10`**, which need a stock client build and a second
+   platform, so they follow the captures.
+5. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
    bind attestations to.
-7. The remaining client and engine breadth, then refinements.
+6. The remaining client and engine breadth, then refinements.
 
 ## Settled decisions
 

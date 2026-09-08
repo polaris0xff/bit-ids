@@ -1,4 +1,4 @@
-# Validate bit-ids-specific repository invariants.
+﻿# Validate bit-ids-specific repository invariants.
 [CmdletBinding(PositionalBinding = $false)]
 param([switch]$Json)
 
@@ -440,6 +440,32 @@ try {
     }
     if ($gitDeps.Count -gt 0) {
         $failures.Add('git dependency in a manifest: ' + ($gitDeps -join '; '))
+    }
+
+    # ⛔ A .ps1 CARRYING NON-ASCII NEEDS A UTF-8 BOM. Windows PowerShell 5.1
+    # decodes a BOM-less file as the system ANSI code page, so every marker in it
+    # is mis-decoded; docs/conventions/shell.md section 8 is the rule.
+    #
+    # ⚠ Eleven files had the BOM and four did not, which is a rule enforced on
+    # most of the paths into one mistake. ⭐ The test is on the BYTES: an
+    # ASCII-only file needs nothing and is not asked for a BOM it has no use for.
+    $ps1Files = @(
+        & git ls-files '*.ps1'
+        & git ls-files --others --exclude-standard '*.ps1'
+    ) | Sort-Object -Unique
+    $bomless = [System.Collections.Generic.List[string]]::new()
+    foreach ($ps1 in $ps1Files) {
+        if (-not (Test-Path -LiteralPath $ps1 -PathType Leaf)) { continue }
+        $bytes = [System.IO.File]::ReadAllBytes($ps1)
+        $hasNonAscii = $false
+        foreach ($b in $bytes) { if ($b -gt 126 -or ($b -lt 32 -and $b -ne 9 -and $b -ne 10 -and $b -ne 13)) { $hasNonAscii = $true; break } }
+        if (-not $hasNonAscii) { continue }
+        if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) { continue }
+        $bomless.Add($ps1)
+    }
+    if ($bomless.Count -gt 0) {
+        $failures.Add('a .ps1 with non-ASCII and no UTF-8 BOM is mis-decoded by PowerShell 5.1: ' +
+            ($bomless -join ' '))
     }
 
     if ($Json) {

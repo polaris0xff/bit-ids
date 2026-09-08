@@ -1,4 +1,4 @@
-# assert-disposable.ps1 - refuse to install or run a client on a Windows host
+﻿# assert-disposable.ps1 - refuse to install or run a client on a Windows host
 # somebody keeps.
 #
 # ⭐ THE TWIN OF assert-disposable.sh, and the reason it exists is that the sh
@@ -45,6 +45,12 @@
 #   pwsh -NoProfile -File scripts/acquisition/assert-disposable.ps1 -Claim <run-id>
 #   pwsh -NoProfile -File scripts/acquisition/assert-disposable.ps1 -Egress [-RouteTable <path>]
 #   pwsh -NoProfile -File scripts/acquisition/assert-disposable.ps1 -Fingerprint
+#   pwsh -NoProfile -File scripts/acquisition/assert-disposable.ps1 -Marker
+#
+# ⛔ -Marker PRINTS THE MARKER'S PATH AND IS THE ONLY DERIVATION OF IT, for the
+# reason the sh half gives: a caller that composed ProgramData\bit-ids\host-claimed
+# itself would go on reading the old place the day the state directory moves,
+# and report a host nobody claimed as fresh. capture-run.ps1 is that caller.
 #
 # Exit codes: 0 the guard passed, 1 the guard refuses, 2 could not run.
 #
@@ -58,6 +64,7 @@ param(
     [switch]$Claim,
     [switch]$Egress,
     [switch]$Fingerprint,
+    [switch]$Marker,
     [string]$RunId = '',
     [string]$RouteTable = '',
     [switch]$Help
@@ -89,7 +96,7 @@ if ([string]::IsNullOrEmpty($stateDir)) {
     if ([string]::IsNullOrEmpty($programData)) { $programData = '/var/lib' }
     $stateDir = Join-Path $programData 'bit-ids'
 }
-$marker = Join-Path $stateDir 'host-claimed'
+$markerPath = Join-Path $stateDir 'host-claimed'
 
 # A value that differs between two hosts and survives within one.
 #
@@ -172,7 +179,7 @@ function Test-PublicRoute {
 # exactly one object yields the object, not a one-element array, so `.Count`
 # throws and every invocation of this script exits 1 with a property error. It
 # did, on the first run of all eight cases.
-$modes = @(@($Claim, $Egress, $Fingerprint) | Where-Object { $_ })
+$modes = @(@($Claim, $Egress, $Fingerprint, $Marker) | Where-Object { $_ })
 if ($modes.Count -ne 1) {
     Show-Usage | Write-Error -ErrorAction Continue
     exit 2
@@ -180,6 +187,11 @@ if ($modes.Count -ne 1) {
 
 if ($Fingerprint) {
     Write-Output (Get-HostFingerprint)
+    exit 0
+}
+
+if ($Marker) {
+    Write-Output $markerPath
     exit 0
 }
 
@@ -210,7 +222,7 @@ if ($RunId -notmatch '^[a-z0-9-]+$') {
     exit 2
 }
 
-if (Test-Path -LiteralPath $marker) {
+if (Test-Path -LiteralPath $markerPath) {
     Write-Error -ErrorAction Continue `
         'assert-disposable: this host already ran a capture, so it was not destroyed'
     exit 1
@@ -243,7 +255,7 @@ $stamp = [System.DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
 $body = "bit-ids/host-claim/1`nrun=$RunId`nclaimed_at=$stamp`nfingerprint=$print`n"
 try {
     $stream = [System.IO.File]::Open(
-        $marker, [System.IO.FileMode]::CreateNew,
+        $markerPath, [System.IO.FileMode]::CreateNew,
         [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
     try {
         $bytes = [System.Text.Encoding]::UTF8.GetBytes($body)
@@ -256,5 +268,5 @@ catch {
     exit 1
 }
 
-Write-Output "$print (claimed $marker)"
+Write-Output "$print (claimed $markerPath)"
 exit 0

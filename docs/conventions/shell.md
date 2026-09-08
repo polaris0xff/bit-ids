@@ -354,6 +354,15 @@ rather than warns, over every tracked text file.
   caught this repository's own probe.
   ⚠ The alternative is to keep every `.ps1` ASCII-only. That is also defensible;
   what is not defensible is non-ASCII with no BOM and a claim of 5.1 support.
+
+  ⭐ **This is a check now rather than a convention**, in both halves of
+  `check-project`. It was a convention for as long as it took a door sweep to
+  count: eleven files carried the BOM and four did not, and all four carry this
+  project's markers on hundreds of lines. ⚠ The two halves disagreed on their
+  first run, because a `.ps1` keeps CRLF and the sh half read the carriage
+  return as non-ASCII, so it demanded a BOM for a file that is pure ASCII.
+  `check-twins` could not see that: no `.ps1` in this tree is ASCII-only, so the
+  branch that differed had nothing to exercise it.
 - ⚠ **An empty `catch {}` is refused by PSScriptAnalyzer**, and it should be:
   it is indistinguishable from an accidentally swallowed error. Where swallowing
   is genuinely the design, say so in code rather than by omission. `$null = $_`

@@ -54,6 +54,20 @@ from any working directory.
   also sweeps the crate for sockets and transports, because "no network access"
   is a property of what the code cannot do rather than of what one run did, and
   it checks its own needle list against the crate that owns the sockets.
+- [`capture/capture-run.sh`](capture/capture-run.sh) and
+  [`capture/capture-run.ps1`](capture/capture-run.ps1) run a capture on a host
+  that has already been claimed and already had its route off itself deleted.
+  ⛔ They build nothing: the observer is a path to an already built binary,
+  because a capture that discovered a missing dependency under containment would
+  have to restore egress to fix it. ⭐ The driver is `curl` and the verifier is
+  `sha256sum -c` or `Get-FileHash`, so neither the bytes on the wire nor the
+  digests are this project checking itself, and the announce carries a token the
+  driver knows it sent which the transcript must hold.
+- [`capture/check-capture.sh`](capture/check-capture.sh) constructs the host
+  state each of those guards exists to catch, and drives a stub observer for the
+  refusals no host state can provoke. ⭐ It is also where the two capture
+  runners are compared, because `check-twins.sh` pairs the `common/` checks and
+  these take a host and a running process rather than a tree.
 - [`ci/check-staleness.sh`](ci/check-staleness.sh) drives the staleness monitor
   over real stores and real resolutions: a new stable release opens one request,
   a preview and a release already measured open none, and a second run over a
@@ -65,20 +79,25 @@ from any working directory.
   catch, and runs the offending workflow step against it. Every command it runs
   is read out of `.github/workflows/ci.yml` by job and step name, so a harness
   that has drifted from CI reports a missing step rather than a pass.
-- [`corpus/store-lib.sh`](corpus/store-lib.sh) is sourced by twelve of the
-  harnesses above and by `publishing/publish-data.sh`, and is never run.
-  ⚠ The count is measured rather than "all of them": `acquisition/check-runner.sh`
-  is listed above and does **not** source it, and the publisher is not a harness
-  at all. A sentence saying "all of the harnesses above" was already describing a
-  set two files differ from, which is the shape a claim audit exists to find. ⚠ It sits under `corpus/` because that is where the first harness
-  to need it was, and a publishing check sources it across directories rather
-  than growing a second copy. It holds what a mutation harness needs: build an example, make a scratch
-  tree, digest a directory, verify a plant landed, count a row.
+- [`corpus/store-lib.sh`](corpus/store-lib.sh) is sourced by **every** mutation
+  harness except `acquisition/check-runner.sh`, and by
+  `publishing/publish-data.sh`, which is not a harness. It is never run.
+  ⚠ The two exceptions are named rather than counted, and the count that used to
+  stand here is gone on purpose: it said "twelve" and went stale the next time a
+  harness was added, which is the second time a number in this file has done
+  that. A rule with its exceptions named describes the set on any tree; a number
+  describes the tree it was written on. ⚠ It sits under `corpus/` because that is
+  where the first harness to need it was, and a publishing check sources it
+  across directories rather than growing a second copy. It holds what a mutation
+  harness needs: build an example, make a scratch tree, digest a directory,
+  verify a plant landed, count a row.
 - [`common/check-gate.sh`](common/check-gate.sh) and
   [`common/check-gate.ps1`](common/check-gate.ps1) run the local gate.
 - `common/check-project.sh` and `common/check-project.ps1` validate bit-ids
-  structure, catalogue coverage, todo counts, action pins, and the shell-first
-  implementation rule.
+  structure, catalogue coverage, todo counts, action pins, the shell-first
+  implementation rule, and that a `.ps1` carrying non-ASCII starts with a UTF-8
+  BOM. ⚠ The last one was a convention for as long as it took a door sweep to
+  count: eleven files had the BOM and four did not.
 - `common/check-licences.sh` and `common/check-licences.ps1` check the register
   in `catalogue/licences.toml` against the catalogue and the lockfile in both
   directions, refuse a row with no disposition, and refuse an installer-shaped
@@ -101,19 +120,32 @@ Windows capture host will need a PowerShell fetcher; `ACQ-04` owns the runner
 contract and is where that lands, rather than a second implementation written
 now with nothing exercising it.
 
-`acquisition/check-runner.sh` and `acquisition/check-cache.sh`, the three
-`corpus/check-*.sh` harnesses, the three `publishing/check-*.sh` ones and
-`ci/check-staleness.sh`, `publishing/check-access.sh` and
-`publishing/check-catalogue.sh` and `common/check-examples.sh` are the
-mutation provers, and none has a twin. All twelve run in the `sh` gate and are reported as declared rows in the
-PowerShell one. `check-runner` proves guards that read `/proc/net/route`, so it has nothing
-to prove on Windows until `CI-03` writes the Windows pair. The six corpus and publishing
-provers hold rules that are not platform-specific at all, and the Rust suite
-exercises every one of them on both CI lanes; ⚠ what they plant includes a
-symbolic link and a named pipe against a real filesystem, and neither is
-available to an unprivileged Windows session. A second
+⭐ **Every `check-*` script outside `common/` is a mutation prover**, and so are
+`common/check-examples.sh` and `common/check-handbook.sh`. That is the rule, and
+it is stated as one rather than as a list with a count: the list here was short
+by `common/check-handbook.sh` for a whole session, and the count beside it was
+short by one for the same reason. All of them run in the `sh` gate except
+`ci/check-workflow.sh`, which cannot, and each is a declared row in the
+PowerShell one.
+
+⚠ `acquisition/check-runner.sh` is the one exception to that last clause, and
+this paragraph said the opposite until `CI-03` closed: `assert-disposable.ps1`
+and `check-runner.ps1` exist now, so `check-runner` is a **real** row on the
+PowerShell lane rather than a declared gap. A sentence saying a twin is not
+written yet outlives the day it is written unless something re-reads it.
+
+The corpus and publishing provers hold rules that are not platform-specific at
+all, and the Rust suite exercises every one of them on both CI lanes; ⚠ what
+they plant includes a symbolic link and a named pipe against a real filesystem,
+and neither is available to an unprivileged Windows session. A second
 implementation that skipped those two plants would report a smaller pass under
 the same name, which is the shape `check-twins.sh` calls invisible drift.
+
+⚠ `capture/check-capture.sh` is declared on the PowerShell lane for a third
+reason again, and its row says which: it is an `sh` harness, and what it drives
+includes `capture-run.ps1`, which the capture workflow's Windows job runs on a
+real Windows host with no `-RouteTable`. That is a stronger control than this
+lane could give and it happens somewhere else.
 
 ⚠ `check-staleness` is declared on the PowerShell lane for a **different**
 reason, and its row says which: it plants nothing on a filesystem and needs no

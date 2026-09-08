@@ -66,17 +66,36 @@ expect() { # want-code  name  args...
   _want="$1"
   _name="$2"
   shift 2
+  expect_says "$_want" "" "$_name" "$@"
+}
+
+# ⛔ A CASE MAY REQUIRE THE VERDICT AS WELL AS THE CODE, AND SOME MUST. Four of
+# this guard's refusals answer 2 and two answer 1, so a case asserting the code
+# alone passes when a different refusal fired. The PowerShell twin learned that
+# from a mutation pass and this half did not have the cases at all: the run-id
+# rule, the usage refusal and the two-modes refusal were unproven here while
+# check-runner.ps1 proved all three.
+expect_says() { # want-code  saying  name  args...
+  _want="$1"
+  _saying="$2"
+  _name="$3"
+  shift 3
   sh "$GUARD" "$@" >"$WORK/out" 2>"$WORK/err"
   _got=$?
-  if [ "$_got" = "$_want" ]; then
-    ROWS="$ROWS  ✅ ok    $_name
-"
-    PASS=$((PASS + 1))
-  else
+  if [ "$_got" != "$_want" ]; then
     ROWS="$ROWS  ❌ FAIL  $_name (wanted exit $_want, got $_got)
 "
     FAIL=$((FAIL + 1))
     [ "$JSON" = "1" ] || sed 's/^/          /' "$WORK/err" | head -4
+  elif [ -n "$_saying" ] && ! grep -q -F -e "$_saying" "$WORK/err"; then
+    ROWS="$ROWS  ❌ FAIL  $_name (exit $_want, but did not say '$_saying')
+"
+    FAIL=$((FAIL + 1))
+    [ "$JSON" = "1" ] || sed 's/^/          /' "$WORK/err" | head -4
+  else
+    ROWS="$ROWS  ✅ ok    $_name
+"
+    PASS=$((PASS + 1))
   fi
 }
 
@@ -101,7 +120,19 @@ printf 'lo\t0000007F\t00000000\t0001\t0\t0\t0\t000000FF\t0\t0\t0\n' >>"$WORK/rou
 expect 0 "loopback only passes" --egress "$WORK/route-loopback"
 
 # ⛔ An unreadable table is exit 2, not exit 0. Not knowing is not a pass.
-expect 2 "an unreadable table is not a pass" --egress "$WORK/no-such-table"
+expect_says 2 "is unreadable" "an unreadable table is not a pass" --egress "$WORK/no-such-table"
+
+# --- the argument surface ---------------------------------------------------
+#
+# ⚠ THESE THREE WERE PROVED ONLY BY THE POWERSHELL TWIN. All four of this guard's
+# `could not run` refusals share exit 2, so without the message each of these
+# cases would pass over any of the others; and a usage refusal that exits 0 is
+# the exact defect the ps1 half shipped, where `break` inside `ForEach-Object`
+# unwound the script.
+expect_says 2 "run id must be lowercase" "a run id that is not a slug is refused" \
+  --claim "Capture 0001"
+expect_says 2 "assert-disposable.sh --claim" "no mode at all is refused"
+expect_says 2 "assert-disposable.sh --claim" "an unknown mode is refused" --nonsense
 
 # --- persistent state -------------------------------------------------------
 #
@@ -142,6 +173,40 @@ else
 "
   FAIL=$((FAIL + 1))
 fi
+
+# --- the marker path, which is the only derivation of it --------------------
+#
+# ⛔ ASKED FOR, NEVER COMPOSED. `capture-run` reads this to find out whether the
+# host was claimed and by which run, and a second spelling of the path in that
+# caller would go on reading the old place the day the state directory moves.
+# ⚠ The case is not "it printed something": it claims into a scratch directory
+# and then requires the file this mode NAMES to be the one that appeared. A mode
+# returning a plausible path nothing writes to would pass any weaker check.
+MARKED="$WORK/host-c"
+MARKER_PATH=$(BIT_IDS_STATE_DIR="$MARKED" sh "$GUARD" --marker)
+if [ -n "$MARKER_PATH" ] && [ ! -e "$MARKER_PATH" ]; then
+  ROWS="$ROWS  ✅ ok    the marker path is reported before anything is claimed
+"
+  PASS=$((PASS + 1))
+else
+  ROWS="$ROWS  ❌ FAIL  the marker path is reported before anything is claimed [$MARKER_PATH]
+"
+  FAIL=$((FAIL + 1))
+fi
+
+BIT_IDS_STATE_DIR="$MARKED" sh "$GUARD" --claim capture-0004 >"$WORK/out" 2>&1
+_claimed=$?
+if [ "$_claimed" = "0" ] && [ -f "$MARKER_PATH" ]; then
+  ROWS="$ROWS  ✅ ok    --marker names the file --claim actually wrote
+"
+  PASS=$((PASS + 1))
+else
+  ROWS="$ROWS  ❌ FAIL  --marker names the file --claim actually wrote (claim exit $_claimed)
+"
+  FAIL=$((FAIL + 1))
+fi
+
+expect_says 2 "assert-disposable.sh --claim" "--marker takes no argument" --marker extra
 
 # The fingerprint the next job compares against.
 PRINT=$(sh "$GUARD" --fingerprint)

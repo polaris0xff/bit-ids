@@ -1,4 +1,4 @@
-# check-runner.ps1 - prove the Windows disposable-host guards refuse what they
+﻿# check-runner.ps1 - prove the Windows disposable-host guards refuse what they
 # exist to refuse.
 #
 # ⭐ THE TWIN OF check-runner.sh, and it exists because the guards stopped being
@@ -152,6 +152,46 @@ try {
         # would otherwise get whichever branch is written first, silently.
         Expect 2 'two modes at once is refused' @('-Claim', '-RunId', 'x', '-Egress') 'assert-disposable.ps1 -Claim'
         Expect 2 'no mode at all is refused' @() 'assert-disposable.ps1 -Claim'
+    }
+    finally {
+        Remove-Item Env:\BIT_IDS_STATE_DIR -ErrorAction SilentlyContinue
+    }
+
+    # --- the marker path, which is the only derivation of it ----------------
+    #
+    # ⛔ ASKED FOR, NEVER COMPOSED. capture-run.ps1 reads this to find out
+    # whether the host was claimed and by which run. ⚠ The case is not "it
+    # printed something": it claims into a scratch directory and requires the
+    # file this mode NAMES to be the one that appeared. A mode returning a
+    # plausible path nothing writes to would pass any weaker check.
+    #
+    # ⚠ ADDING THIS SWITCH BROKE THE WHOLE GUARD ONCE. `[switch]$Marker` and the
+    # existing `$marker` local were one variable, because PowerShell names are
+    # case-insensitive, so every invocation in every mode failed to bind a
+    # string to a SwitchParameter. The local is $markerPath now.
+    $marked = Join-Path $work 'host-c'
+    $env:BIT_IDS_STATE_DIR = $marked
+    try {
+        $markerLog = Join-Path $work 'marker'
+        & pwsh -NoProfile -File $guard -Marker *> $markerLog
+        $markerRc = $LASTEXITCODE
+        $markerPath = (Get-Content -LiteralPath $markerLog -TotalCount 1 -ErrorAction SilentlyContinue)
+        if ($markerRc -eq 0 -and $markerPath -and -not (Test-Path -LiteralPath $markerPath)) {
+            Add-Pass 'the marker path is reported before anything is claimed'
+        }
+        else {
+            Add-Fail "the marker path is reported before anything is claimed (exit $markerRc)"
+        }
+
+        $claimed = Invoke-Guard -Arguments @('-Claim', '-RunId', 'capture-0004')
+        if ($claimed -eq 0 -and $markerPath -and (Test-Path -LiteralPath $markerPath -PathType Leaf)) {
+            Add-Pass '-Marker names the file -Claim actually wrote'
+        }
+        else {
+            Add-Fail "-Marker names the file -Claim actually wrote (claim exit $claimed)"
+        }
+
+        Expect 2 '-Marker with another mode is refused' @('-Marker', '-Fingerprint') 'assert-disposable.ps1 -Claim'
     }
     finally {
         Remove-Item Env:\BIT_IDS_STATE_DIR -ErrorAction SilentlyContinue

@@ -192,7 +192,7 @@ else
   SKIP=$((SKIP + 1))
 fi
 
-# ⛔ MOSTLY NOT IN common/, AND IN THE GATE FOR THE SAME REASON. These twelve
+# ⛔ MOSTLY NOT IN common/, AND IN THE GATE FOR THE SAME REASON. These
 # mutation-prove the guards standing between this project and silently deleting
 # or rewriting published evidence, publishing a record whose evidence nothing
 # can resolve, pointing a consumer at a superseded build, publishing a retracted
@@ -201,15 +201,24 @@ fi
 # branch, opening a capture request twice for one release, telling a consumer it
 # may cache a path that moves, handing a consumer a record no manifest describes,
 # documenting a command that does not work, publishing a contributor handbook
-# whose walkthrough does not, and keeping somebody
+# whose walkthrough does not, capturing on a host that was never claimed or
+# still has a route off it, and keeping somebody
 # else's installer in this repository. The first is
 # unrecoverable afterwards and the rest are worse than errors, because each
-# answers confidently. ⭐ All twelve are hermetic:
+# answers confidently. ⭐ Every one is hermetic:
 # check-publish and check-access each create their own bare repository in a
-# scratch directory and touch no real remote. ⚠ They need cargo, so they exit 2 on a host without
+# scratch directory and touch no real remote, and check-capture binds only
+# loopback and reads a routing table it wrote itself.
+# ⚠ They need cargo, so they exit 2 on a host without
 # one, which is a skip and not a pass. ⚠ check-staleness needs python3 as well,
 # which is what re-derives a request identifier independently of the encoder
-# under test. None has a PowerShell half; scripts/README.md carries why.
+# under test, and check-capture needs curl, which is the HTTP client it drives
+# the observer with. None has a PowerShell half; scripts/README.md carries why,
+# and ⭐ check-capture is the one that runs the PowerShell half of its SUBJECT
+# anyway, because capture-run.ps1 takes a route table as a file.
+#
+# ⚠ THE COUNT IS NOT WRITTEN HERE. It was, twice, and both copies went stale in
+# the commit that added a prover. The list below is the list.
 #
 # ⚠ common/check-examples AND common/check-handbook ARE IN THIS LIST AND NOT IN
 # THE LOOP ABOVE, because each needs cargo and a scratch directory like the rest
@@ -220,10 +229,11 @@ fi
 # one directory and differ in one property: two of check-workflow's cases run
 # this gate, so a runner that listed it would re-enter itself. check-staleness
 # runs no gate.
-for spec in acquisition/check-cache corpus/check-store corpus/check-corpus \
-  corpus/check-indexes publishing/check-release publishing/check-formats \
-  publishing/check-publish publishing/check-access publishing/check-catalogue \
-  ci/check-staleness common/check-examples common/check-handbook; do
+for spec in acquisition/check-cache capture/check-capture corpus/check-store \
+  corpus/check-corpus corpus/check-indexes publishing/check-release \
+  publishing/check-formats publishing/check-publish publishing/check-access \
+  publishing/check-catalogue ci/check-staleness common/check-examples \
+  common/check-handbook; do
   PROVER="$HERE/../$spec.sh"
   NAME=${spec#*/}
   if [ -f "$PROVER" ]; then

@@ -75,6 +75,14 @@ can drive them against fixtures.
 input is what makes a run that passed over a fixture visible in a log rather
 than indistinguishable from one that passed over the machine.
 
+⛔ **`--marker` prints where the claim marker lives, and is the only derivation
+of that path.** A later step that wants to know whether this host was claimed,
+and by which run, reads the file this names. `capture-run` is the caller it
+exists for: it re-reads the claim at the moment of capture rather than trusting
+that an earlier workflow step ran. A caller that composed the path itself would
+be a second spelling, and it would go on reading the old place the day the state
+directory moves - reporting a host nobody claimed as claimed.
+
 ## Linux runner contract
 
 1. The host is created for one capture and destroyed after it. Not reset, not
@@ -114,6 +122,56 @@ still reaches the internet, and a guard reading only `0.0.0.0/0` would pass it.
 a machine that has no `Get-NetRoute`. That the real cmdlet's output matches those
 fixtures is established by running the guard with no `-RouteTable` on a Windows
 host, which is `CI-03`'s workflow rather than this page.
+
+## The workflow that runs on such a host
+
+[`../.github/workflows/capture.yml`](../.github/workflows/capture.yml) is the
+only thing that runs a capture on a hosted runner, and `CI-03` owns it. One job
+per platform, and the step order is the containment:
+
+| step | why it is where it is |
+| --- | --- |
+| claim the host | first, before anything else writes to it: the claim detects a survived host by finding its own marker, and a step that left state earlier would not be detected |
+| build the observer | ⛔ **while the network still exists.** After the next step nothing can be fetched |
+| cut the route off this host | both address families, with the routes saved first |
+| assert containment | the guard reads the kernel, not the step above. Those are two facts and only the second is evidence |
+| capture | `capture-run` re-reads the marker and the routing table itself |
+| restore the route | only to upload, after the measurement is on disk |
+| upload the evidence bundle | `if-no-files-found: error`, so an upload that found nothing is red |
+| report the host fingerprint | compared against the previous run **of the same platform** |
+
+⛔ **There is no `pull_request` trigger and that absence is the fork guard.** A
+fork cannot cause a workflow to run in the base repository, so there is no
+job-level condition for anyone to weaken and no `if:` to get subtly wrong.
+[`../scripts/ci/check-workflow.sh`](../scripts/ci/check-workflow.sh) asserts the
+absence, because an absence is what a later edit restores unnoticed, and it
+asserts the step order for the same reason: every wrong ordering above reads as
+plausible in a diff.
+
+⭐ **The restore is verified by the same guard, inverted.** A host that can reach
+the network again is one `--egress` **refuses**, so a guard that still passes
+after the restore means the route never came back and the upload would have
+failed with a network error naming nothing.
+
+⛔ **`capture-run` builds nothing.** A capture that discovered a missing
+dependency under containment would have to restore egress to fix it, on the host
+that exists to have none, so the observer is a path to an already built binary
+and a missing one is *could not run*. That makes the step order enforced rather
+than remembered.
+
+⚠ **What it captures today is a fixture, and the attestation says so.**
+`kind=fixture`, `measured_build=none` and `stock_client=false` are fields rather
+than prose, because a bundle that outlived its context would otherwise read as a
+measurement of a client. Nothing is installed; `CLIENT-01` is what points a real
+build at the same lab.
+
+⭐ **The driver and the verifier are both somebody else's code.** `curl` is a
+complete HTTP client and puts real bytes through the observer; `sha256sum -c`
+and `Get-FileHash` test the digests the observer declared, rather than the
+observer checking itself. ⛔ And the announce carries `key=<run-id>`, a token the
+driver knows it sent, which the transcript must hold: everything else is
+satisfied by a bundle of empty artifacts that verify against their own empty
+digests.
 
 ## What this does not establish
 
