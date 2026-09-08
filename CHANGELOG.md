@@ -5,6 +5,32 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T16:21:40Z
+
+- `CLIENT-01` gains the observer half a stock build can actually be pointed at:
+  [`client-capture`](crates/bit-ids-probe/examples/client-capture.rs) runs the real
+  HTTP tracker observer and generates the torrent with `announce` set to the
+  endpoint the operating system just gave it. Record:
+  [`TODO/clients.md`](TODO/clients.md).
+- ⛔ `evidence-bundle` could not be driven by a client and that was structural.
+  Its torrent names a hard-coded `http://127.0.0.1:6969/announce`, so the only
+  thing that could reach its observer was something told the endpoint
+  separately. A client reads the address out of the file or it never announces.
+- ⚠ The peer surface is dialled rather than offered, because `TrackerResponse`
+  is cloned into the responder while the lab is still being built and `Lab`
+  binds port zero: a tracker answer naming this lab's own peer port would have
+  to predict one that does not exist yet. ⭐ Dialling is also the stronger role,
+  since the side that dials sends its handshake first.
+- ⭐ Driven with two readers this project did not write. `torf` 4.3.1 took the
+  announce URL out of the generated `.torrent` and it matched the address the
+  observer printed and the port `curl/8.5.0` then announced to; `torf`
+  re-derived the info hash from the metainfo in the written bundle and agreed
+  with the observer's own line.
+- Deployment: nothing deployed. No client is installed anywhere this project may
+  capture on, so every run of this so far was driven by `curl` and no build has
+  been measured.
+
+
 ### 2026-09-08T15:05:08Z
 
 - `LIB-02` closes: the bit-cli adapter, which is a comparison rather than a

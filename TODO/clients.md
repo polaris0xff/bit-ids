@@ -75,6 +75,48 @@ Measured from the same listing, the release offers a Linux `AppImage`, a Windows
 beside it. That is two platform routes and a signature disposition to verify, and
 `ACQ-05` owns the authenticity evidence.
 
+### The observer a client can actually be pointed at, measured 2026-09-08
+
+⭐ **The lab now hands out a torrent that names its own tracker**, which is what
+a stock build needs and what nothing here provided before.
+[`client-capture`](../crates/bit-ids-probe/examples/client-capture.rs) runs the
+real `HttpTracker` observer, generates the torrent with `announce` set to the
+endpoint the operating system just gave it, writes it to a path, and prints the
+address, the info hash and the fixture digest before the line a driver waits on.
+
+⛔ **`evidence-bundle` could not be driven by a client and that was structural
+rather than an omission.** Its torrent carries a hard-coded
+`http://127.0.0.1:6969/announce`, so the only thing that could reach its
+observer was something told the endpoint separately - which `curl` is and a
+stock build is not. A client reads the address out of the file or it does not
+announce at all.
+
+⭐ **A reader this project did not write confirmed the file says what the
+observer claims.** `torf` 4.3.1, from the package index into a virtualenv, took
+the announce URL out of the generated `.torrent` and it matched both the address
+printed by the observer and the port `curl` then announced to; `torf` also
+re-derived the info hash `4bc6a5c90be5c4fc6a3c4281f2400af2d2c7700d` from the
+metainfo in the written bundle, which the observer had printed independently.
+⚠ Parsing a file is not a capture and needs no disposable host.
+
+Driven on 2026-09-08 with `curl/8.5.0` announcing as `driven-by-curl-000001`:
+one announce kept, query key order
+`info_hash,peer_id,port,uploaded,downloaded,left,compact,event,key`, header
+order `Host,User-Agent,Accept`, two segments, both artifacts verifying.
+
+⚠ **The peer surface is dialled rather than offered, and the reason is a
+constructor.** `TrackerResponse` is cloned into the responder while the lab is
+still being built, and `Lab` binds port zero, so a tracker answer naming this
+lab's own peer port would have to predict a port that does not exist yet. The
+client's listen port is an argument instead and the lab dials it once an
+announce proves the build read the torrent. ⭐ That is also the stronger role:
+the side that dials sends its handshake first, so what comes back is the build
+answering.
+
+⚠ **What this still does not establish is a client.** No build is installed on
+any host this project may capture on, so every run of it so far was driven by
+`curl`. The adapter is what changes that.
+
 ## CLIENT-02: qBittorrent Enhanced capture adapter
 
 Source: operator scope and upstream Enhanced Edition repository
