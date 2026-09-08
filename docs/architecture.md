@@ -1078,10 +1078,10 @@ non-injective layout section 4 describes, in a second place.
   `PUB-02` runs the append comparison over the fetched `data` branch; until both
   exist, the store and corpus checks are pointed at directories by hand or at
   one written by `build-store`.
-- ⭐ The HTTP tracker observer has been driven by a stock `BitTorrent` client
-  once, on 2026-09-08: a hosted runner installed Transmission 4.0.5, deleted its
-  default route, and the build announced to the lab twice. ⚠ Every other
-  observer is still driven only by an independent client written from the
+- ⭐ The HTTP tracker observer has been driven by stock `BitTorrent` clients, on
+  2026-09-08: hosted runners installed Transmission 4.0.5 and qBittorrent 4.6.3,
+  deleted their default routes, and each build announced to the lab. ⚠ Every
+  other observer is still driven only by an independent client written from the
   specification, which is a weaker control because it shares this project's
   reading of the protocol. `OBS-07` owns the positive controls, and a session
   host is not one the [`capture-host.md`](capture-host.md) guards permit.

@@ -93,15 +93,16 @@ library.
 
 ### Limits, stated rather than implied
 
-⭐ **The HTTP tracker observer has now been driven by a stock client.** On
-2026-09-08 a hosted runner installed Transmission 4.0.5 from the Ubuntu package
-index, cut its own default route, and handed the build a torrent naming this
-project's lab. It announced twice, carrying
-peer ID `2d5452343035302d756435383564356171646f73` on the wire.
-⛔ **That is one observer, one platform, one route and one connector.** Every other observer is
-still driven only by an implementation written from the specification, which
-shares this project's reading of the protocol, and `OBS-07` owns the controls
-that close the rest.
+⭐ **The HTTP tracker observer has now been driven by stock clients.** On
+2026-09-08 hosted runners installed Transmission 4.0.5 and qBittorrent 4.6.3
+from the Ubuntu package index, cut their own default routes, and handed each
+build a torrent naming this project's lab. Transmission announced twice carrying
+peer ID `2d5452343035302d756435383564356171646f73`, and qBittorrent once carrying
+peer ID `2d7142343633302d596939654d4d7e38664f7866`.
+⛔ **That is one observer, one platform, one route and one connector, per
+build.** Every other observer is still driven only by an implementation written
+from the specification, which shares this project's reading of the protocol, and
+`OBS-07` owns the controls that close the rest.
 
 ⛔ **The publisher has never run against this repository's own remote** and must
 not until a measured record exists. Its acceptance runs against a bare

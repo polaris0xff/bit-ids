@@ -415,6 +415,47 @@ reports and touches nothing, and both adapters use it now.
 area. What is measured is the shape: the hang moved from the install step to the
 one after it when that variable changed, and nothing else about the adapter did.
 
+### ⭐ Client capture run 4: a second client, and a second capture of the first
+
+**Two of the three jobs captured a build, and the third isolated its own
+failure.**
+
+| target | build | announces | peer ID on the wire | transcript |
+| --- | --- | ---: | --- | --- |
+| qbittorrent | `4.6.3` | 1 | peer ID `2d7142343633302d596939654d4d7e38664f7866` | 5 segments, 3 artifacts |
+| transmission | `4.0.5` | 2 | peer ID `2d5452343035302d756435383564356171646f73` | 9 segments, 3 artifacts |
+
+⭐ **`CLIENT-01` has its first measurement.** The profile the adapter writes is
+what a fresh `qbittorrent-nox` reads, the torrent is a positional argument, and
+the build announced to the lab under containment; the `[LegalNotice]` key in the
+profile is what the refused flag was supposed to do, and it works.
+
+⛔ **Neither entry closes.** Every one of the four gaps the first capture had is
+still open for both: one route, one connector, no `Profile` in the store, and no
+Windows.
+
+⚠ **Transmission's second capture reports the same build and a different peer
+ID**, which is what a per-session identity looks like and is exactly what
+`SCHEMA-04`'s sampling model exists for. Two samples is not a lifetime
+measurement and nothing here claims one.
+
+### ⛔ What is left of the aria2 hang, isolated
+
+**`NEEDRESTART_MODE=l` did not fix it.** Its install succeeded again and the step
+after it hung again, so the reading that the letter was the cause is refuted for
+`l` and unsettled for `a`.
+
+⭐ **What run 4 does establish is the boundary.** The hang is specific to this one
+package install, it survives the step that caused it, and it is not the install
+command's own duration: `install-client` returned, the record was written, and
+the next step is where the job stops. ⚠ Two adapters doing the same `apt-get`
+on the same image do not hang, so it is the `aria2` package rather than the
+route.
+
+⚠ Its install log uploaded on every run since the `always()` step landed, so the
+next session reads `update.log` and `install.log` from
+`install-aria2-<run>-1` rather than dispatching to find out.
+
 ## CLIENT-07: Deluge capture adapter
 
 Source: operator scope and upstream project

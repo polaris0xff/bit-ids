@@ -264,23 +264,24 @@ gate, and each refused a command on its first run.
 
 ⛔ **Nothing has been published, and no measured record exists.** Everything in
 the store is synthetic and says so, and the publisher must not run against this
-repository's own remote until that changes. ⭐ **A build HAS now been measured**:
-on 2026-09-08 a hosted runner installed Transmission 4.0.5 and captured it, with
-`kind=client`, `measured_build=4.0.5`, `stock_client=true`. ⚠ What that produced
-is an evidence bundle and an attestation, not a `Profile`: nothing wrote it into
-the store, one route ran rather than two, one connector observed it rather than
-two, and Windows is untouched, so it does not close `CLIENT-06`.
+repository's own remote until that changes. ⭐ **Builds HAVE now been measured**:
+on 2026-09-08 hosted runners captured Transmission 4.0.5 and qBittorrent 4.6.3,
+each attesting `kind=client`, `stock_client=true` and its own
+`measured_build`. ⚠ What those produced are evidence bundles and attestations,
+not `Profile`s: nothing wrote one into the store, one route ran rather than two,
+one connector observed each rather than two, and Windows is untouched, so
+neither `CLIENT-01` nor `CLIENT-06` closes.
 
 ⛔ **A hosted Windows runner's fingerprint is not a freshness signal.** Two fresh
 hosts report the same value; the two Linux runs differed. The claim marker is
 what detects a survived host. `docs/capture-host.md` carries why that cannot be
 patched by adding a varying input.
 
-⭐ **One observer has now been driven by a stock client, once.** Transmission
-4.0.5 announced twice to the HTTP tracker observer on a hosted runner with no
-default route. ⛔ Every other observer's driver is still an independent
+⭐ **One observer has now been driven by stock clients.** Transmission 4.0.5 and
+qBittorrent 4.6.3 announced to the HTTP tracker observer on hosted runners with
+no default route. ⛔ Every other observer's driver is still an independent
 implementation written from a specification, which shares this project's reading
-of the protocol, and that one capture is a single route, a single platform and a
+of the protocol, and each capture is a single route, a single platform and a
 single connector.
 
 ⛔ **The nine commit stamps before 2026-09-06T07:56Z are fabricated**, which is
@@ -298,11 +299,12 @@ fix it. It is the one observed skip, and it is why the gate exits 1 under
 `--strict` here and 0 on the Linux lane.
 
 ⭐ This session's record is
-[`SESSION-2026-09-08-DISPATCH.md`](SESSION-2026-09-08-DISPATCH.md): the first
-dispatch and the exit code it left behind, the fingerprint that answers nothing,
-the queryable rendering, and the adapter that fails closed.
+[`SESSION-2026-09-08-CLIENTS.md`](SESSION-2026-09-08-CLIENTS.md): the first two
+clients, the four dispatches it took, and the seven defects none of which was
+found by reading.
 
-⭐ The earlier session record is
-[`SESSION-2026-09-06-ADJACENT.md`](SESSION-2026-09-06-ADJACENT.md). ⚠ It is linked
-from here and nowhere else, so a rewrite of this file that drops the link orphans
-it and `check-docs` refuses that.
+⭐ The earlier session records are
+[`SESSION-2026-09-08-DISPATCH.md`](SESSION-2026-09-08-DISPATCH.md) and
+[`SESSION-2026-09-06-ADJACENT.md`](SESSION-2026-09-06-ADJACENT.md). ⚠ They are
+linked from here and nowhere else, so a rewrite of this file that drops a link
+orphans one and `check-docs` refuses that.

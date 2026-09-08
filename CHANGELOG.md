@@ -5,6 +5,23 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T19:20:22Z
+
+- ⭐ Client capture run 4 measured a second client and re-measured the first:
+  qBittorrent `4.6.3` announced once and Transmission `4.0.5` announced twice,
+  each under containment with its bundle verified. `CLIENT-01` has its first
+  measurement. Record: [`TODO/clients.md`](TODO/clients.md).
+- ⭐ The `[LegalNotice]` key in the profile does what the refused flag was
+  supposed to do.
+- ⛔ Neither entry closes: one route, one connector, no record in the store and
+  no Windows, for both.
+- ⚠ `NEEDRESTART_MODE=l` did not fix the aria2 hang. What run 4 establishes is
+  the boundary instead: it is that one package install, it survives the step
+  that caused it, and two other adapters doing the same `apt-get` on the same
+  image do not hang.
+- Deployment: nothing deployed. Three evidence bundles exist and no record does.
+
+
 ### 2026-09-08T19:07:10Z
 
 - ⭐ Client capture run 3 read the product's own words back: `--confirm-legal-notice
