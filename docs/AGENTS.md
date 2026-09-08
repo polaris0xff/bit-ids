@@ -59,7 +59,14 @@ The current state and work order live in
     status is not the check's status.
 14. Update the entry, index, progress record and affected docs in the same
     change as the work.
-15. Do not run the session-end protocol until the operator says to wrap up or
+15. **This document's routes and conventions beat a general habit, every
+    time.** Where a rule here names a route, a tool or a form, use it rather
+    than the equivalent your tooling reaches for by default. ⚠ Measured on
+    2026-09-08: a session polled CI through a general-purpose GitHub tool and
+    spent minutes per query while rule 8's route answers the same question in
+    one `curl`. The rule was read at the start of that session and not applied,
+    which is what makes this an absolute rather than a preference.
+16. Do not run the session-end protocol until the operator says to wrap up or
     the current work order is genuinely exhausted. Genuinely exhausted means
     at least five L-sized entries, or equivalent effort, have been completed or
     driven to measured external blockers. Never end early merely because work
@@ -135,7 +142,7 @@ it, then restoring and confirming the clean case.
 
 ## 7. Session end protocol
 
-Run this only under rule 15 in section 2.
+Run this only under rule 16 in section 2.
 
 1. Finish the last task in flight or checkpoint it coherently. Save current
    progress and leave no unexplained half-edit.

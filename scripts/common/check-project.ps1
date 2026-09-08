@@ -12,7 +12,7 @@ $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 $root = (& git -C (Split-Path -Parent $PSCommandPath) rev-parse --show-toplevel 2>$null)
 if ($LASTEXITCODE -ne 0 -or -not $root) {
-    Write-Error 'check-project: not in a git repository'
+    [Console]::Error.WriteLine('check-project: not in a git repository')
     exit 2
 }
 
@@ -493,6 +493,30 @@ try {
     if ($nativePref.Count -gt 0) {
         $failures.Add('a .ps1 stops on errors without saying what a native exit code means: ' +
             ($nativePref -join ' '))
+    }
+
+    # ⛔ Write-Error RENDERS, AND A HARNESS MATCHES ON THE STRING. Called inside
+    # a script it emits a source-context block and WRAPS the message to the
+    # host's width: one refusal is a single line at width 200 and two at width
+    # 80, so a fixed-string match succeeds on a developer host and fails on a CI
+    # runner. [Console]::Error.WriteLine writes the bytes.
+    #
+    # ⚠ THE NEEDLE IS AN INVOCATION, NOT THE WORD. Its first run fired on THIS
+    # FILE, because the failure message it raises contains the name; a rule has
+    # to be describable in the file that enforces it.
+    $writeErr = [System.Collections.Generic.List[string]]::new()
+    foreach ($ps1 in $ps1Files) {
+        if (-not (Test-Path -LiteralPath $ps1 -PathType Leaf)) { continue }
+        foreach ($line in (Get-Content -LiteralPath $ps1)) {
+            if ($line -match '^\s*#') { continue }
+            if ($line -notmatch '(^|[|;{])\s*Write-Error(\s|$)') { continue }
+            $writeErr.Add($ps1)
+            break
+        }
+    }
+    if ($writeErr.Count -gt 0) {
+        $failures.Add('a .ps1 reports through Write-Error, whose rendering wraps by host width: ' +
+            ($writeErr -join ' '))
     }
 
     if ($Json) {

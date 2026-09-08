@@ -88,6 +88,16 @@ left the Windows lane green, over a script neither lane had changed. ⭐ Every
 does not. ⚠ The general lesson is the shape: a comment saying "X is the default"
 is a fact about one version being relied on as a promise.
 
+⛔ **A message a machine matches on does not go through a display layer.**
+PowerShell's `Write-Error` inside a script renders a source-context block and
+WRAPS the message to the host's width: the same refusal is one line at width 200
+and two at width 80, so a fixed-string match passes locally and fails on a CI
+runner. `[Console]::Error.WriteLine` writes the bytes, and `check-project`
+refuses `Write-Error` in a tracked `.ps1`. ⚠ Its needle fired on its own
+enforcing file first, because the failure message contains the name: a rule has
+to be describable in the file that enforces it, so the needle is an invocation
+rather than the word.
+
 ⛔ **A red gate must say WHICH case failed.** The excerpt was the first twelve
 lines of a harness that prints its failures last, so a red CI log contained
 eleven passing rows and no failure at all. The excerpt is the tail now and

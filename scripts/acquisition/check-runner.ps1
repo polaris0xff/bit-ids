@@ -44,7 +44,7 @@ $PSNativeCommandUseErrorActionPreference = $false
 $here = Split-Path -Parent $PSCommandPath
 $guard = Join-Path $here 'assert-disposable.ps1'
 if (-not (Test-Path -LiteralPath $guard -PathType Leaf)) {
-    Write-Error -ErrorAction Continue "check-runner: $guard is not present"
+    [Console]::Error.WriteLine("check-runner: $guard is not present")
     exit 2
 }
 

@@ -463,6 +463,36 @@ done
 [ -z "$NATIVE" ] ||
   say_fail "a .ps1 stops on errors without saying what a native exit code means:$NATIVE"
 
+# ⛔ Write-Error RENDERS, AND A HARNESS MATCHES ON THE STRING. Called inside a
+# script it emits a source-context block and WRAPS the message to the host's
+# width. Measured on 2026-09-08: one refusal is a single line at width 200 and
+# two lines at width 80, so a fixed-string match succeeds on a developer host
+# and fails on a CI runner. A message a machine reads does not go through a
+# display layer; [Console]::Error.WriteLine writes the bytes.
+#
+# ⚠ Ten .ps1 files already did it that way and five did not, which is the same
+# shape as the BOM rule above: a convention held on most of the paths into one
+# mistake.
+#
+# ⚠ THE NEEDLE IS AN INVOCATION, NOT THE WORD, and its first run proved why: it
+# fired on this rule's own PowerShell twin, because the failure message it
+# raises contains the name. A rule has to be describable in the file that
+# enforces it. So a match is the name in COMMAND POSITION - at the start of a
+# statement or after a pipe, a semicolon or a brace - and a comment line is
+# skipped outright.
+WRITEERR=""
+for _ps1 in $({
+  git ls-files '*.ps1'
+  git ls-files --others --exclude-standard '*.ps1'
+} | sort -u); do
+  [ -f "$_ps1" ] || continue
+  grep -nE '(^|[|;{])[[:space:]]*Write-Error([[:space:]]|$)' "$_ps1" |
+    grep -qv ':[[:space:]]*#' &&
+    WRITEERR="$WRITEERR $_ps1"
+done
+[ -z "$WRITEERR" ] ||
+  say_fail "a .ps1 reports through Write-Error, whose rendering wraps by host width:$WRITEERR"
+
 if [ "$JSON" = 1 ]; then
   printf '{"schema":"check-project/2","failures":%s,"todo_entries":%s,"open":%s,"in_progress":%s,"blocked":%s,"done":%s}\n' \
     "$FAIL" "$ROWS" "$OPEN_ROWS" "$IN_PROGRESS_ROWS" "$BLOCKED_ROWS" "$DONE_ROWS"

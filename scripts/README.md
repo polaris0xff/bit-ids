@@ -96,11 +96,12 @@ from any working directory.
 - `common/check-project.sh` and `common/check-project.ps1` validate bit-ids
   structure, catalogue coverage, todo counts, action pins, the shell-first
   implementation rule, that a `.ps1` carrying non-ASCII starts with a UTF-8 BOM,
-  and that a `.ps1` which stops on errors also says what a native command's exit
-  code means. ⚠ Both of the last two were conventions until something counted:
-  eleven files had the BOM and four did not, and sixteen relied on a PowerShell
-  default that changed in 7.5. The second was found by CI rather than by a
-  reading.
+  that a `.ps1` which stops on errors also says what a native command's exit code
+  means, and that none reports through `Write-Error`, whose rendering wraps by
+  host width. ⚠ All three of the last were conventions until something counted:
+  eleven files had the BOM and four did not, sixteen relied on a PowerShell
+  default that changed in 7.5, and ten wrote to stderr directly while five did
+  not. The last two were found by CI rather than by a reading.
 - `common/check-licences.sh` and `common/check-licences.ps1` check the register
   in `catalogue/licences.toml` against the catalogue and the lockfile in both
   directions, refuse a row with no disposition, and refuse an installer-shaped

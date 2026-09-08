@@ -556,6 +556,39 @@ end-to-end half, which is the one that matters: with the preference forced
 `$true`, `check-capture` reproduces run 58's two failures exactly; with it
 `$false`, the harness is green. The fix is what carries it, not the version.
 
+### ⛔ And then run 59, which the fixed reporting caught in one line
+
+⛔ **A refusal message that a harness matches on must not go through a display
+layer.** `capture-run.ps1` reported through `Write-Error`, which inside a script
+renders a source-context block and **wraps the message to the host's width**.
+Measured on 2026-09-08: the refusal `the host is claimed by run [capture-0001],
+not [capture-0002]` is one line at width 200 and **two** at width 80, so a
+fixed-string match succeeds on a developer host and fails on a CI runner. The
+case went red with the right exit code and the wrong message.
+
+⚠ **Ten `.ps1` files already wrote through `[Console]::Error.WriteLine` and five
+did not**, which is the BOM shape a third time: a convention held on most of the
+paths into one mistake. All five write the bytes now, and `check-project`
+refuses `Write-Error` in a tracked `.ps1`, in both halves.
+
+⭐ **The rule's needle is an INVOCATION, not the word, and its first run proved
+why: it fired on its own PowerShell twin**, because the failure message that
+rule raises contains the name. A rule has to be describable in the file that
+enforces it, so a match is the name in command position and a comment line is
+skipped outright. ⚠ That is the needle-list lesson in a new shape - a needle
+that matches its own description.
+
+Five cases, both halves on each with `--json` compared: the clean tree; an
+invocation at a statement start; an invocation after a pipe, which is the shape
+`assert-disposable.ps1` used; the name in a comment and inside a string,
+accepted by both; and the clean tree again. ⭐ And the end-to-end half at the
+width that broke it: with `[Console]::Error.WriteLine` the fixed-string match is
+1, with `Write-Error` it is 0.
+
+⭐ **Run 59 is also what shows the reporting fix works.** Its log named the
+failing case on its own line - `❌ ps a host claimed by another run is refused` -
+where run 58's contained no failure at all.
+
 ### ⛔ And a red gate that did not say what failed
 
 ⚠ **Run 58's log reported `FAIL check-capture (exit 1)` and then eleven
@@ -593,6 +626,8 @@ the tail lands on them.
 | independent readers | `curl` 8.5.0 put the bytes on the wire, `sha256sum` verified the sh half's evidence and `Get-FileHash` the PowerShell half's. None of the three is this project's code |
 | CI run 58, first attempt | ⛔ **Linux lane RED**, Windows lane green, over the PowerShell 7.5 default described above. The local gate had been green on both halves minutes earlier, which is the whole point of recording it |
 | CI run 58, what it cost | one cycle, because the gate's failure excerpt was the first twelve lines of a harness that prints its failures last. Both are fixed |
+| CI run 59, first attempt | ⛔ **Linux lane RED again**, over `Write-Error` wrapping a refusal message at the runner's console width. ⭐ Its log named the failing case in one line, which is the reporting fix working |
+| CI run 60 | the first attempt after both fixes |
 
 ### Guard mutation
 

@@ -57,6 +57,19 @@ Nothing is released yet. Entries accumulate here until the first
   was the first twelve lines of a harness that prints its failures last. The
   excerpt is the tail now and `store_report` reprints the failing rows above its
   summary.
+- ⛔ CI run 59 was red again, and its log named the failing case in one line,
+  which is the reporting fix above working. The cause: `Write-Error` inside a
+  script renders a source-context block and wraps the message to the host's
+  width, so a refusal a harness matches on is one line at width 200 and two at
+  width 80. Ten `.ps1` files already wrote through `[Console]::Error.WriteLine`
+  and five did not; all five do now and `check-project` refuses the rest.
+- ⚠ That rule's needle fired on its own enforcing file on its first run, because
+  the failure message contains the name. It matches an invocation now, not the
+  word.
+- ⭐ The two remote read routes are absolutes rather than preferences, and a new
+  absolute says this document's routes beat a general habit: a session polled CI
+  through a general-purpose tool while rule 8's route answered the same question
+  in one `curl`.
 - ⚠ The capture workflow has never been dispatched, and what it would capture is
   a fixture: nothing installs a client, and the attestation says so in fields.
 - Deployment: nothing deployed. No capture was taken and nothing was published.

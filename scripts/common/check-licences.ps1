@@ -31,7 +31,7 @@ $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 $root = (& git -C (Split-Path -Parent $PSCommandPath) rev-parse --show-toplevel 2>$null)
 if ($LASTEXITCODE -ne 0 -or -not $root) {
-    Write-Error 'check-licences: not in a git repository'
+    [Console]::Error.WriteLine('check-licences: not in a git repository')
     exit 2
 }
 
@@ -42,7 +42,7 @@ try {
     $lock = 'Cargo.lock'
     foreach ($path in @($register, $catalogue, $lock)) {
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
-            Write-Error ("check-licences: {0} is missing" -f $path)
+            [Console]::Error.WriteLine("check-licences: $path is missing")
             exit 2
         }
     }

@@ -352,6 +352,28 @@ rather than warns, over every tracked text file.
 
   `check-project` refuses a `.ps1` that sets `$ErrorActionPreference = 'Stop'`
   without also setting this one.
+- ⛔ **A message a machine matches on is written with
+  `[Console]::Error.WriteLine`, never `Write-Error`.** Called inside a script,
+  `Write-Error` renders a source-context block - the file, the line, a caret
+  rule - and **wraps the message to the host's width**. Measured on 2026-09-08,
+  the same refusal:
+
+  ```text
+       | capture-run: the host is claimed by run [capture-0001], not [capture-0002]
+  ```
+
+  at width 200, and at width 80:
+
+  ```text
+       | capture-run: the host is claimed by run [capture-0001], not
+       | [capture-0002]
+  ```
+
+  ⚠ **A fixed-string match therefore passes on a developer host and fails on a
+  CI runner**, which is what it did. Ten `.ps1` files here already wrote the
+  bytes and five did not; `check-project` refuses the rest. ⚠ Its needle is the
+  name in command position rather than the word, because the rule fired on its
+  own enforcing file first: the failure message contains the name.
 - ⚠ **`Get-Command` finds cmdlets, functions and aliases too.** Filter to
   `Application` and `ExternalScript` when you mean an executable. A cmdlet
   looked for on PATH reports as missing on every machine that has it.

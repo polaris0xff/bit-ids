@@ -187,7 +187,7 @@ function Test-PublicRoute {
 # did, on the first run of all eight cases.
 $modes = @(@($Claim, $Egress, $Fingerprint, $Marker) | Where-Object { $_ })
 if ($modes.Count -ne 1) {
-    Show-Usage | Write-Error -ErrorAction Continue
+    Show-Usage | ForEach-Object { [Console]::Error.WriteLine($_) }
     exit 2
 }
 
@@ -206,13 +206,13 @@ if ($Egress) {
     $read = if ([string]::IsNullOrEmpty($RouteTable)) { 'Get-NetRoute' } else { $RouteTable }
     switch ($verdict) {
         0 {
-            Write-Error -ErrorAction Continue `
-                'assert-disposable: a public route exists; a capture host reaches loopback only'
+            [Console]::Error.WriteLine(
+                'assert-disposable: a public route exists; a capture host reaches loopback only')
             exit 1
         }
         2 {
-            Write-Error -ErrorAction Continue `
-                "assert-disposable: $read is unreadable, so egress could not be established. That is not a pass."
+            [Console]::Error.WriteLine(
+                "assert-disposable: $read is unreadable, so egress could not be established. That is not a pass.")
             exit 2
         }
         default {
@@ -224,25 +224,25 @@ if ($Egress) {
 
 # -Claim
 if ($RunId -notmatch '^[a-z0-9-]+$') {
-    Write-Error -ErrorAction Continue "assert-disposable: run id must be lowercase a-z0-9-: $RunId"
+    [Console]::Error.WriteLine("assert-disposable: run id must be lowercase a-z0-9-: $RunId")
     exit 2
 }
 
 if (Test-Path -LiteralPath $markerPath) {
-    Write-Error -ErrorAction Continue `
-        'assert-disposable: this host already ran a capture, so it was not destroyed'
+    [Console]::Error.WriteLine(
+        'assert-disposable: this host already ran a capture, so it was not destroyed')
     exit 1
 }
 
 try { $null = New-Item -ItemType Directory -Force -Path $stateDir -ErrorAction Stop }
 catch {
-    Write-Error -ErrorAction Continue "assert-disposable: cannot create $stateDir"
+    [Console]::Error.WriteLine("assert-disposable: cannot create $stateDir")
     exit 2
 }
 
 $print = Get-HostFingerprint
 if ([string]::IsNullOrEmpty($print)) {
-    Write-Error -ErrorAction Continue 'assert-disposable: the host fingerprint is empty'
+    [Console]::Error.WriteLine('assert-disposable: the host fingerprint is empty')
     exit 2
 }
 
@@ -270,7 +270,7 @@ try {
     finally { $stream.Dispose() }
 }
 catch {
-    Write-Error -ErrorAction Continue 'assert-disposable: another capture claimed this host first'
+    [Console]::Error.WriteLine('assert-disposable: another capture claimed this host first')
     exit 1
 }
 

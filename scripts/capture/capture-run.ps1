@@ -74,12 +74,18 @@ function Show-Usage {
 
 if ($Help) { Show-Usage; exit 0 }
 
+# ⛔ [Console]::Error.WriteLine AND NEVER Write-Error, because a harness matches
+# on these strings. Write-Error inside a script renders a source-context block
+# and WRAPS the message to the host's width: measured on 2026-09-08, the same
+# refusal is one line at width 200 and two at width 80, so a fixed-string match
+# succeeds locally and fails on a CI runner. A message a machine reads does not
+# go through a display layer.
 function Deny([string]$Message) {
-    Write-Error -ErrorAction Continue "capture-run: $Message"
+    [Console]::Error.WriteLine("capture-run: $Message")
     exit 1
 }
 function Cannot([string]$Message) {
-    Write-Error -ErrorAction Continue "capture-run: $Message"
+    [Console]::Error.WriteLine("capture-run: $Message")
     exit 2
 }
 
