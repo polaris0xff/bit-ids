@@ -104,7 +104,7 @@ an unlinked page is not read, so it is not corrected.
 ## DOC-02: Contributor capture-run handbook
 
 Source: future external contribution path
-Priority: P2 | Effort: M | Status: OPEN
+Priority: P2 | Effort: M | Status: DONE
 
 Problem: A contributor can submit plausible output that lacks isolation,
 two-route identity, independent observation, or redistribution review.
@@ -112,5 +112,93 @@ two-route identity, independent observation, or redistribution review.
 Approach: Document host preparation, safe acquisition, lab execution, evidence
 review, correction flow, and exactly what cannot be accepted.
 
-Prove: a clean-room walkthrough follows only the handbook and produces a
-validator-accepted fixture submission without undocumented steps.
+Prove: `sh scripts/common/check-handbook.sh` passes, extracting the runnable
+steps out of [`../docs/contributing-captures.md`](../docs/contributing-captures.md),
+running them in order in one directory with nothing the page does not carry, and
+handing the result to the validator.
+
+### Decision: the walkthrough is the page, and the harness contributes four names
+
+⛔ **"Without undocumented steps" is the clause that decides the design.** A
+walkthrough a harness helps along proves that the harness knows how to build a
+submission, not that the page does. So the harness binds `REPO`, `BIN`,
+`SUBMISSION` and `EMPTY`, which is what a contributor supplies by knowing where
+they cloned to, and then runs the page's own blocks and nothing else.
+
+⚠ **The steps share one directory and one shell**, unlike `DOC-01`'s examples,
+which run independently because a reader can run any one of those alone. Here
+the later steps depend on the earlier ones having happened, which is what makes
+it a walkthrough.
+
+### ⛔ What running the page found: a documented build that uses the wrong compiler
+
+The build step was written as `cargo build --manifest-path "$REPO/Cargo.toml"`
+with no `cd`. It fails: `rust-toolchain.toml` pins the compiler and rustup finds
+it by walking up from the **working directory**, so the same command run from
+anywhere else silently uses whatever that machine defaults to. ⭐ A contributor
+following the page from their own scratch directory would have built with an
+unpinned toolchain and never been told. The `cd` is documented now, with the
+reason.
+
+### ⛔ What cannot be walked, and why that is stated rather than worked around
+
+Sections 2 through 5 are documented and not executed. A session host has a
+public route, so `assert-disposable.sh --egress` refuses it, and running a
+client there would be the capture the boundary exists to prevent. ⚠ The host
+guards are in a `text` block for that reason, and the harness has a case
+asserting the extractor did **not** take them: running `--claim` here would
+write a capture marker onto this machine.
+
+### ⛔ What the mutation pass found: two checks that could not fail
+
+Nine plants over the page and the harness. Three survived the first pass and
+two of the three were real.
+
+⛔ **The page's own validation steps could be deleted with everything staying
+green**, because the harness validates the result independently. A page that
+stopped telling a contributor to check before submitting would still produce an
+acceptable submission. The `teaches` case is what closes it.
+
+⚠ **And that case's first version passed for the wrong reason.** It grepped the
+walkthrough for `validate-corpus`, which matches the build step's own
+`--example validate-corpus` argument, so deleting the invocation left it green.
+It matches `$BIN/validate-corpus` now: a check that passes because a different
+line happens to satisfy it is the shape
+[`../docs/methodology/reviews.md`](../docs/methodology/reviews.md) names.
+
+⛔ **The harness's own result validation could be replaced by `true`** and
+nothing noticed, because an exit code of 0 is what `true` produces. The verdict
+is read from the validator's own output line now, so the case cannot pass unless
+the validator ran.
+
+⚠ **The third survivor is not detectable from inside and is recorded rather than
+fixed.** Rewriting the negative control's comparison to `if true` makes it pass
+unconditionally, and no harness detects a weakened assertion in itself. That is
+a reviewer's catch, and it is why a mutation pass is read rather than scored.
+
+### Acceptance, all run on 2026-09-08
+
+- `sh scripts/common/check-handbook.sh`
+- `sh scripts/common/check-gate.sh`
+
+### Closure evidence, 2026-09-08
+
+| what | measured |
+| --- | --- |
+| `sh scripts/common/check-handbook.sh` | 7 cases, 7 passed, 0 failed; 5 steps extracted and run in order |
+| `sh scripts/common/check-gate.sh` | 25 checks, 24 passed, 0 failed, 1 skipped, 0 unavailable |
+| driven pass | the page's own steps, run in one directory, producing a submission the validator accepts with `valid store: 1 record(s), 1 run(s), 11 object(s)` |
+| guard mutation | 9 plants; 8 refused after two real findings were fixed, 1 undetectable from inside and recorded above |
+| finding | one documented command built with an unpinned toolchain and was corrected before the page was committed |
+
+### Residuals
+
+- ⛔ **The walkthrough starts where a contributor's capture ends.** Host
+  preparation, acquisition, the lab run and the evidence review are documented
+  and cannot be executed here, and the page says so in its own last section
+  rather than leaving a reader to notice.
+- ⚠ The submission the walkthrough builds is synthetic, which is what everything
+  in this repository is today. It proves the acceptance path, not a measurement.
+- ⚠ No contributor has followed the page. What is measured is that its steps run
+  and that the result is accepted; whether a person finds it sufficient is a
+  reading nobody here can do for them.

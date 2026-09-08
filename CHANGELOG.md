@@ -5,6 +5,26 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T04:19:03Z
+
+- `DOC-02`, the contributor handbook and the walkthrough that runs it. Record:
+  [`TODO/documentation.md`](TODO/documentation.md).
+- ⛔ The harness binds four names and runs the page's own blocks and nothing
+  else, which is what makes "without undocumented steps" a measurement rather
+  than a claim.
+- ⭐ Running it found a documented build command that uses the wrong compiler:
+  `rust-toolchain.toml` is found by walking up from the working directory, so
+  the same `cargo build` from elsewhere silently uses another toolchain.
+- ⛔ Two of the harness's own checks could not fail. The page's validation steps
+  could be deleted while everything stayed green, and the harness's own
+  validation could be replaced by `true`. Both are closed; a third survivor is a
+  weakened assertion inside the harness and is recorded rather than fixed.
+- ⚠ The host guards are shown and never run: a session host is refused by the
+  egress guard, and `--claim` would write a capture marker onto this machine.
+  The harness has a case asserting the extractor left that block alone.
+- Deployment: nothing deployed. No capture was taken, nothing was published, and
+  the walkthrough begins where a contributor's own capture would end.
+
 ### 2026-09-08T03:55:44Z
 
 - `DOC-01`, the reader's page and the harness that runs it. Record:

@@ -1,17 +1,17 @@
 # Work index
 
 Total: 58
-Open: 23
+Open: 22
 In progress: 0
 Blocked: 0
-Done: 35
+Done: 36
 
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | P0 | 0 | 0 | 0 | 24 | 24 |
 | P1 | 22 | 0 | 0 | 11 | 33 |
-| P2 | 1 | 0 | 0 | 0 | 1 |
-| Total | 23 | 0 | 0 | 35 | 58 |
+| P2 | 0 | 0 | 0 | 1 | 1 |
+| Total | 22 | 0 | 0 | 36 | 58 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -72,7 +72,7 @@ Done: 35
 | CI-04 | P1 | L | OPEN | Build provenance and supply-chain hardening |
 | CI-05 | P1 | S | DONE | Acceptance commands that cannot pass over nothing |
 | DOC-01 | P1 | M | DONE | Public data and library documentation |
-| DOC-02 | P2 | M | OPEN | Contributor capture-run handbook |
+| DOC-02 | P2 | M | DONE | Contributor capture-run handbook |
 
 ## Ordering argument
 

@@ -3,10 +3,10 @@
 State instant: 2026-09-06
 Baseline commit: `a6c9336` on `main`
 Total: 58
-Open: 23
+Open: 22
 In progress: 0
 Blocked: 0
-Done: 35
+Done: 36
 
 ## Current state
 
@@ -522,6 +522,22 @@ Its Prove names `bit-cli`'s own identity consistency tests, and that repository
 is not reachable from this harness: the session's GitHub scope is this repository
 alone and a filtered repository listing returns nothing.
 
+⭐ **`DOC-02` is closed**, so there is a contributor's page whose walkthrough is
+executed rather than read. ⛔ **The harness contributes four names and nothing
+else**, which is what makes "without undocumented steps" a measurement: a step
+the page does not carry is a step the walkthrough does not have. ⭐ **Running it
+found a documented build command that uses the wrong compiler**, because
+`rust-toolchain.toml` is found by walking up from the working directory and the
+command had no `cd`.
+
+⛔ **Two of the handbook's checks could not fail, and a mutation pass is what
+said so.** The page's own validation steps could be deleted with everything
+staying green, because the harness validates the result independently; and the
+harness's own validation could be replaced by `true`, because an exit code of 0
+is what `true` produces. ⚠ A third survivor is a weakened assertion inside the
+harness, which no harness detects about itself and which is recorded rather than
+fixed.
+
 ## Work order
 
 1. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
@@ -541,14 +557,18 @@ alone and a filtered repository listing returns nothing.
    follows it. ⛔ **Every remaining item is behind that host or behind the
    operator decision below.**
 4. The remaining client and engine breadth, behind the same capture host.
-5. ⭐ **`PUB-04`, `LIB-01` and `DOC-01` are closed.** The publisher's access
-   contract was driven against a bare repository in a scratch directory, which is
-   a real remote as far as git is concerned; the consumer library reads a
-   publication back with no way to reach a network; and the reader's page has
-   every command on it run on each gate. ⛔ **No GitHub URL has been fetched** and
-   none can be until a first real publication exists. `PUB-05` is blocked on the
-   operator decision above, and `LIB-02` on read access to `bit-cli`. `DOC-02` is
-   the remaining `P2`.
+5. ⭐ **`PUB-04`, `LIB-01`, `DOC-01` and `DOC-02` are closed.** The publisher's
+   access contract was driven against a bare repository in a scratch directory,
+   which is a real remote as far as git is concerned; the consumer library reads
+   a publication back with no way to reach a network; and both documentation
+   pages have their commands executed on each gate rather than read. ⛔ **No
+   GitHub URL has been fetched** and none can be until a first real publication
+   exists. `PUB-05` is blocked on the operator decision above, and `LIB-02` on
+   read access to `bit-cli`.
+
+⛔ **Every remaining open entry is behind a capture host, the operator decision,
+or a repository this harness cannot open.** There is no unblocked item left in
+the work order.
 
 ## Pending operator decisions
 

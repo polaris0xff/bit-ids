@@ -97,6 +97,14 @@ SQLite, CBOR and deterministic archives, with a manifest and SHA-256 checksums.
 No release or data branch exists yet; the open work is tracked under `PUB-*`
 and `CI-*` in [`TODO/INDEX.md`](TODO/INDEX.md).
 
+## Contributing a capture
+
+[`docs/contributing-captures.md`](docs/contributing-captures.md) is the
+contributor's page: what will not be accepted, how a host is prepared, and a
+walkthrough that builds a submission and hands it to the validator. The
+walkthrough runs on every gate, so a step the page does not carry is a step
+nobody can take.
+
 ## Consuming
 
 [`docs/consuming.md`](docs/consuming.md) is the reader's page: what a record is,
