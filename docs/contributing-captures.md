@@ -71,6 +71,14 @@ both guards, and it is in the gate.
 ⛔ **A refusal is not something to work around.** If either guard refuses, the
 host is not a capture host. There is no flag that makes it one.
 
+⭐ **There is a workflow that provides such a host, and it is the easier route.**
+`.github/workflows/capture.yml` claims a fresh hosted runner, builds while the
+network still exists, deletes its default routes, runs the guard above, captures,
+and restores the route only to upload.
+[`capture-host.md`](capture-host.md) carries the step order and why the order is
+forced. ⚠ It is dispatched by hand and it captures a fixture today: no client is
+installed, and the attestation it uploads says so.
+
 ---
 
 ## 3. Acquiring the build

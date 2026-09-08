@@ -320,3 +320,26 @@ one.
 - ⚠ Nothing re-asks the licence endpoints. A target that gains a detectable
   licence keeps its `unverified` row until somebody measures again, which is
   honest and stale in the safe direction.
+
+## FOUND-05: The session host, provisioned by something rather than by memory
+
+Source: three tools installed by hand at the start of every session
+Priority: P1 | Effort: L | Status: OPEN
+
+Problem: `pwsh`, `shellcheck` and `shfmt` are absent on a fresh container, and
+without them this host runs a smaller gate than CI: every paired check loses its
+PowerShell half, and shell syntax and style are not checked at all. The
+commands live in `TODO/PROGRESS.md` as prose, which means every session either
+runs them from a document or runs a smaller gate without noticing.
+
+Approach: A provisioning script the doctor can call, pinned by version and
+digest the way `FOUND-02` pins actions, that installs what the gate needs and
+reports what it already has. ⚠ The `chmod +x` on the PowerShell tarball is not
+optional and the failure reads as `Permission denied` rather than as a missing
+file, which is exactly the kind of step a prose instruction loses.
+
+Prove: on a container with none of the three, one command installs all three and
+`sh scripts/common/check-gate.sh --strict` then differs from a run without them
+only in `check-remote-items`; each download is verified against its pinned
+digest before it is executed; and the doctor reports the same versions the
+script pinned.

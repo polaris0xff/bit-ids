@@ -1,8 +1,8 @@
 # Current progress
 
 State instant: 2026-09-08
-Total: 58
-Open: 21
+Total: 63
+Open: 26
 In progress: 0
 Blocked: 0
 Done: 37
@@ -127,23 +127,30 @@ needing the operator is answered under *Settled decisions* below, and the captur
 host that nineteen entries were said to wait on was never a blocker. Take these
 in order.
 
-1. **`PUB-05`**, the SQLite rendering, which needs no capture and no runner.
-   The dependency question is settled below.
-2. **`LIB-02`**, the bit-cli adapter, which needs neither either. Clone the
-   public repository into a scratch directory and run its suite there.
-3. **`CLIENT-01`, `CLIENT-06`, `CLIENT-05`**, the first complete vertical
-   captures. ⚠ These are what the capture workflow was built for and they are
-   third rather than first for one measured reason: `.github/workflows/capture.yml`
-   **has never been dispatched**. Everything about it that a reader can check is
-   checked, and what a dispatch would establish is on the record in `TODO/ci.md`
-   as the residual it is. A client adapter written against a workflow nobody has
-   run puts two unproven things in one change. `TODO/clients.md` carries the
-   acquisition routes.
-4. **`OBS-07` and `OBS-10`**, which need a stock client build and a second
+1. **`CI-06`**, the first dispatched capture run. `CI-03` built the workflow and
+   nothing has ever pressed the button, so three facts stand unmeasured: whether
+   `Get-NetRoute`'s real output matches the fixtures the Windows guard is proved
+   against, whether a hosted runner's default route can be deleted and put back,
+   and whether the evidence bundle survives the upload. It is first because
+   every client capture depends on the answer.
+2. **`PUB-05`**, the SQLite rendering, which needs no capture and no runner. The
+   dependency question is settled below.
+3. **`LIB-02`**, the bit-cli adapter, which needs neither. Clone the public
+   repository into a scratch directory and run its suite there.
+4. **`CLIENT-01`, `CLIENT-06`, `CLIENT-05`**, the first complete vertical
+   captures, once `CI-06` has run. `TODO/clients.md` carries the acquisition
+   routes.
+5. **`CI-09`**, the capture-to-publisher path, once a real capture artifact
+   exists to hand the publisher's dry run.
+6. **`OBS-07` and `OBS-10`**, which need a stock client build and a second
    platform, so they follow the captures.
-5. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
+7. **`CI-07`, `CI-08` and `FOUND-05`**, which harden the gate rather than extend
+   it: the thirteen declared PowerShell rows, the host defaults the scripts
+   inherit rather than state, and the three tools a session installs by hand.
+   Each is independent of every capture.
+8. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
    bind attestations to.
-6. The remaining client and engine breadth, then refinements.
+9. The remaining client and engine breadth, then refinements.
 
 ## Settled decisions
 

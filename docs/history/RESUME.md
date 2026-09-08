@@ -9,19 +9,23 @@ them, and do not record a new blocker without running the command that would
 settle it.
 
 **In flight:** nothing. `CI-03` closed: the capture workflow, both capture
-runners and the harness that mutation-proves them are in the tree and green.
-⛔ **The workflow has never been dispatched**, which is a residual on the record
-in [`../../TODO/ci.md`](../../TODO/ci.md) and not a blocker: everything about it
-a reader can check is checked, and both runners are driven for real on every
-gate. The next item is `PUB-05`.
+runners and the harness that mutation-proves them are in the tree, and CI run 60
+is green on both lanes.
+
+**Next:** `CI-06`, the first dispatched capture run. ⛔ **The workflow has never
+been dispatched**, so three facts stand unmeasured: whether `Get-NetRoute`'s real
+output matches the fixtures the Windows guard is proved against, whether a hosted
+runner's default route can be deleted and put back, and whether the evidence
+bundle survives the upload. ⚠ That is a residual and not a blocker; nothing
+prevents a dispatch.
 
 **Tree:** Re-measure it. This file is a claim about a tree that has moved. Check
 the branch, the remote, the clone depth, `git status` and `HEAD..origin/main`
 before editing anything.
 
 ⚠ **The container may start on a `claude/*` branch with `user.name` set to an
-agent and a shallow clone.** All three were true at the start of the last
-session. Correct them before any edit: the branch to `main` per rule 7, the
+agent and a shallow clone.** All three were true at the start of the last three
+sessions. Correct them before any edit: the branch to `main` per rule 7, the
 identity to the operator's own per rule 11, and the clone with
 `git fetch --unshallow`. ⛔ Read the identity out of the history with
 `git log --format='%an <%ae>' | sort -u`; never type it into a tracked file,

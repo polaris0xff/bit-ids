@@ -627,7 +627,7 @@ the tail lands on them.
 | CI run 58, first attempt | ⛔ **Linux lane RED**, Windows lane green, over the PowerShell 7.5 default described above. The local gate had been green on both halves minutes earlier, which is the whole point of recording it |
 | CI run 58, what it cost | one cycle, because the gate's failure excerpt was the first twelve lines of a harness that prints its failures last. Both are fixed |
 | CI run 59, first attempt | ⛔ **Linux lane RED again**, over `Write-Error` wrapping a refusal message at the runner's console width. ⭐ Its log named the failing case in one line, which is the reporting fix working |
-| CI run 60 | the first attempt after both fixes |
+| CI run 60 | ⭐ **both lanes green**, first attempt after both fixes, on `0a37c2a` |
 
 ### Guard mutation
 
@@ -646,6 +646,13 @@ counted each as 2, and all five were reported NOT-PLANTED over plants that would
 have applied. `store-lib.sh`'s `replace_once` carries the same finding from
 `CORPUS-01`, in a comment the harness author had read. Counted with something
 that understands a multi-line literal, all eleven are unique.
+
+One more over the gate's own wiring: `check-capture.sh` moved aside and the gate
+run with `--strict`. It reports `SKIP check-capture (not present)` and exits 1,
+so a harness that vanished cannot read as a pass. ⭐ **And a second, independent
+door fired at the same time**: `check-docs` refused `scripts/README.md`'s link to
+the missing file. Neither was written to catch the other, which is what makes the
+pair worth recording.
 
 Three more over the workflow, planted together rather than one at a time: an
 added `pull_request` trigger, the build step moved after the route is cut, and
@@ -747,6 +754,93 @@ builder facts.
 
 Prove: release verification binds every asset to the expected repository,
 workflow, commit, lockfile, and checksum manifest.
+
+## CI-06: The first dispatched capture run
+
+Source: `CI-03`'s residual, which is a workflow that has never been dispatched
+Priority: P1 | Effort: L | Status: OPEN
+
+Problem: `.github/workflows/capture.yml` is checked in every way a reader can
+check it and has never run. Three facts only a dispatch establishes: that
+`Get-NetRoute`'s real output matches the fixtures `check-runner.ps1` proves the
+Windows guard against, that deleting and restoring a default route works on a
+hosted runner of each platform, and that the evidence bundle survives the
+upload.
+
+Approach: Dispatch both jobs, read the run back, download the artifact, verify
+it against its own `SHA256SUMS` with a reader this project did not write, and
+compare each job's reported fingerprint against the next run's. Record what the
+route save and restore actually printed on each platform.
+
+Prove: `sh scripts/capture/check-capture.sh` still passes, both dispatched jobs
+end green, each uploaded bundle verifies under `sha256sum -c`, the two runs of
+one platform report different fingerprints, and the attestation carried in each
+artifact names `kind=fixture`.
+
+## CI-07: PowerShell halves for the declared gate rows
+
+Source: thirteen `n/a` rows on the Windows lane, each naming a missing half
+Priority: P1 | Effort: L | Status: OPEN
+
+Problem: The Windows gate declares every mutation harness unavailable except
+`check-runner`, whose PowerShell half exists. Each of the rest is an `sh`
+harness with no PowerShell implementation, so the guards they prove are proved
+on one platform and asserted on the other. ⛔ `--strict`
+permits a declared row forever, which is correct and is also why the gap does
+not shrink by itself.
+
+Approach: Write the missing halves, starting with the ones whose subject is not
+platform-specific at all. ⚠ `check-store` plants a symbolic link and a named
+pipe, which an unprivileged Windows session cannot create; that one needs its
+plant set reconsidered rather than translated, and a half that silently skipped
+two plants would report a smaller pass under the same name.
+
+Prove: `pwsh -NoProfile -File scripts/common/check-gate.ps1 -Strict` passes with
+fewer declared rows than it has today, each new half is mutation-proven against
+the same plants as its twin, and `check-twins` compares the pair per planted
+mutation rather than on a clean tree.
+
+## CI-08: Runner-default drift, swept rather than waited for
+
+Source: `$PSNativeCommandUseErrorActionPreference`, found by CI going red
+Priority: P1 | Effort: L | Status: OPEN
+
+Problem: A PowerShell default changed between 7.4 and 7.5 and turned a green
+lane red over a script nobody had edited. That default was one of a class: every
+behaviour a script inherits from its host rather than states is a defect waiting
+for an image bump, and this project found the first one by being bitten.
+
+Approach: Enumerate what the shell scripts, the PowerShell scripts and the
+workflows inherit rather than state - shell options, output encodings, locale,
+`$ErrorActionPreference` and its native-command companion, `git` defaults,
+`cargo` environment variables, and the runner images' own tool versions. State
+each one or record why inheriting it is safe. ⛔ The doctor already reports tool
+versions; what is missing is the comparison against what the code assumes.
+
+Prove: a rule per stated default in `check-project`, both halves, each
+mutation-proven; and a driven pass that runs the gate under a deliberately
+hostile environment - a different locale, a narrow console, `CARGO_TARGET_DIR`
+set, and `TMPDIR` moved - with the same verdict.
+
+## CI-09: The capture-to-publisher path, end to end
+
+Source: two workflows that have each never run, joined by an artifact
+Priority: P1 | Effort: L | Status: OPEN
+
+Problem: The capture workflow uploads with `actions/upload-artifact` v7 and the
+publisher downloads with `actions/download-artifact` v8. Neither has run, so the
+pairing is unexercised, and the publisher's first step is a download of a bundle
+no run has ever produced.
+
+Approach: Take a dispatched capture's artifact through the publisher's dry run,
+which is its default, and read what the download step actually handed it.
+⛔ Nothing may be published until a measured record exists, so the dry run is
+the whole of this entry and the push stays refused.
+
+Prove: the publisher's dry run completes against a real capture artifact, its
+`sha256sum -c` step passes on the downloaded bundle, and
+`sh scripts/ci/check-workflow.sh` still asserts the publisher's dispatch-only
+trigger and its `dry_run` default.
 
 ## CI-05: Acceptance commands that cannot pass over nothing
 

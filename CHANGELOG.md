@@ -70,8 +70,10 @@ Nothing is released yet. Entries accumulate here until the first
   absolute says this document's routes beat a general habit: a session polled CI
   through a general-purpose tool while rule 8's route answered the same question
   in one `curl`.
+- ⭐ CI run 60 is green on both lanes, first attempt after both fixes.
 - ⚠ The capture workflow has never been dispatched, and what it would capture is
   a fixture: nothing installs a client, and the attestation says so in fields.
+  `CI-06` is the entry that dispatches it.
 - Deployment: nothing deployed. No capture was taken and nothing was published.
 
 ### 2026-09-08T04:49:30Z

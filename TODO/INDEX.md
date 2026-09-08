@@ -1,7 +1,7 @@
 # Work index
 
-Total: 58
-Open: 21
+Total: 63
+Open: 26
 In progress: 0
 Blocked: 0
 Done: 37
@@ -9,9 +9,9 @@ Done: 37
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | P0 | 0 | 0 | 0 | 24 | 24 |
-| P1 | 21 | 0 | 0 | 12 | 33 |
-| P2 | 0 | 0 | 0 | 1 | 1 |
-| Total | 21 | 0 | 0 | 37 | 58 |
+| P1 | 25 | 0 | 0 | 12 | 37 |
+| P2 | 1 | 0 | 0 | 1 | 2 |
+| Total | 26 | 0 | 0 | 37 | 63 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -19,6 +19,7 @@ Done: 37
 | FOUND-02 | P0 | L | DONE | Reproducible Rust dependency and action pins |
 | FOUND-03 | P0 | L | DONE | Deterministic protocol fixture suite |
 | FOUND-04 | P1 | M | DONE | Third-party licence and redistribution register |
+| FOUND-05 | P2 | L | OPEN | The session host, provisioned by something rather than by memory |
 | SCHEMA-01 | P0 | L | DONE | Versioned identity profile schema |
 | SCHEMA-02 | P0 | L | DONE | Raw evidence and run manifest schema |
 | SCHEMA-03 | P0 | L | DONE | Connector agreement and conflict model |
@@ -71,6 +72,10 @@ Done: 37
 | CI-03 | P1 | L | DONE | Trusted capture runner matrix |
 | CI-04 | P1 | L | OPEN | Build provenance and supply-chain hardening |
 | CI-05 | P1 | S | DONE | Acceptance commands that cannot pass over nothing |
+| CI-06 | P1 | L | OPEN | The first dispatched capture run |
+| CI-07 | P1 | L | OPEN | PowerShell halves for the declared gate rows |
+| CI-08 | P1 | L | OPEN | Runner-default drift, swept rather than waited for |
+| CI-09 | P1 | L | OPEN | The capture-to-publisher path, end to end |
 | DOC-01 | P1 | M | DONE | Public data and library documentation |
 | DOC-02 | P2 | M | DONE | Contributor capture-run handbook |
 
