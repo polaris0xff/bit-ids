@@ -3,18 +3,22 @@
 **Task:** Take the work order in `TODO/PROGRESS.md` in dependency order,
 committing and pushing each green unit to `main`.
 
-**Resume point:** ⭐ **`CI-02`, `PUB-04` and `LIB-01` are closed.** The first two
-were the items the work order's ordering made look more blocked than they were;
-the third was reachable all along and nothing had noticed. `TODO/ci.md`,
-`TODO/publishing.md` and `TODO/library.md` carry them.
+**Resume point:** ⭐ **`CI-02`, `PUB-04`, `LIB-01` and `DOC-01` are closed.** The
+first two were the items the work order's ordering made look more blocked than
+they were; the other two were reachable all along and nothing had noticed.
+`TODO/ci.md`, `TODO/publishing.md`, `TODO/library.md` and
+`TODO/documentation.md` carry them.
 
-⛔ **Everything left in the work order is behind a capture host or the operator
-decision below.** `CLIENT-01`, `CLIENT-06`, `CLIENT-05`, `OBS-07` and `OBS-10`
-need a host `assert-disposable.sh --egress` does not refuse; `CI-03` is what
-would supply one and is the next item; `CI-04` follows it; `PUB-05` is blocked on
-the dependency decision. ⚠ `LIB-02`, `DOC-01` and `DOC-02` are the three that may
-also be reachable without a host, and none was examined this session: read their
-entries rather than assuming either way.
+⛔ **Everything left is behind a capture host, an operator decision, or a
+repository this harness cannot open.** `CLIENT-01`, `CLIENT-06`, `CLIENT-05`,
+`OBS-07` and `OBS-10` need a host `assert-disposable.sh --egress` does not
+refuse; `CI-03` is what would supply one and is the next item; `CI-04` follows
+it; `PUB-05` waits on the dependency decision below; `LIB-02` waits on read
+access to `bit-cli`, measured on 2026-09-08 and recorded in its entry.
+⚠ **`DOC-02` is the one remaining item that may be reachable here** and was not
+examined: it is `P2`, its Prove is a clean-room walkthrough producing a
+validator-accepted fixture submission, and nothing about it needs a capture.
+Read the entry rather than assuming either way.
 
 **In flight:** Nothing.
 
@@ -42,6 +46,13 @@ entirely, and replacing every length prefix with a separator byte, both left the
 whole Rust suite green; only the harness's independent `python3` derivation
 caught them. ⭐ The fix is general: pin the encoding against its own restated
 specification, byte for byte, and vary each component of the key in turn.
+
+⛔ **A documented command is a copy that drifts unless the document is what
+runs.** `DOC-01`'s harness extracts every shell block out of `docs/consuming.md`
+and executes it, and it refused an example on its first run: `cmd && exit 1`
+exits on the very failure it was written to demonstrate. ⚠ Its selection rule is
+checked against itself, because an extractor that took every fenced block would
+report the same clean answer over a page of illustrations.
 
 ⛔ **Two guards answering one code mask each other.** `LIB-01`'s per-file digest
 comparison and its manifest-against-the-bytes comparison both report `E-LIB-02`,

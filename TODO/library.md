@@ -132,3 +132,19 @@ and fail-closed invariants.
 Prove: a local integration fixture consumes a published profile and bit-cli's
 identity consistency tests continue to pass; upstream changes remain out of
 scope unless separately authorized.
+
+⛔ **Blocked on repository access, measured on 2026-09-08 rather than assumed.**
+The Prove names bit-cli's own identity consistency tests, and `Azathothas/bit-cli`
+is not reachable from this harness: the session's GitHub scope is this repository
+alone, and a repository listing filtered on `bit-cli` returns nothing. Adopting
+the adapter without running those tests would be publishing a claim about a
+repository this project cannot open.
+
+⚠ Two things this does **not** block. `LIB-01` shipped the consumer side, so what
+an adapter would consume exists and is tested. And the second half of the Prove,
+a local integration fixture consuming a published profile, waits on a published
+profile, which waits on a capture host.
+
+The event that unblocks it: read access to `Azathothas/bit-cli` in a session that
+can run its test suite. ⛔ Rule 10 still holds either way, so nothing is written
+there.

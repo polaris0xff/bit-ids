@@ -174,6 +174,7 @@ Add-Unavailable 'check-publish' 'shares that harness; CI-03 residual'
 # on the wrong event. CI-03 owns the Windows runner either way.
 Add-Unavailable 'check-access' 'shares that harness; CI-03 residual'
 Add-Unavailable 'check-catalogue' 'shares that harness; CI-03 residual'
+Add-Unavailable 'check-examples' 'an sh harness with no PowerShell half; CI-03 residual'
 Add-Unavailable 'check-staleness' 'an sh harness with no PowerShell half; CI-03 residual'
 
 # ⭐ THE SLOW ONE, and ⚠ it is the one part of this gate that needs a POSIX

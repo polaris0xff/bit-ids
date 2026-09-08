@@ -212,6 +212,9 @@ every digest, against a publication pushed to a bare repository and fetched back
 over git. The URL forms above are unexercised and `TODO/publishing.md` carries
 that as a residual with the event that closes it.
 
+⭐ [`consuming.md`](consuming.md) is the same contract written for the reader
+rather than for the publisher, with every command on it run on each gate.
+
 ## Read-back
 
 A successful push is not completion. The workflow fetches the remote branch,

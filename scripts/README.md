@@ -43,6 +43,11 @@ from any working directory.
   calls immutable is byte-identical across the two. ⚠ At least one current path
   must have moved, or the immutability comparison passes over two identical
   publications.
+- [`common/check-examples.sh`](common/check-examples.sh) extracts every shell
+  example out of [`../docs/consuming.md`](../docs/consuming.md) and runs it
+  against a publication it assembles. ⛔ The page is what runs, never a copy
+  beside it, and its own selection rule is checked: a run that took every fenced
+  block is a run whose language rule has stopped applying.
 - [`publishing/check-catalogue.sh`](publishing/check-catalogue.sh) drives the
   consumer library against a real publication: it opens, it answers `1.2.10`
   over `1.2.3`, and every defect a consumer could be handed is refused. ⭐ It
@@ -60,7 +65,7 @@ from any working directory.
   catch, and runs the offending workflow step against it. Every command it runs
   is read out of `.github/workflows/ci.yml` by job and step name, so a harness
   that has drifted from CI reports a missing step rather than a pass.
-- [`corpus/store-lib.sh`](corpus/store-lib.sh) is sourced by eleven of the
+- [`corpus/store-lib.sh`](corpus/store-lib.sh) is sourced by twelve of the
   harnesses above and by `publishing/publish-data.sh`, and is never run.
   ⚠ The count is measured rather than "all of them": `acquisition/check-runner.sh`
   is listed above and does **not** source it, and the publisher is not a harness
@@ -99,8 +104,8 @@ now with nothing exercising it.
 `acquisition/check-runner.sh` and `acquisition/check-cache.sh`, the three
 `corpus/check-*.sh` harnesses, the three `publishing/check-*.sh` ones and
 `ci/check-staleness.sh`, `publishing/check-access.sh` and
-`publishing/check-catalogue.sh` are the
-mutation provers, and none has a twin. All eleven run in the `sh` gate and are reported as declared rows in the
+`publishing/check-catalogue.sh` and `common/check-examples.sh` are the
+mutation provers, and none has a twin. All twelve run in the `sh` gate and are reported as declared rows in the
 PowerShell one. `check-runner` proves guards that read `/proc/net/route`, so it has nothing
 to prove on Windows until `CI-03` writes the Windows pair. The six corpus and publishing
 provers hold rules that are not platform-specific at all, and the Rust suite
@@ -116,7 +121,7 @@ POSIX-only feature. It is an `sh` harness with no PowerShell half, and it needs
 `python3` for the independent derivation. Copying the neighbouring reason would
 have recorded a gap that closes on the wrong event.
 
-`ci/check-workflow.sh` is a twelfth mutation prover and the one deliberately
+`ci/check-workflow.sh` is a thirteenth mutation prover and the one deliberately
 kept **out** of the gate. Two of its cases run the workflow's own *Repository
 gate* step, so a runner listed in the gate that also invokes the gate would
 re-enter itself; `check-gate.sh` keeps `check-twins` out of its pair list for

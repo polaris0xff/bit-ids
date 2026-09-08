@@ -97,6 +97,14 @@ SQLite, CBOR and deterministic archives, with a manifest and SHA-256 checksums.
 No release or data branch exists yet; the open work is tracked under `PUB-*`
 and `CI-*` in [`TODO/INDEX.md`](TODO/INDEX.md).
 
+## Consuming
+
+[`docs/consuming.md`](docs/consuming.md) is the reader's page: what a record is,
+how to check that what arrived is what was published, how to select a build
+without sorting version strings, and how to use the Rust library. Every command
+on it is extracted from the page and run on every gate, against a publication
+assembled locally, because nothing has been published yet.
+
 ## Licence
 
 Code, documentation and measurements produced by this project are released

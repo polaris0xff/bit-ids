@@ -505,6 +505,48 @@ fn catalogue_plan_marks_measurements_immutable_and_derived_files_current() {
     }
 }
 
+// -- The documented example, compiled ---------------------------------------
+
+/// The Rust example in `docs/consuming.md`, copied here so something compiles
+/// it.
+///
+/// ⛔ **A documented example nothing compiles is a documented example that
+/// stops working silently**, which is the same defect as a shell example nobody
+/// runs. `check-examples.sh` runs the shell blocks and checks that this case
+/// exists; this is what makes the Rust block real.
+///
+/// ⚠ It is a copy, and a copy drifts. What keeps it honest is that both are
+/// small enough to compare by eye and the harness refuses a document whose Rust
+/// block count is zero. Extracting and compiling the block itself would need a
+/// build script, which is a dependency this entry does not need.
+fn newest(bundle: &Bundle) -> Option<String> {
+    let catalogue = Catalogue::open(bundle, None).ok()?;
+    let slug = |t: &str| Slug::parse(t).ok();
+    let profile = catalogue.latest(
+        &slug("fixture-client")?,
+        &slug("linux")?,
+        &slug("x86-64")?,
+        &slug("tar-gz")?,
+    )?;
+    Some(profile.build.version.as_str().to_owned())
+}
+
+#[test]
+fn catalogue_documentation_example_compiles() {
+    let (bundle, _) = publication();
+    // ⚠ The fixture publication is one target on one line, and the example asks
+    // for `fixture-client linux x86-64 tar-gz`, which is exactly what
+    // `build-store` writes. A `None` here would mean the documented example
+    // answers nothing on the publication the harness builds for it.
+    let record = Profile::from_json(PROFILE).expect("the fixture record validates");
+    let answered = newest(&bundle);
+    if record.build.platform.as_str() == "linux" && record.build.package.as_str() == "tar-gz" {
+        assert_eq!(answered.as_deref(), Some("1.2.3"));
+    } else {
+        assert!(answered.is_none());
+    }
+}
+
 // -- The reader the published index never had --------------------------------
 
 #[test]

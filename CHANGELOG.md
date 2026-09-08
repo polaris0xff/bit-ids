@@ -5,6 +5,25 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T03:55:44Z
+
+- `DOC-01`, the reader's page and the harness that runs it. Record:
+  [`TODO/documentation.md`](TODO/documentation.md).
+- ⛔ Every shell command on `docs/consuming.md` is extracted from the page and
+  executed against a fixture publication. A documented command that is a copy of
+  a tested snippet is a copy that drifts.
+- ⭐ It paid on its first run: an example written as `cmd && exit 1` exits on the
+  failure it was demonstrating, under the `set -e` the harness runs blocks with.
+- ⚠ The fence language is the whole selection rule, and it is checked against
+  itself: a run that took every fenced block is a run whose rule has stopped
+  applying, and it fails.
+- ⚠ The field reference is a pointer rather than a generated copy. A second copy
+  of the record shape is the hazard `check-one-home` exists to refuse.
+- ⛔ `LIB-02` is blocked on repository access, measured rather than assumed: its
+  Prove names `bit-cli`'s own tests and that repository is not reachable here.
+- Deployment: nothing deployed. No URL was fetched and nothing was published;
+  the page says so where a reader would otherwise assume otherwise.
+
 ### 2026-09-08T03:18:05Z
 
 - `LIB-01`, the Rust consumer library. Record:

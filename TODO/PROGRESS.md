@@ -3,10 +3,10 @@
 State instant: 2026-09-06
 Baseline commit: `a6c9336` on `main`
 Total: 58
-Open: 24
+Open: 23
 In progress: 0
 Blocked: 0
-Done: 34
+Done: 35
 
 ## Current state
 
@@ -505,6 +505,23 @@ refusal names, with a case per shape. ⭐ One survivor of that pass was the desi
 working rather than a gap: `Profile`'s hand-written `Deserialize` means the
 generic serde route validates too.
 
+⭐ **`DOC-01` is closed**, so there is a reader's page and every command on it is
+extracted from the page and run on each gate. ⛔ **A documented command that is a
+copy of a tested snippet is a copy that drifts**, and the copy a reader runs is
+the one nobody checked. ⭐ **It paid on its first run**, refusing an example
+written as `cmd && exit 1`, which under `set -e` exits on the failure the example
+was demonstrating.
+
+⚠ The field reference on that page is a pointer rather than a generated copy,
+because `docs/architecture.md` section 4 is the authority and a second copy is
+the hazard `check-one-home` exists to refuse. What the page carries is what a
+consumer needs.
+
+⛔ **`LIB-02` is blocked on repository access, measured rather than assumed.**
+Its Prove names `bit-cli`'s own identity consistency tests, and that repository
+is not reachable from this harness: the session's GitHub scope is this repository
+alone and a filtered repository listing returns nothing.
+
 ## Work order
 
 1. `CLIENT-01`, `CLIENT-06`, and `CLIENT-05` as the first complete vertical
@@ -524,11 +541,14 @@ generic serde route validates too.
    follows it. ⛔ **Every remaining item is behind that host or behind the
    operator decision below.**
 4. The remaining client and engine breadth, behind the same capture host.
-5. ⭐ **`PUB-04` is closed**, driven against a bare repository in a scratch
-   directory, which is a real remote as far as git is concerned. ⛔ **No GitHub
-   URL has been fetched** and none can be until a first real publication exists.
-   `PUB-05` is blocked on the operator decision above. Then the consumer library,
-   public documentation and refinements.
+5. ⭐ **`PUB-04`, `LIB-01` and `DOC-01` are closed.** The publisher's access
+   contract was driven against a bare repository in a scratch directory, which is
+   a real remote as far as git is concerned; the consumer library reads a
+   publication back with no way to reach a network; and the reader's page has
+   every command on it run on each gate. ⛔ **No GitHub URL has been fetched** and
+   none can be until a first real publication exists. `PUB-05` is blocked on the
+   operator decision above, and `LIB-02` on read access to `bit-cli`. `DOC-02` is
+   the remaining `P2`.
 
 ## Pending operator decisions
 

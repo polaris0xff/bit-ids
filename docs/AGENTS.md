@@ -90,7 +90,7 @@ Run these in order.
 | library-backed targets | `docs/client-matrix.md`, `TODO/engines.md`, `TODO/acquisition.md` |
 | publishing or CI | `docs/publishing.md`, `TODO/publishing.md`, `TODO/ci.md`, `docs/security/remote-ops.md` |
 | reference research | `docs/methodology/references.md`, `docs/methodology/experiments.md`, existing `docs/reference-sweeps/` files |
-| documentation | `docs/conventions/docs.md`, `docs/conventions/prose.md`, `TODO/documentation.md` |
+| documentation | `docs/conventions/docs.md`, `docs/conventions/prose.md`, `TODO/documentation.md`, `docs/consuming.md` |
 | shell or cross-platform work | `docs/conventions/shell.md`, `scripts/README.md`, `docs/agent-tooling.md` |
 | security or remote action | `SECURITY.md`, `docs/security/secrets.md`, `docs/security/remote-ops.md` |
 | session wrap/resume | `docs/methodology/sessions.md`, `docs/methodology/reviews.md`, `docs/methodology/history.md` |
