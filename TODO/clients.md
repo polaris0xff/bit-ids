@@ -244,7 +244,59 @@ target and using it to corroborate another target are the two roles this entry
 says must not create circular corroboration; nothing in that file observes
 anything.
 
-⛔ **Not measured yet**, for the reason `CLIENT-01` gives about a session host.
+### What the four dispatches actually establish, read 2026-09-08
+
+⭐ **The install logs answer the hang, and they answer it by refuting the
+question.** `install-aria2-<run>-1` from client capture runs 3 and 4 was
+downloaded through the route `AGENTS.md` rule 8 names, unauthenticated, and both
+`install.log` files say the same thing:
+
+```text
+aria2 is already the newest version (1.37.0+debian-1build3).
+0 upgraded, 0 newly installed, 0 to remove
+```
+
+⛔ **So no package was ever installed.** `apt-get install aria2` on
+`ubuntu-24.04` is a no-op, `needrestart` runs only after a package operation, and
+`NEEDRESTART_MODE` therefore could not have been the cause under any letter. Run
+3 carried `a` and run 4 carried `l`; the two jobs hung identically. ⚠ Three
+sessions of reasoning about that variable were reasoning about a code path the
+runs did not take.
+
+⛔ **And the hang is not in the install step.** The job step records, read from
+the same route, put it somewhere else entirely:
+
+| run | install step | where the job stopped |
+| --- | --- | --- |
+| 1 | never returned | *Install the client*, unbounded |
+| 2 | never returned | *Install the client*, a bound that sent TERM and waited |
+| 3 | success in 6s | *Upload the install logs* |
+| 4 | success in 6s | *Upload the install logs* |
+
+⚠ **The uploaded artifact from both hung runs is complete and downloadable**, so
+that step's work finished and the step still never returned. What holds a runner
+open after its work is done is not something these four runs can separate, and
+naming a cause would be a guess with an artifact beside it rather than a
+measurement. It is `CI-08`'s shape - a runner default nobody swept - and it is
+recorded there rather than guessed at here.
+
+⭐ **The adapter itself is sound, and this is its first driven pass.** Run on a
+real `ubuntu-24.04` host: a genuine install in 8s, the no-op repeat in 3s, and
+`version` answering `1.37.0` in under a second. Two of the four assumptions in
+the file's own unmeasured block are now measured: `aria2c --version` opens
+`aria2 version 1.37.0`, so the third field is the version, and the package route
+installs without a prompt. The two that remain are about `start`, which needs a
+capture.
+
+⛔ **The finding that outlives the hang is what the no-op means.** A route that
+installs nothing exits 0, and `install-client` reported `1.37.0` through the
+`package` route for a binary that came with the image. `acquired` is the field
+that says so now, `ACQ-03` carries what two such routes do to the two-route rule,
+and the guard is proved by planting the derivation in
+[`../scripts/capture/check-capture-client.sh`](../scripts/capture/check-capture-client.sh).
+
+⛔ **Still not captured.** No run of this adapter has started a build, so the
+entry stays open on the same four gaps every client entry has.
 
 ## CLIENT-06: Transmission capture adapter
 

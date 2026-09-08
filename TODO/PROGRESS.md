@@ -151,6 +151,25 @@ the way the adapters assume.
 either is refused with `E-FIX-07`. `local_discovery` and `pex` have codecs and
 no fixture of their own, for reasons `docs/architecture.md` section 10 gives.
 
+⛔ **No route has been shown to acquire anything, and two of them provably did
+not.** `aria2` ships on `ubuntu-24.04`, so the `package` route there is an
+`apt-get install` that prints `already the newest version` and exits 0; every
+`release` route in the tree fetches its artifact into the workdir and never makes
+it the executable the adapter asks. ⚠ Two such routes satisfy `E-ACQ-07` and
+`E-ACQ-08`, agree on a version because it is one binary, and reach `ACQ-03` as
+`byte_identical`, which is its strongest verdict. ⭐ `install-client` asks the
+host before the route runs now and records `preexisting_version` and `acquired`,
+so the fact is in the record; ⛔ **nothing yet refuses a pair on it**, and
+`ACQ-03` carries that as a residual.
+
+⭐ **The aria2 hang is bounded and its recorded cause is refuted.** Both hung
+runs' install logs say `0 newly installed`, so no package operation happened,
+`needrestart` never ran, and the letter in `NEEDRESTART_MODE` could not have been
+the cause: run 3 used `a` and run 4 used `l` and the two jobs hung identically.
+⚠ The hang is in *Upload the install logs*, not the install, in both - and that
+step's artifact is complete and downloadable, so its work finished and the step
+still did not return. `TODO/clients.md` carries the per-run table.
+
 ## Work order
 
 ⛔ **Nothing here is blocked.** Every question an earlier session recorded as

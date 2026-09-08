@@ -20,7 +20,7 @@ returns 0 for done, 1 for refused and 2 for could-not-run.
 | --- | --- | --- |
 | `describe` | any time | print `target=<slug>` and `kind=stock\|stub`, one per line |
 | `install <route> <workdir>` | ⛔ **before the route is cut** | install the target through that route alone |
-| `version` | under containment | ⛔ ask the **installed executable** and print exactly what it answered |
+| `version` | ⛔ **before the route runs, again after it, and again under containment** | ⛔ ask the **installed executable** and print exactly what it answered |
 | `start <torrent> <workdir> <peer-port>` | under containment | launch the build on that torrent and return; the build keeps running |
 | `stop <workdir>` | under containment | stop whatever `start` launched |
 
@@ -34,6 +34,15 @@ or the route that installed it is not the build speaking, which is the rule
 `E-ACQ-10` states for a record and `capture-client` restates for a run. An
 adapter that cannot ask exits 2, and the capture is *could not run* rather than
 a fixture.
+
+⛔ **So `version` is a pure read and is called when the target may not be there
+at all.** `install-client` asks it before the route runs, which is how a route
+that installed nothing is detected, and a target that is absent then is the
+ordinary case rather than an error: exit 2, and the caller records that the host
+had nothing. ⚠ An adapter whose `version` started a daemon, wrote a profile or
+assumed containment would be changing the host at the one moment the caller is
+trying to observe it unchanged. All three shipped adapters run
+`<binary> --version` and nothing else.
 
 ⛔ **`install` is never called under containment.** By the time a capture runs
 there is no route off the host, so an install that needed one would have to
@@ -92,3 +101,25 @@ Two package aliases pointing at one index are one route.
 ⚠ **A route that installs is not yet a route that agreed.** `ACQ-03`'s
 same-version gate compares what each installed build *reports*, which is why
 `version` asks the executable rather than the installer.
+
+⛔ **And a route that RAN is not yet a route that INSTALLED.** `install-client`
+asks `version` once before the route runs and once after, and records
+`preexisting_version` and `acquired` beside the version. A target the host
+already had, at the version the route would have installed, is `acquired=no`
+however cleanly the route exited.
+
+⚠ **Both halves of that are measured rather than imagined.** `aria2` ships on
+the `ubuntu-24.04` image, so `apt-get install aria2` there prints `already the
+newest version`, installs nothing and exits 0; client capture runs 3 and 4 wrote
+`route=package` over exactly that. And every `release` route here fetches its
+artifact into the workdir without making it the executable `binary()` finds, so a
+release route run after a package route reports the **package** build's version
+as its own. ⛔ Two routes in that state declare two independent resolvers, agree
+on the version because it is one binary, and reach `ACQ-03` as `byte_identical` -
+the strongest verdict the classification has, over an acquisition that never
+happened.
+
+⚠ **`acquired=no` is recorded and not refused.** The build on such a host is
+real and its identity is worth capturing; what is not real is the claim that this
+route acquired it. The refusal belongs to whatever compares two routes, which is
+the same reason `install-client` runs one route per call.

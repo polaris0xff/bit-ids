@@ -9,12 +9,29 @@ them, and do not record a new blocker without running the command that would
 settle it.
 
 **In flight:** `CLIENT-01`, `CLIENT-06` and `CLIENT-05`, which share one body of
-machinery and now have all of it except a measurement. Written and proved this
-session: an observer that hands a build the torrent naming its own tracker, a
-an adapter contract with a file per target, an install step that runs before
-the route is cut, a capture runner that refuses to attest to a build it did not
+machinery and now have all of it except a measurement. Written and proved
+earlier: an observer that hands a build the torrent naming its own tracker, an
+adapter contract with a file per target, an install step that runs before the
+route is cut, a capture runner that refuses to attest to a build it did not
 observe announce, a mutation harness in the gate that runs every shipped
 adapter's `describe`, and a second capture workflow that installs a product.
+
+⛔ **AND THE THING THE SECOND ROUTE HAS TO CLEAR FIRST: no route in this tree has
+been shown to acquire anything.** `aria2` ships on `ubuntu-24.04`, so its
+`package` route is an `apt-get install` that prints `already the newest version`
+and exits 0; and every `release` route fetches its artifact into the workdir
+without making it the executable `binary()` finds, so a release route reports
+whatever the package route left on the path. ⚠ Two routes in that state declare
+two independent resolvers, satisfy `E-ACQ-07` and `E-ACQ-08`, agree on the
+version because it is one binary, and reach `ACQ-03` as `byte_identical` - its
+STRONGEST verdict, over an acquisition that never happened. The evidence looks
+better the more completely nothing was acquired.
+
+⭐ **`install-client` measures that now**: it asks the adapter for a version
+before the route runs and records `preexisting_version` and `acquired`. Absent
+then present is an install, a changed version is an upgrade and also an install,
+the same version over a target that was already there is neither. ⛔ **Nothing
+refuses a pair on it yet**, and `ACQ-03` carries that as a residual.
 
 ⭐ **Client capture run 1 was dispatched and one of its three jobs measured a
 build.** Transmission installed from the package index in under two minutes,
@@ -40,16 +57,38 @@ that the workflow uploads the install logs on `always()` now.
 ⭐ **Run 3 got the product to say what was wrong**, which is what run 2's two
 fixes were for: `--confirm-legal-notice is an unknown command line parameter`. So
 that flag was never a control, and it was on both paths into qbittorrent. The
-acceptance is written into the profile now and is not measured either. ⚠ `aria2`
-moved its hang from the install to the step after it when `NEEDRESTART_MODE` went
-from unset to `a`; both adapters use `l` now, which reports and restarts nothing.
+acceptance is written into the profile now and is not measured either.
 
-**Next:** dispatch both again. `qbittorrent` should reach the capture or refuse
-with the product's next message; `aria2` either finishes or hangs somewhere the
-uploaded install log can be read against. ⚠ Then what no capture has established:
-a second route, a second connector, a record in the store, and the Windows half
-of each Prove. Every adapter is `sh` with no PowerShell twin, so a Windows client
-capture needs `CI-07`'s work first.
+⛔ **THE ARIA2 HANG IS ANSWERED AS FAR AS THESE FOUR RUNS CAN ANSWER IT, AND THE
+RECORDED CAUSE IS REFUTED.** The install logs were read out of the uploaded
+artifact - `install-aria2-<run>-1`, downloaded unauthenticated through rule 8's
+route - and both hung runs say `0 upgraded, 0 newly installed`. So the package
+route installed nothing, `needrestart` runs only after a package operation and
+therefore never ran, and the letter in `NEEDRESTART_MODE` cannot be the cause
+under any value: run 3 carried `a`, run 4 carried `l`, and the two jobs hung
+identically.
+
+⛔ **And it is not the install step.** In runs 3 and 4 the install SUCCEEDED in
+six seconds and the job stopped in *Upload the install logs*; in runs 1 and 2 it
+stopped in the install itself, unbounded and then under a bound that sent TERM
+and waited. ⚠ **The artifact that hung step produced is complete and
+downloadable**, so its work finished and the step still did not return. Nothing
+in four runs separates what holds a runner open after that, and naming a cause
+would be a guess with an artifact beside it. `CI-08` is the entry for a runner
+default nobody swept.
+
+⭐ **The adapter is not the problem and now has a driven pass**: on a real
+`ubuntu-24.04` host a genuine install took 8s, the no-op repeat 3s, and `version`
+answered `1.37.0`. Two of its four unmeasured assumptions are measured.
+
+**Next:** the second route, which is what `ACQ-03`'s same-version gate has
+nothing to compare. ⛔ **Do not add one until a route can be shown to install**,
+per the block above: a second route added today would report the first route's
+binary and manufacture a `byte_identical` agreement. The `release` cases in all
+three adapters fetch an artifact and never make it the executable, which is the
+half to fix. ⚠ Then what no capture has established: a second connector, a record
+in the store, and the Windows half of each Prove. Every adapter is `sh` with no
+PowerShell twin, so a Windows client capture needs `CI-07`'s work first.
 
 **Tree:** Re-measure it. This file is a claim about a tree that has moved. Check
 the branch, the remote, the clone depth, `git status` and `HEAD..origin/main`

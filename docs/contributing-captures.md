@@ -95,6 +95,19 @@ three shapes and what each one has to carry.
 record cites the process output. A version taken from a filename, from package
 metadata or from a packet capture is not the build speaking.
 
+⛔ **And check that your route actually installed something.** A package manager
+asked for something the host already has prints `already the newest version` and
+exits 0, so a route can run cleanly and acquire nothing. Two such routes are
+independent in both halves, agree on the version because there is only one
+binary, and produce the strongest agreement this project can record. ⚠ Measured
+here: `aria2` ships on the `ubuntu-24.04` image, and the capture workflow wrote
+`route=package` over an install that installed nothing, twice.
+
+⭐ **The install step measures that for you.** It asks the build for its version
+before the route runs as well as after, and the record carries
+`preexisting_version` and `acquired` beside `reported_version`. A route whose
+record says `acquired=no` reported a build it did not put there.
+
 ---
 
 ## 4. Running the lab

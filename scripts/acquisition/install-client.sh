@@ -25,6 +25,11 @@
 # ⭐ AND IT PRINTS WHAT THE BUILD SAYS AFTERWARDS, which is the only version
 # this project believes. `ACQ-03`'s gate compares those, not the filenames.
 #
+# ⛔ IT ALSO ASKS THE HOST WHAT IT ALREADY HAD, BEFORE THE ROUTE RUNS, so the
+# record says whether this route acquired anything or reported a build that was
+# there before it started. See the block above that call for what a route that
+# installs nothing does to the two-route rule.
+#
 # Usage:
 #   sh scripts/acquisition/install-client.sh --adapter <path> --route <name>
 #                                            --workdir <dir> [--record <file>]
@@ -146,6 +151,42 @@ TARGET=$(sh "$ADAPTER" describe 2>/dev/null | awk -F= '$1 == "target" { print $2
 
 STARTED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
+# ⛔ WHAT THE HOST ALREADY HAD, ASKED BEFORE THE ROUTE RUNS. `install` is
+# contracted to install the target and nothing established that it did: a route
+# that installed nothing exits 0, and this file then reported a version the route
+# had not put there as the version that route acquired.
+#
+# ⚠ MEASURED, NOT HYPOTHETICAL. `aria2` ships on the `ubuntu-24.04` image, so
+# `apt-get install aria2` there prints `already the newest version`, installs
+# nothing and exits 0; client capture runs 3 and 4 recorded `route=package` over
+# exactly that. ⛔ AND THE `release` ROUTES HAVE THE SAME SHAPE FROM THE OTHER
+# END: each fetches an artifact into the workdir and never makes it the
+# executable `version` asks, so a release route run on a host that already has
+# the package build reports the PACKAGE build's version as its own.
+#
+# ⛔ THAT IS THE TWO-ROUTE RULE FAILING THROUGH THE ONE DOOR NOTHING WATCHES.
+# `E-ACQ-07` and `E-ACQ-08` compare what a route DECLARES - its resolver and its
+# delivery - so two routes that each installed nothing declare two independent
+# routes, agree on the version for the most trivial reason available, and hand
+# `ACQ-03` one binary to compare against itself. That comparison is by executable
+# digest, so the answer is `byte_identical`: the STRONGEST verdict the
+# classification has, reached by acquiring nothing at all.
+#
+# ⚠ A REFUSAL HERE WOULD THROW AWAY A REAL MEASUREMENT. The build on such a host
+# is genuine and its identity is worth capturing; what is not genuine is the
+# claim that this route acquired it. So the fact is recorded and said out loud,
+# and the gate that compares two routes is where it bites - the same argument
+# this file's header makes for not owning the two-route rule itself.
+#
+# ⚠ ITS STDERR IS KEPT AND NEVER PRINTED AS A DIAGNOSIS. A target that is not yet
+# installed is the ORDINARY case here, so the adapter's refusal goes to the
+# workdir, where the install artifact carries it, rather than to a log where it
+# would read as a failure of the step.
+PREEXISTING=$(timeout -k "$KILL_AFTER" "$VERSION_SECONDS" sh "$ADAPTER" version \
+  2>"$WORKDIR/version-before.err" </dev/null)
+PREEXISTING_RC=$?
+[ "$PREEXISTING_RC" = 0 ] || PREEXISTING=""
+
 timeout -k "$KILL_AFTER" "$INSTALL_SECONDS" sh "$ADAPTER" install "$ROUTE" "$WORKDIR" </dev/null
 INSTALL_RC=$?
 
@@ -210,6 +251,23 @@ esac
 [ -n "$VERSION" ] ||
   refuse "$TARGET installed through the $ROUTE route and reported an empty version"
 
+# ⛔ AND HERE IS WHETHER THE ROUTE ACQUIRED ANYTHING AT ALL. Absent before and
+# answering now is an install. A DIFFERENT version is an upgrade, which is also
+# an install, and reading it as anything else would refuse the ordinary case of a
+# package index carrying a newer build than the image. The same version over a
+# target that was already there is neither, whatever the route reported.
+if [ -n "$PREEXISTING" ] && [ "$PREEXISTING" = "$VERSION" ]; then
+  ACQUIRED=no
+else
+  ACQUIRED=yes
+fi
+
+# ⚠ SAID OUT LOUD, ON stderr, WHERE THE STEP LOG KEEPS IT. A field in a file
+# nobody opens is how this went unnoticed for four dispatches.
+[ "$ACQUIRED" = yes ] ||
+  printf 'install-client: %s %s was ALREADY on this host and the %s route installed nothing; this run acquired no build\n' \
+    "$TARGET" "$VERSION" "$ROUTE" >&2
+
 FINISHED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
 # ⚠ Key=value, the shape every other document in this directory uses. ⛔ It
@@ -222,6 +280,11 @@ if [ -n "$RECORD" ]; then
     printf 'target=%s\n' "$TARGET"
     printf 'route=%s\n' "$ROUTE"
     printf 'reported_version=%s\n' "$VERSION"
+    # ⚠ EMPTY MEANS THE TARGET WAS NOT INSTALLED WHEN THIS ROUTE STARTED, which
+    # is a different fact from a target whose version could not be read. The
+    # adapter's own words for the second are in `version-before.err` beside this.
+    printf 'preexisting_version=%s\n' "$PREEXISTING"
+    printf 'acquired=%s\n' "$ACQUIRED"
     printf 'adapter=%s\n' "$ADAPTER"
     printf 'adapter_sha256=%s\n' "$(sha256sum "$ADAPTER" | cut -d' ' -f1)"
     printf 'workdir=%s\n' "$WORKDIR"
@@ -229,10 +292,36 @@ if [ -n "$RECORD" ]; then
     printf 'finished_at=%s\n' "$FINISHED"
     printf 'platform=%s\n' "$(uname -srm)"
   } >"$RECORD" || cannot "the install record could not be written to $RECORD"
-  grep -q "^reported_version=$VERSION\$" "$RECORD" ||
-    refuse "the install record was not written"
+
+  # ⛔ EVERY FIELD IS PRESENT, ASKED AS A FIELD RATHER THAN AS A VALUE. A record
+  # truncated part-way through the block would carry a correct
+  # `reported_version` and no verdict at all, and a reader taking an absent
+  # `acquired` for `yes` is the failure this whole change exists to remove.
+  for _field in target route reported_version preexisting_version acquired; do
+    grep -q "^$_field=" "$RECORD" ||
+      cannot "the install record was written without $_field"
+  done
+
+  # ⛔ AND THE RECORD IS CHECKED AGAINST ITSELF RATHER THAN RESTATED. `acquired`
+  # is derived from two fields that are also in this file, which is one value in
+  # two places; this reads all three back off disk and re-derives the third, so a
+  # record whose verdict does not follow from its own evidence is refused here
+  # instead of being believed downstream.
+  # ⚠ READ WITH `sed`, COMPARED WITH `=`. The old check was
+  # `grep -q "^reported_version=$VERSION\$"`, where a version is a regular
+  # expression: every `.` in `1.37.0` matches any byte, so the check passed over
+  # values it was written to distinguish.
+  _pre=$(sed -n 's/^preexisting_version=//p' "$RECORD")
+  _rep=$(sed -n 's/^reported_version=//p' "$RECORD")
+  _acq=$(sed -n 's/^acquired=//p' "$RECORD")
+  [ "$_rep" = "$VERSION" ] ||
+    refuse "the install record says reported_version=[$_rep] over a build that said [$VERSION]"
+  if [ -n "$_pre" ] && [ "$_pre" = "$_rep" ]; then _want=no; else _want=yes; fi
+  [ "$_acq" = "$_want" ] ||
+    refuse "the install record says acquired=[$_acq] over preexisting [$_pre] and reported [$_rep]"
 fi
 
 printf '%s\n' "$VERSION"
-printf 'install-client: %s %s through the %s route\n' "$TARGET" "$VERSION" "$ROUTE"
+printf 'install-client: %s %s through the %s route (acquired=%s)\n' \
+  "$TARGET" "$VERSION" "$ROUTE" "$ACQUIRED"
 exit 0

@@ -784,6 +784,28 @@ records what resolved it and what delivered it as two separate values, and
 routes without that check leaves the two-route rule satisfiable by asking one
 index twice under two names, which is the failure it exists to prevent.
 
+⛔ **Those two compare what a route DECLARES, and a route that installed nothing
+declares everything correctly.** A host that already ships the target makes the
+package route a no-op, and a release route that fetches an artifact without
+making it the executable the adapter asks reports whatever is on the path. Two
+routes in that state carry two independent resolvers, two independent delivery
+mechanisms, one binary and one version - and `ACQ-03` classifies the pair
+`byte_identical`, which is its strongest verdict. ⚠ The evidence gets *stronger*
+the more completely nothing was acquired, which is why no check above can be the
+one that catches it.
+
+⭐ **So acquisition is measured rather than assumed, at the step that performs
+it.** [`../scripts/acquisition/install-client.sh`](../scripts/acquisition/install-client.sh)
+asks the adapter for a version before the route runs and after, and records
+`preexisting_version` and `acquired` beside `reported_version`. Absent then
+present is an install; a changed version is an upgrade and also an install; the
+same version over a target that was already there is neither.
+
+⚠ **It records rather than refuses, and the split is the usual one.** The build
+on such a host is real and worth measuring; the claim that a route acquired it is
+not. Validity keeps the evidence and publishability is where it bites, which is
+the same separation this document draws for every other disagreement.
+
 A route also names the **immutable identity** of what it asked for, typed to the
 kind: a release asset is a repository, a tag and a file name; a package is an
 index, a name and an exact version; a source build is a full commit. `E-ACQ-05`

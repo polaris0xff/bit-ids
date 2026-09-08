@@ -136,6 +136,13 @@ case "$COMMAND" in
     mkdir -p "$2" || exit 2
     printf 'route=%s\n' "$1" >"$2/installed"
     printf 'a route that hung would leave this\n' >"$2/install.log"
+    # ⭐ THE ONE THING THAT MAKES A ROUTE AN ACQUISITION: what the product
+    # answers afterwards CHANGED because this ran. When BIT_IDS_STUB_VERSION_FILE
+    # names a file, `version` reads its answer out of that file and this writes
+    # it, so the three shapes a host can be in are the three states of one file
+    # rather than three separate flags that could disagree.
+    [ -z "${BIT_IDS_STUB_VERSION_FILE:-}" ] ||
+      printf '%s\n' "${BIT_IDS_STUB_VERSION-1.2.3}" >"$BIT_IDS_STUB_VERSION_FILE"
     # ⛔ THE HANG DOES NOT DEPEND ON STDIN, and that matters. The caller redirects
     # /dev/null into every adapter call, so a stub that blocked on `read` would
     # return at once and prove the redirect instead of the time limit. A product
@@ -157,6 +164,17 @@ case "$COMMAND" in
       exit "$BIT_IDS_STUB_VERSION_RC"
     fi
     [ "${BIT_IDS_STUB_HANG:-}" = version ] && exec tail -f /dev/null
+    # ⛔ A PRODUCT THAT IS NOT INSTALLED CANNOT ANSWER, and a stub that always
+    # answers cannot stand for one. With the file set, absence of the file is
+    # absence of the product, which is what the caller's pre-install ask reads.
+    if [ -n "${BIT_IDS_STUB_VERSION_FILE:-}" ]; then
+      [ -f "$BIT_IDS_STUB_VERSION_FILE" ] || {
+        printf 'stub-adapter: nothing is installed on this host\n' >&2
+        exit 2
+      }
+      cat "$BIT_IDS_STUB_VERSION_FILE"
+      exit 0
+    fi
     printf '%s\n' "${BIT_IDS_STUB_VERSION-1.2.3}"
     ;;
   start)
@@ -586,6 +604,105 @@ else
       fail "the install record says $want"
     fi
   done
+
+  # -- ⛔ WHETHER THE ROUTE ACTUALLY ACQUIRED ANYTHING -------------------------
+  #
+  # ⛔ A ROUTE IS CONTRACTED TO INSTALL THE TARGET AND NOTHING ESTABLISHED THAT
+  # IT DID. `aria2` ships on the `ubuntu-24.04` image, so client capture runs 3
+  # and 4 wrote `route=package` over an `apt-get install` that printed `already
+  # the newest version` and installed nothing. Two such routes declare two
+  # independent resolvers, agree on the version because it is one binary, and
+  # reach `ACQ-03` as `byte_identical` - the strongest verdict there is, over an
+  # acquisition that did not happen.
+  #
+  # ⚠ THREE SHAPES, AND THE MIDDLE ONE IS THE ONLY FAILURE. Absent then present
+  # is an install; a different version is an upgrade and is also an install; the
+  # same version over a target that was already there is neither. A check that
+  # refused any preexisting build would refuse the upgrade too, which is the
+  # ordinary case of an index carrying more than the image.
+  # ⚠ THE FILE IS THE HOST'S STATE and each case owns its own, so a case that
+  # left one behind cannot decide the next one's verdict.
+  export BIT_IDS_STUB_VERSION_FILE="$WORK/host-fresh"
+  rm -f "$BIT_IDS_STUB_VERSION_FILE"
+  install_case 0 "" "an absent target installed by the route is an acquisition" \
+    --adapter "$STUB" --route package --workdir "$WORK/inst-a" --record "$WORK/inst-a.txt"
+  for want in "preexisting_version=" "acquired=yes" "reported_version=1.2.3"; do
+    if grep -q -x -F -e "$want" "$WORK/inst-a.txt" 2>/dev/null; then
+      pass "an install onto a bare host records $want"
+    else
+      fail "an install onto a bare host records $want"
+    fi
+  done
+
+  # ⛔ THE ARIA2 SHAPE, REPRODUCED. The host already answers the version the
+  # route would have installed, so the route installs nothing and the record must
+  # say so rather than reporting an acquisition.
+  BIT_IDS_STUB_VERSION_FILE="$WORK/host-present"
+  printf '1.2.3\n' >"$BIT_IDS_STUB_VERSION_FILE"
+  install_case 0 "installed nothing" \
+    "a target the host already had is recorded as no acquisition" \
+    --adapter "$STUB" --route package --workdir "$WORK/inst-b" --record "$WORK/inst-b.txt"
+  for want in "preexisting_version=1.2.3" "acquired=no"; do
+    if grep -q -x -F -e "$want" "$WORK/inst-b.txt" 2>/dev/null; then
+      pass "a route that installed nothing records $want"
+    else
+      fail "a route that installed nothing records $want"
+    fi
+  done
+
+  # ⛔ AND AN UPGRADE IS AN ACQUISITION. A guard that read any preexisting build
+  # as a no-op would refuse this, which is the ordinary case of a package index
+  # carrying a newer build than the image ships.
+  BIT_IDS_STUB_VERSION_FILE="$WORK/host-old"
+  printf '1.2.2\n' >"$BIT_IDS_STUB_VERSION_FILE"
+  install_case 0 "" "a route that upgrades what the host had is an acquisition" \
+    --adapter "$STUB" --route package --workdir "$WORK/inst-c" --record "$WORK/inst-c.txt"
+  for want in "preexisting_version=1.2.2" "reported_version=1.2.3" "acquired=yes"; do
+    if grep -q -x -F -e "$want" "$WORK/inst-c.txt" 2>/dev/null; then
+      pass "an upgrade records $want"
+    else
+      fail "an upgrade records $want"
+    fi
+  done
+  unset BIT_IDS_STUB_VERSION_FILE
+
+  # -- ⛔ THE SELF-CHECK, PROVED BY PLANTING THE DEFECT IT EXISTS TO CATCH ------
+  #
+  # ⛔ THE DERIVING PATH AND THE CHECKING PATH AGREE BY CONSTRUCTION, so no input
+  # this caller accepts can ever make its own verdict wrong. That is the shape
+  # `reviews.md` calls a refusal nothing tests, and the only way to reach it is
+  # to break the derivation and run the broken copy. ⚠ Asserting the same
+  # re-derivation here in the harness would test the harness against itself and
+  # would pass with the guard deleted.
+  #
+  # ⚠ THE COPY KEEPS ITS DIRECTORY SHAPE, because the script finds the host guard
+  # by walking up two levels from its own path. A copy dropped anywhere else
+  # exits 2 for a missing guard, which is could-not-run and would have been read
+  # as a refusal.
+  mkdir -p "$WORK/planted/scripts/acquisition"
+  sed 's/^  ACQUIRED=no$/  ACQUIRED=yes/' "$INSTALLER" \
+    >"$WORK/planted/scripts/acquisition/install-client.sh"
+  cp "$GUARD" "$WORK/planted/scripts/acquisition/assert-disposable.sh"
+  if cmp -s "$INSTALLER" "$WORK/planted/scripts/acquisition/install-client.sh"; then
+    fail "the acquired-verdict plant applied to install-client"
+  else
+    pass "the acquired-verdict plant applied to install-client"
+    BIT_IDS_STUB_VERSION_FILE="$WORK/host-planted"
+    export BIT_IDS_STUB_VERSION_FILE
+    printf '1.2.3\n' >"$BIT_IDS_STUB_VERSION_FILE"
+    OUTS=$((OUTS + 1))
+    BIT_IDS_STATE_DIR="$STATE" sh "$WORK/planted/scripts/acquisition/install-client.sh" \
+      --adapter "$STUB" --route package --workdir "$WORK/inst-plant" \
+      --record "$WORK/inst-plant.txt" >"$WORK/out" 2>"$WORK/err"
+    _rc=$?
+    if [ "$_rc" = 1 ] && grep -q -F -e "says acquired=[yes] over preexisting [1.2.3]" "$WORK/err"; then
+      pass "a caller whose verdict does not follow from its own record is refused"
+    else
+      fail "a caller whose verdict does not follow from its own record is refused (exit $_rc)"
+      [ "$JSON" = "1" ] || sed 's/^/          /' "$WORK/err" | head -3
+    fi
+    unset BIT_IDS_STUB_VERSION_FILE
+  fi
 
   # ⚠ THE SECOND ROUTE IS A SECOND INVOCATION, and it writes its own record.
   # `ACQ-03` compares two of these, so a step that merged them would leave

@@ -265,6 +265,29 @@ Residual: `classify_across` is not yet called by anything that assembles a
 publication. `CORPUS-02` owns the whole-store invariants and is where the
 cross-record comparison becomes a gate rather than a function.
 
+⛔ **Residual, found 2026-09-08 and half-fixed: this whole classification assumes
+each route installed something, and nothing established that.** A route that
+installs nothing exits 0, so two routes on a host that already ships the product
+declare two independent resolvers, satisfy `E-ACQ-07` and `E-ACQ-08`, agree on
+the version because it is one binary, and arrive here as `byte_identical` - the
+strongest verdict this entry has, reached by acquiring nothing.
+
+⚠ **Measured, in the runs this repository already dispatched.** `aria2` ships on
+`ubuntu-24.04`, so client capture runs 3 and 4 recorded `route=package` over an
+`apt-get install` that installed nothing; and every `release` route in
+`scripts/capture/adapters/` fetches its artifact without making it the executable
+`version` asks, so a release route reports the package build. Two routes, one
+binary, and every existing check satisfied.
+
+⭐ **The half that is fixed is the evidence.** `install-client` asks the host for
+a version before the route runs and records `preexisting_version` and `acquired`,
+so a route that installed nothing says so in its own record; the three shapes and
+a planted derivation are cases in `check-capture-client`. ⛔ **The half that is
+not is the refusal**: nothing yet reads `acquired` when comparing two routes, and
+`classify_across` cannot see it because the field is not on the record type. Both
+belong with the residual above, in whatever first assembles a publication from
+two real captures.
+
 ## ACQ-04: Disposable-host execution boundary
 
 Source: proprietary installers and active network client execution

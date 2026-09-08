@@ -87,7 +87,11 @@ from any working directory.
   deliberately not egress, because being able to reach a package index is the
   precondition of an install rather than a violation, and a guard there would
   refuse every host the step is meant to run on. ⚠ One route per invocation, so
-  a caller that ran one and skipped the other has run one.
+  a caller that ran one and skipped the other has run one. ⛔ It asks the adapter
+  for a version **before** the route runs as well as after, and records
+  `preexisting_version` and `acquired`: a route that installs nothing exits 0,
+  and two of those agree on one binary's version while declaring two independent
+  routes.
 - [`capture/check-capture-client.sh`](capture/check-capture-client.sh) proves
   both of those. ⭐ Its stub adapter reads the announce URL out of the
   `.torrent` rather than being handed it, which is what makes it stand for a

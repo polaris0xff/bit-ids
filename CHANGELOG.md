@@ -5,6 +5,32 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T21:03:10Z
+
+- ⭐ The aria2 install logs were read out of the uploaded artifact rather than
+  dispatched for, and they refute the recorded cause: both hung runs say
+  `0 newly installed`, so no package operation happened and `needrestart` never
+  ran. Run 3 used `NEEDRESTART_MODE=a` and run 4 used `l`; the jobs hung
+  identically. Record: [`TODO/clients.md`](TODO/clients.md).
+- ⛔ And the hang is in *Upload the install logs*, not the install: the install
+  step succeeded in six seconds in both runs, and the artifact that step produced
+  is complete and downloadable, so its work finished and the step still did not
+  return.
+- ⛔ The finding that outlives it: a route that installs nothing exits 0. `aria2`
+  ships on `ubuntu-24.04` and every `release` route fetches an artifact without
+  making it the executable the adapter asks, so two routes can declare two
+  independent resolvers, agree on one binary's version, and reach `ACQ-03` as
+  `byte_identical` - its strongest verdict - having acquired nothing.
+- ⭐ `install-client` asks the host for a version before the route runs and
+  records `preexisting_version` and `acquired`. Three shapes have cases and the
+  derivation is proved by planting it. Record:
+  [`TODO/acquisition.md`](TODO/acquisition.md).
+- ⭐ First driven pass of the aria2 adapter against a real build: install 8s,
+  the no-op repeat 3s, `version` answering `1.37.0`.
+- Deployment: nothing deployed. No route has been shown to acquire a build and
+  no record exists.
+
+
 ### 2026-09-08T19:20:22Z
 
 - ⭐ Client capture run 4 measured a second client and re-measured the first:

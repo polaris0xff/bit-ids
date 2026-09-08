@@ -34,9 +34,13 @@ constant into the gap.
 3. Acquire and verify both artifacts. Record URL, timestamp, digest, signature
    status and package metadata.
 4. Install route A on a disposable host and ask the running executable for its
-   version. Repeat with route B on an equivalent clean host.
-5. Require exact normalized version equality. Keep distinct executable digests
-   as packaging evidence.
+   version. Repeat with route B on an equivalent clean host. ⛔ Ask before the
+   route runs too: a host that already ships the target makes the route a no-op
+   that exits 0, and the version it then reports is not one that route acquired.
+5. Require exact normalized version equality, **and require that each route
+   acquired the build it reports**. Two no-op routes agree perfectly, for the
+   most trivial reason available. Keep distinct executable digests as packaging
+   evidence.
 6. Generate a tiny deterministic torrent whose payload and metainfo digests are
    recorded. Start only local tracker and peer endpoints.
 7. Launch the target with a throwaway configuration. Disable external DHT,
