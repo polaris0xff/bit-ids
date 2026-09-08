@@ -1081,6 +1081,27 @@ instead**: `check-workflow.sh` proves the same three rules by running the whole
 gate per plant, which cost the Linux lane eleven minutes. A permanent per-plant
 twin harness would let that shrink back to one gate-level case.
 
+### ⛔ What the door sweep found on 2026-09-08: the two runners' row lists
+
+**Nothing compares the set of rows `check-gate.sh` runs against the set
+`check-gate.ps1` names.** The `sh` runner derives its provers from a `for` list;
+the `ps1` runner declares each one by hand as a run or an `Add-Unavailable`. A
+prover added to the first and forgotten in the second is simply absent from the
+Windows lane, which stays green because it never hears of it.
+
+⚠ **It bit immediately.** `check-capture-client` went into the `sh` list, and the
+Windows lane would have run twenty-six rows to the Linux lane's twenty-seven with
+nothing anywhere naming the one that was missing. The row is written, so that
+instance is closed; the class is not. ⛔ `check-twins` cannot see it either,
+because it deliberately does not pair the gate runners: a harness that runs both
+gates, running inside the gate, would re-enter itself.
+
+⭐ **The cheap fix belongs with this entry's other half.** Give each runner a
+mode that prints its row names and nothing else, then compare the two lists. That
+needs no gate run at all, so it can live in `check-project` rather than in
+`check-workflow`. Acceptance: with a prover added to the `sh` list alone the
+comparison refuses, and with the pair in step it passes.
+
 ## CI-08: Runner-default drift, swept rather than waited for
 
 Source: `$PSNativeCommandUseErrorActionPreference`, found by CI going red

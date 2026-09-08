@@ -527,13 +527,52 @@ fi
 # ⛔ AND NO `push` OR `schedule` EITHER. This is the file a client installer
 # lands in, and a capture host is a machine whose route off itself has been
 # deleted. Neither belongs one merge away.
-CAPWF="$ROOT/.github/workflows/capture.yml"
-if [ -f "$CAPWF" ]; then
+# ⛔ EVERY CAPTURE WORKFLOW, NOT THE FIRST ONE. This block asserted
+# `capture.yml` alone while `capture-client.yml` was being written, which is the
+# one-gated-door shape over a rule rather than over a code path: a second file
+# that installs somebody else's binary and deletes a route would have inherited
+# none of it. ⚠ The list is derived from the directory rather than typed, so a
+# third capture workflow is covered the day it lands and not the day somebody
+# remembers this line.
+CAPTURE_WORKFLOWS=""
+for one in "$ROOT"/.github/workflows/capture*.yml "$ROOT"/.github/workflows/capture*.yaml; do
+  [ -f "$one" ] || continue
+  CAPTURE_WORKFLOWS="$CAPTURE_WORKFLOWS $one"
+done
+if [ -z "$CAPTURE_WORKFLOWS" ]; then
+  fail "workflow  there is no capture workflow to check"
+fi
+
+for CAPWF in $CAPTURE_WORKFLOWS; do
+  CAPNAME=$(basename "$CAPWF")
+  # ⚠ The runner a capture step must call differs per workflow, and it is
+  # derived from the file's own name rather than assumed: `capture.yml` runs
+  # `capture-run` and `capture-client.yml` runs `capture-client`. A single
+  # needle would pass on both by matching the shorter one inside the longer.
+  case "$CAPNAME" in
+    capture-client.*) CAPRUNNER=capture-client ;;
+    *) CAPRUNNER=capture-run ;;
+  esac
+  # ⚠ Every job key the file declares, so a workflow that grew a platform is
+  # checked on it. `job_steps` is keyed on these.
+  CAPJOBS=$(awk '
+    function indent(s,   i) { i = match(s, /[^ ]/); return i ? i - 1 : -1 }
+    /^jobs:[ \t]*$/ { injobs = 1; next }
+    !injobs { next }
+    {
+      line = $0; sub(/\r$/, "", line); ind = indent(line)
+      if (ind < 0) next
+      if (ind == 0) { injobs = 0; next }
+      if (ind == 2 && line ~ /^ *[A-Za-z_][A-Za-z0-9_-]*:[ \t]*$/) {
+        k = line; sub(/^ +/, "", k); sub(/:.*$/, "", k); print k
+      }
+    }' "$CAPWF")
+
   CAPTRIG=$(triggers "$CAPWF" | tr '\n' ' ' | sed 's/ *$//')
   if [ "$CAPTRIG" = "workflow_dispatch" ]; then
-    pass "workflow  the capture runner can only be dispatched by hand"
+    pass "workflow  $CAPNAME can only be dispatched by hand"
   else
-    fail "workflow  the capture runner has other triggers: $CAPTRIG"
+    fail "workflow  $CAPNAME has other triggers: $CAPTRIG"
   fi
 
   # ⛔ THE STEP ORDER IS THE CONTAINMENT, AND NOTHING ELSE ENFORCES IT. Building
@@ -548,17 +587,17 @@ if [ -f "$CAPWF" ]; then
     _a=$(step_index "$CAPWF" "$1" "$2")
     _b=$(step_index "$CAPWF" "$1" "$3")
     if [ -z "$_a" ]; then
-      fail "workflow  capture $1 has no step named [$2]"
+      fail "workflow  $CAPNAME $1 has no step named [$2]"
     elif [ -z "$_b" ]; then
-      fail "workflow  capture $1 has no step named [$3]"
+      fail "workflow  $CAPNAME $1 has no step named [$3]"
     elif [ "$_a" -lt "$_b" ]; then
-      pass "workflow  capture $1: [$2] precedes [$3]"
+      pass "workflow  $CAPNAME $1: [$2] precedes [$3]"
     else
-      fail "workflow  capture $1: [$2] comes AFTER [$3]"
+      fail "workflow  $CAPNAME $1: [$2] comes AFTER [$3]"
     fi
   }
 
-  for job in linux windows; do
+  for job in $CAPJOBS; do
     order_case "$job" "Claim the host" "Build the observer"
     order_case "$job" "Build the observer" "Cut the route off this host"
     order_case "$job" "Cut the route off this host" "Assert containment"
@@ -566,16 +605,26 @@ if [ -f "$CAPWF" ]; then
     order_case "$job" "Capture" "Restore the route"
     order_case "$job" "Restore the route" "Upload the evidence bundle"
 
-    # ⚠ And the capture step must call the runner this entry built. Every rule
-    # above holds over a workflow whose Capture step runs `true`.
+    # ⛔ AN INSTALL IS TWO MORE ORDERING CONSTRAINTS AND BOTH ARE NEW. It must
+    # come AFTER the claim, because a product installed on a host nothing
+    # established was disposable is state on a machine that may be kept; and it
+    # must come BEFORE the route is cut, because a package index is not
+    # reachable from a host with no default route and capture-client refuses to
+    # install anything itself. ⚠ A workflow with no such step is not failed
+    # here: capture.yml installs nothing and its own Prove says so.
+    if [ -n "$(step_index "$CAPWF" "$job" "Install the client")" ]; then
+      order_case "$job" "Claim the host" "Install the client"
+      order_case "$job" "Install the client" "Cut the route off this host"
+    fi
+
+    # ⚠ And the capture step must call the runner this workflow is for. Every
+    # rule above holds over a workflow whose Capture step runs `true`.
     case "$(step_command "$CAPWF" "$job" Capture)" in
-      *capture-run*) pass "workflow  capture $job runs the capture runner" ;;
-      *) fail "workflow  capture $job: the Capture step does not run capture-run" ;;
+      *"$CAPRUNNER"*) pass "workflow  $CAPNAME $job runs $CAPRUNNER" ;;
+      *) fail "workflow  $CAPNAME $job: the Capture step does not run $CAPRUNNER" ;;
     esac
   done
-else
-  fail "workflow  there is no capture workflow to check"
-fi
+done
 
 # -- 0d. the static readers, refuted ------------------------------------------
 #
@@ -668,6 +717,52 @@ if [ -f "$CAPWF" ]; then
     *pull_request*) pass "probe    the trigger reader sees an added pull_request trigger" ;;
     *) fail "probe    the trigger reader missed an added pull_request trigger" ;;
   esac
+fi
+
+# ⛔ THE TWO INSTALL-ORDER RULES ARE REFUTED SEPARATELY, BECAUSE THEY ARE TWO
+# RULES. An install after the route is cut cannot reach a package index; an
+# install before the claim puts a stranger's binary on a host nothing
+# established was disposable. A single probe would leave whichever one it did
+# not move as a reader nobody has seen refuse anything.
+#
+# ⚠ NAMED EXPLICITLY RATHER THAN INHERITED FROM THE LOOP ABOVE. `$CAPWF` after a
+# `for` holds whatever the glob happened to end on, which is a probe whose
+# subject depends on a file name.
+CLIENTWF="$ROOT/.github/workflows/capture-client.yml"
+if [ -f "$CLIENTWF" ]; then
+  swap_steps() { # file a b out
+    sed -e "s/- name: $1/- name: BIT-IDS-PROBE-SWAP/" \
+      -e "s/- name: $2/- name: $1/" \
+      -e "s/- name: BIT-IDS-PROBE-SWAP/- name: $2/" \
+      "$CLIENTWF" >"$3"
+  }
+
+  swap_steps "Install the client" "Assert containment" "$MUTWF"
+  _a=$(step_index "$MUTWF" linux "Install the client")
+  _b=$(step_index "$MUTWF" linux "Cut the route off this host")
+  if [ -n "$_a" ] && [ -n "$_b" ] && [ "$_a" -gt "$_b" ]; then
+    pass "probe    the order reader sees an install moved after the route is cut"
+  else
+    fail "probe    the order reader missed an install moved after the route is cut"
+  fi
+
+  swap_steps "Claim the host" "Install the client" "$MUTWF"
+  _a=$(step_index "$MUTWF" linux "Claim the host")
+  _b=$(step_index "$MUTWF" linux "Install the client")
+  if [ -n "$_a" ] && [ -n "$_b" ] && [ "$_a" -gt "$_b" ]; then
+    pass "probe    the order reader sees an install moved before the claim"
+  else
+    fail "probe    the order reader missed an install moved before the claim"
+  fi
+
+  # ⛔ AND THE RULE MUST NOT FIRE ON A WORKFLOW THAT INSTALLS NOTHING. It is
+  # conditional on the step existing, and a condition that was always true would
+  # have failed capture.yml, whose own Prove says it installs nothing.
+  if [ -n "$(step_index "$ROOT/.github/workflows/capture.yml" linux "Install the client")" ]; then
+    fail "probe    the install-order rule found an install step in the fixture workflow"
+  else
+    pass "probe    the install-order rule is silent on a workflow that installs nothing"
+  fi
 fi
 
 # -- the controls -------------------------------------------------------------

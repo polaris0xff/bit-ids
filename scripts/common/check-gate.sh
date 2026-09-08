@@ -208,7 +208,8 @@ fi
 # may cache a path that moves, handing a consumer a record no manifest describes,
 # documenting a command that does not work, publishing a contributor handbook
 # whose walkthrough does not, capturing on a host that was never claimed or
-# still has a route off it, and keeping somebody
+# still has a route off it, attesting that a build was measured over a run where
+# nothing announced, and keeping somebody
 # else's installer in this repository. The first is
 # unrecoverable afterwards and the rest are worse than errors, because each
 # answers confidently. ⭐ Every one is hermetic:
@@ -235,7 +236,8 @@ fi
 # one directory and differ in one property: two of check-workflow's cases run
 # this gate, so a runner that listed it would re-enter itself. check-staleness
 # runs no gate.
-for spec in acquisition/check-cache capture/check-capture corpus/check-store \
+for spec in acquisition/check-cache capture/check-capture capture/check-capture-client \
+  corpus/check-store \
   corpus/check-corpus corpus/check-indexes publishing/check-release \
   publishing/check-formats publishing/check-publish publishing/check-access \
   publishing/check-catalogue ci/check-staleness common/check-examples \

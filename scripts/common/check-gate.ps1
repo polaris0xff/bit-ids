@@ -215,6 +215,14 @@ Add-Unavailable 'check-staleness' 'an sh harness with no PowerShell half'
 # is a stronger control than this lane could give and it happens elsewhere.
 Add-Unavailable 'check-capture' 'an sh harness; the capture workflow exercises the PowerShell half'
 
+# ⛔ ITS REASON IS NOT check-capture's, AND COPYING THAT ONE WOULD RECORD A GAP
+# THAT CLOSES ON THE WRONG EVENT. check-capture is declared because its SUBJECT
+# has a PowerShell half that runs somewhere else. capture-client.sh has no
+# PowerShell half at all, and capture-client.yml is a Linux-only workflow, so
+# nothing on any lane exercises a Windows client capture. ⚠ That closes when
+# CI-07 writes the twin, not when a capture is dispatched.
+Add-Unavailable 'check-capture-client' 'an sh harness whose subject has no PowerShell half yet; CI-07'
+
 # ⭐ THE SLOW ONE, and ⚠ it is the one part of this gate that needs a POSIX
 # shell: check-twins runs the sh half of every pair, so it cannot run on a host
 # without one. That is reported as a skip, never as a pass.

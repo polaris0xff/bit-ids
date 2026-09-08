@@ -1064,8 +1064,11 @@ non-injective layout section 4 describes, in a second place.
   content-addressed evidence a manifest cites. There is now somewhere durable to
   put a record as well, and a workflow that runs a capture on a host the
   [`capture-host.md`](capture-host.md) guards permit, which `CI-06` has now
-  dispatched. What stands between here and a first capture of a *build* is a
-  client adapter: what that workflow captures today is a fixture and says so.
+  dispatched. ⭐ The client adapter layer is written as well: an observer that
+  hands a build the torrent naming its own tracker, an adapter contract with a
+  file per target, an install step that runs before the route is cut, and a
+  runner that refuses to attest to a build it did not observe announce. ⛔ **Nothing has been installed through any of it.** A session host
+  is not disposable, so every drive of that path so far used a stub adapter.
 - ⭐ Every path [`publishing.md`](publishing.md) promises is written as of
   `PUB-05`, whose SQLite rendering is the one place this workspace takes a
   vendored C library. ⚠ It is required rather than optional: `PUB-04` derives a

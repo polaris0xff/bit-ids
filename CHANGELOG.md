@@ -5,6 +5,39 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T17:02:04Z
+
+- The client capture path, every layer of it except a measurement:
+  [`capture-client.sh`](scripts/capture/capture-client.sh),
+  [`install-client.sh`](scripts/acquisition/install-client.sh), an adapter
+  contract with a file per target under
+  [`scripts/capture/adapters/`](scripts/capture/adapters/), and
+  [`capture-client.yml`](.github/workflows/capture-client.yml). Record:
+  [`TODO/clients.md`](TODO/clients.md).
+- ⛔ Two conditions are what make a run a measurement rather than an
+  attestation, and [`TODO/clients.md`](TODO/clients.md) states them and says
+  what each refuses.
+- ⛔ `stock_client` is the adapter's own declaration rather than a constant, and
+  the harness proves the field varies by running one stub under both.
+- ⭐ Two defects found by the harness on its first run. `the build announced
+  nothing` was unreachable, because the segment guard refuses silence first; the
+  case is written against a connection that reaches the tracker without
+  announcing instead. And the peer-ID guard took the observer's word
+  unconditionally, so an announce carrying none made it search the transcript
+  for the literal word `absent`.
+- ⭐ A door sweep found the Windows gate would have run one row fewer than the
+  Linux gate with nothing naming the missing one. The row is written with its
+  own reason; the class, that nothing compares the two runners' lists, is filed
+  in `CI-07`.
+- ⛔ `check-workflow`'s capture block reads every `capture*.yml` now rather than
+  the one file it was written for, and the two new install-ordering rules are
+  refuted by moving the step in both directions.
+- Deployment: nothing deployed and nothing installed. No adapter has ever run
+  against a product: a session host is not disposable, so the whole path was
+  driven against a stub adapter and `curl`. Every attestation in this tree still
+  says `kind=fixture`.
+
+
 ### 2026-09-08T16:52:00Z
 
 - `check-no-secrets --public` allows an info hash cited in this project's one

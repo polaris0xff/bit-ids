@@ -127,8 +127,16 @@ survived host, by finding its own marker rather than by comparing anything.
 `CI-06` carries all of it.
 
 ⚠ **What that workflow captures is a fixture, and its attestation says so in
-fields.** `kind=fixture`, `measured_build=none`, `stock_client=false`. Nothing
-installs a client yet; `CLIENT-01` is what points a real build at the same lab.
+fields.** `kind=fixture`, `measured_build=none`, `stock_client=false`.
+
+⭐ **A second capture workflow now exists that installs a product**, and every
+layer beneath it is written and mutation-proved: an observer that hands out a
+torrent naming its own tracker, an adapter contract with a file per target, an install
+step that runs while the network is up, and a runner that refuses to attest to a
+build it did not see announce. ⛔ **Not one of them has installed anything.** A
+session host is not disposable, so the whole path was driven here against a stub
+adapter and `curl`; a dispatch is what establishes whether a stock build behaves
+the way the adapters assume.
 
 ⚠ **`mse` and `web_seed` have protocol code and no fixture**, so a fixture on
 either is refused with `E-FIX-07`. `local_discovery` and `pex` have codecs and
@@ -150,8 +158,11 @@ every answer it gives about a real client today is *not measured*, because
 nothing is. The clone question under *Settled decisions* is spent too.
 
 1. **`CLIENT-01`, `CLIENT-06`, `CLIENT-05`**, the first complete vertical
-   captures. ⭐ The workflow they run in is measured now rather than assumed.
-   `TODO/clients.md` carries the acquisition routes.
+   captures. ⭐ Every layer below the product is written and proved, and
+   `capture-client.yml` is the workflow that runs them. ⚠ What remains is a
+   dispatch and what it teaches: no adapter has ever installed a build, and the
+   Windows half of each Prove is untouched because the adapters are `sh`.
+   `TODO/clients.md` carries the routes and what each adapter assumes.
 2. **`CI-09`**, the capture-to-publisher path. ⚠ A real capture artifact exists
    to hand the publisher's dry run, so this is unblocked; what it establishes is
    whether a v8 download reads a v7 upload.
@@ -187,6 +198,13 @@ a table with the default route stripped, exit 1 over the same table with it.
 ⚠ The guard was testable in one command the whole time and no session ran it.
 
 ## Known gaps in the local gate
+
+⛔ **A green subset of the gate is not a green gate, and `--public` is the row
+that proves it.** `check-no-secrets` runs twice in the gate and only the second
+invocation carries the public rules, so re-running "the checks this edit
+touched" after writing a record passed while the lane went red on a forty-digit
+info hash. ⚠ Run `sh scripts/common/check-gate.sh`, which is the list; a subset
+chosen by hand is not the same gate twice.
 
 ⭐ **`pwsh`, `shellcheck` and `shfmt` are absent on a fresh container and all
 three are worth installing before touching a script.** Without `pwsh` the

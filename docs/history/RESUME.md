@@ -8,17 +8,23 @@ the operator is answered in that file under *Settled decisions*. Do not re-raise
 them, and do not record a new blocker without running the command that would
 settle it.
 
-**In flight:** nothing. `CI-06`, `PUB-05` and `LIB-02` all closed. The capture
-workflow has been dispatched and capture run 2 is green on both platforms with
-every bundle verified under `sha256sum -c`; the SQLite rendering is written, so
-every path `docs/publishing.md` promises now exists; and the bit-cli adapter is a
-comparison that fails closed.
+**In flight:** `CLIENT-01`, `CLIENT-06` and `CLIENT-05`, which share one body of
+machinery and now have all of it except a measurement. Written and proved this
+session: an observer that hands a build the torrent naming its own tracker, a
+an adapter contract with a file per target, an install step that runs before
+the route is cut, a capture runner that refuses to attest to a build it did not
+observe announce, a mutation harness in the gate that runs every shipped
+adapter's `describe`, and a second capture workflow that installs a product.
 
-**Next:** `CLIENT-01`, `CLIENT-06` and `CLIENT-05`, the first complete vertical
-captures. ⭐ The workflow they run in is measured now rather than assumed, and
-`TODO/clients.md` carries the acquisition routes. ⚠ Everything below them in the
-work order needs a capture or a stock build; `CI-07`, `CI-08` and `FOUND-05` are
-the ones that do not.
+⛔ **No adapter has ever installed anything.** A session host is not disposable,
+so the whole path was driven here against a stub adapter and `curl`. A dispatch
+of `capture-client.yml` is what establishes whether a stock build behaves the way
+the adapters assume, and until one has run every attestation in this tree still
+says `kind=fixture`.
+
+**Next:** dispatch it, read the run back, and fix what it teaches. ⚠ Then the
+Windows half of each Prove, which is untouched: every adapter is `sh` and none
+has a PowerShell twin, so a Windows client capture needs `CI-07`'s work first.
 
 **Tree:** Re-measure it. This file is a claim about a tree that has moved. Check
 the branch, the remote, the clone depth, `git status` and `HEAD..origin/main`
@@ -49,6 +55,11 @@ that felt like the end of the work.
 the test suite and `sh scripts/ci/check-workflow.sh` are separate. A clippy
 failure passed a green gate three times across two sessions before being caught,
 most recently over a `len() > 0` in a test.
+
+⛔ **And a subset of the gate chosen by hand is not the gate.** `check-no-secrets`
+is TWO rows: the second carries the public rules, and re-running "the checks this
+edit touched" after writing a record missed it. CI run 67 went red on both lanes
+over an info hash, which is a measurement and is also forty hex digits.
 
 ⛔ **`check-workflow.sh` is not in the gate and cannot be**, because two of its
 cases run the gate. Every other harness is in it.

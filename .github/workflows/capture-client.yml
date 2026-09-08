@@ -1,0 +1,211 @@
+name: Capture client
+
+# ⛔ THERE IS NO `pull_request` TRIGGER AND THAT ABSENCE IS THE FORK GUARD, for
+# the reason capture.yml gives and more sharply. This workflow INSTALLS SOMEBODY
+# ELSE'S BINARY on a runner and then points it at a network, so a path from a
+# fork would be a path from a stranger to an install on this account's runners.
+#
+# ⛔ AND NO `push` OR `schedule` EITHER. A merge must not be able to start an
+# install, and neither must a clock.
+on:
+  workflow_dispatch:
+    inputs:
+      adapters:
+        description: >-
+          Which adapters to run, as a JSON array, e.g. ["aria2","transmission"]
+        required: true
+        default: '["aria2","transmission","qbittorrent"]'
+        type: string
+      seconds:
+        description: How long the observer serves before its own deadline stops it
+        required: true
+        default: "45"
+        type: string
+      peer_port:
+        description: The port the client is told to listen on, so the lab can dial it
+        required: true
+        default: "51413"
+        type: string
+
+permissions:
+  contents: read
+
+# ⛔ NEVER CANCELLED IN FLIGHT. Between *Cut the route* and *Restore the route*
+# these hosts have no way off themselves, and a cancellation in that window
+# leaves the runner unable to report, the evidence unuploaded and the marker
+# written. ⚠ A separate group from capture.yml's, because these are different
+# hosts running a different experiment and queueing one behind the other would
+# serialise two things that never share a machine.
+concurrency:
+  group: capture-client
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  linux:
+    name: Linux client capture (${{ matrix.adapter }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    # ⛔ READ ONLY. A capture produces an artifact and never a commit.
+    permissions:
+      contents: read
+    strategy:
+      # ⛔ ONE ADAPTER'S FAILURE MUST NOT CANCEL THE OTHERS. Each job is a
+      # separate host running a separate product, and a matrix that stopped at
+      # the first red would throw away measurements that had already been taken
+      # on machines that are about to be destroyed.
+      fail-fast: false
+      matrix:
+        adapter: ${{ fromJSON(inputs.adapters) }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # ⛔ FIRST, BEFORE ANYTHING ELSE WRITES TO THE HOST, and before anything is
+      # installed. The claim refuses a host that already ran a capture, and a
+      # product installed before the claim would be state on a machine nothing
+      # had established was disposable.
+      - name: Claim the host
+        env:
+          RUN_ID: capture-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.adapter }}
+        run: sudo sh scripts/acquisition/assert-disposable.sh --claim "$RUN_ID"
+
+      - name: Install pinned Rust toolchain
+        run: rustup show active-toolchain
+
+      # ⛔ THE BUILD HAPPENS HERE, WHILE THE NETWORK STILL EXISTS.
+      - name: Build the observer
+        run: cargo build -p bit-ids-probe --locked --example client-capture
+
+      # ⛔ AND SO DOES THE INSTALL, FOR THE SAME REASON AND ONE MORE. capture-client
+      # refuses to install anything, so a product that is not here by now is not
+      # in this capture; and an install under containment could not reach a
+      # package index at all.
+      #
+      # ⚠ sudo -E, because apt needs root and the adapter reads its
+      # configuration out of the environment. The install directory is under
+      # RUNNER_TEMP rather than the workspace, so nothing it leaves behind can
+      # be mistaken for a tracked file.
+      - name: Install the client
+        env:
+          ADAPTER: scripts/capture/adapters/${{ matrix.adapter }}.sh
+        run: |
+          set -eu
+          sudo -E sh scripts/acquisition/install-client.sh \
+            --adapter "$ADAPTER" \
+            --route package \
+            --workdir "$RUNNER_TEMP/install-package" \
+            --record "$RUNNER_TEMP/install-package.txt"
+          cat "$RUNNER_TEMP/install-package.txt"
+
+      # ⛔ BOTH ADDRESS FAMILIES. A host with IPv4 unplugged and IPv6 up still
+      # reaches the internet.
+      - name: Cut the route off this host
+        run: |
+          set -eu
+          ip route show default >"$RUNNER_TEMP/routes-v4"
+          ip -6 route show default >"$RUNNER_TEMP/routes-v6" 2>/dev/null || : >"$RUNNER_TEMP/routes-v6"
+          while ip route show default | grep -q .; do sudo ip route del default; done
+          while ip -6 route show default 2>/dev/null | grep -q .; do sudo ip -6 route del default; done
+          printf 'saved %s v4 and %s v6 default route(s)\n' \
+            "$(wc -l <"$RUNNER_TEMP/routes-v4")" "$(wc -l <"$RUNNER_TEMP/routes-v6")"
+
+      # ⛔ THE GUARD READS THE KERNEL RATHER THAN THE STEP ABOVE. The deletion is
+      # a command that was run; this is the routing table as it now stands.
+      - name: Assert containment
+        run: sh scripts/acquisition/assert-disposable.sh --egress
+
+      # ⭐ AND HERE A PRODUCT THIS PROJECT DID NOT WRITE IS HANDED THE TORRENT.
+      # It learns the tracker's address by reading the file, which is what a
+      # stock build does with any torrent, so nothing about this run is a control
+      # the product does not already have.
+      - name: Capture
+        env:
+          RUN_ID: capture-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.adapter }}
+          SECONDS_TO_SERVE: ${{ inputs.seconds }}
+          PEER_PORT: ${{ inputs.peer_port }}
+          ADAPTER: scripts/capture/adapters/${{ matrix.adapter }}.sh
+        run: |
+          sh scripts/capture/capture-client.sh \
+            --run-id "$RUN_ID" \
+            --out "$RUNNER_TEMP/capture" \
+            --observer "$GITHUB_WORKSPACE/target/debug/examples/client-capture" \
+            --adapter "$ADAPTER" \
+            --peer-port "$PEER_PORT" \
+            --seconds "$SECONDS_TO_SERVE"
+
+      # ⚠ ONLY TO UPLOAD, AND ONLY AFTER THE MEASUREMENT IS FINISHED.
+      #
+      # ⭐ THE RESTORE IS VERIFIED BY THE SAME GUARD, INVERTED: a host that can
+      # reach the network again is one the egress guard REFUSES.
+      - name: Restore the route
+        run: |
+          set -eu
+          # ⛔ AN ADD THAT FAILS IS REPORTED AND DOES NOT END THE STEP. Under
+          # set -e the first refused `ip route add` would end this step, the
+          # upload would be skipped as a consequence, and a finished capture
+          # would be thrown away over a route.
+          while IFS= read -r route; do
+            [ -n "$route" ] || continue
+            # shellcheck disable=SC2086
+            sudo ip route add $route || echo "could not restore: $route" >&2
+          done <"$RUNNER_TEMP/routes-v4"
+          while IFS= read -r route; do
+            [ -n "$route" ] || continue
+            # shellcheck disable=SC2086
+            sudo ip -6 route add $route || echo "could not restore: $route" >&2
+          done <"$RUNNER_TEMP/routes-v6"
+          # ⛔ THE GUARD HAS THREE CODES AND THIS READS ALL THREE. ⚠ An `if`
+          # would fold 1 and 2 together and upload from a host nothing
+          # established was reachable.
+          sh scripts/acquisition/assert-disposable.sh --egress && egress=0 || egress=$?
+          if [ "$egress" = 0 ]; then
+            echo 'the default route was not restored; the upload cannot work' >&2
+            exit 1
+          fi
+          if [ "$egress" != 1 ]; then
+            echo "the egress guard could not run (exit $egress)" >&2
+            exit 1
+          fi
+          exit 0
+
+      # ⛔ if-no-files-found IS `error`. An upload that found nothing and exited
+      # 0 would leave a green capture run with no evidence anywhere.
+      #
+      # ⚠ The install record goes up beside the bundle, because `ACQ-03` compares
+      # what each route's installed build REPORTED and that answer lives there.
+      - name: Upload the evidence bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: capture-client-${{ matrix.adapter }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/capture
+            ${{ runner.temp }}/install-package.txt
+          if-no-files-found: error
+          retention-days: 90
+
+      # ⚠ A FINGERPRINT IS COMPARABLE ONLY AGAINST ONE THE SAME HALF PRODUCED,
+      # and on Linux a repeat really does mean a survived host.
+      - name: Report the host fingerprint
+        if: always()
+        run: |
+          set -eu
+          print=$(sh scripts/acquisition/assert-disposable.sh --fingerprint)
+          echo "linux host fingerprint: $print"
+          {
+            echo "### ${{ matrix.adapter }}"
+            echo
+            echo "host fingerprint \`$print\`"
+            echo
+            echo 'Compare against the previous **Linux** run. A repeat means the host was not destroyed.'
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/install-package.txt" 2>/dev/null || echo 'no install record'
+            echo '```'
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/capture/attestation.txt" 2>/dev/null || echo 'no attestation'
+            echo '```'
+          } >>"$GITHUB_STEP_SUMMARY"

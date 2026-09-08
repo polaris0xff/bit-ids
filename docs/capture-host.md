@@ -184,8 +184,41 @@ than remembered.
 ⚠ **What it captures today is a fixture, and the attestation says so.**
 `kind=fixture`, `measured_build=none` and `stock_client=false` are fields rather
 than prose, because a bundle that outlived its context would otherwise read as a
-measurement of a client. Nothing is installed; `CLIENT-01` is what points a real
-build at the same lab.
+measurement of a client. Nothing is installed there.
+
+## The workflow that installs a product
+
+[`../.github/workflows/capture-client.yml`](../.github/workflows/capture-client.yml)
+is the second capture workflow and the one that runs somebody else's binary.
+`CLIENT-01`, `CLIENT-05` and `CLIENT-06` own the adapters it drives.
+
+⛔ **It is a separate file rather than a branch inside the first**, because the
+step order it needs is different and the order *is* the containment. A
+conditional install inside `capture.yml` would be a step that sometimes runs and
+sometimes does not, in the one place where every reader has to be able to see
+what happened without reading an expression.
+
+| step | why it is where it is |
+| --- | --- |
+| claim the host | ⛔ first, and before the install as well as before the capture: a product installed on a host nothing established was disposable is state on a machine that may be kept |
+| build the observer | while the network still exists |
+| install the client | ⛔ also while the network still exists. `capture-client` refuses to install anything, and a package index is unreachable from a host with no default route |
+| cut the route off this host | both address families, routes saved first |
+| assert containment | the guard reads the kernel, not the step above |
+| capture | the build is handed the torrent and reads the tracker's address out of it |
+| restore the route | only to upload, after the measurement is on disk |
+| upload the evidence bundle | the bundle and the install record together, `if-no-files-found: error` |
+
+⚠ **Those two install constraints are new and nothing else enforces them**, so
+[`../scripts/ci/check-workflow.sh`](../scripts/ci/check-workflow.sh) asserts both
+as ordering cases. ⛔ Its capture block reads **every** `capture*.yml` in the
+workflow directory rather than the one file it was written for: a rule over one
+workflow is not a rule over the sibling that installs a stranger's binary, which
+is the one-gated-door shape applied to a rule instead of to a code path.
+
+⭐ **One job per adapter, and `fail-fast: false`.** Each is a separate host
+running a separate product, so a matrix that stopped at the first red would throw
+away measurements already taken on machines that are about to be destroyed.
 
 ⭐ **The driver and the verifier are both somebody else's code.** `curl` is a
 complete HTTP client and puts real bytes through the observer; `sha256sum -c`

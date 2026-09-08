@@ -5,6 +5,29 @@ two same-version acquisition routes on each supported host family, disables
 public peer discovery, drives the isolated lab, and produces two-connector
 evidence. Candidate routes remain hypotheses until the entry closes.
 
+## The machinery every entry below shares
+
+⭐ **An adapter is five subcommands and nothing else**, specified in
+[`../scripts/capture/adapters/README.md`](../scripts/capture/adapters/README.md).
+The parts that are not per-target live once:
+[`install-client`](../scripts/acquisition/install-client.sh) runs a route while
+the network is up, [`capture-client`](../scripts/capture/capture-client.sh) runs
+the measurement under containment, and
+[`client-capture`](../crates/bit-ids-probe/examples/client-capture.rs) is the
+observer that hands out a torrent naming its own tracker.
+
+⛔ **`stock_client` is the adapter's own declaration, copied into the
+attestation.** A stub drives every guard in that path and is not a product, so a
+run it drove records `false`. ⚠ The harness proves the field varies by running
+one stub twice under both declarations; a runner that hardcoded either would
+pass one of those cases and fail the other.
+
+⛔ **Two things make a run a measurement of a build, and both are checked.** The
+adapter answers `version` from the installed executable, and an announce arrives
+carrying a peer ID this observer did not generate whose bytes the raw transcript
+holds. ⚠ Without the second, a bundle of empty artifacts verifying against their
+own empty digests satisfies everything else.
+
 ## CLIENT-01: qBittorrent capture adapter
 
 Source: operator scope, upstream repository, and August 2026 priority sample
@@ -117,6 +140,29 @@ answering.
 any host this project may capture on, so every run of it so far was driven by
 `curl`. The adapter is what changes that.
 
+### The adapter, written 2026-09-08
+
+[`qbittorrent.sh`](../scripts/capture/adapters/qbittorrent.sh) is the highest
+priority target and not the simplest one. `qbittorrent-nox` keeps a profile
+directory, asks once for a legal notice, and reads its switches out of an INI
+file, so the adapter writes the whole profile rather than patching whatever is
+in `HOME`: a capture that edited an existing configuration would measure a build
+under settings the run did not record.
+
+⭐ **The torrent is a positional argument**, which is the one unattended control
+this product already has that needs no web interface, no credential and no
+second process. An adapter driving the WebUI would be measuring a build through
+an authenticated API it had to configure first.
+
+⚠ **`--confirm-legal-notice` is not optional.** Without it the first run of a
+fresh profile blocks on a prompt, and the capture would sit there until the
+observer's deadline with nothing on the wire and no error to read.
+
+⛔ **None of that is measured yet.** The adapter has never installed anything:
+this session could not run it, because a session host is not disposable, and the
+dispatch is what establishes whether it works. The Windows half of the Prove
+above is untouched.
+
 ### What the info hash cost, measured 2026-09-08
 
 ⛔ **Writing that measurement into this record turned CI run 67 red on both
@@ -185,6 +231,21 @@ separate packet oracle, and use it as a connector only for other targets.
 Prove: tests reject aria2 self-corroboration and a live two-route capture
 publishes a profile supported by the Rust observer plus packet decoding.
 
+### The adapter, written 2026-09-08
+
+⭐ [`aria2.sh`](../scripts/capture/adapters/aria2.sh) is the simplest target in
+the matrix. `aria2c` takes every setting on its command line, needs no daemon,
+no profile directory and no interactive acceptance, and prints its version to
+stdout, so nothing about one run of it depends on state a previous run left
+behind.
+
+⚠ **This is the target half alone and not the connector.** Driving aria2 as a
+target and using it to corroborate another target are the two roles this entry
+says must not create circular corroboration; nothing in that file observes
+anything.
+
+⛔ **Not measured yet**, for the reason `CLIENT-01` gives about a session host.
+
 ## CLIENT-06: Transmission capture adapter
 
 Source: operator scope and bit-cli source-profile generator study
@@ -198,6 +259,25 @@ and test all formula expectations solely against emitted traffic.
 
 Prove: a two-route Linux and Windows run derives every published field from
 raw observations and labels source expectations only as non-authoritative notes.
+
+### The adapter, written 2026-09-08
+
+⭐ [`transmission.sh`](../scripts/capture/adapters/transmission.sh) drives the
+daemon through `transmission-remote`, which is the supported unattended path
+since `transmission-cli` was removed upstream. Its whole settings file is
+written, and the torrent is added by the tool the product ships for that.
+
+⚠ **The package route stops and disables the service the distribution starts on
+install.** A capture must own the only running copy, or it would measure
+whichever one the torrent reached.
+
+⚠ **`--foreground`, so the backgrounded process is the daemon itself.** A daemon
+that forked would leave `stop` holding the identifier of a shell that had already
+returned, and the build would outlive the capture.
+
+⛔ **Nothing published here comes from a formula.** This entry exists because
+source-derived peer-ID expectations are hypotheses, and the adapter contributes a
+running process rather than one.
 
 ## CLIENT-07: Deluge capture adapter
 

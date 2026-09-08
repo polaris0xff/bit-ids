@@ -68,6 +68,32 @@ from any working directory.
   refusals no host state can provoke. ⭐ It is also where the two capture
   runners are compared, because `check-twins.sh` pairs the `common/` checks and
   these take a host and a running process rather than a tree.
+- [`capture/capture-client.sh`](capture/capture-client.sh) is the same shape for
+  a capture of an **installed build**. ⛔ The difference is the driver: an
+  adapter answers what the installed executable's version is and starts that
+  build on the torrent the observer generated, which is what turns an
+  attestation about a containment into one about a product. ⭐ Two guards say a
+  build was measured rather than assumed: an announce must carry a peer ID this
+  observer did not generate, and the raw transcript on disk must hold those
+  exact bytes.
+- [`capture/adapters/`](capture/adapters/) holds one file per target and is the
+  only place that knows how a particular product is installed, asked its
+  version, started and stopped. Its [README](capture/adapters/README.md) carries
+  the five-subcommand contract. ⛔ `kind` is a declaration the attestation
+  copies rather than assumes, so a run driven by a stand-in writes
+  `stock_client=false`.
+- [`acquisition/install-client.sh`](acquisition/install-client.sh) is the one
+  step that runs with the network still up. ⛔ It asserts the claim and
+  deliberately not egress, because being able to reach a package index is the
+  precondition of an install rather than a violation, and a guard there would
+  refuse every host the step is meant to run on. ⚠ One route per invocation, so
+  a caller that ran one and skipped the other has run one.
+- [`capture/check-capture-client.sh`](capture/check-capture-client.sh) proves
+  both of those. ⭐ Its stub adapter reads the announce URL out of the
+  `.torrent` rather than being handed it, which is what makes it stand for a
+  client rather than for a caller that already knew the address, and it runs
+  each shipped adapter's `describe` so a typo in one is found by a gate rather
+  than by a runner.
 - [`ci/check-staleness.sh`](ci/check-staleness.sh) drives the staleness monitor
   over real stores and real resolutions: a new stable release opens one request,
   a preview and a release already measured open none, and a second run over a
