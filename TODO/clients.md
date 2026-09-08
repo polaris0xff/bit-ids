@@ -376,6 +376,45 @@ workflow uploads the install logs on `always()` now, so the next hang leaves its
 own evidence whatever kills the runner. ⚠ Two dispatches lost their diagnosis to
 a step whose only upload came after a capture that never happened.
 
+### ⭐ Client capture run 3: both fixes worked, and the product answered
+
+**The log carried the product's own words for the first time:**
+
+```text
+-- the adapter said
+qbittorrent: qbittorrent-nox --version exited 1: Bad command line:
+  --confirm-legal-notice is an unknown command line parameter.
+install-client: qbittorrent installed through the package route but would not
+  report a version (adapter exit 2)
+```
+
+⛔ **So `--confirm-legal-notice` was never a control. It is an argument this
+build refuses**, and it was on BOTH paths into the product: adding it to the
+version call to match `start` looked like closing a one-gated door, and what it
+actually did was spread a refused argument to a second place. ⭐ The acceptance
+is written into the profile as `[LegalNotice] Accepted=true` now, which is the
+next assumption and is not measured either.
+
+⚠ **That is what the unmeasured-assumption block in each adapter is for**, and
+this is the first entry in one to be refuted rather than confirmed. The block
+said the flag was what stops the prompt; the product says the flag does not
+exist.
+
+### ⛔ And aria2 moved its hang rather than losing it
+
+**Its install succeeded in run 3 and the step AFTER it hung instead.** The
+install logs uploaded, so nothing was lost this time.
+
+⚠ **The most likely reading is the letter in `NEEDRESTART_MODE`.** Run 1 had no
+such variable, so `needrestart` was interactive and the install itself hung; run
+3 set `a`, which stops the dialog by RESTARTING the services it lists - on a
+runner that means restarting daemons the job is standing on. `l` is `list`: it
+reports and touches nothing, and both adapters use it now.
+
+⛔ **That is a reading and not a measurement**, and it is the third guess in this
+area. What is measured is the shape: the hang moved from the install step to the
+one after it when that variable changed, and nothing else about the adapter did.
+
 ## CLIENT-07: Deluge capture adapter
 
 Source: operator scope and upstream project

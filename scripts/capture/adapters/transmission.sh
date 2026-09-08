@@ -91,18 +91,22 @@ case "$COMMAND" in
         # package list that was current when the image was built, and an install
         # against a stale one fails with a 404 on a version that has moved rather
         # than with anything naming the cause.
-        # ⛔ NEEDRESTART_MODE=a IS NOT TIDINESS. Ubuntu 24.04 ships needrestart,
-        # which opens an interactive dialog after a package install listing the
-        # services to restart. DEBIAN_FRONTEND does not suppress it, and a
-        # dialog on a runner is a step that never returns.
+        # ⛔ NEEDRESTART_MODE=l IS `list`, AND THE LETTER IS THE WHOLE POINT.
+        # Ubuntu 24.04 ships needrestart, which after a package install opens an
+        # interactive dialog listing the services to restart; DEBIAN_FRONTEND
+        # does not suppress it, and a dialog on a runner is a step that never
+        # returns. ⚠ `a` stops the dialog by RESTARTING those services instead,
+        # which on a runner means restarting daemons the job is standing on:
+        # measured on 2026-09-08, an install under `a` finished and the step
+        # after it then hung. `l` reports and touches nothing.
         # ⚠ Every apt call reads /dev/null, so anything that still asks gets
         # end-of-file rather than a wait.
-        DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get update \
+        DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l apt-get update \
           </dev/null >"$WORKDIR/update.log" 2>&1 || refuse "the package index could not be refreshed"
         # ⚠ BOTH HALVES, because the control surface is a separate binary. A
         # route that installed the daemon alone would leave `start` unable to
         # add a torrent and the failure would read as the build declining one.
-        DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get install -y --no-install-recommends \
+        DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l apt-get install -y --no-install-recommends \
           transmission-daemon transmission-cli \
           </dev/null >"$WORKDIR/install.log" 2>&1 || refuse "the package route did not install transmission"
         # ⚠ The distribution starts the daemon as a service on install. A

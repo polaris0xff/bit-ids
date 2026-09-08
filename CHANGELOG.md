@@ -5,6 +5,23 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T19:07:10Z
+
+- ⭐ Client capture run 3 read the product's own words back: `--confirm-legal-notice
+  is an unknown command line parameter`. Both of run 2's fixes worked, which is
+  what made that message reachable. Record: [`TODO/clients.md`](TODO/clients.md).
+- ⛔ So that flag was never a control, and it was on both paths into the product:
+  adding it to the version call to match `start` looked like closing a one-gated
+  door and spread a refused argument instead. The acceptance is written into the
+  profile now, which is the next assumption and is not measured either.
+- ⚠ `aria2` moved its hang rather than losing it: the install succeeded and the
+  step after it hung. `NEEDRESTART_MODE=a` stops the dialog by restarting the
+  services it lists, which on a runner means daemons the job stands on; both
+  adapters use `l` now, which reports and touches nothing.
+- ⭐ The install logs uploaded this time, so nothing was lost.
+- Deployment: nothing deployed. One capture exists and it is an evidence bundle.
+
+
 ### 2026-09-08T18:52:06Z
 
 - ⛔ Client capture run 2 found two defects in code written the same day. The

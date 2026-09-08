@@ -18,8 +18,12 @@
 #     leading `v` this strips;
 #   * `--profile` roots the whole configuration, so a written profile is the one
 #     that is read;
-#   * `--confirm-legal-notice` is what stops a fresh profile blocking on a
-#     prompt;
+#   * ⛔ **REFUTED on 2026-09-08.** `--confirm-legal-notice` was assumed to be
+#     what stops a fresh profile blocking on a prompt. This build answers
+#     `Bad command line: --confirm-legal-notice is an unknown command line
+#     parameter`, so it was never a control; the acceptance is written into the
+#     profile as `[LegalNotice] Accepted=true` instead, which is the next
+#     assumption and is not measured either;
 #   * the `Session\DHTEnabled`, `Session\PeXEnabled` and `Session\LSDEnabled`
 #     keys under `[BitTorrent]` are the three adjacent surfaces;
 #   * a torrent as a positional argument is added and started.
@@ -77,15 +81,19 @@ case "$COMMAND" in
         # package list that was current when the image was built, and an install
         # against a stale one fails with a 404 on a version that has moved rather
         # than with anything naming the cause.
-        # ⛔ NEEDRESTART_MODE=a IS NOT TIDINESS. Ubuntu 24.04 ships needrestart,
-        # which opens an interactive dialog after a package install listing the
-        # services to restart. DEBIAN_FRONTEND does not suppress it, and a
-        # dialog on a runner is a step that never returns.
+        # ⛔ NEEDRESTART_MODE=l IS `list`, AND THE LETTER IS THE WHOLE POINT.
+        # Ubuntu 24.04 ships needrestart, which after a package install opens an
+        # interactive dialog listing the services to restart; DEBIAN_FRONTEND
+        # does not suppress it, and a dialog on a runner is a step that never
+        # returns. ⚠ `a` stops the dialog by RESTARTING those services instead,
+        # which on a runner means restarting daemons the job is standing on:
+        # measured on 2026-09-08, an install under `a` finished and the step
+        # after it then hung. `l` reports and touches nothing.
         # ⚠ Every apt call reads /dev/null, so anything that still asks gets
         # end-of-file rather than a wait.
-        DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get update \
+        DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l apt-get update \
           </dev/null >"$WORKDIR/update.log" 2>&1 || refuse "the package index could not be refreshed"
-        DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get install -y --no-install-recommends qbittorrent-nox \
+        DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l apt-get install -y --no-install-recommends qbittorrent-nox \
           </dev/null >"$WORKDIR/install.log" 2>&1 || refuse "the package route did not install qbittorrent-nox"
         ;;
       release)
@@ -112,13 +120,10 @@ case "$COMMAND" in
     # ⛔ THE BUILD SPEAKING. `qBittorrent v5.0.2` on its first line; the leading
     # `v` is stripped because a version is compared by VersionScheme::components
     # and a label carrying a sigil is a second spelling of one value.
-    # ⛔ --confirm-legal-notice IS ON THE VERSION CALL TOO, AND THAT IS WHAT THE
-    # FIRST DISPATCH BOUGHT. A fresh machine has no accepted notice, so asking
-    # this product its version can be the thing that opens the prompt; the
-    # `start` call carried the flag and this one did not, which is a control
-    # applied to one of two paths into the same product.
-    # ⚠ Stdin is /dev/null as well, because a flag that stops one prompt is not
-    # a flag that stops every prompt.
+    # ⚠ THE FLAG THAT USED TO BE HERE WAS AN ASSUMPTION AND IT WAS WRONG ON BOTH
+    # PATHS AT ONCE. Adding it to this call to match `start` looked like closing
+    # a one-gated door; what it actually did was spread a refused argument to a
+    # second place. ⭐ Reading the product's own message is what settled it.
     # ⛔ THE EXIT CODE IS READ FROM THE PROCESS THAT PRODUCED IT, UNPIPED. This
     # was `$(... | head -1) || cannot`, whose `||` reads HEAD's status: head
     # exits 0 over anything, so the guard was dead code and a build that refused
@@ -126,9 +131,16 @@ case "$COMMAND" in
     # 2026-09-08, when a client capture reported "would not report a version" and
     # nothing said which of three refusals had fired. This repository's oldest
     # stated rule, broken in every adapter at once.
+    # ⛔ NO --confirm-legal-notice HERE, AND THAT IS MEASURED RATHER THAN
+    # ASSUMED. This build answers `Bad command line: --confirm-legal-notice is
+    # an unknown command line parameter`, so the flag was not a control at all;
+    # it was an argument the product refuses. Client capture run 3 said so in
+    # those words. ⚠ Stdin is still /dev/null and the caller still bounds this,
+    # because a prompt is a separate hazard from a rejected flag.
+    #
     # ⚠ stderr is KEPT here rather than discarded. A product that refuses to
     # answer says why on it, and the caller prints what this prints.
-    OUTPUT=$("$BINARY" --confirm-legal-notice --version </dev/null 2>&1)
+    OUTPUT=$("$BINARY" --version </dev/null 2>&1)
     VERSION_RC=$?
     [ "$VERSION_RC" = 0 ] ||
       cannot "qbittorrent-nox --version exited $VERSION_RC: $(printf '%s' "$OUTPUT" | head -3 | tr '\n' ' ')"
@@ -176,11 +188,17 @@ case "$COMMAND" in
       printf 'Downloads\\SavePath=%s/downloads\n' "$WORKDIR"
       printf 'General\\Locale=en\n'
       printf 'WebUI\\Enabled=false\n'
+      printf '\n'
+      printf '[LegalNotice]\n'
+      printf 'Accepted=true\n'
     } >"$CONFIG/qBittorrent.conf" || cannot "the profile could not be written"
 
-    # ⚠ --confirm-legal-notice IS NOT OPTIONAL. Without it the first run of a
-    # fresh profile blocks on a prompt, and a capture would sit there until the
-    # observer's deadline with nothing on the wire and no error to read.
+    # ⛔ THE LEGAL NOTICE IS ACCEPTED IN THE PROFILE, NOT ON THE COMMAND LINE.
+    # `--confirm-legal-notice` is an argument this build REFUSES - measured on
+    # 2026-09-08, in those words - so passing it here would have failed the
+    # start exactly as it failed the version call. ⚠ The same wrong assumption
+    # was on both paths into this product, which is why removing it from one
+    # would have left the other.
     #
     # ⛔ AND THE TORRENT IS A POSITIONAL ARGUMENT, which is the one control this
     # product already has that needs no web interface, no credential and no
@@ -188,7 +206,6 @@ case "$COMMAND" in
     # through an authenticated API it had to configure first.
     HOME="$WORKDIR" "$BINARY" \
       --profile="$PROFILE" \
-      --confirm-legal-notice \
       --relative-fastresume \
       "$TORRENT" >"$WORKDIR/client.out" 2>&1 &
     printf '%s\n' "$!" >"$WORKDIR/pid"

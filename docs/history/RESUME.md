@@ -37,11 +37,19 @@ bound did not end the job, so the log went with the runner for the second time;
 `-k` and a bound under the job timeout are the guesses, and the certain fix is
 that the workflow uploads the install logs on `always()` now.
 
-**Next:** dispatch `aria2` and read the install log it will now leave, then
-`qbittorrent`'s `version` refusal, which will name itself. ⚠ Then what no capture
-has established: a second route, a second connector, a record in the store, and
-the Windows half of each Prove. Every adapter is `sh` with no PowerShell twin, so
-a Windows client capture needs `CI-07`'s work first.
+⭐ **Run 3 got the product to say what was wrong**, which is what run 2's two
+fixes were for: `--confirm-legal-notice is an unknown command line parameter`. So
+that flag was never a control, and it was on both paths into qbittorrent. The
+acceptance is written into the profile now and is not measured either. ⚠ `aria2`
+moved its hang from the install to the step after it when `NEEDRESTART_MODE` went
+from unset to `a`; both adapters use `l` now, which reports and restarts nothing.
+
+**Next:** dispatch both again. `qbittorrent` should reach the capture or refuse
+with the product's next message; `aria2` either finishes or hangs somewhere the
+uploaded install log can be read against. ⚠ Then what no capture has established:
+a second route, a second connector, a record in the store, and the Windows half
+of each Prove. Every adapter is `sh` with no PowerShell twin, so a Windows client
+capture needs `CI-07`'s work first.
 
 **Tree:** Re-measure it. This file is a claim about a tree that has moved. Check
 the branch, the remote, the clone depth, `git status` and `HEAD..origin/main`
