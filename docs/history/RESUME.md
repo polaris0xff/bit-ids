@@ -276,6 +276,13 @@ owns, and kill the previous run by PID: `pkill -f` matches the wrapper shell
 that carries the pattern on its own command line, so it kills the caller and
 leaves the target running.
 
+⛔ **A variable set to a value the host already had is a test that ran and
+established nothing.** Measured on 2026-09-08 driving the gate under a hostile
+environment: `LC_ALL=C` on a host whose `locale` already reports `POSIX` changes
+nothing, so the locale half of that pass proved nothing until it was repeated
+under `C.utf8`. ⭐ Read what the host has before claiming to have varied it. The
+verdict was identical both ways, and only the second one is evidence.
+
 ⛔ **A POSIX shell function has no locals, and two functions in ONE file collide
 just as a sourced library does.** `provision.sh`'s fetcher and its caller both
 used `_want`, so the caller compared a version against a digest and reported two

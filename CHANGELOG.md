@@ -5,6 +5,27 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-08T22:24:32Z
+
+- ⭐ `CI-08`'s second Prove half is done: the gate gives the same verdict under a
+  hostile environment - `CARGO_TARGET_DIR` elsewhere, `TMPDIR` moved,
+  `COLUMNS=80`, the locale changed - row for row. Record:
+  [`TODO/ci.md`](TODO/ci.md).
+- ⛔ The first locale run tested nothing: `LC_ALL=C` on a host already in `POSIX`
+  changes nothing, which `conventions/shell.md` states about a different check.
+  The host was measured and the run repeated under `C.utf8`.
+- ⭐ Three defaults are stated rather than inherited, in both halves and
+  mutation-proved: `set -u` as the first code line of every executable script,
+  a cargo output path that must name `CARGO_TARGET_DIR`, and the `shfmt` version
+  compared between the workflow and the provisioning script.
+- ⚠ The `set -u` rule reads the FIRST code line, because this tree holds a
+  heredoc whose body begins `set -u`; a looser rule would accept a script whose
+  only `set -u` belongs to a stub it writes. `store-lib.sh` is exempt by name:
+  it is sourced, so an option set there changes the caller's shell.
+- Deployment: nothing deployed. `CI-08` stays open on the harness gap - nothing
+  runs a capture step's body.
+
+
 ### 2026-09-08T22:05:54Z
 
 - ⭐ `FOUND-05` closes. `sh scripts/doctor/provision.sh` installs `pwsh`,

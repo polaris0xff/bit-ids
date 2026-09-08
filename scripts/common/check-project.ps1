@@ -481,6 +481,58 @@ try {
         }
     }
 
+    # ⛔ A SHELL OPTION IS STATED, NOT INHERITED. `CI-08` is the entry: every
+    # default a script takes from its host rather than states is a defect waiting
+    # for an image bump, and the first one this project met - a PowerShell
+    # default that changed between 7.4 and 7.5 - was found by CI going red.
+    # ⭐ THE FIRST CODE LINE, NOT ANYWHERE IN THE FILE: measured, it is the first
+    # non-comment line of all forty executable scripts, and a loose rule would be
+    # spoofable by the heredoc in this tree whose body begins `set -u`.
+    # ⚠ store-lib.sh is exempt by name: it is sourced, so an option set there
+    # changes the caller's shell and stays changed.
+    # ⛔ Keep this identical to the sh twin.
+    $setuProblems = [System.Collections.Generic.List[string]]::new()
+    foreach ($shFile in @(& git ls-files '*.sh')) {
+        if ($shFile -ceq 'scripts/corpus/store-lib.sh') { continue }
+        if (-not (Test-Path -LiteralPath $shFile -PathType Leaf)) { continue }
+        $firstCode = ''
+        $lineNo = 0
+        foreach ($line in (Get-Content -LiteralPath $shFile)) {
+            $lineNo++
+            if ($lineNo -eq 1 -and $line -match '^#!') { continue }
+            if ($line -match '^\s*#') { continue }
+            if ($line -match '^\s*$') { continue }
+            $firstCode = $line
+            break
+        }
+        if ($firstCode -cne 'set -u') {
+            $setuProblems.Add("$shFile begins [$firstCode]")
+        }
+    }
+    if ($setuProblems.Count -gt 0) {
+        $failures.Add('a script does not state set -u as its first line: ' + ($setuProblems -join '; '))
+    }
+
+    # ⛔ THE CARGO OUTPUT DIRECTORY IS ASKED FOR, NEVER COMPOSED. Exporting
+    # CARGO_TARGET_DIR put every built example where the harnesses did not look
+    # and five provers exited 2 at once, silently. ⚠ Two places composed that
+    # path and fixing one left the other, which is why this is a rule.
+    # ⛔ Keep this identical to the sh twin.
+    $targetProblems = [System.Collections.Generic.List[string]]::new()
+    foreach ($scriptFile in @(& git ls-files '*.sh' '*.ps1')) {
+        if (-not (Test-Path -LiteralPath $scriptFile -PathType Leaf)) { continue }
+        $lineNo = 0
+        foreach ($line in (Get-Content -LiteralPath $scriptFile)) {
+            $lineNo++
+            if ($line -cnotmatch '/target[/}]|(debug|release)/examples') { continue }
+            if ($line -cmatch 'CARGO_TARGET_DIR') { continue }
+            $targetProblems.Add("${scriptFile}:${lineNo}")
+        }
+    }
+    if ($targetProblems.Count -gt 0) {
+        $failures.Add('a cargo output path is composed without CARGO_TARGET_DIR: ' + ($targetProblems -join ' '))
+    }
+
     # ⛔ A DEPENDENCY THIS PROJECT DID NOT REVIEW CANNOT REACH THE OBSERVER OR
     # THE PUBLISHER. Cargo.lock is the inventory: a package with no `source` is
     # a member of this workspace, and every other one must come from the

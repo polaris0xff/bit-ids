@@ -489,6 +489,47 @@ else
   [ -z "$SHFMT_OUT" ] || say_fail "shfmt version disagrees with the pin: $SHFMT_OUT"
 fi
 
+# ⛔ A SHELL OPTION IS STATED, NOT INHERITED. `set -u` turns an unset variable
+# into an error instead of an empty string, and a script that leaves it to the
+# host is a script whose behaviour depends on how it was invoked. `CI-08` is the
+# entry: every default a script takes from its host rather than states is a
+# defect waiting for an image bump, and this project found the first one - a
+# PowerShell default that changed between 7.4 and 7.5 - by CI going red.
+#
+# ⭐ THE FIRST CODE LINE, NOT ANYWHERE IN THE FILE. Measured on 2026-09-08: it is
+# the first non-comment line of all forty executable scripts here, so the precise
+# rule is also the true one. ⚠ And a loose one would be spoofable: this tree
+# contains a heredoc whose body begins `set -u`, so a grep over the whole file
+# would accept a script whose only `set -u` belongs to a stub it writes.
+#
+# ⚠ store-lib.sh IS EXEMPT, BY NAME AND FOR A REASON. It is sourced rather than
+# executed, so a shell option set there changes the CALLER's shell and stays
+# changed - the same shared-namespace hazard that made this repository prefix
+# that library's globals. Its callers state the option themselves.
+SETU_OUT=""
+for _sh in $(git ls-files '*.sh'); do
+  case "$_sh" in
+    scripts/corpus/store-lib.sh) continue ;;
+  esac
+  _first=$(awk 'NR==1 && /^#!/ { next } /^[[:space:]]*#/ { next } /^[[:space:]]*$/ { next } { print; exit }' "$_sh")
+  [ "$_first" = "set -u" ] ||
+    SETU_OUT="$SETU_OUT $_sh begins [$_first];"
+done
+[ -z "$SETU_OUT" ] || say_fail "a script does not state set -u as its first line:$SETU_OUT"
+
+# ⛔ THE CARGO OUTPUT DIRECTORY IS ASKED FOR, NEVER COMPOSED. Exporting
+# `CARGO_TARGET_DIR`, which a great many Rust developers do, put every built
+# example somewhere the harnesses did not look: five corpus and publishing
+# provers exited 2 at once and the whole tier silently stopped proving anything.
+# ⚠ TWO PLACES COMPOSED THAT PATH AND FIXING ONE LEFT THE OTHER, which is why
+# this is a rule rather than a memory. `CI-01` carries both.
+TARGETDIR_OUT=$(git ls-files '*.sh' '*.ps1' |
+  tr '\n' '\0' |
+  xargs -0 grep -nHE '/target[/}]|(debug|release)/examples' 2>/dev/null |
+  grep -v 'CARGO_TARGET_DIR' || true)
+[ -z "$TARGETDIR_OUT" ] ||
+  say_fail "a cargo output path is composed without CARGO_TARGET_DIR: $(printf '%s' "$TARGETDIR_OUT" | tr '\n' ' ')"
+
 # ⛔ A DEPENDENCY THIS PROJECT DID NOT REVIEW CANNOT REACH THE OBSERVER OR THE
 # PUBLISHER. Cargo.lock is the inventory: a package with no `source` is a
 # member of this workspace, and every other one must come from the crates.io

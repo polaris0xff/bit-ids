@@ -1156,6 +1156,55 @@ what a script inherits from its host. Acceptance would be that harness refusing
 the *Restore the route* block as it stood on capture run 1 and accepting it as it
 stands.
 
+### The second half of the Prove is done, measured 2026-09-08
+
+⭐ **The gate gives the same verdict under a hostile environment.**
+`CARGO_TARGET_DIR` pointed elsewhere, `TMPDIR` moved, `COLUMNS=80` and the locale
+changed: `27 checks: 26 passed, 0 failed, 1 skipped, 0 unavailable`, row for row
+identical to the ordinary run. ⛔ `CARGO_TARGET_DIR` is the one that had fired
+before - it once put every built example where the harnesses did not look and
+five provers exited 2 at once - so this is a regression that stayed fixed rather
+than a variable nobody had tried.
+
+⛔ **The first locale run tested nothing, and finding that out is what asking
+"what would have made this fire" is for.** `LC_ALL=C` on a host whose locale is
+already `POSIX` changes nothing, which is a trap
+[`../docs/conventions/shell.md`](../docs/conventions/shell.md) states in as many
+words about a different check. The host was measured - `LANG` empty, `LC_CTYPE`
+`POSIX` - and the run repeated under `C.utf8`, which is the setting that differs.
+Same verdict again.
+
+### Three defaults are stated rather than inherited now
+
+⭐ **`set -u` is the first code line of every executable script**, checked in
+both halves and mutation-proved twice: a script without it, and a script that has
+it below something else. ⚠ The rule reads the FIRST code line rather than
+anywhere in the file, because this tree contains a heredoc whose body begins
+`set -u`, so a looser rule would accept a script whose only `set -u` belongs to a
+stub it writes. Measured before writing it: the convention already held in all
+forty, which is what makes the precise rule the true one.
+⚠ [`../scripts/corpus/store-lib.sh`](../scripts/corpus/store-lib.sh) is exempt by
+name and for a reason - it is sourced, so an option set there changes the
+caller's shell and stays changed, the same shared-namespace hazard that made this
+repository prefix that library's globals.
+
+⭐ **A cargo output path is asked for, never composed.** Five places compose one
+and all five honour `CARGO_TARGET_DIR`; a sixth that did not is refused now, in
+both halves. That is `CI-01`'s defect turned into a rule: two places composed
+that path and fixing one left the other.
+
+⭐ **A tool version the code assumes is compared against what installs it.**
+`check-project` reads `SHFMT_VERSION` out of
+[`../scripts/doctor/provision.sh`](../scripts/doctor/provision.sh) and refuses any
+workflow or script naming a different one. That is the first row of "the runner
+images' own tool versions" in the Approach above.
+
+⛔ **What is left is the harness gap**, unchanged: nothing runs a capture step's
+body, and the acceptance above is still what would close it. ⚠ And a second
+question this entry now owns: the Linux lane pins `shfmt` and takes `shellcheck`
+and `pwsh` from the runner image, so a session host runs a MORE pinned set of
+tools than the lane it exists to match.
+
 ## CI-09: The capture-to-publisher path, end to end
 
 Source: two workflows that have each never run, joined by an artifact

@@ -329,6 +329,13 @@ rather than warns, over every tracked text file.
   is the trap. On the measured machine `LANG` was already empty, so `LC_ALL=C`
   changed nothing at all. The fix is choosing the right tool, not the locale.
 
+  ⛔ **The same trap bites a TEST that sets it.** Measured on 2026-09-08 while
+  driving the gate under a deliberately hostile environment: `LC_ALL=C` was one
+  of four variables changed, the verdict was identical, and the locale half of
+  that pass had established nothing, because `locale` reported `POSIX` already.
+  ⭐ Read the host's locale before claiming to have varied it, and vary it to
+  something it is not - here, `C.utf8`.
+
   ⛔ **A check states which of the two jobs it is doing**, because the same
   expression is correct for one and quietly wrong for the other. Counting bytes
   is byte-oriented and belongs to a byte tool. Counting characters is
