@@ -332,10 +332,12 @@ fi
 # of this group rather than being a text rule over the tree, and because
 # check-twins pairs the common/ checks and neither has a PowerShell half.
 #
-# ⚠ ci/check-staleness IS IN THIS LIST AND ci/check-workflow IS NOT. They sit in
-# one directory and differ in one property: two of check-workflow's cases run
-# this gate, so a runner that listed it would re-enter itself. check-staleness
-# runs no gate.
+# ⚠ ci/check-staleness AND ci/check-step-bodies ARE IN THIS LIST AND
+# ci/check-workflow IS NOT. They sit in one directory and differ in one property:
+# two of check-workflow's cases run this gate, so a runner that listed it would
+# re-enter itself. Neither of the other two runs a gate - check-step-bodies runs
+# two capture workflows' step bodies against stubbed guards and a stub product,
+# and the capture workflows are dispatch-only and call no gate.
 #
 # ⛔ THE TWO CAPTURE HARNESSES ARE NOT IN THIS LIST, AND THE BATCH BELOW IS WHY.
 # Each drives real sockets against a run deadline, and the first concurrent run
@@ -356,7 +358,8 @@ for spec in acquisition/check-cache acquisition/check-release-route \
   corpus/check-store \
   corpus/check-corpus corpus/check-indexes publishing/check-release \
   publishing/check-formats publishing/check-publish publishing/check-access \
-  publishing/check-catalogue ci/check-staleness common/check-examples \
+  publishing/check-catalogue ci/check-staleness ci/check-step-bodies \
+  common/check-examples \
   common/check-handbook; do
   PROVER="$HERE/../$spec.sh"
   NAME=${spec#*/}

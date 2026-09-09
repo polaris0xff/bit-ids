@@ -142,40 +142,19 @@ ORIGIN=$(cd "$ROOT" && git remote get-url origin 2>/dev/null) || ORIGIN=""
 
 # -- reading a command out of the workflow ------------------------------------
 #
-# ⚠ Indents are derived from the lines themselves rather than assumed. A step
-# list sets the key indent and a block scalar keeps the indent of its body, so
-# re-indenting the workflow does not silently stop this matching.
+# ⛔ THE READER IS ASKED FOR, NOT SPELLED HERE. `check-step-bodies.sh` executes
+# the capture workflows' bodies and this one executes `ci.yml`'s, so a copy of
+# the parser in each is a second answer to what a step actually runs - and the
+# copies would drift where it matters, because a reader that stopped matching
+# after a re-indent reports an empty body and an empty body reads exactly like a
+# step the workflow no longer has.
+#
+# ⚠ THE THREE STATUSES ARE COLLAPSED HERE AND NOT THERE, deliberately. This
+# caller has always treated "no such step" and "an action rather than a command"
+# alike, and `run_step` turns the empty answer into 127; the new harness keeps
+# them apart because a step it names and the workflow no longer has is rot.
 step_command() { # workflow job step
-  awk -v WANTJOB="$2" -v WANTSTEP="$3" '
-    function indent(s,   i) { i = match(s, /[^ ]/); return i ? i - 1 : -1 }
-    {
-      line = $0
-      sub(/\r$/, "", line)
-      ind = indent(line)
-
-      if (inrun) {
-        if (ind < 0) { print ""; next }
-        if (ind >= runind) { print substr(line, runind + 1); next }
-        inrun = 0
-      }
-      if (ind < 0) next
-
-      if (ind == 2 && line ~ /^ *[A-Za-z0-9_-]+:[ \t]*$/) {
-        job = line; sub(/^ +/, "", job); sub(/:.*$/, "", job)
-        step = ""; keyind = -1; next
-      }
-      if (line ~ /^ *- name:/) {
-        step = line; sub(/^ *- name:[ \t]*/, "", step)
-        gsub(/^["'"'"']|["'"'"']$/, "", step)
-        keyind = ind + 2; next
-      }
-      if (job == WANTJOB && step == WANTSTEP && ind == keyind && line ~ /^ *run:/) {
-        v = line; sub(/^ *run:[ \t]*/, "", v)
-        if (v == "|" || v == ">" || v == "|-" || v == ">-") { inrun = 1; runind = keyind + 2; next }
-        print v
-      }
-    }
-  ' "$1"
+  sh "$ROOT/scripts/ci/workflow-step.sh" --workflow "$1" --job "$2" --step "$3" || true
 }
 
 # Every job that does not declare KEY at the job level, one per line.
@@ -260,32 +239,11 @@ scripts_named() { # workflow
   grep -o -E 'scripts/[A-Za-z0-9_./-]+\.(sh|ps1)' "$1" 2>/dev/null | LC_ALL=C sort -u
 }
 
-# The ordered step names of one job, one per line.
-#
-# ⚠ Bounded to the jobs: block the way jobs_missing is. Without that, the
-# `workflow_dispatch:` key under `on:` reads as a job at the same indent.
+# The ordered step names of one job, one per line - asked of the same reader
+# `step_command` uses, so the set of steps this file reasons about and the set it
+# can execute cannot disagree.
 job_steps() { # workflow job
-  awk -v WANTJOB="$2" '
-    function indent(s,   i) { i = match(s, /[^ ]/); return i ? i - 1 : -1 }
-    /^jobs:[ \t]*$/ { injobs = 1; next }
-    !injobs { next }
-    {
-      line = $0
-      sub(/\r$/, "", line)
-      ind = indent(line)
-      if (ind < 0) next
-      if (ind == 0) { injobs = 0; next }
-      if (ind == 2 && line ~ /^ *[A-Za-z0-9_-]+:[ \t]*$/) {
-        job = line; sub(/^ +/, "", job); sub(/:.*$/, "", job); next
-      }
-      if (job == WANTJOB && line ~ /^ *- name:/) {
-        s = line
-        sub(/^ *- name:[ \t]*/, "", s)
-        gsub(/^["'"'"']|["'"'"']$/, "", s)
-        print s
-      }
-    }
-  ' "$1"
+  sh "$ROOT/scripts/ci/workflow-step.sh" --workflow "$1" --job "$2" --steps || true
 }
 
 # The 1-based position of a step in its job, or nothing when the job has no such

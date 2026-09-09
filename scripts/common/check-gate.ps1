@@ -227,6 +227,18 @@ Add-Unavailable 'check-examples' 'an sh harness with no PowerShell half'
 Add-Unavailable 'check-handbook' 'an sh harness with no PowerShell half'
 Add-Unavailable 'check-staleness' 'an sh harness with no PowerShell half'
 
+# ⛔ AND THIS ONE'S REASON IS THE MOST SPECIFIC ON THE LANE, because a
+# PowerShell half of it would not be the same check. check-step-bodies runs a
+# workflow step's body through a POSIX PIPE and asks whether that pipe reached
+# end of file once the body exited - which is how a runner decides a step is
+# over. ⚠ A Windows half would need the same instrument over a named pipe and
+# would be measuring a different operating system's answer to the same question,
+# rather than the second implementation of one rule that check-twins compares.
+# ⭐ It runs the `pwsh` half of its SUBJECT anyway: three of its cases execute
+# capture.yml's Windows *Restore the route* block under GitHub's own wrapper
+# form, which is why this row is declared and not a gap in what is proved.
+Add-Unavailable 'check-step-bodies' 'an sh harness; it runs the pwsh half of its subject; CI-07'
+
 # ⚠ AND THIS ONE IS DECLARED WHILE ITS SUBJECT IS EXERCISED ANYWAY, which is the
 # third kind of reason on this lane. check-capture is an sh harness, so it cannot
 # run here; what it drives includes capture-run.ps1, which the Windows job of the

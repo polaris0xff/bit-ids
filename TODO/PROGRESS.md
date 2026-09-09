@@ -162,13 +162,23 @@ host before the route runs now and records `preexisting_version` and `acquired`,
 so the fact is in the record; ⛔ **nothing yet refuses a pair on it**, and
 `ACQ-03` carries that as a residual.
 
-⭐ **The aria2 hang is bounded and its recorded cause is refuted.** Both hung
-runs' install logs say `0 newly installed`, so no package operation happened,
+⭐ **The aria2 hang is bounded and three recorded causes are refuted.** Both
+runs 3 and 4 say `0 newly installed`, so no package operation happened,
 `needrestart` never ran, and the letter in `NEEDRESTART_MODE` could not have been
-the cause: run 3 used `a` and run 4 used `l` and the two jobs hung identically.
-⚠ The hang is in *Upload the install logs*, not the install, in both - and that
-step's artifact is complete and downloadable, so its work finished and the step
-still did not return. `TODO/clients.md` carries the per-run table.
+the cause; run 5's `release` route touches no package index and hung identically;
+and two transmission lanes ran the upload step in one second in the same run as
+two aria2 lanes that hung. ⚠ **This paragraph said the hang is in *Upload the
+install logs*, and run 7 moved it**: with that step at the end of the job, what
+hung was *Install the client*. `TODO/clients.md` carries the per-run table.
+
+⛔ **And the sharpest measurement is a comparison of two runs rather than of two
+steps.** Runs 6 and 7 ran the same aria2 install from commits whose only
+functional difference is where a later step sits - `git diff` over the two says
+so - and that step took **six seconds** in one and had not returned after
+**sixteen minutes** in the other. ⭐ A command whose duration depends on which
+step follows it is not a command that is slow, so `CI-08`'s instrument asks the
+question a step's exit code cannot: a runner ends a step when the command has
+gone **and** its output pipe has reached end of file.
 
 ## Work order
 
@@ -213,10 +223,13 @@ nothing is. The clone question under *Settled decisions* is spent too.
    than state. ⭐ **`FOUND-05` is closed**: `sh scripts/doctor/provision.sh`
    installs the three tools a session used to install by hand, verifying each
    download against a pinned digest first.
-   ⚠ `CI-08` gained the harness `CI-06` needed and did not write: nothing runs a
-   capture step's body. ⛔ And it gained a second question: CI pins `shfmt` and
-   takes `shellcheck` and `pwsh` from the runner image, so a session host now
-   runs a MORE pinned set of tools than the lane it is meant to match.
+   ⭐ **`CI-08` has written the harness `CI-06` needed**: a capture workflow's
+   step bodies now run as a gate row, under GitHub's own wrapper form, and the
+   Windows restore block is refused in the shape that failed capture run 1.
+   ⛔ What is left of that entry is the sweep it was opened for. ⛔ And a second
+   question: CI pins `shfmt` and takes `shellcheck` and `pwsh` from the runner
+   image, so a session host now runs a MORE pinned set of tools than the lane it
+   is meant to match.
 5. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
    bind attestations to.
 6. The remaining client and engine breadth, then refinements.

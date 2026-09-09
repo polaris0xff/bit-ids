@@ -991,12 +991,13 @@ against these three rules.
 
 ### ⭐ What the driven pass measured that the dispatch could not
 
-⛔ **Nothing in this repository runs a capture step's body.**
-`check-workflow.sh` reads `capture.yml`'s step names, their order and the
-*Capture* step's command; it executes steps out of `ci.yml` alone. So the two
-restore blocks were driven by hand, each lifted verbatim and run against a stub
-guard exiting 0, 1 and 2 in turn, with the exit code read from the process that
-produced it.
+⛔ **Nothing in this repository ran a capture step's body**, which is why the two
+restore blocks were driven by hand here: each lifted verbatim and run against a
+stub guard exiting 0, 1 and 2 in turn, with the exit code read from the process
+that produced it. `check-workflow.sh` reads `capture.yml`'s step names, their
+order and the *Capture* step's command; it executes steps out of `ci.yml` alone.
+⭐ `CI-08`'s `check-step-bodies.sh` runs them as a gate row since 2026-09-09, so
+what this paragraph describes is how it was done before there was a harness.
 
 ⛔ **The `pwsh` half has to be run the way GitHub runs it or the defect does not
 reproduce.** The wrapper prepends `$ErrorActionPreference = 'stop'` and
@@ -1156,11 +1157,13 @@ hosts this session cannot reach.
   `CI-03`'s mutation-proven guard for an answer that changes no decision. The
   finding that matters - that the comparison is not a freshness signal there - is
   measured and recorded.
-- ⛔ **Nothing in the tree runs a capture step's body.** `check-workflow.sh`
-  reads `capture.yml`'s step names, their order and the *Capture* step's
-  command, and executes steps out of `ci.yml` alone, so the restore blocks are
-  proved statically by `check-project` and dynamically only by a dispatch.
-  `CI-08` carries the harness that would close it, with its acceptance.
+- ⭐ **Closed on 2026-09-09.** This residual said nothing in the tree runs a
+  capture step's body, and named `CI-08` as carrying the harness that would
+  close it. `scripts/ci/check-step-bodies.sh` is that harness: it runs both
+  restore blocks under GitHub's own wrapper form against stubbed guards, and it
+  refuses the Windows block in the shape that failed capture run 1. ⚠ What
+  remains true is the sentence's premise about `check-workflow.sh`, which still
+  reads `capture.yml` statically and executes steps out of `ci.yml` alone.
 - ⚠ **The `sh` restore step's three-code reading is not driven on a runner.**
   `--egress` answers 2 only when it cannot read a routing table at all, which has
   not happened on a hosted runner; the branch is driven against a stub here and
@@ -1476,11 +1479,113 @@ that path and fixing one left the other.
 workflow or script naming a different one. That is the first row of "the runner
 images' own tool versions" in the Approach above.
 
-⛔ **What is left is the harness gap**, unchanged: nothing runs a capture step's
-body, and the acceptance above is still what would close it. ⚠ And a second
-question this entry now owns: the Linux lane pins `shfmt` and takes `shellcheck`
-and `pwsh` from the runner image, so a session host runs a MORE pinned set of
-tools than the lane it exists to match.
+### ⭐ The harness gap is closed, and the instrument it needed was not the one this entry asked for
+
+**Written 2026-09-09.**
+[`../scripts/ci/check-step-bodies.sh`](../scripts/ci/check-step-bodies.sh) lifts
+a block out of `capture.yml` or `capture-client.yml` and runs it under GitHub's
+own form: `bash -e` for a default `run:`, and for a `shell: pwsh` step the
+`pwsh -command ". '<file>'"` invocation with `$ErrorActionPreference = 'stop'`
+prepended and the residual-exit epilogue appended.
+
+⭐ **The acceptance this entry wrote is met.** It refuses the Windows *Restore
+the route* block in the form that failed capture run 1 - the explicit `exit 0`
+taken away, so the wrapper reads the guard's own refusal as the step's verdict -
+and accepts it as it stands, over a stub guard that refuses. Both halves of the
+`sh` block's three-code reading are cases too.
+
+⛔ **But the reason a body was worth RUNNING turned out to be a second fact this
+entry had not stated: a step does not end when its command exits.** The runner
+reads a step's output through a pipe, so the step is over when the command has
+gone *and* that pipe has reached end of file. A process the body leaves behind
+holding the step's stdout keeps it open, with an exit code of 0 sitting in it.
+⚠ Every harness in this repository redirects a step body's output to a **file**,
+and a file has no reader to wait on, so no existing check could see the class at
+all.
+
+⭐ **So the harness records two facts per body and keeps them apart**, and the
+two failures are reported differently: a body that refuses, and a body that will
+not end.
+
+⚠ **What sent the instrument there is a measurement rather than a hypothesis.**
+Client capture runs 6 and 7 ran the same aria2 install command from commits whose
+only functional difference is where a later step sits - `git diff` over the two
+says so, and nothing in `install-client.sh` or the adapter changed - and that
+step took **six seconds** in one and had not returned after **sixteen minutes**
+in the other. A command whose duration depends on which step follows it is not a
+command that is slow. ⛔ **That is not a fourth cause and is not offered as one.**
+It is where an instrument can be pointed, which is what this entry asked for
+instead of another dispatch.
+
+⛔ **And the same block is proved to hang here, in the step it hangs in there.**
+`capture-client.yml`'s *Install the client* body, run against this repository's
+real `install-client.sh` and a stub product, ends over a product that behaves and
+does **not** end over one that leaves a single process on the step's output.
+
+⚠ **What it does not establish is a runner image.** A body that ends here is not
+a body that ends there. What it proves is the shape, and that no check in this
+tree could previously tell the two apart.
+
+#### Guard mutation over the instrument, 2026-09-09
+
+Seven plants into a scratch copy of the whole tree, one at a time, each verified
+to have applied before its result was believed, with the clean copy run either
+side.
+
+| plant | outcome |
+| --- | --- |
+| the instrument always answers CLOSED | ⭐ refused, by the two cases that assert a hang |
+| the instrument always answers NOT CLOSED | ⭐ refused, by every case that asserts a body ends |
+| the pipe becomes an ordinary file, which is what every other harness uses | ⭐ refused, by the same two |
+| GitHub's residual-exit epilogue dropped from the wrapper | ⭐ refused, by the run-1 case alone |
+| the close bound raised above the planted leak | ⭐ refused, by the two hang cases |
+| the close bound set to zero | ⭐ **could not run**, which is the guard below |
+| the `pwsh` prologue dropped | ⚠ **survived**, and the reason is this entry's own rule |
+
+⚠ **A surviving plant is a question, and this one has an answer.** Dropping the
+prologue changes nothing for these bodies because every `pwsh` block in this tree
+sets `$ErrorActionPreference` itself - which is the rule `check-project` enforces
+and this entry wrote. The plant would bite the day that rule stopped holding, so
+it is recorded rather than turned into a case that passes for a reason of its
+own.
+
+⛔ **`timeout 0` MEANS NO LIMIT, and a ceiling edited to zero is therefore an
+infinite one.** Found by planting it: the harness waited for the leaking body
+until the leak ended by itself and then reported the pipe as closed. A bound
+below one second is refused now with exit 2.
+
+⚠ **Two earlier shapes of the wait were measured and rejected**, and both are
+this harness's own subject arriving in its instrument. A `kill -0` poll on a
+one-second granularity cost a whole second on every case that DID close, because
+a reader whose last writer has just gone has usually not been scheduled yet - and
+on a saturated host it could report a closed pipe as open, which is a red row for
+no defect in a gate that runs thirty checks at once. A `( sleep N && kill ) &`
+watchdog fixed the cost and left an orphaned `sleep` per case. What ships is
+`timeout N tail --pid` on the reader, which blocks, bounds, and leaves nothing.
+
+⭐ **And the reader is one home now.**
+[`../scripts/ci/workflow-step.sh`](../scripts/ci/workflow-step.sh) is what lifts
+a step out of a workflow, and `check-workflow.sh` asks it rather than carrying a
+second parser. ⚠ The extraction was compared against the reader it replaced over
+every job and step in every workflow here - sixty-six of them - and the output is
+identical on all of them. ⛔ It answers with an exit status rather than a string,
+and `scripts/README.md` names the three it distinguishes. `check-workflow.sh`
+collapses two of them, as it always has; the new harness does not, because a step
+it names and the workflow no longer has is rot rather than a rule that quietly
+passed.
+
+### Acceptance for the harness, run on 2026-09-09
+
+- `sh scripts/ci/check-step-bodies.sh`
+- `sh scripts/common/check-gate.sh`
+- `sh scripts/ci/check-workflow.sh`
+
+⛔ **What is left of this entry is the sweep**, unchanged: the Approach asks for
+an enumeration of what the shell scripts, the PowerShell scripts and the
+workflows inherit rather than state, and three defaults are stated so far. ⚠ And
+a second question this entry owns: the Linux lane pins `shfmt` and takes
+`shellcheck` and `pwsh` from the runner image, so a session host runs a MORE
+pinned set of tools than the lane it exists to match.
 
 ## CI-09: The capture-to-publisher path, end to end
 

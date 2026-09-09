@@ -5,6 +5,51 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-09T07:58:50Z
+
+- ⭐ A capture workflow's step bodies are now RUN, which nothing here did.
+  [`scripts/ci/check-step-bodies.sh`](scripts/ci/check-step-bodies.sh) lifts a
+  block out of `capture.yml` or `capture-client.yml` and executes it the way the
+  runner does - under GitHub's default `bash -e` or its
+  `pwsh -command ". '<file>'"` wrapper, prologue and residual-exit epilogue
+  included. Record: [`TODO/ci.md`](TODO/ci.md), `CI-08`.
+- ⛔ **A step does not end when its command exits.** The runner reads a step's
+  output through a pipe, so it is over when the command has gone *and* that pipe
+  has reached end of file - and a process the body left behind holding the
+  step's stdout keeps it open with an exit code of 0 sitting in it. Every
+  harness here redirected step output to a file, and a file has no reader to
+  wait on, so the whole class was invisible. This one records both facts per
+  body and keeps them apart.
+- ⛔ `CI-08`'s written acceptance is met: the harness **refuses**
+  `capture.yml`'s Windows *Restore the route* block in the form that failed
+  capture run 1 and **accepts** it as it stands, over a stubbed guard that
+  refuses. That comparison had been made once by hand in a session scratch
+  directory, which is evidence rather than a control.
+- ⭐ And `capture-client.yml`'s *Install the client* block is reported as a step
+  that would not end when the product it drives leaks one process - the shape
+  client capture run 7 has, in the exact step it happens in.
+- ⚠ **Measured, and it is what pointed the instrument here.** Runs 6 and 7 ran
+  the same aria2 install from commits whose only functional difference is where
+  a later step sits - `git diff` over the two says so - and that step took six
+  seconds in one and had not returned after sixteen minutes in the other.
+- ⭐ [`scripts/ci/workflow-step.sh`](scripts/ci/workflow-step.sh) is now the one
+  reader that lifts a step out of a workflow, and `check-workflow.sh` asks it
+  rather than carrying a second parser. Its extraction was checked against the
+  reader it replaced over every job and step in every workflow here: identical
+  output on all sixty-six.
+- ⛔ A missing step now answers differently from one that runs an action, so
+  deleting a step from a workflow is reported instead of reading as a rule that
+  passed. Record: [`scripts/README.md`](scripts/README.md).
+- ⚠ A zero close-bound is refused, because `timeout 0` means **no limit** in
+  coreutils: a ceiling edited to 0 would wait for a leaking body forever and
+  then report the pipe as closed when the leak ended by itself. Found by
+  planting it.
+- ⚠ `scripts/README.md` said `ci/check-workflow.sh` is "a thirteenth mutation
+  prover", which this change made wrong. The ordinal is gone rather than
+  corrected - the third count in that file to go stale the same way.
+- Deployment: nothing deployed.
+
+
 ### 2026-09-09T06:54:06Z
 
 - ⭐ The three deep-review passes, and what each found. Record:

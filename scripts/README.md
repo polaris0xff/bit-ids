@@ -124,6 +124,23 @@ from any working directory.
   catch, and runs the offending workflow step against it. Every command it runs
   is read out of `.github/workflows/ci.yml` by job and step name, so a harness
   that has drifted from CI reports a missing step rather than a pass.
+- [`ci/workflow-step.sh`](ci/workflow-step.sh) is the one reader that lifts a
+  step out of a workflow: its job's ordered step names, its `run:` body, or the
+  shell it declares. ⛔ Two harnesses execute step bodies now, and a copy of the
+  parser in each would be a second answer to what a step runs. ⚠ It keeps three
+  statuses apart that a caller reading a string cannot: a step the workflow does
+  not have, a step that runs an action rather than a command, and an empty body.
+- [`ci/check-step-bodies.sh`](ci/check-step-bodies.sh) runs the capture
+  workflows' own step bodies the way a runner does, which nothing here did
+  before: under GitHub's default `bash -e` or its `pwsh -command ". '<file>'"`
+  wrapper, with the output on a **pipe**. ⛔ A step is over when its command has
+  exited *and* that pipe has reached end of file, so a process the body leaves
+  behind holding the step's stdout keeps the runner waiting on a command that
+  finished - and no exit code says so. ⭐ It records both facts per body and
+  keeps them apart, which is what lets it accept `capture.yml`'s *Restore the
+  route* block as it stands, refuse it in the form that failed capture run 1, and
+  report `capture-client.yml`'s install block as a step that would not end when
+  the product it drives leaks one process.
 - [`corpus/store-lib.sh`](corpus/store-lib.sh) is sourced by **every** mutation
   harness except `acquisition/check-runner.sh`, and by
   `publishing/publish-data.sh`, which is not a harness. It is never run.
@@ -215,8 +232,11 @@ POSIX-only feature. It is an `sh` harness with no PowerShell half, and it needs
 `python3` for the independent derivation. Copying the neighbouring reason would
 have recorded a gap that closes on the wrong event.
 
-`ci/check-workflow.sh` is a thirteenth mutation prover and the one deliberately
-kept **out** of the gate. Two of its cases run the workflow's own *Repository
+`ci/check-workflow.sh` is the one mutation prover deliberately kept **out** of
+the gate. ⚠ This sentence carried an ordinal - "a thirteenth" - and it was wrong
+the moment `ci/check-step-bodies.sh` landed, which is the third count in this
+file to go stale that way. It is gone rather than corrected, because correcting
+one only resets the clock. Two of its cases run the workflow's own *Repository
 gate* step, so a runner listed in the gate that also invokes the gate would
 re-enter itself; `check-gate.sh` keeps `check-twins` out of its pair list for
 that reason and this is the same contract. The workflow runs it as a step of its
