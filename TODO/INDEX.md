@@ -1,7 +1,7 @@
 # Work index
 
-Total: 63
-Open: 22
+Total: 64
+Open: 23
 In progress: 0
 Blocked: 0
 Done: 41
@@ -9,9 +9,9 @@ Done: 41
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | P0 | 0 | 0 | 0 | 24 | 24 |
-| P1 | 22 | 0 | 0 | 16 | 38 |
+| P1 | 23 | 0 | 0 | 16 | 39 |
 | P2 | 0 | 0 | 0 | 1 | 1 |
-| Total | 22 | 0 | 0 | 41 | 63 |
+| Total | 23 | 0 | 0 | 41 | 64 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -53,6 +53,7 @@ Done: 41
 | CLIENT-11 | P1 | L | OPEN | KTorrent capture adapter |
 | CLIENT-12 | P1 | L | OPEN | Free Download Manager capture adapter |
 | CLIENT-13 | P1 | L | OPEN | Zona capture adapter |
+| CLIENT-14 | P1 | L | OPEN | aria2-next, acquired from its releases and driven over RPC |
 | ENGINE-01 | P1 | L | OPEN | libtorrent engine matrix |
 | ENGINE-02 | P1 | L | OPEN | anacrolix/torrent engine matrix |
 | ENGINE-03 | P1 | L | OPEN | rqbit engine matrix |

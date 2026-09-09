@@ -5,6 +5,25 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-09T11:55:09Z
+
+- ⭐ **`CLIENT-14` is filed, by operator direction**: the two-route capture is
+  attempted through `AnInsomniacy/aria2-next`, acquired from that project's own
+  releases and driven over RPC wherever RPC answers the same question as the
+  command line. Record: [`TODO/clients.md`](TODO/clients.md).
+- ⛔ **Nothing about that target is measured.** It has not been fetched, no
+  release of it has been listed, no version installed and no RPC call made. The
+  entry is the record of a direction, not of a capability.
+- ⚠ `CLIENT-05` stays open and keeps its evidence: the hang is a measured
+  property of this repository's capture path on a hosted runner rather than a
+  fact about one product, and nothing establishes that a different target avoids
+  it. What moves is which entry the first two-route capture goes through.
+- ⚠ A new entry rather than an edit to `CLIENT-05`, because that entry carries
+  ten dispatches' worth of measurement and rewriting its target would falsify a
+  record this project needs to keep.
+- Deployment: nothing deployed.
+
+
 ### 2026-09-09T11:14:54Z
 
 - ⛔ **Run 10: a `timeout` around the step's own command did not fire either.**

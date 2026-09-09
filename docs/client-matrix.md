@@ -51,6 +51,16 @@ An entry does not weaken the two-route rule when a candidate disappears. It
 records three routes considered, keeps the target open and moves to the next
 unblocked client.
 
+⚠ **The `aria2` row names `CLIENT-05` and that is no longer where the first
+two-route capture is attempted.** Ten dispatches of that target produced no
+capture at all, so by operator direction on 2026-09-09 `CLIENT-14` carries the
+attempt through a different upstream, acquired from its own releases and driven
+over RPC. ⛔ The row is not changed and no row is added, because this table's
+target set is pinned by `check-project` against the catalogue in both directions:
+a target here is a target this project has committed to acquiring, and nothing
+about the new one has been fetched, listed, installed or driven. It joins both
+when `CLIENT-14` starts rather than when it was filed.
+
 ## Library targets
 
 | id | harness | route A | route B | entry |

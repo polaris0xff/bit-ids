@@ -1,8 +1,8 @@
 # Current progress
 
 State instant: 2026-09-09
-Total: 63
-Open: 22
+Total: 64
+Open: 23
 In progress: 0
 Blocked: 0
 Done: 41
@@ -195,6 +195,15 @@ written and the dependency question under *Settled decisions* is spent.
 every answer it gives about a real client today is *not measured*, because
 nothing is. The clone question under *Settled decisions* is spent too.
 
+0. ⭐ **`CLIENT-14` FIRST, by operator direction on 2026-09-09.** Ten dispatches
+   produced no aria2 capture: every lane stops inside *Install the client*, four
+   independent bounds have been measured not to fire on that step, five readings
+   of it have been refuted, and no such job has ever produced a log or an
+   artifact. ⛔ The direction is to change the target rather than to keep
+   diagnosing - `AnInsomniacy/aria2-next`, acquired from its own releases and
+   driven over RPC. ⚠ Nothing about that target is measured yet; `CLIENT-14` is
+   the record of the direction. `CLIENT-05` stays open on the hang, which is a
+   property of this capture path rather than of one product.
 1. **`CLIENT-01`, `CLIENT-06`, `CLIENT-05`**, the first complete vertical
    captures. ⭐ Every layer below the product is written and proved, and
    `capture-client.yml` is the workflow that runs them. ⚠ What remains is a

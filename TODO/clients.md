@@ -734,6 +734,18 @@ without reading an expression. ⭐ The four aria2 install logs already collected
 say what that route does; what run 7 bought instead is where the hang actually
 sits.
 
+### ⛔ The two-route attempt moves to `CLIENT-14`, by operator direction
+
+**2026-09-09.** Ten dispatches, no aria2 capture, four bounds that did not fire
+and five readings refuted. The operator's direction is to change the target
+rather than to keep diagnosing: `CLIENT-14` acquires `AnInsomniacy/aria2-next`
+from that project's own releases and drives it over RPC.
+
+⚠ **This entry stays open and keeps its evidence.** The hang is a measured
+property of this repository's capture path on a hosted runner, not a fact about
+one product, and nothing here has established that a different target avoids it.
+⛔ What moves is which entry the first two-route capture is attempted through.
+
 ### ⛔ Run 10, and the fourth bound that did not fire
 
 **Dispatched 2026-09-09 as `["aria2"] × ["package","release"]` on `3b5793d`**,
@@ -859,6 +871,27 @@ because the package route's workdir happens to hold two log files. It also
 omitted `install-<route>.txt`, the record `ACQ-03` compares, which went up only
 inside the evidence bundle - so a job that hung before the capture uploaded its
 logs and not its verdict. The paths are named now.
+
+### ⭐ Transmission's fourth capture, read back outside the run that wrote it
+
+**Client capture run 9, 2026-09-09.** Downloaded through rule 8's route,
+unauthenticated, and verified with `sha256sum -c`: `OK` for all three evidence
+files.
+
+| what | value |
+| --- | --- |
+| build | `transmission-daemon` `4.0.5`, package route, `stock_client=true` |
+| announces | 2 |
+| peer ID on the wire | peer ID `2d5452343035302d6e61387866306133756c7578` |
+| transcript | 9 segments, 3 artifacts |
+| peer surface | one stream, dialled at `127.0.0.1:51413` |
+| containment | `egress=closed`, read from `/proc/net/route` |
+
+⛔ **Four captures of this build have now reported THREE distinct peer IDs**, and
+the two counts being different is the finding rather than a rounding of it: runs
+1 and 4 reported the same identity and runs 7 and 9 each reported another. ⚠ A
+per-session identity that repeats across two sessions is not what a naive reading
+of "per-session" predicts, and four samples is not a lifetime measurement.
 
 ### ⚠ The release route declares its artifact and still refuses, 2026-09-09
 
@@ -987,3 +1020,58 @@ verified; never substitute an inferred profile.
 
 Prove: a same-version two-route capture passes, or the entry records a precise
 blocker and no Zona profile is published.
+
+## CLIENT-14: aria2-next, acquired from its releases and driven over RPC
+
+Source: operator direction on 2026-09-09, after ten dispatches produced no aria2
+capture
+Priority: P1 | Effort: L | Status: OPEN
+
+Problem: `CLIENT-05`'s target cannot be captured. Ten client capture runs have
+been dispatched and not one has reached the *Capture* step: every aria2 lane
+stops inside *Install the client* and the job ends producing no log and no
+artifact. ⛔ Four independent bounds have been measured not to fire on that step
+and five readings of it have been refuted, so this entry does not wait on the
+diagnosis - it changes the target.
+
+Premise: the operator's direction is to replace the target with
+`AnInsomniacy/aria2-next`, acquire it from that project's own releases, and drive
+every operation over the product's RPC interface where RPC serves the same
+purpose as the command line. ⚠ Nothing about that target is measured yet: this
+entry is the record of the direction, not of a capability.
+
+Approach: a new adapter beside the existing ones, declaring its release
+repository, tag scheme and asset pattern through `describe` the way `aria2.sh`
+already does, so `resolve-release.sh` needs no per-target knowledge. ⛔ The
+`version`, `start` and `stop` subcommands go through RPC rather than the command
+line **only where RPC answers the same question**; a subcommand whose answer RPC
+cannot give keeps the command-line form, and the adapter says which is which.
+⚠ The second route stays a question rather than an assumption: two routes must
+resolve one version for the same host, and whether this target's releases and any
+package index do that is a measurement nobody has taken.
+
+Decision: a new entry rather than an edit to `CLIENT-05`. That entry carries the
+measured history of ten dispatches - the four bounds, the five refuted readings,
+the transmission control - and rewriting its target would falsify a record this
+project needs to keep. ⚠ `CLIENT-05` stays open on the hang; this entry is what
+the two-route capture is attempted through.
+
+Prove: `sh scripts/acquisition/check-release-route.sh` selects exactly one asset
+for the new adapter from a recorded listing, `sh scripts/capture/check-capture-client.sh`
+accepts the adapter's `describe`, and a dispatched two-route capture reaches the
+*Capture* step and uploads an evidence bundle that `sha256sum -c` verifies
+outside the run that wrote it.
+
+### ⚠ What this entry does not claim
+
+⛔ **Nothing here has been run.** The target has not been fetched, no release of
+it has been listed, no version of it has been installed and no RPC call has been
+made. The direction is recorded so the next session starts from it rather than
+from the hang.
+
+⚠ **And RPC is a seam, not a guarantee.** Driving a build through its own RPC
+interface means the capture measures what that interface causes the build to put
+on the wire, which is the same standard every adapter here already meets - and it
+also means an adapter failure and a product refusal arrive through one channel,
+so the adapter must keep them apart the way `install-client` keeps a refusal
+apart from a timeout.

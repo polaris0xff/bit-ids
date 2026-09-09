@@ -44,8 +44,12 @@ matrix dimension and `resolve-release.sh` chooses the artifact.
 
 **Next, in order:**
 
-1. ⛔ **Get an aria2 job past *Install the client*.** Read the next section
-   first: run 8 refuted a fourth reading and narrowed where the step is not.
+1. ⛔ **`CLIENT-14`, and it is the operator's direction rather than a choice to
+   re-make.** Ten dispatches produced no aria2 capture, so the target changes:
+   `AnInsomniacy/aria2-next`, acquired from its own releases, driven over RPC
+   wherever RPC answers the same question as the command line. Nothing about it
+   is measured yet. Read the next section before assuming the new target avoids
+   the hang - nothing has established that.
 2. **A record in the store**, once a two-route capture exists. `not_corroborated`
    is a recordable state; one route is not.
 3. **`CI-07`**, the PowerShell halves for the declared rows. ⭐ Its cheap half is
@@ -55,7 +59,38 @@ matrix dimension and `resolve-release.sh` chooses the artifact.
 
 ---
 
-## The aria2 hang, as far as eight runs can answer it
+## The aria2 hang, as far as ten runs can answer it
+
+⛔ **TEN DISPATCHES, NO aria2 CAPTURE, AND NOT ONE REACHED THE *Capture* STEP.**
+Every lane stops inside *Install the client*; transmission and qBittorrent pass
+through the same step on the same image in the same runs.
+
+⛔ **FOUR BOUNDS AT FOUR LEVELS HAVE BEEN MEASURED NOT TO FIRE**: `timeout -k 20
+420` inside `install-client` (run 8), the runner's `timeout-minutes` (run 6), a
+watchdog loop with a 480-second deadline in the step's own shell (run 9), and
+`timeout -k 30 540` around the step's own command (run 10, terminal state read:
+29.5 minutes in that step, `cancelled`, zero artifacts).
+
+⚠ **And no such job has ever written a log.** The blob is never created, which is
+why rule 8's route answers 302 to a `BlobNotFound`. A step that were merely stuck
+would leave a runner able to enforce one of four bounds and to upload a log.
+⛔ That is a reading and it is not recorded as a cause; what it changes is where
+to look - at the host rather than at the shell.
+
+⚠ **The step is NAMED *Install the client* and the install is not the only thing
+in it.** aria2 ships on `ubuntu-24.04`, so the package route's `apt-get install`
+is a measured no-op; the same step also asks the adapter for a version before and
+after the route, and that call executes the preinstalled `aria2c`. A transmission
+lane finds no binary there and runs nothing. ⛔ That asymmetry is in every hung
+run and absent from every green one, and it is a correlation rather than a
+mechanism.
+
+⭐ **Three bounded probes now run before the install** - host resources, `sudo`,
+and the preinstalled product - because when a job produces no log, no artifact
+and no bound, the one signal left is which step the API last reported in
+progress. They are pushed and **not yet dispatched**.
+
+### The four readings refuted before those bounds
 
 ⛔ **FOUR READINGS HAVE BEEN NAMED AND ALL FOUR WERE WRONG.**
 
@@ -77,25 +112,16 @@ digests - and the step itself.
 two things at once: the redirection and a holder report added to the same step.
 Both are bounded now.
 
-⭐ **THE NEXT DISPATCH IS INSTRUMENTED AND THIS IS THE POINT OF IT.** The install
-runs in the background and the step's own shell watches it, because that shell is
-outside every bound that has failed: `timeout` ends its own child and cannot end
-a shell blocked in a substitution around it, and `timeout-minutes` is the
-runner's and was measured on run 6 not to end the step at all. Every five seconds
-it appends `pid,ppid,pgid,stat,etimes,comm,args` to `watchdog.log` in the
-uploaded workdir, and a deadline kills the install so the step ENDS and the
-artifact uploads.
+⚠ **The watchdog paragraph that stood here described run 9's design and run 9
+refuted it.** A loop in the step's own shell with a 480-second deadline did not
+fire, and `timeout` around the step's own command did not fire on run 10 either.
+Both are still in the tree because a step that ends is still what the evidence
+needs; neither is a bound anyone should now expect to work.
 
-⚠ **`etimes` beside `stat` is the question this answers**: a process whose
-elapsed time grows while its state is `R` is slow, and one sitting in `D` or `S`
-is stopped. Timings alone cannot tell those apart and eight runs of timings have
-not.
-
-⛔ **A job whose runner is killed has no log and no artifact**, which is why the
-step ending is the whole design. ⚠ Measured again on run 8: rule 8's route
-answers **302** for a running job's log and redirects to a blob that answers
-`BlobNotFound`, while a general-purpose GitHub tool answers a bare **404** and
-hides the difference between *not written yet* and *not found*.
+⚠ **`etimes` beside `stat` is the question all of it was built to answer**: a
+process whose elapsed time grows while its state is `R` is slow, and one sitting
+in `D` or `S` is stopped. Ten runs of step timings cannot tell those apart, and
+no run has yet produced a process table from inside the window.
 
 **Two local reproductions came back negative and neither settles it.** This
 host is not the runner image and proved it in the same run: `aria2` is absent
@@ -183,7 +209,7 @@ the check before believing it runs.
 and nothing in this tree produces that name.
 
 ⛔ **Nothing has been published and no measured record exists.** ⭐ Builds HAVE
-been measured: Transmission 4.0.5 three times and qBittorrent 4.6.3 once, each
+been measured: Transmission 4.0.5 four times and qBittorrent 4.6.3 once, each
 attesting `kind=client`, `stock_client=true`. ⚠ Those are evidence bundles and
 attestations, not `Profile`s.
 
@@ -191,7 +217,9 @@ attestations, not `Profile`s.
 from the vendor's tarball in 144 seconds, two builds at one version with
 different features, TLS libraries and compilers.
 
-**Three captures of Transmission 4.0.5 reported three different peer IDs.**
+**Four captures of Transmission 4.0.5 have reported THREE distinct peer IDs**, so
+the count of captures and the count of identities are not the same number: runs 1
+and 4 reported the same one and runs 7 and 9 each reported another.
 
 ⛔ **A hosted Windows runner's fingerprint is not a freshness signal.** The claim
 marker is what detects a survived host.
