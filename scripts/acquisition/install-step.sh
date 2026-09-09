@@ -59,24 +59,32 @@ if [ "$ROUTE" = release ]; then
   printf 'the release route will fetch %s\n' "$BIT_IDS_RELEASE_URL"
 fi
 
-# ⭐ THE SOURCE ROUTE NEEDS THE TAG AND ONE RESOLVER ANSWERS BOTH LANES. It is
-# read out of the SAME resolution record the release lane writes, so the version
-# a source build is made of and the version a release asset carries cannot come
-# from two different reads of a vendor whose newest release moves between them.
-# ⚠ Absolute 4 wants two routes resolving the same stable version; sharing the
-# resolution is how that is made true rather than checked afterwards.
+# ⛔ THE SOURCE ROUTE TAKES ITS TAG FROM ITS OWN RESOLUTION, AND THIS BLOCK USED
+# TO TAKE IT FROM THE RELEASE LANE'S. The paragraph that stood here argued that
+# one resolver answering both lanes is how absolute 4's same-version rule is
+# "made true rather than checked afterwards". ⛔ That is precisely what
+# `E-ACQ-07` refuses: two routes sharing a resolver are one route, and
+# `assemble-capture` measured it on capture-client run 14 - both lanes'
+# resolution records differ only in their timestamps.
+#
+# ⭐ ABSOLUTE 4 ASKS FOR THE OPPOSITE OF WHAT THAT PARAGRAPH DID. Version
+# equality is checked AFTER installation, on what each build reported when
+# asked. Two independent resolutions landing on two versions is a vendor that
+# moved between two reads, and catching it is the correct outcome; making them
+# equal beforehand manufactures the agreement this project exists to measure.
 if [ "$ROUTE" = source ]; then
-  [ -f "$RUNNER_TEMP/release/resolution.txt" ] || {
-    printf 'install-step: the source lane has no resolution to take a tag from\n' >&2
+  [ -f "$RUNNER_TEMP/source/resolution.txt" ] || {
+    printf 'install-step: the source lane has no resolution of its own to take a tag from\n' >&2
     exit 2
   }
-  BIT_IDS_RELEASE_TAG=$(sed -n 's/^selected_tag=//p' "$RUNNER_TEMP/release/resolution.txt")
-  [ -n "$BIT_IDS_RELEASE_TAG" ] || {
-    printf 'install-step: the resolution record names no selected_tag\n' >&2
+  BIT_IDS_SOURCE_TAG=$(sed -n 's/^selected_tag=//p' "$RUNNER_TEMP/source/resolution.txt")
+  [ -n "$BIT_IDS_SOURCE_TAG" ] || {
+    printf 'install-step: the source resolution record names no selected_tag\n' >&2
     exit 2
   }
-  export BIT_IDS_RELEASE_TAG
-  printf 'the source route will build %s\n' "$BIT_IDS_RELEASE_TAG"
+  export BIT_IDS_SOURCE_TAG
+  printf 'the source route will build %s, resolved from this repository refs\n' \
+    "$BIT_IDS_SOURCE_TAG"
 fi
 
 # ⛔ THE INSTALL RUNS IN THE BACKGROUND SO THIS SHELL CAN RECORD WHAT THE HOST IS

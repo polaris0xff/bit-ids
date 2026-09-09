@@ -188,6 +188,75 @@ where it lands.
 Residual: `fetch-releases.sh` has no PowerShell twin. `../scripts/README.md`
 carries why, and `ACQ-04` owns the Windows runner contract where one is needed.
 
+### ⭐ A SECOND SOURCE FORMAT, added 2026-09-09: a repository's own refs
+
+⛔ **This resolver had one reader and that made two routes impossible.**
+`read_source` parsed GitHub release listings and nothing else, so every route in
+this project resolved through one index - and `E-ACQ-07` refuses two routes that
+share a resolver. Measured by assembling `capture-client` run 14: its two lanes'
+resolution records differ only in their timestamps.
+
+⭐ **`sources::git_refs` reads `git ls-remote --tags --refs`**, and the source id
+now chooses the reader: `github-releases` or `git-refs`. ⚠ One value therefore
+says both what answered and how it is read, where a separate flag would be a
+second place for those to disagree; two sources of one format are told apart by
+their URLs, which is what a route records and `E-ACQ-07` compares.
+
+⛔ **Two things a refs source cannot do, stated rather than discovered later.**
+A releases listing carries `prerelease` and `draft` and refs carry a name, so a
+prerelease this project could only recognise from a flag would be selected -
+what survives is the version text, which is what caught `release-5.3.0beta1`.
+And refs carry no date, so `predates_selection` cannot release a candidate whose
+tag no scheme can order: it blocks, which is the resolver failing closed and is
+correct, because nothing can rule out that the unreadable tag is the newest.
+
+⚠ **`git ls-remote` is git-over-HTTPS rather than a REST read**, so `AGENTS.md`
+rule 8's route does not apply. Measured on 2026-09-09: the direct call answered,
+and the record says which route answered.
+
+⚠ **A tag is not a commit.** `--refs` yields the tag object for an annotated tag,
+not the commit it points at - `v2.7.5` is `5310afa8…` and the clone built
+`a9784ea8…`, which is why the adapter's own `git rev-parse HEAD` after the clone
+is what `E-ACQ-06` gets its object name from.
+
+#### ⭐ Driven against the live repository, 2026-09-09
+
+`resolve-source.sh` over `AnInsomniacy/aria2-next` answered **`v2.7.5`** in two
+seconds, recording `source_url=https://github.com/AnInsomniacy/aria2-next.git`.
+
+⭐ **The two indexes agreed, and agreeing is now a measurement rather than a
+construction.** The release lane's listing selected 2.7.5 and the refs selected
+2.7.5 from a separate read of a separate endpoint - which is what absolute 4
+asks for, and what one shared resolution made unaskable.
+⭐ **And the two resolver identities now differ**, which is what `E-ACQ-07`
+compares: `assemble-capture` slugifies the release route's
+`…/repos/AnInsomniacy/aria2-next/releases` and this route's
+`https://github.com/AnInsomniacy/aria2-next.git` into two names.
+
+⚠ **Unproved on a runner.** No dispatch has taken the new *Resolve the source
+tag* step, so what is established is the resolver, the record it writes and the
+harness - not a lane.
+
+#### ⛔ Two defects the harness found before either shipped
+
+⛔ **The tag reader took the wrong tag.** It scanned forward from the `selected`
+verdict and took the next `tag` it met, and `tag` comes BEFORE `verdict` inside
+an entry - so against run 14's real resolution it printed `v2.7.4` over a
+resolution that had selected 2.7.5. It is the reader defect `CI-09` records in
+`check-project`'s first artifact rule, arriving in a different file. The tag is
+remembered per entry now, with the entry boundary resetting it rather than a
+distance assumed in either direction, and the harness's control puts the winner
+last so either wrong reading fails it.
+
+⛔ **And a could-not-run discarded the reader's own words.** The first version
+printed `resolve-stable`'s stderr for a refusal and swallowed it for exit 2, so
+a listing this project could not read reported "could not run" with the sentence
+naming the bad line sitting in a workdir file nobody opens. That is the defect
+`CLIENT-06` records in `install-client`, where a caller discarded an adapter's
+stderr and then reported its absence. ⚠ Found by a case asserting the REASON
+rather than only the code - three of these refusals share exit 2, and a case
+reading the code alone passes when a different one fired.
+
 ### ⛔ Residual, closed 2026-09-09: the resolver named a version and nothing named an artifact
 
 **This entry decided which version to acquire and the acquisition still could not

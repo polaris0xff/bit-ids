@@ -383,6 +383,7 @@ fi
 # more gate time than the whole concurrency saves, paid nine times over by
 # `check-workflow`. The numbers live beside each `SECS`.
 for spec in acquisition/check-cache acquisition/check-release-route \
+  acquisition/check-source-route \
   corpus/check-store \
   corpus/check-corpus corpus/check-indexes publishing/check-release \
   publishing/check-formats publishing/check-publish publishing/check-access \

@@ -298,6 +298,11 @@ Add-Unavailable 'check-release-route' 'an sh harness whose subject has no PowerS
 # rather than anything about the assembler, which is platform-independent.
 Add-Unavailable 'check-assemble' 'an sh harness over a portable subject; it needs store-lib.ps1; CI-07'
 
+# ⚠ Its reason is `check-release-route`'s exactly: the decision it proves is in
+# Rust and the Rust suite exercises it on both lanes; what this lane does not
+# exercise is the shell that composes the fetch and the resolution.
+Add-Unavailable 'check-source-route' 'an sh harness whose subject has no PowerShell half yet; CI-07'
+
 # ⭐ THE SLOW ONE, and ⚠ it is the one part of this gate that needs a POSIX
 # shell: check-twins runs the sh half of every pair, so it cannot run on a host
 # without one. That is reported as a skip, never as a pass.

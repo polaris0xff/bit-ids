@@ -11,6 +11,13 @@
 //! resolve-stable <target> <tag-prefix|-> <min> <max> <source-id> <url> <body-file> [more...]
 //! ```
 //!
+//! ⛔ **The source id names the FORMAT the body is read as**, and the set is
+//! closed: `github-releases` for a releases listing, `git-refs` for
+//! `git ls-remote --tags --refs` output. One value therefore says both what
+//! answered and how it is read, where a separate flag would be a second place
+//! for those to disagree. ⚠ Two sources of one format are told apart by their
+//! URLs, which is also what `E-ACQ-07` compares once a route records them.
+//!
 //! Exit codes: 0 a version was selected, 1 the resolver failed closed, 2 it
 //! could not run. ⛔ Failing closed is exit 1, not exit 0 with an empty answer:
 //! a caller that ignored the distinction would install nothing and report
@@ -107,7 +114,21 @@ fn read_source(
     let id = Slug::parse(id).map_err(|error| format!("source id: {error}"))?;
     let url = Url::parse(url).map_err(|error| format!("url: {error}"))?;
     let body = std::fs::read(path).map_err(|error| format!("{path}: {error}"))?;
-    let candidates = sources::github_releases(&body, &id)?;
+    // ⛔ THE SOURCE ID CHOOSES THE PARSER, so a caller cannot hand a refs
+    // listing to the releases reader and get "not a release list" from a file
+    // that is perfectly good. ⚠ It is the id rather than a fourth argument
+    // because the id is already what the resolution records as the source, so
+    // one value says both what answered and how it is read; a separate flag
+    // would be a second place for those to disagree.
+    let candidates = match id.as_str() {
+        "git-refs" => sources::git_refs(&body, &id)?,
+        "github-releases" => sources::github_releases(&body, &id)?,
+        other => {
+            return Err(format!(
+                "source {other:?} has no reader; this resolver knows github-releases and git-refs"
+            ));
+        }
+    };
     let retrieved_at = file_instant(path)?;
     let count = u32::try_from(candidates.len()).map_err(|_| "too many candidates".to_owned())?;
     Ok((

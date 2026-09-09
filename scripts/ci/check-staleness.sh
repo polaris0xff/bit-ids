@@ -118,7 +118,11 @@ make_resolution() { # name tag...
   printf '2026-09-04T12:00:00Z\n' >"$_body.fetched-at"
   # ⛔ Unpiped. resolve-stable exits 1 when it fails closed, which is a case
   # below rather than a harness failure, so the status is kept and not read.
-  "$RESOLVER" fixture-client - 3 3 upstream https://example.invalid/releases \
+  # ⚠ `github-releases` rather than `upstream`, because the source id names the
+  # FORMAT the body is read as and these fixture bodies are release listings.
+  # It was `upstream` until 2026-09-09, when a second source format arrived and
+  # the id became what chooses the reader.
+  "$RESOLVER" fixture-client - 3 3 github-releases https://example.invalid/releases \
     "$_body" >"$WORK/$_name.resolution.json" 2>/dev/null
   [ -s "$WORK/$_name.resolution.json" ]
 }

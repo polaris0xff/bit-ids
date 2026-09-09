@@ -1988,7 +1988,7 @@ an attestation:
 
 | what the artifacts say | what refuses it |
 | --- | --- |
-| both lanes' `resolution.txt` differ **only in their timestamps** - one `source_url`, one `listing_sha256`, one `asset_url` | ⛔ `E-ACQ-07`: two routes sharing a resolver are one route |
+| both lanes' `resolution.txt` differed **only in their timestamps** - one `source_url`, one `listing_sha256`, one `asset_url` | ⛔ `E-ACQ-07`: two routes sharing a resolver are one route - ⭐ **repaired**: the source route resolves its own tag from the repository's refs, `ACQ-02` |
 | every attestation declares **one** connector | ⛔ `E-CAP-01`, at the **validity** gate |
 | nothing records how the artifact was **packaged**, and `package` is in `StoreKey` | ⛔ a record filed under a guessed package is the non-injective path `store.rs` refuses |
 | no document the capture path writes carries the source route's commit | ⛔ `E-ACQ-06`: a source identity needs a full object name - ⭐ **repaired below** |

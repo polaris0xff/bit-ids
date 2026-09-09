@@ -122,6 +122,16 @@ from any working directory.
   client rather than for a caller that already knew the address, and it runs
   each shipped adapter's `describe` so a typo in one is found by a gate rather
   than by a runner.
+- [`acquisition/resolve-source.sh`](acquisition/resolve-source.sh) decides which
+  tag the `source` route builds, from `git ls-remote --tags --refs` rather than
+  from a release listing. ⛔ It exists because the two lanes of a dispatch used to
+  share one resolution, which `E-ACQ-07` calls one route.
+  [`acquisition/check-source-route.sh`](acquisition/check-source-route.sh) proves
+  it: the newest tag is selected with `1.2.10` beating `1.2.9`, and a peeled ref,
+  a branch ref, an abbreviated object name, a line with no tab and an empty
+  listing are each refused. ⚠ Its listings are generated rather than recorded,
+  because an object name is forty hex digits and `check-no-secrets --public`
+  refuses that shape.
 - [`capture/check-assemble.sh`](capture/check-assemble.sh) proves
   [`assemble-capture`](../crates/bit-ids-probe/examples/assemble-capture.rs),
   which is what turns a dispatched capture's artifacts into records. ⭐ Its

@@ -1017,6 +1017,67 @@ pub mod sources {
             .collect()
     }
 
+    /// Reads `git ls-remote --tags --refs` output.
+    ///
+    /// ⭐ **This is the second SOURCE, which is what `E-ACQ-07` compares.** A
+    /// release listing and a repository's refs are two indexes that can disagree
+    /// about what the newest version is, and a route that resolves through each
+    /// is two routes. Measured on 2026-09-09: `capture-client` resolved once and
+    /// handed both lanes the answer, so its two lanes were one route and no
+    /// record could be written from them.
+    ///
+    /// ⛔ **`prerelease` and `draft` are false because refs carry no such
+    /// flags, and that is a real weakening rather than a default.** A releases
+    /// listing told `ACQ-02`'s resolver that `release-5.3.0beta1` was a
+    /// prerelease; refs say only the tag. What survives is the version text,
+    /// which said so too in that case - so a prerelease this project can only
+    /// recognise from a flag would be selected here. `ACQ-02` carries it.
+    ///
+    /// ⚠ **`published_at` is `None`, and refs have no date to offer.** A
+    /// candidate whose tag no scheme can order therefore blocks the resolution
+    /// rather than being released by the `predates_selection` signal, which is
+    /// the resolver failing closed and is correct: nothing here can rule out
+    /// that the unreadable tag is the newest.
+    ///
+    /// # Errors
+    ///
+    /// Returns a message naming the line that could not be read. ⛔ A peeled
+    /// ref - the `^{}` entry `ls-remote` emits for an annotated tag without
+    /// `--refs` - is refused rather than skipped, because accepting it would
+    /// offer every annotated tag twice and dropping it would hide a caller that
+    /// forgot the flag.
+    pub fn git_refs(body: &[u8], source: &Slug) -> Result<Vec<Candidate>, String> {
+        let text = core::str::from_utf8(body).map_err(|error| format!("not UTF-8: {error}"))?;
+        let mut out = Vec::new();
+        for line in text.lines() {
+            if line.trim().is_empty() {
+                continue;
+            }
+            let Some((object, reference)) = line.split_once('\t') else {
+                return Err(format!("{line:?}: expected `<object>\\t<ref>`"));
+            };
+            if object.len() < 40 || !object.bytes().all(|b| b.is_ascii_hexdigit()) {
+                return Err(format!("{object:?} is not a full object name"));
+            }
+            let Some(tag) = reference.strip_prefix("refs/tags/") else {
+                return Err(format!("{reference:?} is not a tag ref"));
+            };
+            if tag.ends_with("^{}") {
+                return Err(format!(
+                    "{reference:?} is a peeled ref; pass --refs so an annotated tag is offered once"
+                ));
+            }
+            out.push(Candidate {
+                source: source.clone(),
+                tag: Label::parse(tag).map_err(|error| format!("tag {tag:?}: {error}"))?,
+                prerelease: false,
+                draft: false,
+                published_at: None,
+            });
+        }
+        Ok(out)
+    }
+
     /// Reads the assets of one release out of the same listing bytes.
     ///
     /// ⭐ **The same response, read a second time for a different question.**

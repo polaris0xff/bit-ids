@@ -135,7 +135,7 @@ four artifacts and refuses. Four reasons, none of them in an attestation:
 
 | what the artifacts say | what refuses it |
 | --- | --- |
-| both lanes' `resolution.txt` differ **only in their timestamps** | ⛔ `E-ACQ-07`: two routes sharing a resolver are one route |
+| both lanes' `resolution.txt` differed **only in their timestamps** | ⛔ `E-ACQ-07` - ⭐ **repaired**: the source route resolves its own tag from git refs |
 | every attestation declares **one** connector | ⛔ `E-CAP-01`, at the **validity** gate |
 | nothing recorded how the artifact was **packaged**, and `package` is in `StoreKey` | ⛔ a guessed one files two packagings of a version at one path - ⭐ **repaired**: every adapter declares it per route |
 | nothing the capture path writes carries the source route's commit | ⛔ `E-ACQ-06`: a source identity needs a full object name |
@@ -285,14 +285,10 @@ nothing is. The clone question under *Settled decisions* is spent too.
    one connector: `E-CAP-01` refuses it as an **invalid document**. Every capture
    this project has run declares one. So a second connector is a prerequisite for
    a record existing, exactly as a second route is.
-3. **A second, independent resolution for the `source` route.** ⛔ Run 14's two
-   lanes read one listing, which `E-ACQ-07` calls one route.
-   `capture-client.yml` argues for that in a comment - one resolution keeps the
-   versions equal - and ⭐ **absolute 4 already answers the worry**: version
-   equality is checked *after installation*, not trusted beforehand. Two
-   independent resolutions landing on two versions is a vendor that moved
-   mid-capture, and catching it is the correct outcome rather than something to
-   design around.
+3. ⭐ **DONE, 2026-09-09.** The source route resolves its own tag from the
+   repository's refs, so the two lanes read two indexes. `ACQ-02` carries the
+   reader and what a refs source cannot do. ⚠ Unproved on a runner: no dispatch
+   has taken the new step.
 4. **`CI-09`**, the capture-to-publisher path, which now sits behind those.
    ⭐ `assemble-capture` and `check-assemble` are written and the refusals above
    are its measurement. ⛔ **The v7/v8 question still cannot be reached**, because

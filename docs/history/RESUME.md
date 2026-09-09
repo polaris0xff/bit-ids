@@ -51,7 +51,7 @@ and stored and would merely fail to publish for want of a second connector.
 
 | what the artifacts say | what refuses it |
 | --- | --- |
-| both lanes' `release/resolution.txt` differ **only in their timestamps** - one `source_url`, one `listing_sha256`, one `asset_url` | ⛔ `E-ACQ-07`: two routes sharing a resolver are one route |
+| both lanes' `release/resolution.txt` differed **only in their timestamps** - one `source_url`, one `listing_sha256`, one `asset_url` | ⛔ `E-ACQ-07` - ⭐ **repaired**: the source route reads git refs, `ACQ-02` |
 | every attestation declares **one** connector | ⛔ `E-CAP-01`, at the **validity** gate |
 | nothing recorded how the artifact was **packaged**, and `package` is in `StoreKey` | ⛔ a guessed one files two packagings of a version at one path - ⭐ **repaired**: every adapter declares it per route |
 | nothing the capture path writes carries the source route's commit | ⛔ `E-ACQ-06` - ⭐ **repaired**: the adapter now records `rev-parse HEAD` and `install-client` refuses a `source` route without one |
@@ -127,15 +127,11 @@ that target a second lane, and the table above is what refuses the pair.
    `field_path=value` line per field the observer measured, where the value is
    lowercase hex, `absent` or `out_of_scope`, and refuses a declared connector
    silent on a field. The attestation names it in `connectors=`.
-2. ⛔ **An independent resolution for the `source` route.**
-   `capture-client.yml` resolves once and hands both lanes the answer, arguing in
-   a comment that one resolution keeps the versions equal. ⭐ **Absolute 4 already
-   answers that**: version equality is checked *after installation*, so two
-   resolutions landing on two versions is a vendor that moved mid-capture, and
-   catching it is the right outcome. `git ls-remote --tags` is the second
-   resolver; `aria2-next.sh`'s comment about "git refs" describes a design nobody
-   wired.
-3. **`CI-09`**, which now sits behind those two. ⭐ `assemble-capture` and
+2. ⭐ **DONE, and unproved on a runner.** The source route resolves its own tag
+   with `git ls-remote --tags --refs`; `ACQ-02` carries the reader. ⚠ No
+   dispatch has taken the new step, so what is proved is the resolver and the
+   harness, not a lane.
+3. **`CI-09`**, which now sits behind the connector alone. ⭐ `assemble-capture` and
    `check-assemble` are written and green; what is missing is a capture whose
    artifacts it accepts. ⚠ It writes a `Profile` and not the `RunManifest` that
    has to sit beside one; the entry's residuals say why.

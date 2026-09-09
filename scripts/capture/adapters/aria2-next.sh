@@ -226,10 +226,10 @@ no package index carries it, and installing aria2 would acquire a different prod
         # ⛔ THESE TWO ROUTES DIFFER IN DELIVERY AND NOT IN RESOLVER, AND THIS
         # COMMENT SAID OTHERWISE UNTIL 2026-09-09. It claimed they "differ in
         # resolver - the releases API against git refs"; the artifacts refute it.
-        # This route is HANDED `BIT_IDS_RELEASE_TAG` by *Resolve the release
-        # artifact*, which is the same step and the same listing the release lane
-        # reads - measured on capture-client run 14, whose two
-        # `release/resolution.txt` differ only in their timestamps.
+        # This route WAS handed `BIT_IDS_RELEASE_TAG` by *Resolve the release
+        # artifact* - the same step and the same listing the release lane reads,
+        # measured on capture-client run 14, whose two `release/resolution.txt`
+        # differ only in their timestamps. ⭐ It resolves its own tag now.
         # ⛔ `E-ACQ-07` calls two routes sharing a resolver ONE route, so the
         # pair cannot become a record until this route resolves its own tag.
         # `CI-09` carries the measurement and the argument; what a fix needs is a
@@ -245,8 +245,19 @@ no package index carries it, and installing aria2 would acquire a different prod
         # project's test binaries too, because `--preset default` is what the
         # project's own README and CI run and a narrower target would be this
         # repository inventing a build the vendor does not document.
-        [ -n "${BIT_IDS_RELEASE_TAG:-}" ] ||
-          cannot "the source route needs BIT_IDS_RELEASE_TAG, resolved before the route was cut"
+        # ⛔ ITS OWN TAG, FROM ITS OWN RESOLUTION. This read
+        # `BIT_IDS_RELEASE_TAG` until 2026-09-09, which is the tag the RELEASE
+        # lane's listing chose - so both lanes resolved through one index and
+        # `E-ACQ-07` called them one route. `resolve-source.sh` reads the
+        # repository's refs instead, and the two versions are then COMPARED
+        # after installation rather than made equal beforehand, which is what
+        # absolute 4 asks for.
+        # ⚠ `BIT_IDS_RELEASE_TAG` is still accepted as a fallback so a caller
+        # that has only the older variable is refused by name rather than
+        # silently building whatever `main` points at.
+        _tag=${BIT_IDS_SOURCE_TAG:-${BIT_IDS_RELEASE_TAG:-}}
+        [ -n "$_tag" ] ||
+          cannot "the source route needs BIT_IDS_SOURCE_TAG, resolved from this repository's own refs before the route was cut"
         for _need in git cmake ninja c++; do
           command -v "$_need" >/dev/null 2>&1 ||
             cannot "the source route builds from source and $_need is not on this host"
@@ -257,11 +268,17 @@ no package index carries it, and installing aria2 would acquire a different prod
         # cannot drift onto different upstreams. ⛔ A shallow clone of one tag:
         # the history is not the measurement and fetching it would be minutes of
         # network for bytes nothing reads.
-        _repo=AnInsomniacy/aria2-next
-        git clone --depth 1 --branch "$BIT_IDS_RELEASE_TAG" \
+        # ⛔ ASKED OF THIS ADAPTER'S OWN `describe` RATHER THAN SPELLED
+        # AGAIN. It was a literal here and a literal in `describe`, which is
+        # one fact in two places: the day one moved, the release route and the
+        # source route would have acquired from two different upstreams and
+        # every check here would have passed.
+        _repo=$(sh "$0" describe | awk -F= '$1 == "release_repo" { sub(/^[^=]*=/, ""); print; exit }')
+        [ -n "$_repo" ] || cannot "this adapter declares no release_repo to clone from"
+        git clone --depth 1 --branch "$_tag" \
           "https://github.com/$_repo.git" "$WORKDIR/src" \
           </dev/null >"$WORKDIR/install.log" 2>&1 ||
-          refuse "the source route could not clone $BIT_IDS_RELEASE_TAG"
+          refuse "the source route could not clone $_tag"
         # ⛔ THE COMMIT IS WHAT `E-ACQ-06` ASKS FOR AND A TAG IS NOT IT. A tag is
         # a name somebody can move; `SourceIdentity::SourceCommit` takes a full
         # object name and refuses an abbreviation. Measured on 2026-09-09 by
@@ -272,7 +289,7 @@ no package index carries it, and installing aria2 would acquire a different prod
         # `v2.7.5` is an annotated tag - the clone said `is not a commit!` and
         # checked out what it points at, which is what was built.
         git -C "$WORKDIR/src" rev-parse HEAD >"$WORKDIR/source-commit" 2>>"$WORKDIR/install.log" ||
-          refuse "the source route cloned $BIT_IDS_RELEASE_TAG and could not name its commit"
+          refuse "the source route cloned $_tag and could not name its commit"
         (cd "$WORKDIR/src" && cmake --preset default) \
           </dev/null >>"$WORKDIR/install.log" 2>&1 ||
           refuse "the source route could not configure a build"

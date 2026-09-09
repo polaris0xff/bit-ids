@@ -5,6 +5,50 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-09T18:52:46Z
+
+- ⭐ **The `source` route resolves its own tag**, from `git ls-remote --tags
+  --refs` rather than from the release lane's listing. That closes the second of
+  the four things `capture-client` run 14 could not supply: its two lanes read
+  one index, and `E-ACQ-07` calls two routes sharing a resolver one route.
+- ⛔ **The workflow argued for sharing it** - one resolver is how two lanes
+  cannot land on different versions. ⭐ Absolute 4 answers that better: version
+  equality is checked AFTER installation, on what each build reported when
+  asked, so two resolutions that disagree are a vendor that moved between two
+  reads and catching it is the point. Making them equal beforehand manufactures
+  the agreement this project exists to measure.
+- ⭐ **`sources::git_refs` is the second source reader**, and the source id now
+  chooses the reader rather than a fourth argument doing it: one value says both
+  what answered and how it is read. ⚠ Two sources of one format are told apart
+  by their URLs, which is what a route records.
+- ⚠ **Two things a refs source cannot do, stated rather than found later.** It
+  carries no `prerelease` flag, so only the version text is left to catch a
+  prerelease; and it carries no date, so a tag no scheme can order blocks the
+  resolution rather than being released by `predates_selection`.
+- ⛔ **A tag is not a commit.** `--refs` yields the tag object for an annotated
+  tag, not the commit it points at, which is why `E-ACQ-06`'s object name still
+  comes from the adapter's own `git rev-parse HEAD` after the clone.
+- ⛔ **And the new resolver read the wrong tag**, caught by running it against a
+  real resolution document before it shipped. It scanned forward from the
+  `selected` verdict and took the next `tag` it met - and `tag` comes BEFORE
+  `verdict` inside an entry, so it printed the FOLLOWING candidate's tag:
+  `v2.7.4` over a resolution that had selected 2.7.5. It is the same reader
+  defect `CI-09` records in `check-project`'s first artifact rule. The tag is
+  remembered per entry now, with the entry boundary resetting it rather than a
+  distance being assumed in either direction; the harness's control puts the
+  winner last so a reader that took the first or the next entry fails it.
+- ⚠ **One fact had two homes in one file**: `aria2-next.sh` spelled its
+  repository as a literal in `describe` and again in its source route. The day
+  one moved, the two routes would have acquired from different upstreams and
+  every check here would have passed. The route asks `describe` now.
+- ⭐ **And the line-endings row earned itself again.** Editing `check-gate.ps1`
+  with a tool that emits LF left it `w/lf` under `attr/text eol=crlf`, and
+  `check-project` refused it. That row was added on 2026-09-08 after the same
+  thing happened and was caught only by an incidental `git commit` warning;
+  this time a gate caught it, in the file the row was written for.
+- Record: [`TODO/acquisition.md`](TODO/acquisition.md), `ACQ-02`;
+  [`TODO/ci.md`](TODO/ci.md), `CI-09`. No version bump and no deploy.
+
 ### 2026-09-09T18:38:24Z
 
 - ⭐ **An adapter now says how its route packaged the build**, which closes one
