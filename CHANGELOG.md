@@ -28,10 +28,15 @@ Nothing is released yet. Entries accumulate here until the first
   resolved `2.7.5`, the release that carried zero assets at `12:11:57Z`. The
   fixture and the harness case keep the refusal pinned whether or not the window
   is open today.
-- ⚠ **`check-step-bodies` is a flaky gate row and it is flaky by construction.**
-  Twice on this date a gate reported it failed; each time the harness alone
-  reported 24 of 24 passing seconds later, and the next gate over the same tree
-  was green. Filed as a residual on `CI-08` with an acceptance. Its cases time a bound that must
+- ⭐ **The flaky `check-step-bodies` row is diagnosed and fixed.** It went red
+  three times inside a gate and passed alone every time. The obvious reading -
+  a too-tight pipe-close bound - was wrong, and two reproductions built on it came
+  back green; capturing the failing run's own output named the case instead. Its
+  planted leak was a `sleep 8` spawned inside a body that runs the whole install
+  step, and the pipe is only examined after the body exits, so under load the
+  plant expired before it was measured. `LEAK_SECONDS=45` names it once and a
+  guard checks `LEAK_SECONDS > CLOSE_SECONDS`; both refusals are mutation-proven.
+  Five consecutive gate runs green, against three red in roughly nine before. Its cases time a bound that must
   fire as `124` and a step whose output pipe must reach end of file, so a loaded
   host can move a case across its own boundary. Recorded in
   [`docs/history/RESUME.md`](docs/history/RESUME.md) so the next red is checked

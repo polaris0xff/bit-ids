@@ -108,17 +108,53 @@ command -v pwsh >/dev/null 2>&1 && HAVE_PWSH=1
 # cases slower, since it is not a deadline anything correct waits out.
 CLOSE_SECONDS=3
 
+# ⛔ HOW LONG A PLANTED LEAK HOLDS THE PIPE, AND IT IS A RACE THIS HARNESS LOST.
+# The leaking process is spawned INSIDE the body, and the pipe is only examined
+# after the body has exited plus `CLOSE_SECONDS`. So a plant only proves what it
+# claims while
+#
+#     leak duration  >  body duration + CLOSE_SECONDS
+#
+# ⚠ It was `sleep 8` written as a literal at every use, which is ample for the
+# two `probe` cases - their bodies are `echo` and `exit 0` - and marginal for the
+# install-block case, whose body is the whole *Install the client* step: a
+# `timeout` around `install-step.sh`, which runs `install-client` under `sudo`, a
+# watchdog loop and a bounded holder report. ⛔ Measured on 2026-09-09: inside a
+# full gate run, where twenty-nine checks run concurrently, that body ran long
+# enough for the eight seconds to expire before the pipe was looked at, and the
+# case reported `the output closed, so the planted hang did not happen` - a red
+# row over a tree with no defect in it. Three gate runs went red that way before
+# one was captured with its per-case output.
+#
+# ⭐ FORTY-FIVE, AND THE MARGIN IS THE POINT RATHER THAN THE NUMBER. The failure
+# needs the body to reach about five seconds; this leaves roughly forty of slack,
+# so the case now measures the redirection it is about instead of the host's load.
+# ⚠ THE COST IS STATED: a `sleep` orphan can outlive the check by up to this many
+# seconds, where the old value bounded that at eight. It exits on its own, it
+# holds only a scratch pipe, and a row that is red at random is worse.
+LEAK_SECONDS=45
+
 # ⛔ AND A ZERO BOUND IS NOT A TIGHT BOUND, IT IS NO BOUND AT ALL. coreutils
 # reads a duration of 0 as "no time limit", so a harness whose ceiling had been
 # edited to 0 would wait for a leaking body forever and, when the leak happened
 # to end by itself, report the pipe as having closed. Measured by planting it:
 # the two cases that assert a hang went red over a bound that never fired.
-case "$CLOSE_SECONDS" in
-  '' | *[!0-9]* | 0)
-    printf 'check-step-bodies: the close bound must be a positive whole number of seconds\n' >&2
-    exit 2
-    ;;
-esac
+for _bound in "$CLOSE_SECONDS" "$LEAK_SECONDS"; do
+  case "$_bound" in
+    '' | *[!0-9]* | 0)
+      printf 'check-step-bodies: every bound must be a positive whole number of seconds\n' >&2
+      exit 2
+      ;;
+  esac
+done
+# ⛔ AND THE LEAK MUST OUTLAST THE WINDOW IT IS MEASURED IN, which is the whole
+# relation above written as a check rather than as a comment somebody keeps in
+# step by hand. A leak shorter than the bound proves nothing: the pipe would
+# close because the plant expired, and the case would read that as no defect.
+if [ "$LEAK_SECONDS" -le "$CLOSE_SECONDS" ]; then
+  printf 'check-step-bodies: LEAK_SECONDS must exceed CLOSE_SECONDS\n' >&2
+  exit 2
+fi
 
 # -- lifting a body out of a workflow -----------------------------------------
 #
@@ -259,16 +295,16 @@ ended "probe    a body that refuses reports its own code and still ends" 3
 
 # ⭐ THE SHAPE THE aria2 HANG HAS, PLANTED. A background process that inherited
 # the step's stdout holds the pipe after the body is gone.
-# ⚠ `sleep 8` RATHER THAN SOMETHING ENDLESS, so nothing outlives this check by
-# more than a few seconds whatever happens to it.
-printf 'set -eu\necho starting\nsleep 8 &\nexit 0\n' >"$WORK/plain/leak.sh"
+# ⚠ A BOUNDED SLEEP RATHER THAN SOMETHING ENDLESS, so nothing outlives this
+# check indefinitely whatever happens to it. `LEAK_SECONDS` says how long and why.
+printf 'set -eu\necho starting\nsleep %s &\nexit 0\n' "$LEAK_SECONDS" >"$WORK/plain/leak.sh"
 run_body "$WORK/plain/leak.sh" default "$WORK/plain"
 hangs "probe    a body leaving a process on the step's output does not end" 0
 
 # ⛔ AND THE CONTROL THAT SEPARATES THE TWO FACTS. The same background process,
 # with its output somewhere else, ends normally - so the case above is about
 # holding the OUTPUT and not about leaving a process.
-printf 'set -eu\necho starting\nsleep 8 >/dev/null 2>&1 &\nexit 0\n' >"$WORK/plain/noleak.sh"
+printf 'set -eu\necho starting\nsleep %s >/dev/null 2>&1 &\nexit 0\n' "$LEAK_SECONDS" >"$WORK/plain/noleak.sh"
 run_body "$WORK/plain/noleak.sh" default "$WORK/plain"
 ended "probe    the same process with its output elsewhere ends" 0
 
@@ -473,7 +509,7 @@ if lift "$CLIENT_WF" linux "Install the client" "$WORK/install.sh"; then
   # spawns inherits the step's own pipe and the runner has nothing left to wait
   # on. ⚠ The leaked process is still there - this does not stop a product
   # leaking, it stops a leak holding the step open.
-  stub_adapter 'sleep 8 &'
+  stub_adapter "sleep $LEAK_SECONDS &"
   rm -rf "$TREE/temp/install-package" "$TREE/temp/install-package.txt"
   run_body "$WORK/install.sh" default "$TREE"
   ended "sh       the install block ends over a product that leaks one process" 0
@@ -501,7 +537,7 @@ if lift "$CLIENT_WF" linux "Install the client" "$WORK/install.sh"; then
   if replace_once "$TREE/scripts/acquisition/install-step.sh" \
     '>"$WORKDIR/step.log" 2>&1 &' \
     '3>&1 >"$WORKDIR/step.log" 2>&1 &'; then
-    stub_adapter 'sleep 8 &'
+    stub_adapter "sleep $LEAK_SECONDS &"
     rm -rf "$TREE/temp/install-package" "$TREE/temp/install-package.txt"
     run_body "$WORK/install.sh" default "$TREE"
     hangs "sh       one leaked descriptor onto the step's output brings it back" 0

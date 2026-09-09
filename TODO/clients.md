@@ -451,7 +451,10 @@ aria2 lane to run them. *Probe the preinstalled product* executes
 same host, in the same job, one step earlier.
 
 **It took 0 seconds and succeeded.** The very next step, *Install the client*,
-hung as it has in all ten previous dispatches.
+hung as it has in all ten previous dispatches, and run 13's terminal state was
+read back: `cancelled`, **zero artifacts**, no log - the same ending as every
+other aria2 lane. ⚠ The other two probes also returned in 0 seconds, so host
+resources and `sudo` are cleared as well.
 
 ⛔ **So the call is not slow and is not stopped**, and the correlation was a
 correlation. ⚠ What survives is narrower and better: whatever hangs is inside

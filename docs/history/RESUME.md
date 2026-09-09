@@ -177,11 +177,17 @@ first, then run it once.
 ⛔ **AND DO NOT RUN THE GATE WHILE `check-workflow` IS RUNNING**, or `git add`
 while it is, which corrupts its plant-and-restore accounting.
 
-⚠ **`check-step-bodies` IS THE FLAKY ROW, AND IT IS FLAKY BY CONSTRUCTION.**
-Measured TWICE on 2026-09-09: each time the gate reported
-`FAIL check-step-bodies (exit 1)`, the harness run alone immediately afterwards
-reported `24 cases: 24 passed` exit 0, and the next gate over the same tree was
-green. `CI-08` carries it as a residual with an acceptance. ⭐ Its cases time
+⭐ **`check-step-bodies` WAS THE FLAKY ROW AND IT IS FIXED.** It went red three
+times on 2026-09-09 inside a gate and passed alone every time. ⛔ The obvious
+reading - that the pipe-close bound was too tight - was wrong, and two
+reproductions built on it came back green. What found it was capturing the
+failing run's own output: the gate PRINTS the failing check's log, and one case
+named itself. The planted leak was a `sleep 8` spawned inside a body that runs
+the whole install step, and the pipe is only examined after the body exits, so
+under load the plant expired before it was measured. `LEAK_SECONDS=45` now names
+it once and a guard checks `LEAK_SECONDS > CLOSE_SECONDS`. `CI-08` carries it.
+⭐ **The lesson is the method, not the constant:** when a gate row goes red at
+random, run the gate in a loop and READ THE LOG IT PRINTS before theorising. ⭐ Its cases time
 things - a bound that must fire as `124`, "a product slower than one tick and
 inside the bound survives", and whether a step's output pipe reaches end of file
 - so a loaded host can move a case across its own boundary.

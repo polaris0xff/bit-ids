@@ -1208,6 +1208,35 @@ pipe, which an unprivileged Windows session cannot create; that one needs its
 plant set reconsidered rather than translated, and a half that silently skipped
 two plants would report a smaller pass under the same name.
 
+### ⭐ The first step is ONE library, not fifteen harnesses. Found 2026-09-09
+
+⛔ **Every declared-unavailable harness sources
+[`../scripts/corpus/store-lib.sh`](../scripts/corpus/store-lib.sh), and there is
+no PowerShell twin of it.** `check-cache`, `check-corpus`, `check-store`,
+`check-indexes`, `check-release`, `check-formats`, `check-publish`,
+`check-access`, `check-catalogue`, `check-examples`, `check-handbook`,
+`check-staleness`, `check-release-route`, `check-capture-client` and
+`check-step-bodies` all begin the same way. ⭐ Measured:
+`find scripts -name '*lib*.ps1'` returns nothing, while twelve `check-*.ps1`
+files exist - every one of them a harness that needs no shared library.
+
+⭐ **So this entry is one library and then thin twins, rather than fifteen
+translations.** `store-lib.sh` is 321 lines and twelve functions:
+`store_require`, `store_build`, `store_workdir`, `row`, `fail`, `pass`, `place`,
+`tree_digest`, `tree_files`, `replace_once`, `store_probe_guards` and
+`store_report`. ⚠ Four of those are the mutation-probe machinery, and
+`check-twins` compares the two halves' answers per planted mutation - so a
+`store-lib.ps1` whose `replace_once` or `store_probe_guards` differed in
+semantics would make every twin that used it disagree at once. That is an
+argument for writing the library carefully first, and against porting a harness
+by inlining the few helpers it happens to need.
+
+⚠ **Not every declared row is a missing half.** `check-examples` runs the ```sh
+fenced blocks of `docs/consuming.md` as a reader would; there is no `sh` on a
+Windows runner, so its `n/a` is a fact about the platform rather than work
+nobody has done. ⛔ Counting all eighteen declared rows as this entry's backlog
+overstates it, and the sweep should say which are which before any are written.
+
 Prove: `pwsh -NoProfile -File scripts/common/check-gate.ps1 -Strict` passes with
 fewer declared rows than it has today, each new half is mutation-proven against
 the same plants as its twin, and `check-twins` compares the pair per planted
@@ -1840,9 +1869,53 @@ gone. ⛔ It is consistent with this row flaking and it is not proof of it.
 
 ⛔ **It can turn the CI Linux lane red over a correct tree**, because that lane
 runs the gate with `--strict`. Not observed there yet: CI runs 93 and 94 were
-green on all three jobs. Acceptance for closing it: the timed cases assert against
-a measured floor rather than a fixed tick, or the harness reports which case
-moved, and a gate run under deliberate load stays green.
+green on all three jobs.
+
+#### ⭐ DIAGNOSED AND FIXED on 2026-09-09, and the first two readings were wrong
+
+⛔ **The obvious reading was that `CLOSE_SECONDS=3` is too tight, and it was
+wrong.** Two reproductions were attempted against it and both came back green:
+twelve CPU spinners on four cores, then the harness beside `check-capture`,
+`check-capture-client`, `check-store`, `check-catalogue` and `check-examples` -
+which is the faithful shape, because the gate backgrounds every check and runs
+them concurrently. **24 of 24 passed** in each.
+
+⭐ **What found it was capturing the failing run's own output.** The gate prints
+the failing check's log; a loop of gate runs reproduced the red on the first
+attempt, and it names one case:
+
+```text
+❌ sh  one leaked descriptor onto the step's output brings it back:
+       the output closed, so the planted hang did not happen
+```
+
+⛔ **So the bound was not too tight - the PLANT EXPIRED.** That case asserts the
+pipe is held open, and it reported the pipe closing. The leaking process is
+spawned *inside* the body, and the pipe is only examined after the body exits
+plus `CLOSE_SECONDS`, so the plant only proves what it claims while
+
+```text
+leak duration > body duration + CLOSE_SECONDS
+```
+
+⚠ **`sleep 8` was ample for the two `probe` cases and marginal for this one.**
+Their bodies are `echo` and `exit 0`; this one's body is the whole *Install the
+client* step - a `timeout` around `install-step.sh`, which runs `install-client`
+under `sudo`, a watchdog loop and a bounded holder report. Under a full gate the
+body reached roughly five seconds and ate the eight.
+
+⭐ **Fixed:** the duration is now `LEAK_SECONDS=45`, named once and used at every
+plant instead of a literal, with the relation checked rather than commented -
+`LEAK_SECONDS` must be a positive integer and must exceed `CLOSE_SECONDS`, both
+mutation-proven (exit 2, each naming its own reason). ⚠ The cost is stated in the
+file: a `sleep` orphan can outlive the check by up to 45 seconds where the old
+value bounded that at 8.
+
+**Verified:** 5 consecutive full gate runs green, against 3 red in roughly 9
+before the change. ⚠ That is a rate on one host and not a proof; the failure is
+load-dependent, and `LEAK_SECONDS=4` still passes on an idle host. ⛔ Which is
+also why the guard compares the two bounds: the relation is what matters, and a
+number that happens to work today is what went stale.
 
 ## CI-09: The capture-to-publisher path, end to end
 
