@@ -1156,6 +1156,42 @@ what a script inherits from its host. Acceptance would be that harness refusing
 the *Restore the route* block as it stood on capture run 1 and accepting it as it
 stands.
 
+### ⭐ A capture step's body has now been run, by hand, and it found a defect
+
+**Measured 2026-09-09.** `capture-client.yml`'s *Resolve the release artifact*
+step was lifted out of the workflow with the same reader `check-workflow` already
+uses and executed verbatim on this host, with `RUNNER_TEMP` pointed at a scratch
+directory. ⛔ **It failed, and the cause was in the step rather than in anything
+it called**: the block redirected into `$RUNNER_TEMP/release/url.txt` while the
+directory was created by `resolve-release.sh` itself. A shell opens `>` targets
+before it execs, so the step would have died on the redirection - on a runner,
+after the claim, with a diagnosis naming a file rather than the mistake.
+
+⚠ **No reader would have found it.** The script creates the directory and the
+step names it; the two are correct separately and wrong composed, which is the
+composition failure `docs/methodology/gate.md` part (b) exists for. Every
+PowerShell rule in `check-project` passed the file, and so did every ordering
+case in `check-workflow`.
+
+⛔ **The harness gap this entry owns is still open, and running it by hand is why
+its shape is now clear.** Two things stand between the measurement above and a
+case:
+
+1. ⚠ **This step reaches a vendor.** A case that fetched a release listing on
+   every Linux lane would make CI depend on GitHub's release endpoint being up,
+   which is a flake this repository would then be reasoning about instead of the
+   rule. `resolve-release --listing` makes the source a file, and a **fixed step
+   body cannot pass that flag** - so the seam a harness needs is one the step can
+   inherit rather than be given, and that is a decision rather than an omission.
+2. ⚠ **Most capture steps cannot run here at all.** The claim writes under
+   `/var/lib`, the cut deletes a default route, and the capture needs both. This
+   one is the first step of any capture workflow that a session host can execute,
+   which is what made it available to try.
+
+⭐ **What it establishes is that the reader is enough.** `step_command` lifted a
+capture workflow's block correctly on the first attempt, so what the harness
+needs is the environment and the seam, not a new parser.
+
 ### The second half of the Prove is done, measured 2026-09-08
 
 ⭐ **The gate gives the same verdict under a hostile environment.**
@@ -1254,6 +1290,44 @@ record in the store today is synthetic, so a job that assembled one and uploaded
 it as `bundle` would put a publishable-looking artifact one boolean away from
 being pushed to the data branch. The missing piece is a record, which is
 `CLIENT-01`'s remaining gap rather than this entry's.
+
+### ⛔ What that record actually needs, measured 2026-09-09
+
+**A single-route capture cannot become a record at all**, and the work order said
+it could. `docs/history/RESUME.md` has carried "a single-route, single-connector
+capture VALIDATES and refuses to publish"; half of that is right and the half
+this entry waits on is not.
+
+| the capture that exists | what the library does | where it bites |
+| --- | --- | --- |
+| one connector | **validates**, then `E-PUB-02` refuses to publish it | publishability |
+| one route | `E-ACQ-01`: *1 route(s); two independent routes are required* | ⛔ **validity** |
+
+⚠ **Measured rather than read**, by stripping one route and one connector from
+the golden fixture and running `validate-profile` over each. The single-connector
+copy validates and reports `provisional, not publishable` with six `E-PUB-02`
+rows; the single-route copy is refused outright.
+
+⭐ **Both facts were already in the suite and only the prose disagreed.**
+`profile_schema.rs` plants `E-ACQ-01` by truncating the route list, in the loop
+that asserts each plant is a **validation** refusal, and
+`agreement_refuses_to_publish_a_measurement_no_second_connector_saw` reads its
+document back through `Profile::from_json` - which validates - before asking
+`publishable`. Nothing was wrong in the code; a sentence in a handoff was, and it
+is the sentence this entry's dependency was written from.
+
+⛔ **So `Profile::to_json` will not write it and the store cannot hold it.** Every
+capture this project has run - transmission twice, qBittorrent once - is one
+route, so none of them can become a record however much of the assembling code is
+written. ⭐ `E-ACQ-01` is right and the document was wrong: the product IS the
+two-route claim, and a record carrying one route would publish a weaker
+measurement under the same schema.
+
+⭐ **What unblocks it is a two-route capture, and there is exactly one target it
+can be run on.** aria2 is the only target whose two routes currently resolve the
+same version, `capture-client.yml` can now dispatch a route per host, and
+`resolve-release` chooses the artifact the release route fetches. That dispatch
+is `CLIENT-05`'s and this entry waits on its output.
 
 ⭐ **What is fixed is that the gap can no longer be invisible.** `check-project`
 compares every `download-artifact` name against every `upload-artifact` name in

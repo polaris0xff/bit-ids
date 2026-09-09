@@ -198,7 +198,14 @@ nothing is. The clone question under *Settled decisions* is spent too.
    bundle is not a publication bundle in any case: what sits between them is
    `assemble-release`, which reads a store of records, and no record exists. The
    gap is declared in the workflow and enforced by `check-project` now; closing
-   it needs `CLIENT-01`'s record rather than anything in this entry.
+   it needs a record rather than anything in this entry.
+   ⛔ **And that record needs a TWO-ROUTE capture, which this order used to say
+   it did not.** Measured on 2026-09-09 by stripping the golden fixture: one
+   connector **validates** and `E-PUB-02` refuses to publish it, and one route is
+   refused at the validity gate by `E-ACQ-01`. So `Profile::to_json` will not
+   write a single-route record and the store cannot hold one - which is every
+   capture this project has run. ⭐ `E-ACQ-01` is right and the sentence was
+   wrong; the product is the two-route claim.
 3. **`OBS-07` and `OBS-10`**, which need a stock client build and a second
    platform, so they follow the captures.
 4. **`CI-07` and `CI-08`**, which harden the gate rather than extend it: the

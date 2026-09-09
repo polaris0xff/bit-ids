@@ -141,6 +141,12 @@ jobs:
           ADAPTER: scripts/capture/adapters/${{ matrix.adapter }}.sh
         run: |
           set -eu
+          # ⛔ THE DIRECTORY IS MADE BEFORE THE REDIRECTION, NOT BY THE SCRIPT.
+          # A shell opens `>` targets before it execs the command, so a workdir
+          # created inside `resolve-release` is created too late for a redirect
+          # into it and the step dies on the redirection rather than on anything
+          # the script did.
+          mkdir -p "$RUNNER_TEMP/release"
           sh scripts/acquisition/resolve-release.sh \
             --adapter "$ADAPTER" \
             --workdir "$RUNNER_TEMP/release" \

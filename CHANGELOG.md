@@ -5,6 +5,28 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-09T02:58:42Z
+
+- ⛔ The work order said a single-route capture could become a record and it
+  cannot. `docs/history/RESUME.md` has carried "a single-route, single-connector
+  capture VALIDATES and refuses to publish"; one connector does exactly that and
+  one route is refused at the **validity** gate by `E-ACQ-01`, so
+  `Profile::to_json` will not write it and the store cannot hold it. Every
+  capture this project has run is one route. Record: [`TODO/ci.md`](TODO/ci.md).
+- ⭐ Measured by stripping the golden fixture twice and running
+  `validate-profile` over each copy, and both facts were already in the suite -
+  only the prose disagreed. Nothing in the code changed; `TODO/ci.md` carries why
+  the refusal is the right one and which two tests already prove it.
+- ⛔ So `CI-09` waits on a two-route capture rather than on assembling code, and
+  aria2 is the only target whose two routes currently resolve the same version.
+- ⛔ The workflow's resolve step redirected into a directory the script it calls
+  had not created yet: a shell opens `>` targets before it execs, so the step
+  would have died on the redirection rather than on anything the script did.
+  Found by running that step's body verbatim on this host, which is the first
+  time any capture workflow step body has been executed outside a runner.
+- Deployment: nothing deployed.
+
+
 ### 2026-09-09T02:51:47Z
 
 - ⛔ A gate run left four untracked files in `scripts/capture/`, and the only
