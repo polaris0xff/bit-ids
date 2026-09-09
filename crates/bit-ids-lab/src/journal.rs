@@ -56,6 +56,33 @@ impl Segment {
         }
     }
 
+    /// Rebuilds a segment from a written transcript.
+    ///
+    /// ⭐ **The offset arrives as the milliseconds the document carries rather
+    /// than as a [`Duration`], because that is what was written.** Handing this
+    /// a `Duration` would make the reader reconstruct a value the writer had
+    /// already rounded, so a segment recorded at 2075 ms could read back as
+    /// something else and the round trip would not be one.
+    ///
+    /// ⚠ Still `pub(crate)`: the lab and its own reader are the only producers,
+    /// and a consumer that could mint segments could edit a transcript it was
+    /// handed, which is what the read-only accessors exist to prevent.
+    pub(crate) const fn recorded(
+        endpoint: Slug,
+        connection: Option<ConnectionId>,
+        offset_ms: u64,
+        direction: Direction,
+        bytes: Vec<u8>,
+    ) -> Self {
+        Self {
+            endpoint,
+            connection,
+            offset_ms,
+            direction,
+            bytes,
+        }
+    }
+
     /// Which endpoint moved these bytes.
     #[must_use]
     pub const fn endpoint(&self) -> &Slug {

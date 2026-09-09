@@ -23,7 +23,7 @@ use bit_ids::canonical::{Sha256Digest, Slug};
 use bit_ids::manifest::{PhaseName, RedactionRule};
 use bit_ids::record::EvidenceKind;
 use bit_ids::{Profile, RunManifest, bind};
-use bit_ids_lab::evidence::{REDACTED, TRANSCRIPT_SCHEMA};
+use bit_ids_lab::evidence::{REDACTED, TRANSCRIPT_SCHEMA, parse_transcript_document};
 use bit_ids_lab::{Bundle, BundleError, Journal, Lab, Scrub, StreamReply, TranscriptOf};
 use bit_ids_wire::tracker_udp::Direction;
 use serde_json::{Value, json};
@@ -537,6 +537,127 @@ fn the_transcript_keeps_the_order_direction_and_connection_of_every_segment() {
     let directions: Vec<&Value> = segments.iter().map(|one| &one["direction"]).collect();
     assert!(directions.contains(&&json!("from_target")));
     assert!(directions.contains(&&json!("to_target")));
+}
+
+#[test]
+fn a_written_transcript_reads_back_as_the_journal_it_was_written_from() {
+    // ⭐ The strongest form available: the reader's output is compared against
+    // the journal the writer was handed, and the reader's output is then written
+    // again and compared byte for byte. A reader checked only against a
+    // hand-written expectation is a second opinion about the format; this is an
+    // inverse.
+    let root = scratch("transcript-round-trip");
+    let journal = journal_of_one_exchange("peer-wire", b"first request", b"an answer");
+    let mut bundle = Bundle::create(&root, slug("bit-ids-probe"), PhaseName::Observed)
+        .expect("the root is creatable");
+    bundle
+        .transcripts(&journal, &peer_plan())
+        .expect("the plan names the endpoint");
+    let written = std::fs::read_to_string(root.join("peer-wire.transcript.json"))
+        .expect("the transcript is on disk");
+
+    let (endpoint, read_back) =
+        parse_transcript_document(&written).expect("this writer's own output reads back");
+    assert_eq!(endpoint, slug("peer-wire"));
+    let recorded = journal.for_endpoint(&slug("peer-wire"));
+    assert!(!recorded.is_empty(), "the run recorded nothing to write");
+    assert_eq!(read_back.segments().len(), recorded.len());
+    for (read, original) in read_back.segments().iter().zip(recorded) {
+        assert_eq!(read.endpoint(), original.endpoint());
+        assert_eq!(read.connection(), original.connection());
+        assert_eq!(read.offset_ms(), original.offset_ms());
+        assert_eq!(read.direction(), original.direction());
+        assert_eq!(read.bytes(), original.bytes(), "the bytes moved");
+    }
+
+    // ⛔ And the bytes, because the digest a manifest cites is of these and not
+    // of the values. A reader that dropped the spacing would still compare equal
+    // above and would produce an artifact with a different digest.
+    let again = scratch("transcript-round-trip-again");
+    let mut second = Bundle::create(&again, slug("bit-ids-probe"), PhaseName::Observed)
+        .expect("the root is creatable");
+    second
+        .transcripts(&read_back, &peer_plan())
+        .expect("the plan names the endpoint");
+    assert_eq!(
+        std::fs::read_to_string(again.join("peer-wire.transcript.json")).expect("on disk"),
+        written,
+        "writing what was read back did not reproduce the document"
+    );
+}
+
+#[test]
+fn a_transcript_document_this_writer_would_not_emit_is_refused() {
+    // ⚠ `an answer`, not `first request`. Every byte of `first request` encodes
+    // to a hex pair of digits alone - no letter in `a`-`f` anywhere - so
+    // upper-casing its hex is a no-op, and the plant reported the reader
+    // accepting a document it had not changed. Found by running it: a plant that
+    // did not apply is a third status, and the loop below now refuses one.
+    // ⚠ Computed rather than written down: `check-no-secrets --public` refuses a
+    // hex run of 24 digits or more, and it is right to.
+    let answer_hex: String = b"an answer".iter().fold(String::new(), |mut out, byte| {
+        use core::fmt::Write as _;
+        write!(out, "{byte:02x}").expect("a String cannot fail");
+        out
+    });
+
+    // ⛔ Each case is a document a general JSON parser accepts and this writer
+    // never produces. Without them the reader could be a loose one and every
+    // round-trip case above would still pass, because they only ever hand it
+    // this writer's own output.
+    let root = scratch("transcript-refusals");
+    let journal = journal_of_one_exchange("peer-wire", b"first request", b"an answer");
+    let mut bundle = Bundle::create(&root, slug("bit-ids-probe"), PhaseName::Observed)
+        .expect("the root is creatable");
+    bundle
+        .transcripts(&journal, &peer_plan())
+        .expect("the plan names the endpoint");
+    let good = std::fs::read_to_string(root.join("peer-wire.transcript.json"))
+        .expect("the transcript is on disk");
+    assert!(
+        parse_transcript_document(&good).is_ok(),
+        "the control has to be accepted or every refusal below proves nothing"
+    );
+
+    let cases: [(&str, String); 7] = [
+        (
+            "uppercase hex, which digests differently",
+            good.replacen(&answer_hex, &answer_hex.to_uppercase(), 1),
+        ),
+        (
+            "an odd number of hex digits",
+            good.replacen("\"bytes\": \"", "\"bytes\": \"a", 1),
+        ),
+        (
+            "the schema line removed",
+            good.replacen("  \"schema\": \"bit-ids/transcript/1\",\n", "", 1),
+        ),
+        (
+            "a direction outside the two",
+            good.replacen("\"from_target\"", "\"sideways\"", 1),
+        ),
+        (
+            "connection zero, an identity no capture hands out",
+            good.replacen("\"connection\": 1,", "\"connection\": 0,", 1),
+        ),
+        ("no final newline", good.trim_end_matches('\n').to_owned()),
+        // ⚠ A second whole document rather than any trailing bytes, because a
+        // reader that stopped at the first `}` would accept this and silently
+        // drop half the artifact - and the digest a manifest cites covers both.
+        ("a second document appended", format!("{good}{good}")),
+    ];
+    for (name, document) in cases {
+        // ⛔ The plant is verified to have applied before its result is
+        // believed. Without this the uppercase case passed over a substitution
+        // that had changed nothing, and a reader that accepted everything would
+        // have read as one that refused six things.
+        assert_ne!(document, good, "{name}: the plant did not change anything");
+        let refused = parse_transcript_document(&document);
+        assert!(
+            refused.is_err(),
+            "{name}: the reader accepted a document this writer does not emit"
+        );
+    }
 }
 
 #[test]

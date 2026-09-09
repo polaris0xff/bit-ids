@@ -387,7 +387,7 @@ for spec in acquisition/check-cache acquisition/check-release-route \
   corpus/check-corpus corpus/check-indexes publishing/check-release \
   publishing/check-formats publishing/check-publish publishing/check-access \
   publishing/check-catalogue ci/check-staleness ci/check-step-bodies \
-  common/check-examples \
+  capture/check-assemble common/check-examples \
   common/check-handbook common/check-gate-rows; do
   PROVER="$HERE/../$spec.sh"
   NAME=${spec#*/}

@@ -208,13 +208,22 @@ no package index carries it, and installing aria2 would acquire a different prod
         # stripped. ⭐ One version, two provably different builds, which is the
         # case `ACQ-03` exists to classify.
         #
-        # ⚠ HOW INDEPENDENT THESE TWO ROUTES ARE IS STATED RATHER THAN CLAIMED.
-        # They differ in resolver - the releases API against git refs - and in
-        # delivery - one HTTPS asset against a git clone - which is what
-        # `E-ACQ-07` and `E-ACQ-08` compare. ⛔ They do NOT differ in origin:
-        # whoever controls the repository controls both. That is weaker than a
-        # distribution index against a vendor release, and the record says so
-        # rather than letting two green checks imply otherwise.
+        # ⛔ THESE TWO ROUTES DIFFER IN DELIVERY AND NOT IN RESOLVER, AND THIS
+        # COMMENT SAID OTHERWISE UNTIL 2026-09-09. It claimed they "differ in
+        # resolver - the releases API against git refs"; the artifacts refute it.
+        # This route is HANDED `BIT_IDS_RELEASE_TAG` by *Resolve the release
+        # artifact*, which is the same step and the same listing the release lane
+        # reads - measured on capture-client run 14, whose two
+        # `release/resolution.txt` differ only in their timestamps.
+        # ⛔ `E-ACQ-07` calls two routes sharing a resolver ONE route, so the
+        # pair cannot become a record until this route resolves its own tag.
+        # `CI-09` carries the measurement and the argument; what a fix needs is a
+        # resolution from git refs here, with the two versions COMPARED after
+        # installation rather than made equal beforehand.
+        # ⛔ They also do NOT differ in origin: whoever controls the repository
+        # controls both. That is weaker than a distribution index against a
+        # vendor release, and the record says so rather than letting two green
+        # checks imply otherwise.
         #
         # ⚠ MEASURED COST: about 350 seconds for configure and build together on
         # a four-core host, against the caller's 540-second bound. It builds the
@@ -238,6 +247,17 @@ no package index carries it, and installing aria2 would acquire a different prod
           "https://github.com/$_repo.git" "$WORKDIR/src" \
           </dev/null >"$WORKDIR/install.log" 2>&1 ||
           refuse "the source route could not clone $BIT_IDS_RELEASE_TAG"
+        # ⛔ THE COMMIT IS WHAT `E-ACQ-06` ASKS FOR AND A TAG IS NOT IT. A tag is
+        # a name somebody can move; `SourceIdentity::SourceCommit` takes a full
+        # object name and refuses an abbreviation. Measured on 2026-09-09 by
+        # assembling run 14: nothing the capture path wrote carried one, so a
+        # source route could not become a record at all, and the object name
+        # existed only inside the git chatter in `install.log`. ⚠ It is
+        # `rev-parse HEAD` rather than the tag's own object, because
+        # `v2.7.5` is an annotated tag - the clone said `is not a commit!` and
+        # checked out what it points at, which is what was built.
+        git -C "$WORKDIR/src" rev-parse HEAD >"$WORKDIR/source-commit" 2>>"$WORKDIR/install.log" ||
+          refuse "the source route cloned $BIT_IDS_RELEASE_TAG and could not name its commit"
         (cd "$WORKDIR/src" && cmake --preset default) \
           </dev/null >>"$WORKDIR/install.log" 2>&1 ||
           refuse "the source route could not configure a build"

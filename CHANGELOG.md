@@ -5,6 +5,46 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-09T17:26:57Z
+
+- ⭐ **Something tried to assemble run 14 into records, and that is how four
+  refusals were found.**
+  [`assemble-capture`](crates/bit-ids-probe/examples/assemble-capture.rs) reads a
+  lane's capture artifact and its install artifact and writes the `Profile` they
+  support, deriving every field from a document rather than from a lane's name.
+  [`check-assemble.sh`](scripts/capture/check-assemble.sh) proves it over
+  synthetic lanes: 15 cases, and the control - two routes, two resolvers, two
+  connectors, one identity on the wire - is accepted and reaches
+  `build_equivalent`.
+- ⛔ **Run 14 cannot become a record.** Both lanes' `release/resolution.txt`
+  differ only in their timestamps, so `E-ACQ-07` calls them one route; nothing
+  the capture path wrote carried the source route's commit, which `E-ACQ-06`
+  needs; every attestation names one connector, which `E-CAP-01` refuses; and the
+  two lanes' peer-ID tails differ, which `classify_across` reads as `Divergent`.
+- ⛔ **A capture declaring ONE connector is invalid, not merely unpublishable**,
+  and three handoffs said otherwise. Measured by stripping the golden fixture two
+  ways with each exit code read unpiped: two connectors declared and one
+  observing each field is *valid* and `provisional, not publishable` with six
+  `E-PUB-02` rows; one connector declared is `refused`, `invalid document`,
+  `E-CAP-01`. `OBS-07` moved up the work order because of it.
+- ⛔ **The peer ID differs between SURFACES inside one run.** Each bundle carries
+  two transcripts and they disagree, so the twelve-byte tail is per-connection
+  rather than per-run. Nothing had read the second transcript: an attestation
+  records the tracker's value alone.
+- ⭐ **Repaired here:** `aria2-next.sh`'s source route runs `git rev-parse HEAD`
+  after its clone, and `install-client` records `source_commit` and refuses a
+  `source` route whose commit is absent or abbreviated - so the gap fails at the
+  install rather than at an assembly a dispatch later.
+- ⭐ **A transcript can be read back.**
+  [`parse_transcript_document`](crates/bit-ids-lab/src/evidence.rs) is the
+  writer's inverse, beside it, refusing anything that writer does not emit.
+  Nothing could read a bundle back before it.
+- ⚠ **`aria2-next.sh` claimed its two routes "differ in resolver - the releases
+  API against git refs".** The artifacts refute it: the source route is handed
+  its tag. The comment is corrected rather than argued away.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-09`; [`TODO/clients.md`](TODO/clients.md),
+  `CLIENT-14`. No version bump and no deploy.
+
 ### 2026-09-09T15:20:21Z
 
 - ⭐ **The first two-route capture.** `capture-client` run 14 acquired

@@ -48,7 +48,8 @@ use bit_ids::manifest::{EvidenceRecord, PhaseName, Redaction, RedactionRule};
 use bit_ids::record::EvidenceKind;
 use bit_ids_wire::tracker_udp::Direction;
 
-use crate::journal::Journal;
+use crate::endpoint::ConnectionId;
+use crate::journal::{Journal, Segment};
 
 /// The document a transcript artifact is written as.
 pub const TRANSCRIPT_SCHEMA: &str = "bit-ids/transcript/1";
@@ -538,6 +539,201 @@ fn hex(bytes: &[u8]) -> String {
         write!(out, "{byte:02x}").expect("writing to a String cannot fail");
     }
     out
+}
+
+/// Why a transcript document could not be read back.
+///
+/// ⚠ It carries the line number because a strict reader's whole value is
+/// naming where it stopped: "not a transcript" over a 40 000-line artifact is a
+/// diagnosis nobody can act on.
+#[derive(Debug, Eq, PartialEq)]
+pub struct TranscriptError {
+    /// Which line refused, counting from one.
+    pub line: usize,
+    /// What was expected there.
+    pub detail: String,
+}
+
+impl core::fmt::Display for TranscriptError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "line {}: {}", self.line, self.detail)
+    }
+}
+
+impl core::error::Error for TranscriptError {}
+
+fn refuse<T>(line: usize, detail: impl Into<String>) -> Result<T, TranscriptError> {
+    Err(TranscriptError {
+        line,
+        detail: detail.into(),
+    })
+}
+
+/// The bytes of one lowercase hex run, or `None` for anything else.
+///
+/// ⛔ **Lowercase only, because [`hex`] emits lowercase and this is its
+/// inverse.** Accepting both cases would make two documents with different
+/// digests read back equal, and the digest is what a manifest cites.
+fn unhex(text: &str) -> Option<Vec<u8>> {
+    if !text.len().is_multiple_of(2) {
+        return None;
+    }
+    let raw = text.as_bytes();
+    let mut out = Vec::with_capacity(text.len() / 2);
+    for pair in raw.as_chunks::<2>().0 {
+        let value = |byte: u8| match byte {
+            b'0'..=b'9' => Some(byte - b'0'),
+            b'a'..=b'f' => Some(byte - b'a' + 10),
+            _ => None,
+        };
+        out.push(value(pair[0])? << 4 | value(pair[1])?);
+    }
+    Some(out)
+}
+
+/// The value inside `  "key": "value",`, when the line is exactly that.
+fn quoted<'a>(line: &'a str, key: &str, comma: bool, indent: &str) -> Option<&'a str> {
+    let tail = if comma { "\"," } else { "\"" };
+    let head = format!("{indent}\"{key}\": \"");
+    line.strip_prefix(&head)?.strip_suffix(tail)
+}
+
+/// The value inside `  "key": 12,`, when the line is exactly that.
+fn number(line: &str, key: &str, indent: &str) -> Option<u64> {
+    let head = format!("{indent}\"{key}\": ");
+    line.strip_prefix(&head)?.strip_suffix(',')?.parse().ok()
+}
+
+/// Reads a `bit-ids/transcript/1` document back into the endpoint and journal
+/// it was written from.
+///
+/// ⭐ **This is [`transcript_document`]'s inverse and is written the same way,
+/// by hand, for the same reason.** That function serialises the exact bytes a
+/// digest names rather than whatever a derive would emit; a reader built on a
+/// general JSON parser would accept documents this project cannot produce -
+/// reordered keys, uppercase hex, different spacing - and would then round-trip
+/// to bytes with a different digest. `transcript_round_trips` pins the pair.
+///
+/// ⛔ **So it refuses anything that is not exactly this writer's output**, and
+/// that strictness is the feature: the format has one producer, and a
+/// transcript that came from somewhere else is not evidence this project wrote.
+///
+/// # Errors
+///
+/// Returns [`TranscriptError`] naming the line that was not what the writer
+/// emits there.
+pub fn parse_transcript_document(text: &str) -> Result<(Slug, Journal), TranscriptError> {
+    let lines: Vec<&str> = text.split_inclusive('\n').collect();
+    // ⚠ `split_inclusive` keeps the newline, which is how the final one is
+    // checked below: the writer always ends in `}\n`, and a document without it
+    // is a truncated file rather than a document.
+    let at = |index: usize| lines.get(index).copied().unwrap_or_default();
+    let strip = |index: usize| at(index).strip_suffix('\n').unwrap_or(at(index));
+    if !text.ends_with('\n') {
+        return refuse(lines.len(), "the document does not end in a newline");
+    }
+
+    if strip(0) != "{" {
+        return refuse(1, "expected `{`");
+    }
+    if strip(1) != format!("  \"schema\": \"{TRANSCRIPT_SCHEMA}\",") {
+        return refuse(2, format!("expected the {TRANSCRIPT_SCHEMA} schema line"));
+    }
+    let Some(endpoint) = quoted(strip(2), "endpoint", true, "  ") else {
+        return refuse(3, "expected an `endpoint` line");
+    };
+    let endpoint = match Slug::parse(endpoint) {
+        Ok(slug) => slug,
+        Err(error) => return refuse(3, format!("endpoint: {error}")),
+    };
+    if strip(3) != "  \"segments\": [" {
+        return refuse(4, "expected `\"segments\": [`");
+    }
+
+    let mut segments = Vec::new();
+    let mut index = 4;
+    loop {
+        if strip(index) == "  ]" {
+            break;
+        }
+        if strip(index) != "    {" {
+            return refuse(
+                index + 1,
+                "expected `{` opening a segment, or `]` ending them",
+            );
+        }
+        index += 1;
+
+        // ⚠ Optional, and its absence is the datagram case rather than a
+        // defect: the writer omits the key entirely for an endpoint whose
+        // segments belong to no connection.
+        let connection = match number(strip(index), "connection", "      ") {
+            Some(raw) => {
+                index += 1;
+                match ConnectionId::recorded(raw) {
+                    Some(id) => Some(id),
+                    None => {
+                        return refuse(index, "connection 0 is an identity no capture hands out");
+                    }
+                }
+            }
+            None => None,
+        };
+
+        let Some(offset_ms) = number(strip(index), "offset_ms", "      ") else {
+            return refuse(index + 1, "expected an `offset_ms` line");
+        };
+        index += 1;
+
+        let direction = match quoted(strip(index), "direction", true, "      ") {
+            Some("from_target") => Direction::FromTarget,
+            Some("to_target") => Direction::ToTarget,
+            Some(other) => {
+                return refuse(index + 1, format!("direction {other:?} is not a direction"));
+            }
+            None => return refuse(index + 1, "expected a `direction` line"),
+        };
+        index += 1;
+
+        let Some(text) = quoted(strip(index), "bytes", false, "      ") else {
+            return refuse(index + 1, "expected a `bytes` line");
+        };
+        let Some(bytes) = unhex(text) else {
+            return refuse(index + 1, "bytes are not an even run of lowercase hex");
+        };
+        index += 1;
+
+        let last = match strip(index) {
+            "    }," => false,
+            "    }" => true,
+            _ => return refuse(index + 1, "expected `}` or `},` closing a segment"),
+        };
+        index += 1;
+        segments.push(Segment::recorded(
+            endpoint.clone(),
+            connection,
+            offset_ms,
+            direction,
+            bytes,
+        ));
+        // ⛔ The writer omits the comma on the last segment alone, so a document
+        // whose last segment carries one, or whose middle one does not, is not
+        // this writer's output even though both parse as JSON.
+        if last && strip(index) != "  ]" {
+            return refuse(
+                index + 1,
+                "a segment without a trailing comma must be the last",
+            );
+        }
+    }
+    index += 1;
+    if strip(index) != "}" {
+        return refuse(index + 1, "expected `}` closing the document");
+    }
+    if index + 1 != lines.len() {
+        return refuse(index + 2, "trailing content after the document");
+    }
+    Ok((endpoint, Journal::from_segments(segments)))
 }
 
 /// Applies one scrub, answering the text and how many values it replaced.

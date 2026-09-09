@@ -1971,6 +1971,107 @@ Prove: the publisher's dry run completes against a real capture artifact, its
 `sh scripts/ci/check-workflow.sh` still asserts the publisher's dispatch-only
 trigger and its `dry_run` default.
 
+### ⛔ SOMETHING TRIED TO ASSEMBLE RUN 14 AND IT CANNOT BECOME A RECORD. 2026-09-09
+
+⭐ **[`assemble-capture`](../crates/bit-ids-probe/examples/assemble-capture.rs)
+is what this entry was missing**: it reads a lane's capture artifact and its
+install artifact and writes the `Profile` they support, deriving every field
+from a document rather than from a lane's name.
+[`check-assemble.sh`](../scripts/capture/check-assemble.sh) proves it over
+synthetic lanes - 15 cases, and the control is the half that matters, because
+every refusal below passes equally over an assembler that refuses everything.
+
+⛔ **Driven over run 14's four real artifacts, it refuses.** The section above
+said run 14 "is precisely the input `equivalence::classify_across` needs". It is
+not, and the reasons were invisible to every reading because none of them is in
+an attestation:
+
+| what the artifacts say | what refuses it |
+| --- | --- |
+| both lanes' `resolution.txt` differ **only in their timestamps** - one `source_url`, one `listing_sha256`, one `asset_url` | ⛔ `E-ACQ-07`: two routes sharing a resolver are one route |
+| no document the capture path writes carries the source route's commit | ⛔ `E-ACQ-06`: a source identity needs a full object name |
+| every attestation names one connector | ⛔ `E-CAP-01`, at the **validity** gate |
+| the two lanes put different peer-ID tails on the wire | ⛔ `classify_across` answers `Divergent`, not `BuildEquivalent` |
+
+⚠ **The first is a design decision rather than an oversight, and
+`capture-client.yml` argues for it in a comment**: *"THE SOURCE LANE RESOLVES
+THROUGH THE SAME STEP, because both routes must land on ONE stable version... a
+second resolution per lane would let a vendor whose newest release moves between
+two reads hand the two routes different versions"*. ⛔ **Absolute 4 already
+answers that worry**: version equality is *checked after installation*, not
+trusted. Two independent resolutions that landed on two versions would be caught
+by the comparison, and that is the correct outcome - it means the vendor moved
+mid-capture and the pair is not a pair. Forcing one resolution manufactures the
+agreement instead of measuring it, which is what `E-ACQ-07` exists to refuse.
+⚠ `aria2-next.sh`'s own comment claims the two routes "differ in resolver - the
+releases API against git refs". The artifacts refute it: the source lane is
+*handed* `BIT_IDS_RELEASE_TAG` and resolves nothing.
+
+### ⛔ AND THIS ENTRY'S OWN TABLE ABOUT CONNECTORS WAS WRONG
+
+The table above records that a one-connector capture *validates* and is refused
+only by `E-PUB-02` at publication. ⚠ **That is true of one shape and false of
+the one this project produces**, measured by stripping the golden fixture two
+ways and reading each exit code unpiped:
+
+| what "one connector" means | `validate-profile` |
+| --- | --- |
+| two declared in `capture.connectors`, one **observing** each field | ⭐ exit 0, `valid`, then `provisional, not publishable` with six `E-PUB-02` rows |
+| one **declared** in `capture.connectors` | ⛔ exit 1, `refused`, `invalid document`, `E-CAP-01` |
+
+⛔ **Every capture this project has run is the second row.** So `OBS-07` is not a
+publishability nicety this entry can note and move past: a second connector is a
+**validity** requirement, exactly as `E-ACQ-01`'s second route is, and the
+"written, stored and provisional" target this entry set itself is unreachable
+without it.
+
+### ⛔ `BuildEquivalent` is unreachable for a real client through this path
+
+`classify_across` compares every field both records measured and calls any
+disagreement `Divergent`. A peer ID carries a per-connection random tail, and a
+single capture can only ever state such a field as `constant` with one sample -
+`patterned` and `variable` both need two. ⛔ **So two records of two lanes
+necessarily disagree on `peer_wire/peer_id` and land on `Divergent`.** Proved
+both ways in `check-assemble`: a pair whose observations agree reaches
+`build_equivalent`, and a pair differing only in its peer-ID tails is
+`divergent`. ⭐ `SCHEMA-04`'s sampling model is where several captures become a
+`patterned` field; it sits above the record and nothing has run it.
+
+### ⭐ What was repaired here rather than only recorded
+
+- `aria2-next.sh`'s source route runs `git rev-parse HEAD` after its clone and
+  writes `source-commit` beside its log; `install-client` records
+  `source_commit` and **refuses a `source` route whose commit is absent or
+  abbreviated**, so the gap fails at the install rather than at an assembly a
+  dispatch later. Five cases in `check-capture-client`, which is 89 now.
+- [`parse_transcript_document`](../crates/bit-ids-lab/src/evidence.rs) is the
+  transcript writer's inverse, beside it, refusing anything that writer does not
+  emit - uppercase hex, a reordered key, a missing final newline. ⛔ Nothing
+  could read a bundle back before it; the assembler needed one, and a second
+  parser in the assembler would have been a second reading of this project's own
+  format. Two tests pin the pair, one of them byte for byte.
+- `store_build` takes a package, because `assemble-capture` lives in
+  `bit-ids-probe`: it decodes transcripts with `bit-ids-wire`, and `bit-ids`
+  cannot depend on that crate - the dependency runs the other way.
+
+### ⚠ What the assembler declares that nothing yet produces
+
+A connector other than the observer reports what it saw in
+`connector/<id>.txt` inside the bundle, one `field_path=value` line per field the
+observer measured, where the value is lowercase hex, `absent` or `out_of_scope`.
+⛔ **A declared connector silent on a field is refused rather than recorded as
+silent**, which is `E-COR-07`'s rule applied where the record is written.
+⚠ That is a contract this entry declares and `OBS-07` implements; no capture has
+written one.
+
+### ⛔ What is left, and it is no longer this entry's alone
+
+The publisher's dry run still cannot be reached, for the reason below and now
+for three more. ⭐ The order is fixed rather than open: `OBS-07`'s second
+connector and an independent resolution for the source route are both
+**prerequisites for a record existing**, and the v7/v8 question sits behind
+them.
+
 ### What a real capture artifact answered on 2026-09-08, and what it refused
 
 ⭐ **A v7 upload survives a download and verifies.** The transmission bundle from

@@ -1383,13 +1383,60 @@ two. ⚠ `check-step-bodies` plants against that outer literal, so its plant str
 moved in the same change - and `replace_once` refuses a literal it cannot find,
 so the two cannot drift apart silently.
 
+### ⛔ THE PAIR WAS ASSEMBLED ON 2026-09-09 AND IT IS NOT TWO ROUTES
+
+⛔ **Both lanes resolved through ONE listing, and `E-ACQ-07` calls that one
+route.** Measured by diffing the two lanes' own `release/resolution.txt`: they
+differ **only in their timestamps**. One `source_url`, one `listing_sha256`, one
+`selected_tag`, one `asset_url`.
+
+⚠ **This entry's own comment in `aria2-next.sh` says otherwise** - *"They differ
+in resolver - the releases API against git refs"* - and the artifacts refute it.
+The source route is **handed** `BIT_IDS_RELEASE_TAG` and resolves nothing; the
+comment describes a design that was never wired. ⭐ It is corrected in the file
+rather than argued away here.
+
+⛔ **And the two lanes cannot reach `BuildEquivalent` even so**: they put
+different peer-ID tails on the wire, `classify_across` compares every field both
+records measured, and a disagreement is `Divergent`. `CI-09` carries the whole
+set of refusals and what each one needs.
+
+### ⭐ The peer ID differs between SURFACES inside one run
+
+⛔ **The tail is per-connection, not per-run, and every record here has said
+per-run.** Each lane's bundle carries two transcripts and they disagree:
+
+| lane | `tracker_http` announce | `peer_wire` handshake |
+| --- | --- | --- |
+| release | `-qB5230-3SGS8~CB*gUf` | `-qB5230-O*4PZEf5_2aU` |
+| source | `-qB5230-*eQ2phy)!)RO` | `-qB5230-kTAq!FSXbxh2` |
+
+⚠ **Nothing had read the second transcript.** The attestation records the
+tracker's value as `measured_build`'s companion `measured_peer_id`, so a reader
+working from attestations alone sees one identity per run and concludes the tail
+varies per run. ⭐ The schema already expects two: `tracker_http/peer_id` and
+`peer_wire/peer_id` are separate paths with separate fixed widths.
+
+### ⛔ The two builds differ in their compiler and in nothing else they report
+
+Both lanes' `version.err` are 1259 bytes and `diff` answers `20c20`:
+`gcc 11.4.0` against `gcc 13.3.0`. Enabled Features, Hash Algorithms and
+Libraries - `libtorrent/2.1.1` and `OpenSSL/3.5.6` among them - are identical
+strings. ⚠ That is a **weaker** difference than `ACQ-03`'s aria2 pair, where the
+two builds differed in features, TLS library and compiler, and it is recorded
+because "two provably different builds" above is true of the bytes and says
+nothing about what they do.
+
 ### ⚠ What this entry still does not claim
 
-⛔ **Two captures are not a `Profile`.** Nothing has assembled these two install
-records and two evidence bundles into a record, nothing has validated one, and
-nothing has been published. `ACQ-03`'s comparison has not been run over this
-pair; what exists is the pair. ⚠ That assembly is `CI-09`'s, and it needs a store
-to write into.
+⛔ **Two captures are not a `Profile`.** Something has now tried: nothing
+validated, nothing was stored and nothing was published. ⚠ `ACQ-03`'s
+`classify_across` has still not been run over this pair and cannot be - it takes
+two `Profile`s and neither exists. What is measured is that the pair's **shape**
+reaches `Divergent`: `check-assemble` builds two records differing only in their
+peer-ID tails and reads that verdict off them. ⚠ The assembly is `CI-09`'s, and
+what it needs is not a store - it is a second connector, a second resolution and
+a recorded commit.
 
 ⭐ **A SECOND CAPTURE ANSWERED THE SAMPLE QUESTION. capture-client run 12** ran
 the fixed adapter - `adapter_sha256` differs from run 11's, which is how the

@@ -30,24 +30,76 @@ this step could read that failure as a defect in the tree.
 
 ## Where the work is
 
-**In flight:** nothing. `CLIENT-14` closed on 2026-09-09 and its target gained a
-second acquisition route after closure. `CLIENT-05` is open on the aria2 hang;
-`CI-09` is open and is no longer blocked by the route question.
+**In flight:** `CI-09`, assembling `capture-client` run 14's two lanes into two
+`Profile`s. `CLIENT-14` closed on 2026-09-09 and its target gained a second
+acquisition route after closure. `CLIENT-05` is open on the aria2 hang.
 
-⭐ **THE ROUTE HALF IS SOLVED AND THE CONNECTOR HALF IS NOT.** This paragraph
-used to say no capture this project had run could produce a record, because every
-one was a single route and `E-ACQ-01` refuses that at the **validity** gate.
-`capture-client` run 14 changed it: two routes, one version, two different
-builds. ⛔ **So a record can now be WRITTEN and STORED, and still not
-PUBLISHED**: `E-PUB-02` keeps any measured field provisional while only one
-connector could see it, and every capture so far has used one - this project's
-own Rust observer. `not_corroborated` is a recordable state and one route was
-not.
+⛔ **A CAPTURE BUNDLE ALONE CANNOT PRODUCE A VALID RECORD, measured 2026-09-09.**
+`E-ACQ-09` and `E-ACQ-10` require each route's `installed_evidence` to name a
+`process_output` entry the record carries - the bytes the build printed when it
+was asked its version. That output is `version.err`, and it is in the **install**
+artifact, not in the capture bundle: run 14's `capture-client-*` artifacts carry
+the metainfo and the two transcripts and nothing the build said about itself. ⚠ So
+an assembler reads TWO artifacts per lane, and `SHA256SUMS` inside the capture
+bundle covers three files that are not all of the record's evidence.
 
-**What is left for a PUBLISHED record is a second connector**, which is
-`OBS-07`'s. What is left for a STORED record is assembling the two install
-records and two evidence bundles into a `Profile`, which is `CI-09`'s and needs a
-store to write into.
+⛔ **THE ROUTE HALF IS NOT SOLVED, AND THE PARAGRAPH THAT STOOD HERE SAID IT
+WAS.** It said run 14 gave this project two routes, so a record could be written
+and stored and would merely fail to publish for want of a second connector.
+⚠ **Something tried it on 2026-09-09 and all of that is wrong.**
+`assemble-capture` was driven over run 14's four artifacts and refuses:
+
+| what the artifacts say | what refuses it |
+| --- | --- |
+| both lanes' `release/resolution.txt` differ **only in their timestamps** - one `source_url`, one `listing_sha256`, one `asset_url` | ⛔ `E-ACQ-07`: two routes sharing a resolver are one route |
+| nothing the capture path writes carries the source route's commit | ⛔ `E-ACQ-06` - ⭐ **repaired**: the adapter now records `rev-parse HEAD` and `install-client` refuses a `source` route without one |
+| every attestation names **one** connector | ⛔ `E-CAP-01`, at the **validity** gate |
+| the two lanes put different peer-ID tails on the wire | ⛔ `classify_across` answers `Divergent`, never `BuildEquivalent` |
+
+⛔ **AND THE CONNECTOR CLAIM WAS WRONG IN THE DIRECTION THAT MATTERS.** Measured
+by stripping the golden fixture two ways, each exit code read unpiped: a record
+declaring **two** connectors where only one observed each field is *valid* and
+`provisional, not publishable` with six `E-PUB-02` rows; a record declaring
+**one** connector is `refused`, `invalid document`, `E-CAP-01`. Every capture
+this project has run declares one. ⭐ So `OBS-07` is a prerequisite for a record
+EXISTING, not for publishing one, and it moved up the work order accordingly.
+
+⛔ **`BuildEquivalent` is unreachable for a real client through this path.** A
+peer ID carries a per-connection random tail; a single capture can only state
+such a field as `constant` with one sample, because `patterned` and `variable`
+both need two; and `classify_across` calls any disagreement on a shared field
+`Divergent`. ⭐ `SCHEMA-04`'s sampling model is where several captures become a
+`patterned` field, it sits above the record, and nothing has run it.
+
+### ⛔ Two measurements of run 14 that no earlier session had read
+
+⛔ **THE PEER ID DIFFERS BETWEEN SURFACES INSIDE ONE RUN.** Every record here has
+called the twelve bytes after `-qB5230-` a per-**run** tail, measured by comparing
+one announce per run across runs. Reading both transcripts of one bundle refutes
+the wording: the tracker announce and the peer-wire handshake of a single capture
+carry different tails.
+
+| lane | `tracker_http` announce | `peer_wire` handshake |
+| --- | --- | --- |
+| release | `-qB5230-3SGS8~CB*gUf` | `-qB5230-O*4PZEf5_2aU` |
+| source | `-qB5230-*eQ2phy)!)RO` | `-qB5230-kTAq!FSXbxh2` |
+
+⭐ Four tails from two runs, one prefix, **two per run**. ⚠ The attestation records
+only the tracker one as `measured_peer_id`, which is why the distinction stayed
+invisible: nothing had read the second transcript. ⭐ The schema already expects
+it - `tracker_http/peer_id` and `peer_wire/peer_id` are separate field paths with
+separate fixed widths - so this is a record that has to be written as two
+observations, and a `constant` on either would be false.
+
+⛔ **THE TWO BUILDS DIFFER IN THEIR COMPILER AND IN NOTHING ELSE THEY REPORT.**
+Both lanes' `version.err` are 1259 bytes and `diff` says `20c20`: `gcc 11.4.0`
+against `gcc 13.3.0`. Enabled Features, Hash Algorithms and Libraries - including
+`libtorrent/2.1.1` and `OpenSSL/3.5.6` - are identical strings.
+⚠ That is a **weaker** difference than `ACQ-03`'s aria2 pair, where the two builds
+differed in features, TLS library and compiler. Two installs whose bytes differ
+and whose self-description differs only by the compiler that produced them is
+what `BuildEquivalent` describes; it is not a reason to expect them to behave
+differently on the wire, and both lanes did put different peer-ID tails on it.
 
 ⭐ **`CLIENT-14` IS CLOSED AND THE HANG IS NOT IN FRONT OF THAT TARGET.**
 `capture-client` runs 11 and 12 both reached the *Capture* step - the eleventh
@@ -62,29 +114,33 @@ with one.
 
 **Next, in order:**
 
-1. ⭐ **THE FIRST TWO-ROUTE CAPTURE HAS RUN. What is left is assembling it.**
-   `capture-client` run 14 acquired `aria2-next` through `release` and `source`
-   on two hosts: both report **2.7.5**, both `acquired=yes`, the installed
-   digests differ, both bundles verify with `sha256sum -c` outside their runs,
-   and both put `-qB5230-` on the wire. ⭐ Four captures of this target now agree
-   on that eight-byte prefix and differ in every tail - and two of the four were
-   built by different means, so the prefix is a property of the source rather
-   than of the vendor's pipeline.
-   ⛔ **Nothing has assembled those two install records and two bundles into a
-   `Profile`**, `ACQ-03`'s comparison has not been run over the pair, and nothing
-   is published. That is `CI-09`'s and it needs a store to write into.
+1. ⛔ **`OBS-07`'s second connector, which is a VALIDITY requirement.** See the
+   table above; it is not the publishability nicety three handoffs called it.
+   ⭐ The contract it has to fill is already declared and proved:
+   `assemble-capture` reads `connector/<id>.txt` from the bundle, one
+   `field_path=value` line per field the observer measured, where the value is
+   lowercase hex, `absent` or `out_of_scope`, and refuses a declared connector
+   silent on a field. The attestation names it in `connectors=`.
+2. ⛔ **An independent resolution for the `source` route.**
+   `capture-client.yml` resolves once and hands both lanes the answer, arguing in
+   a comment that one resolution keeps the versions equal. ⭐ **Absolute 4 already
+   answers that**: version equality is checked *after installation*, so two
+   resolutions landing on two versions is a vendor that moved mid-capture, and
+   catching it is the right outcome. `git ls-remote --tags` is the second
+   resolver; `aria2-next.sh`'s comment about "git refs" describes a design nobody
+   wired.
+3. **`CI-09`**, which now sits behind both. ⭐ `assemble-capture` and
+   `check-assemble` are written and green; what is missing is a capture whose
+   artifacts it accepts.
    ⚠ **The bounds are freshly sized and only just.** The source install took 496
    seconds where this host takes 366 - a runner is about 1.35x slower - so a
    locally measured build time is a lower bound and never an estimate.
-   ⚠ Their independence is weaker than package-versus-vendor: different resolver
-   and delivery, same origin.
-2. **A record in the store**, once a two-route capture exists. `not_corroborated`
-   is a recordable state; one route is not.
-3. **`CI-07`**, the PowerShell halves for the declared rows. ⭐ Its cheap half is
-   done: `check-gate-rows` compares the two runners' row lists. 18 rows are
-   declared unavailable on the Windows lane.
-4. **`CI-08`'s new residual**, the load-sensitive `check-step-bodies` row.
-5. **Shard `check-workflow` across runners.** It is still the whole CI wall
+4. **`CI-07`**, the PowerShell halves for the declared rows. ⭐ Its cheap half is
+   done: `check-gate-rows` compares the two runners' row lists, and both runners
+   now carry 32 rows. ⚠ `check-assemble` is the nineteenth declared-unavailable
+   row and it needs `store-lib.ps1` like the rest.
+5. **`CI-08`'s new residual**, the load-sensitive `check-step-bodies` row.
+6. **Shard `check-workflow` across runners.** It is still the whole CI wall
    clock. `CI-01`'s residual says why it is its own unit.
 
 ---
@@ -168,7 +224,7 @@ here, so the install actually installs, where on `ubuntu-24.04` it is a no-op.
 ## How this project is checked
 
 ⛔ **Run the gate with one command, `sh scripts/common/check-gate.sh`, after the
-last edit.** ⭐ It is **31 checks** and about **150 seconds** on this host.
+last edit.** ⭐ It is **32 checks** and about **150 seconds** on this host.
 
 **The gate is not the whole of part (a).** `cargo clippy`, `cargo fmt --check`,
 the test suite and `sh scripts/ci/check-workflow.sh` are separate.
@@ -302,6 +358,19 @@ and nothing in this tree produces that name.
 been measured: Transmission 4.0.5 four times and qBittorrent 4.6.3 once, each
 attesting `kind=client`, `stock_client=true`. ⚠ Those are evidence bundles and
 attestations, not `Profile`s.
+
+⛔ **A capture declaring ONE connector is INVALID, not merely unpublishable.**
+`E-CAP-01` fires inside `validate`. The "validates, then `E-PUB-02` refuses"
+sentence three handoffs carried is true only of a record declaring two
+connectors where one observed each field, and no capture here has declared two.
+
+⛔ **Two lanes of one dispatch are not two routes if one resolution fed both.**
+`E-ACQ-07` compares what DECIDED the version, and `capture-client.yml` resolves
+once on purpose.
+
+⛔ **A single capture can only state a varying field as `constant` with one
+sample**, so two such records disagree and `classify_across` answers `Divergent`.
+`BuildEquivalent` needs the sampling model above the record, which nothing runs.
 
 ⭐ **A `release` route has acquired a build on a capture host**: aria2 compiled
 from the vendor's tarball in 144 seconds, two builds at one version with

@@ -105,6 +105,13 @@ trap 'rm -rf "$WORK"' EXIT INT TERM
 SECS=5
 RUN=capture-0001
 
+# ⚠ COMPUTED, NEVER TYPED, and it is the same value the stub's default derives.
+# A commit object name is forty hex digits, which is what `check-no-secrets
+# --public` refuses because it is also the shape of a credential;
+# `docs/security/secrets.md` says to narrow a pattern rather than switch a rule
+# off, and computing the value needs no narrowing at all.
+STUB_COMMIT=$(printf 'fixture-commit' | sha256sum | cut -c1-40)
+
 # The two routing tables the egress guard reads.
 printf 'Iface\tDestination\tGateway \tFlags\tRefCnt\tUse\tMetric\tMask\t\tMTU\tWindow\tIRTT\n' >"$WORK/route-loopback"
 printf 'lo\t0000007F\t00000000\t0001\t0\t0\t0\t000000FF\t0\t0\t0\n' >>"$WORK/route-loopback"
@@ -140,6 +147,12 @@ case "$COMMAND" in
     mkdir -p "$2" || exit 2
     printf 'route=%s\n' "$1" >"$2/installed"
     printf 'a route that hung would leave this\n' >"$2/install.log"
+    # ⭐ A SOURCE ROUTE NAMES THE COMMIT IT BUILT, beside its log, because the
+    # adapter is what cloned. `BIT_IDS_STUB_COMMIT` is what lets a case plant an
+    # abbreviation or nothing at all, which is the shape `E-ACQ-06` refuses.
+    [ "$1" = source ] &&
+      printf '%s\n' "${BIT_IDS_STUB_COMMIT-$(printf 'fixture-commit' | sha256sum | cut -c1-40)}" \
+        >"$2/source-commit"
     # ⭐ THE ONE THING THAT MAKES A ROUTE AN ACQUISITION: what the product
     # answers afterwards CHANGED because this ran. When BIT_IDS_STUB_VERSION_FILE
     # names a file, `version` reads its answer out of that file and this writes
@@ -762,6 +775,35 @@ else
   else
     fail "each route's record names that route alone"
   fi
+
+  # ⛔ THE SOURCE ROUTE'S IMMUTABLE IDENTITY, WHICH `E-ACQ-06` NEEDS AND NOTHING
+  # RECORDED UNTIL 2026-09-09. Assembling capture-client run 14 refused both
+  # lanes because no document the capture path writes carried a commit; the
+  # object name was in the git chatter inside `install.log` and nowhere a reader
+  # could ask for it. ⚠ The empty case below is the other half: a field that is
+  # absent for every other route reads as a field that is sometimes forgotten.
+  install_case 0 "" "a source route records the commit its adapter named" \
+    --adapter "$STUB" --route source --workdir "$WORK/inst-src" --record "$WORK/inst-src.txt"
+  if grep -q -F -e "source_commit=$STUB_COMMIT" "$WORK/inst-src.txt" 2>/dev/null; then
+    pass "the record carries the full object name the route built"
+  else
+    fail "the record carries the full object name the route built"
+  fi
+  if grep -q -F -e "source_commit=" "$WORK/inst-rel.txt" 2>/dev/null; then
+    pass "a route that cloned nothing records an empty commit rather than omitting the field"
+  else
+    fail "a route that cloned nothing records an empty commit rather than omitting the field"
+  fi
+
+  # ⛔ AN ABBREVIATION IS THE DEFECT `E-ACQ-06` EXISTS FOR, and `rev-parse` will
+  # print one when asked. Without this case the guard passes equally over a check
+  # that only asks whether the field is non-empty.
+  BIT_IDS_STUB_COMMIT=a9784ea8 install_case 1 "is not a full object name" \
+    "a source route naming an abbreviated commit is refused" \
+    --adapter "$STUB" --route source --workdir "$WORK/inst-src-short"
+  BIT_IDS_STUB_COMMIT='' install_case 1 "recorded no full commit object name" \
+    "a source route naming no commit is refused" \
+    --adapter "$STUB" --route source --workdir "$WORK/inst-src-none"
 
   install_case 2 "unknown route" "a route outside the closed vocabulary is refused" \
     --adapter "$STUB" --route mirror --workdir "$WORK/inst-bad"

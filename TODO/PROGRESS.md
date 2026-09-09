@@ -30,8 +30,10 @@ measured a build: no client is installed, and each of those attestations says
 ⭐ **The CLIENT capture workflow is a different path and it has now measured
 builds**: runs 11 and 12 on 2026-09-09 each attest `kind=client`,
 `stock_client=true`, `measured_build=2.7.5` for `aria2-next`, with an evidence
-bundle that verifies outside the run that wrote it. ⛔ Still not a `Profile`:
-that target has one acquisition route and `E-ACQ-01` refuses a record with one.
+bundle that verifies outside the run that wrote it. ⛔ Still not a `Profile`, and
+the reason is no longer `E-ACQ-01`: run 14 gained a second lane, and assembling
+it found `E-ACQ-07`, `E-ACQ-06` and `E-CAP-01` instead. The table below carries
+all four.
 
 What exists is every layer a capture passes through, and each one is closed:
 
@@ -108,6 +110,10 @@ peer ID `2d7142343633302d596939654d4d7e38664f7866`.
 build.** Every other observer is still driven only by an implementation written
 from the specification, which shares this project's reading of the protocol, and
 `OBS-07` owns the controls that close the rest.
+⛔ **And "one connector" is a VALIDITY defect rather than a publication one**,
+measured on 2026-09-09: `E-CAP-01` refuses a record declaring one connector as an
+*invalid document*. `CI-09` carries the two commands that separate it from the
+shape `E-PUB-02` catches.
 
 ⛔ **The publisher has never run against this repository's own remote** and must
 not until a measured record exists. Its acceptance runs against a bare
@@ -119,18 +125,25 @@ published. `docs/publishing.md` carries the forms and says they are unexercised.
 ⚠ **Nothing schedules the staleness monitor.** `CI-02` built the comparison and
 its driving surface; no capture request has ever been opened.
 
-⭐ **THE FIRST TWO-ROUTE CAPTURE HAS RUN AND BOTH LANES ARE GREEN.**
+⛔ **THE TWO-ROUTE CAPTURE IS NOT TWO ROUTES, MEASURED BY ASSEMBLING IT.**
 `capture-client` run 14 on 2026-09-09 acquired `aria2-next` through its
 `release` and `source` routes on two hosts. Both report **2.7.5**, both
-`acquired=yes`, and the installed binaries have **different digests** - one
-version, two provably different builds, which is what absolute 4 asks for and
-`ACQ-03` exists to classify. Both bundles verify with `sha256sum -c` outside the
-runs that wrote them.
-⛔ **It is still not a `Profile`.** Nothing has assembled the two install records
-and two bundles into a record, `ACQ-03`'s comparison has not been run over the
-pair, and nothing is published. That assembly is `CI-09`'s and needs a store.
-⚠ **How independent those two routes actually are is qualified in `CLIENT-14`**,
-which owns the comparison; it is not the package-versus-vendor kind.
+`acquired=yes`, the installed binaries have different digests, and both bundles
+verify with `sha256sum -c` outside the runs that wrote them.
+⛔ **And it cannot become a `Profile`.** `assemble-capture` was driven over its
+four artifacts and refuses. Four reasons, none of them in an attestation:
+
+| what the artifacts say | what refuses it |
+| --- | --- |
+| both lanes' `resolution.txt` differ **only in their timestamps** | ⛔ `E-ACQ-07`: two routes sharing a resolver are one route |
+| nothing the capture path writes carries the source route's commit | ⛔ `E-ACQ-06`: a source identity needs a full object name |
+| every attestation names **one** connector | ⛔ `E-CAP-01`, at the **validity** gate |
+| the two lanes put different peer-ID tails on the wire | ⛔ `classify_across` answers `Divergent` |
+
+⭐ **The second is repaired**: the adapter records `rev-parse HEAD` and
+`install-client` refuses a `source` route without a full object name.
+⛔ **The first and third are prerequisites for a record existing at all**, and
+`CI-09` carries both with the commands that measured them.
 
 ⭐ **CLIENT CAPTURES HAVE NOW REACHED THE *Capture* STEP AND UPLOADED VERIFIED
 BUNDLES.** `capture-client` runs 11 and 12 measured `aria2-next` 2.7.5 on
@@ -261,24 +274,33 @@ nothing is. The clone question under *Settled decisions* is spent too.
    dispatch and what it teaches: no adapter has ever installed a build, and the
    Windows half of each Prove is untouched because the adapters are `sh`.
    `TODO/clients.md` carries the routes and what each adapter assumes.
-2. **`CI-09`**, the capture-to-publisher path. ⭐ A real capture bundle has now
-   been downloaded and verified with `sha256sum -c` outside the run that wrote
-   it. ⛔ **The v7/v8 question cannot be reached**, because the publisher
-   downloads `bundle` and nothing in the tree produces that name, and a capture
-   bundle is not a publication bundle in any case: what sits between them is
-   `assemble-release`, which reads a store of records, and no record exists. The
-   gap is declared in the workflow and enforced by `check-project` now; closing
-   it needs a record rather than anything in this entry.
-   ⛔ **And that record needs a TWO-ROUTE capture, which this order used to say
-   it did not.** Measured on 2026-09-09 by stripping the golden fixture: one
-   connector **validates** and `E-PUB-02` refuses to publish it, and one route is
-   refused at the validity gate by `E-ACQ-01`. So `Profile::to_json` will not
-   write a single-route record and the store cannot hold one - which is every
-   capture this project has run. ⭐ `E-ACQ-01` is right and the sentence was
-   wrong; the product is the two-route claim.
-3. **`OBS-07` and `OBS-10`**, which need a stock client build and a second
-   platform, so they follow the captures.
-4. **`CI-07` and `CI-08`**, which harden the gate rather than extend it: the
+2. ⛔ **`OBS-07`, AND IT MOVED UP BECAUSE IT IS A VALIDITY REQUIREMENT.** This
+   order used to place it third, after `CI-09`, on the reading that a
+   single-connector record *validates* and is merely held back from publication
+   by `E-PUB-02`. ⚠ **Measured on 2026-09-09 by stripping the golden fixture two
+   ways and reading each exit code unpiped**, that is true of a record declaring
+   two connectors where only one observed each field, and false of one declaring
+   one connector: `E-CAP-01` refuses it as an **invalid document**. Every capture
+   this project has run declares one. So a second connector is a prerequisite for
+   a record existing, exactly as a second route is.
+3. **A second, independent resolution for the `source` route.** ⛔ Run 14's two
+   lanes read one listing, which `E-ACQ-07` calls one route.
+   `capture-client.yml` argues for that in a comment - one resolution keeps the
+   versions equal - and ⭐ **absolute 4 already answers the worry**: version
+   equality is checked *after installation*, not trusted beforehand. Two
+   independent resolutions landing on two versions is a vendor that moved
+   mid-capture, and catching it is the correct outcome rather than something to
+   design around.
+4. **`CI-09`**, the capture-to-publisher path, which now sits behind those two.
+   ⭐ `assemble-capture` and `check-assemble` are written and the refusals above
+   are its measurement. ⛔ **The v7/v8 question still cannot be reached**, because
+   the publisher downloads `bundle` and nothing in the tree produces that name,
+   and a capture bundle is not a publication bundle in any case: what sits
+   between them is `assemble-release`, which reads a store of records, and no
+   record exists. The gap is declared in the workflow and enforced by
+   `check-project`.
+6. **`OBS-10`**, which needs a second platform, so it follows the captures.
+7. **`CI-07` and `CI-08`**, which harden the gate rather than extend it: the
    declared PowerShell rows, and the host defaults the scripts inherit rather
    than state. ⭐ **`FOUND-05` is closed**: `sh scripts/doctor/provision.sh`
    installs the three tools a session used to install by hand, verifying each
@@ -290,9 +312,9 @@ nothing is. The clone question under *Settled decisions* is spent too.
    question: CI pins `shfmt` and takes `shellcheck` and `pwsh` from the runner
    image, so a session host now runs a MORE pinned set of tools than the lane it
    is meant to match.
-5. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
+8. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
    bind attestations to.
-6. The remaining client and engine breadth, then refinements.
+9. The remaining client and engine breadth, then refinements.
 
 ## Settled decisions
 

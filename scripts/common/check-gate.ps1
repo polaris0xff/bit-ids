@@ -291,6 +291,13 @@ Add-Unavailable 'check-capture-client' 'an sh harness whose subject has no Power
 # CI-07 writes that twin, and a Windows adapter is what would need one.
 Add-Unavailable 'check-release-route' 'an sh harness whose subject has no PowerShell half yet; CI-07'
 
+# ⛔ AND A FOURTH REASON. check-assemble's subject is a Rust example, which both
+# lanes build and neither lane runs anywhere else; what has no PowerShell half is
+# the harness that writes the synthetic lanes and plants in them. ⚠ It is
+# `store-lib.sh`'s again - the shared library CI-07 names as its first step -
+# rather than anything about the assembler, which is platform-independent.
+Add-Unavailable 'check-assemble' 'an sh harness over a portable subject; it needs store-lib.ps1; CI-07'
+
 # ⭐ THE SLOW ONE, and ⚠ it is the one part of this gate that needs a POSIX
 # shell: check-twins runs the sh half of every pair, so it cannot run on a host
 # without one. That is reported as a skip, never as a pass.

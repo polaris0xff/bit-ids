@@ -122,6 +122,17 @@ from any working directory.
   client rather than for a caller that already knew the address, and it runs
   each shipped adapter's `describe` so a typo in one is found by a gate rather
   than by a runner.
+- [`capture/check-assemble.sh`](capture/check-assemble.sh) proves
+  [`assemble-capture`](../crates/bit-ids-probe/examples/assemble-capture.rs),
+  which is what turns a dispatched capture's artifacts into records. ⭐ Its
+  control is the half that matters: two routes, two resolvers, two connectors and
+  one identity on the wire assemble into two records and reach
+  `build_equivalent`. ⛔ Its refusals are what `capture-client` run 14 met - one
+  listing behind two lanes, a source route naming no commit, and a capture
+  declaring one connector - and each is a fact about the capture path rather than
+  about the assembler. ⚠ Its lanes are written by the harness rather than
+  downloaded: a case that fetched a run's artifacts would go red the day that run
+  expired.
 - [`ci/check-staleness.sh`](ci/check-staleness.sh) drives the staleness monitor
   over real stores and real resolutions: a new stable release opens one request,
   a preview and a release already measured open none, and a second run over a

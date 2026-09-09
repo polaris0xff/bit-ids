@@ -310,6 +310,29 @@ fi
 
 FINISHED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
+# ⚠ READ RATHER THAN DERIVED, AND EMPTY IS A FACT. A route that cloned nothing
+# leaves no file here and records an empty commit; a `source` route that left one
+# is refused below, because a source build whose commit nothing recorded cannot
+# become a record and failing at the install is cheaper than failing at the
+# assembly a dispatch later.
+SOURCE_COMMIT=""
+if [ -f "$WORKDIR/source-commit" ]; then
+  SOURCE_COMMIT=$(tr -d ' \n\r' <"$WORKDIR/source-commit")
+fi
+if [ "$ROUTE" = source ]; then
+  case $SOURCE_COMMIT in
+    # ⛔ Forty lowercase hex digits, checked as a shape rather than for
+    # emptiness: `rev-parse` prints an abbreviation when asked for one, and
+    # `E-ACQ-06` exists because an abbreviated commit is not an immutable
+    # reference.
+    *[!0-9a-f]* | "") refuse "the source route recorded no full commit object name" ;;
+    *)
+      [ ${#SOURCE_COMMIT} -eq 40 ] ||
+        refuse "the source route recorded [$SOURCE_COMMIT], which is not a full object name"
+      ;;
+  esac
+fi
+
 # ⚠ Key=value, the shape every other document in this directory uses. ⛔ It
 # records the route and the version SEPARATELY per call, because `ACQ-03`
 # compares two of these and a single file holding one merged answer would have
@@ -333,6 +356,14 @@ if [ -n "$RECORD" ]; then
     printf 'installed_binary=%s\n' "$POST_BINARY"
     printf 'installed_binary_sha256=%s\n' "$POST_DIGEST"
     printf 'acquired=%s\n' "$ACQUIRED"
+    # ⛔ THE IMMUTABLE IDENTITY OF A SOURCE ROUTE, AND EMPTY FOR EVERY OTHER.
+    # `E-ACQ-06` refuses a source identity without a full object name, and
+    # nothing this path wrote carried one until 2026-09-09: assembling
+    # capture-client run 14 refused both lanes on it, and the commit was
+    # recoverable only from the git output inside `install.log`. The adapter
+    # writes it beside its log because the adapter is what cloned; a caller that
+    # re-derived it would be reading a tree the route already left.
+    printf 'source_commit=%s\n' "$SOURCE_COMMIT"
     printf 'adapter=%s\n' "$ADAPTER"
     printf 'adapter_sha256=%s\n' "$(sha256sum "$ADAPTER" | cut -d' ' -f1)"
     printf 'workdir=%s\n' "$WORKDIR"
@@ -347,7 +378,7 @@ if [ -n "$RECORD" ]; then
   # `acquired` for `yes` is the failure this whole change exists to remove.
   for _field in target route reported_version preexisting_version \
     preexisting_binary preexisting_binary_sha256 installed_binary \
-    installed_binary_sha256 acquired; do
+    installed_binary_sha256 acquired source_commit; do
     grep -q "^$_field=" "$RECORD" ||
       cannot "the install record was written without $_field"
   done

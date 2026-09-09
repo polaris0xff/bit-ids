@@ -40,8 +40,14 @@ store_require() { # tool...
 # five provers then reported nothing at all, on a machine whose only oddity was
 # a variable a great many Rust developers set. Measured on 2026-09-06 while
 # driving CI-01, whose harness sets it.
-store_build() { # root example
-  if ! cargo build --manifest-path "$1/Cargo.toml" -p bit-ids --locked \
+# ⚠ THE PACKAGE IS AN ARGUMENT AND DEFAULTS TO `bit-ids`, which is what every
+# caller before `check-assemble` needed. `assemble-capture` lives in
+# `bit-ids-probe`, because it decodes transcripts with `bit-ids-wire` and
+# `bit-ids` cannot depend on that crate - the dependency runs the other way. A
+# second build path in that one harness is the divergent-copies row this library
+# exists to avoid, so the parameter is here rather than a `cargo build` there.
+store_build() { # root example [package]
+  if ! cargo build --manifest-path "$1/Cargo.toml" -p "${3:-bit-ids}" --locked \
     --example "$2" >/dev/null 2>&1; then
     printf '%s: cannot build the %s example\n' "$ME" "$2" >&2
     exit 2
