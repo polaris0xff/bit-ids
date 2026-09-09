@@ -5,6 +5,33 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-09T18:38:24Z
+
+- ⭐ **An adapter now says how its route packaged the build**, which closes one
+  of the four things `capture-client` run 14 could not supply. A successful
+  `install <route> <workdir>` writes `<workdir>/package`, `install-client`
+  copies it into the install record, and a route that installed without saying -
+  or that said something which is not a slug - is refused at the install rather
+  than at an assembly a dispatch later.
+- ⛔ **It is per ROUTE, because the routes genuinely differ.** `qbittorrent`
+  installs a `.deb` through its package route and an AppImage through its
+  release route; `aria2` installs a `.deb` and a locally compiled binary;
+  `aria2-next` installs a downloaded binary and a locally built one. A record
+  calling any pair one form would say they delivered the same thing.
+- ⚠ **`Build.package` is in the identity tuple `store::StoreKey` derives a path
+  from**, so this was never cosmetic: a record filed under a guessed package
+  files two packagings of one version at one name.
+- ⛔ **The new guard found a third caller of `install-client` that neither
+  updated harness covers.** `check-step-bodies` runs the *Install the client*
+  step body against a stub adapter of its own, and four of its cases went red
+  the moment a route that installs without declaring a packaging was refused.
+  ⚠ That is the guard working and a door sweep arriving late: two stubs were
+  updated and a third existed. It reproduced alone rather than only under a
+  loaded gate, which is what separates it from that row's known flake.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-09`;
+  [`scripts/capture/adapters/README.md`](scripts/capture/adapters/README.md) is
+  the contract. No version bump and no deploy.
+
 ### 2026-09-09T17:26:57Z
 
 - ⭐ **Something tried to assemble run 14 into records, and that is how four

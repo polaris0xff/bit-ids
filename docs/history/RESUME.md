@@ -53,7 +53,7 @@ and stored and would merely fail to publish for want of a second connector.
 | --- | --- |
 | both lanes' `release/resolution.txt` differ **only in their timestamps** - one `source_url`, one `listing_sha256`, one `asset_url` | ⛔ `E-ACQ-07`: two routes sharing a resolver are one route |
 | every attestation declares **one** connector | ⛔ `E-CAP-01`, at the **validity** gate |
-| nothing records how the artifact was **packaged**, and `package` is in `StoreKey` | ⛔ a guessed package files two packagings of one version at one path |
+| nothing recorded how the artifact was **packaged**, and `package` is in `StoreKey` | ⛔ a guessed one files two packagings of a version at one path - ⭐ **repaired**: every adapter declares it per route |
 | nothing the capture path writes carries the source route's commit | ⛔ `E-ACQ-06` - ⭐ **repaired**: the adapter now records `rev-parse HEAD` and `install-client` refuses a `source` route without one |
 
 ⚠ **`classify_across` never ran on run 14** - it takes two `Profile`s and neither
@@ -135,27 +135,22 @@ that target a second lane, and the table above is what refuses the pair.
    catching it is the right outcome. `git ls-remote --tags` is the second
    resolver; `aria2-next.sh`'s comment about "git refs" describes a design nobody
    wired.
-3. ⛔ **A recorded `package`.** It is in `StoreKey`, and nothing a capture
-   uploads says how the artifact arrived - not the attestation, not the install
-   record, not the resolution, and not `catalogue/clients.toml`. The assembler
-   refuses rather than guessing, because a guessed one files two packagings of
-   a version at one path.
-4. **`CI-09`**, which now sits behind those three. ⭐ `assemble-capture` and
+3. **`CI-09`**, which now sits behind those two. ⭐ `assemble-capture` and
    `check-assemble` are written and green; what is missing is a capture whose
    artifacts it accepts. ⚠ It writes a `Profile` and not the `RunManifest` that
    has to sit beside one; the entry's residuals say why.
    ⚠ **The bounds are freshly sized and only just.** The source install took 496
    seconds where this host takes 366 - a runner is about 1.35x slower - so a
    locally measured build time is a lower bound and never an estimate.
-5. **`CI-07`**, the PowerShell halves for the declared rows. ⭐ Its cheap half is
+4. **`CI-07`**, the PowerShell halves for the declared rows. ⭐ Its cheap half is
    done: `check-gate-rows` compares the two runners' row lists, and both runners
    now carry 32 rows. ⚠ `check-assemble` is another declared-unavailable row and
    it needs `store-lib.ps1` like the rest. ⛔ **No count of those rows is written
    here**: `CI-01` and `CI-07` each record one going stale in prose, and this
    sentence carried a third - "the nineteenth" - over a runner declaring
    eighteen, until a claim audit counted them.
-6. **`CI-08`'s new residual**, the load-sensitive `check-step-bodies` row.
-7. **Shard `check-workflow` across runners.** It is still the whole CI wall
+5. **`CI-08`'s new residual**, the load-sensitive `check-step-bodies` row.
+6. **Shard `check-workflow` across runners.** It is still the whole CI wall
    clock. `CI-01`'s residual says why it is its own unit.
 
 ---

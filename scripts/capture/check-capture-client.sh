@@ -153,6 +153,11 @@ case "$COMMAND" in
     [ "$1" = source ] &&
       printf '%s\n' "${BIT_IDS_STUB_COMMIT-$(printf 'fixture-commit' | sha256sum | cut -c1-40)}" \
         >"$2/source-commit"
+    # ⭐ AND HOW THE ROUTE PACKAGED WHAT IT INSTALLED, which every shipped
+    # adapter declares per route. `BIT_IDS_STUB_PACKAGE` is what lets a case
+    # plant a non-slug or nothing at all.
+    [ "${BIT_IDS_STUB_PACKAGE-elf-binary}" = none ] ||
+      printf '%s\n' "${BIT_IDS_STUB_PACKAGE-elf-binary}" >"$2/package"
     # ⭐ THE ONE THING THAT MAKES A ROUTE AN ACQUISITION: what the product
     # answers afterwards CHANGED because this ran. When BIT_IDS_STUB_VERSION_FILE
     # names a file, `version` reads its answer out of that file and this writes
@@ -804,6 +809,23 @@ else
   BIT_IDS_STUB_COMMIT='' install_case 1 "recorded no full commit object name" \
     "a source route naming no commit is refused" \
     --adapter "$STUB" --route source --workdir "$WORK/inst-src-none"
+
+  # ⛔ THE PACKAGE FORMAT, WHICH IS PART OF THE IDENTITY TUPLE A STORE PATH IS
+  # DERIVED FROM. Nothing wrote it until 2026-09-09, and `assemble-capture`
+  # refused both of capture-client run 14's lanes for it. ⚠ A route that
+  # installed and did not say how is refused here rather than at an assembly a
+  # dispatch later.
+  if grep -q -F -e "package=elf-binary" "$WORK/inst-src.txt" 2>/dev/null; then
+    pass "the record carries the package format the route declared"
+  else
+    fail "the record carries the package format the route declared"
+  fi
+  BIT_IDS_STUB_PACKAGE=none install_case 1 "recorded no package format" \
+    "a route that installed and did not say how it packaged the build is refused" \
+    --adapter "$STUB" --route package --workdir "$WORK/inst-nopkg"
+  BIT_IDS_STUB_PACKAGE='Elf Binary' install_case 1 "which is not a slug" \
+    "a package format that is not a slug is refused" \
+    --adapter "$STUB" --route package --workdir "$WORK/inst-badpkg"
 
   install_case 2 "unknown route" "a route outside the closed vocabulary is refused" \
     --adapter "$STUB" --route mirror --workdir "$WORK/inst-bad"

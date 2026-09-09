@@ -29,6 +29,30 @@ returns 0 for done, 1 for refused and 2 for could-not-run.
 a run it drove writes `stock_client=false`. A field that said otherwise would be
 the one sentence in the record nothing backs.
 
+## ⛔ `install` says how it packaged what it installed
+
+**A successful `install <route> <workdir>` writes `<workdir>/package`**, one
+slug naming the form the build arrived in: `deb`, `appimage`, `elf-binary`.
+`install-client` copies it into the install record and refuses a route that
+installed and did not say, or that said something which is not a slug.
+
+⛔ **It is per ROUTE, not per target, because the routes genuinely differ.**
+`qbittorrent`'s package route installs a `.deb` and its release route installs
+an AppImage - a self-mounting archive carrying its own runtime - and a record
+calling both `elf-binary` would say the two routes delivered one form when they
+did not. Each adapter maps its own routes in `package_format`.
+
+⛔ **Nothing recorded this until 2026-09-09 and the gap was invisible.**
+`Build.package` is part of the identity tuple `store::StoreKey` derives a path
+from, so a record filed without it cannot be filed at all, and one filed under a
+value this project guessed would file two packagings of a version at one name -
+the non-injective layout `store.rs` refuses at length. It was found by
+`assemble-capture` refusing both of `capture-client` run 14's lanes.
+
+⚠ **The key is `package` because that is the record's own vocabulary**, and the
+route also called `package` is the host's package-manager route. They are
+different things, and an adapter is the one file where both appear.
+
 ⛔ **`version` asks the build.** A version read from a filename, a package index
 or the route that installed it is not the build speaking, which is the rule
 `E-ACQ-10` states for a record and `capture-client` restates for a run. An

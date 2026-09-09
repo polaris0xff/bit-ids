@@ -319,6 +319,26 @@ SOURCE_COMMIT=""
 if [ -f "$WORKDIR/source-commit" ]; then
   SOURCE_COMMIT=$(tr -d ' \n\r' <"$WORKDIR/source-commit")
 fi
+
+# ⛔ HOW THE ROUTE PACKAGED WHAT IT INSTALLED, AND A ROUTE THAT INSTALLED
+# WITHOUT SAYING IS REFUSED. `Build.package` is part of the identity tuple a
+# store path is derived from, so a record filed without it cannot be filed at
+# all and one filed with a guess files two packagings of a version at one name.
+# ⚠ Measured on 2026-09-09: `assemble-capture` refused both of run 14's lanes
+# for it, because no adapter wrote it and nothing else knew.
+PACKAGE=""
+if [ -f "$WORKDIR/package" ]; then
+  PACKAGE=$(tr -d ' \n\r' <"$WORKDIR/package")
+fi
+case $PACKAGE in
+  # A slug: lowercase letters, digits and hyphens, and neither leading nor
+  # trailing. Checked here rather than at the record, because an adapter that
+  # spelled it `ELF Binary` should fail at the install with a message naming
+  # the adapter rather than a dispatch later with one naming a schema.
+  "") refuse "the $ROUTE route installed and recorded no package format" ;;
+  *[!a-z0-9-]* | -* | *-) refuse "the $ROUTE route recorded package [$PACKAGE], which is not a slug" ;;
+  *) ;;
+esac
 if [ "$ROUTE" = source ]; then
   case $SOURCE_COMMIT in
     # ⛔ Forty lowercase hex digits, checked as a shape rather than for
@@ -364,6 +384,7 @@ if [ -n "$RECORD" ]; then
     # writes it beside its log because the adapter is what cloned; a caller that
     # re-derived it would be reading a tree the route already left.
     printf 'source_commit=%s\n' "$SOURCE_COMMIT"
+    printf 'package=%s\n' "$PACKAGE"
     printf 'adapter=%s\n' "$ADAPTER"
     printf 'adapter_sha256=%s\n' "$(sha256sum "$ADAPTER" | cut -d' ' -f1)"
     printf 'workdir=%s\n' "$WORKDIR"
@@ -378,7 +399,7 @@ if [ -n "$RECORD" ]; then
   # `acquired` for `yes` is the failure this whole change exists to remove.
   for _field in target route reported_version preexisting_version \
     preexisting_binary preexisting_binary_sha256 installed_binary \
-    installed_binary_sha256 acquired source_commit; do
+    installed_binary_sha256 acquired source_commit package; do
     grep -q "^$_field=" "$RECORD" ||
       cannot "the install record was written without $_field"
   done

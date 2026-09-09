@@ -480,6 +480,11 @@ case "\$CMD" in
     [ \$# -ge 2 ] || exit 2
     mkdir -p "\$2" || exit 2
     printf 'installed\n' >"\$2/install.log"
+    # ⛔ EVERY ADAPTER SAYS HOW ITS ROUTE PACKAGED THE BUILD, and install-client
+    # refuses one that installed without saying. A stub that skipped this would
+    # make these four cases red for a reason the case did not plant - which is
+    # exactly what it did on 2026-09-09, the day that guard landed.
+    printf 'elf-binary\n' >"\$2/package"
     $1
     exit 0
     ;;

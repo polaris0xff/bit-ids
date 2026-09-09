@@ -131,6 +131,19 @@ rpc_failed() { # body-file
 COMMAND="$1"
 shift
 
+# What each route of this adapter delivers, as `Build.package` spells it.
+#
+# ⭐ Both routes install a bare executable and neither installs a package: the
+# release asset IS the binary, measured at 1.2 seconds for a download and a
+# chmod, and the source route compiles one. ⚠ The `package` route refuses by
+# name, so it reaches nothing here.
+package_format() { # route
+  case "$1" in
+    release | source) printf 'elf-binary\n' ;;
+    *) return 1 ;;
+  esac
+}
+
 case "$COMMAND" in
   describe)
     printf 'target=aria2-next\n'
@@ -160,6 +173,8 @@ case "$COMMAND" in
     ROUTE="$1"
     WORKDIR="$2"
     mkdir -p "$WORKDIR" || cannot "cannot create $WORKDIR"
+    _format=$(package_format "$ROUTE") ||
+      cannot "this adapter does not say how the $ROUTE route packages a build"
     case "$ROUTE" in
       package)
         # ⛔ REFUSED BY NAME, AND THE REFUSAL IS THE MEASUREMENT. No package
@@ -278,6 +293,17 @@ no package index carries it, and installing aria2 would acquire a different prod
         ;;
       *) cannot "unknown route: $ROUTE" ;;
     esac
+    # ⛔ WHAT THE ROUTE DELIVERED, WRITTEN WHERE `install-client` READS IT.
+    # `Build.package` is part of the identity tuple a store path is derived
+    # from, so a record filed without it - or with one this project guessed -
+    # files two packagings of one version at one name. Measured on 2026-09-09 by
+    # assembling capture-client run 14: nothing any adapter wrote said how the
+    # build arrived, and `assemble-capture` refused both lanes for it.
+    # ⚠ THE KEY IS `package` BECAUSE THAT IS THE RECORD'S OWN VOCABULARY, and
+    # the ROUTE also called `package` is the host's package-manager route. They
+    # are different things and this is the one file where both appear.
+    printf '%s\n' "$_format" >"$WORKDIR/package" ||
+      refuse "the route installed and could not record how it packaged the build"
     ;;
 
   version)

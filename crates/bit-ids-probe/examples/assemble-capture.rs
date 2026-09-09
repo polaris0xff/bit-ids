@@ -660,10 +660,12 @@ fn constant(
 ///
 /// ⭐ The first two are derived from the attestation's own `platform` line,
 /// which is `uname -srm`: a system name, a kernel release and a machine.
-/// ⛔ The third is a **refusal**, because nothing in a capture's artifacts
-/// records how the artifact was packaged - not the attestation, not the install
-/// record, not the release resolution, and not `catalogue/clients.toml`, which
-/// carries `candidate_routes` and no package format.
+/// ⭐ The third comes from the INSTALL record, because the install is what
+/// delivered the build and the adapter is what knows the form. ⚠ Nothing wrote
+/// it until 2026-09-09 - not the attestation, not the install record, not the
+/// release resolution, and not `catalogue/clients.toml`, which carries
+/// `candidate_routes` and no package format - so a lane from an older run is
+/// refused here rather than filed under a guess.
 fn identity_of(lane: &Lane) -> Result<(Slug, Slug, Slug), String> {
     let attestation = Path::new("capture/attestation.txt");
     let platform_line = need(&lane.attestation, "platform", attestation)?;
@@ -682,16 +684,16 @@ fn identity_of(lane: &Lane) -> Result<(Slug, Slug, Slug), String> {
     // name is a refusal naming the value rather than a silently wrong path.
     let arch = Slug::parse(&machine.to_ascii_lowercase().replace('_', "-"))
         .map_err(|error| format!("an architecture derived from {machine:?}: {error}"))?;
-    let package = match lane.attestation.get("package").map(String::as_str) {
+    let package = match lane.install.get("package").map(String::as_str) {
         Some(text) if !text.is_empty() => {
             Slug::parse(text).map_err(|error| format!("package: {error}"))?
         }
         _ => {
             return Err(
-                "the attestation records no `package`, and it is part of the identity tuple a \
-                 store path is derived from. Nothing in a capture's artifacts says how the \
-                 artifact was packaged, so hardcoding one here would file two packagings of one \
-                 version at one path"
+                "the install record carries no `package`, and it is part of the identity tuple a \
+                 store path is derived from. The adapter's `install` writes it beside its log \
+                 because the adapter is what knows the form; hardcoding one here would file two \
+                 packagings of one version at one path"
                     .to_owned(),
             );
         }

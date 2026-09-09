@@ -2054,7 +2054,13 @@ both ways in `check-assemble`: a pair whose observations agree reaches
   writes `source-commit` beside its log; `install-client` records
   `source_commit` and **refuses a `source` route whose commit is absent or
   abbreviated**, so the gap fails at the install rather than at an assembly a
-  dispatch later. Five cases in `check-capture-client`, which is 89 now.
+  dispatch later.
+- ⭐ **And every adapter now says how its route packaged the build**, written to
+  `<workdir>/package` and copied into the install record, with a route that
+  installed and did not say refused there. ⛔ It is per **route**: `qbittorrent`
+  delivers a `.deb` one way and an AppImage the other, and a record calling both
+  `elf-binary` would say they delivered one form. `adapters/README.md` is the
+  contract. That closes the third row of the table above; the first two remain.
 - [`parse_transcript_document`](../crates/bit-ids-lab/src/evidence.rs) is the
   transcript writer's inverse, beside it, refusing anything that writer does not
   emit - uppercase hex, a reordered key, a missing final newline. ⛔ Nothing

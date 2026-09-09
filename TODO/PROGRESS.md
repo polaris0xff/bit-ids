@@ -137,7 +137,7 @@ four artifacts and refuses. Four reasons, none of them in an attestation:
 | --- | --- |
 | both lanes' `resolution.txt` differ **only in their timestamps** | ⛔ `E-ACQ-07`: two routes sharing a resolver are one route |
 | every attestation declares **one** connector | ⛔ `E-CAP-01`, at the **validity** gate |
-| nothing records how the artifact was **packaged**, and `package` is in `StoreKey` | ⛔ a guessed package files two packagings of one version at one path |
+| nothing recorded how the artifact was **packaged**, and `package` is in `StoreKey` | ⛔ a guessed one files two packagings of a version at one path - ⭐ **repaired**: every adapter declares it per route |
 | nothing the capture path writes carries the source route's commit | ⛔ `E-ACQ-06`: a source identity needs a full object name |
 
 ⭐ **The last is repaired**: the adapter records `rev-parse HEAD` and
@@ -285,13 +285,7 @@ nothing is. The clone question under *Settled decisions* is spent too.
    one connector: `E-CAP-01` refuses it as an **invalid document**. Every capture
    this project has run declares one. So a second connector is a prerequisite for
    a record existing, exactly as a second route is.
-3. ⛔ **A recorded `package`, which is in `StoreKey`.** Nothing a capture uploads
-   says how the artifact arrived - not the attestation, not the install record,
-   not the resolution, and not `catalogue/clients.toml`, which carries
-   `candidate_routes` and no package format. ⚠ The assembler refuses rather than
-   guessing, because a guessed one files two packagings of a version at one
-   path, which is the non-injective layout `store.rs` refuses at length.
-4. **A second, independent resolution for the `source` route.** ⛔ Run 14's two
+3. **A second, independent resolution for the `source` route.** ⛔ Run 14's two
    lanes read one listing, which `E-ACQ-07` calls one route.
    `capture-client.yml` argues for that in a comment - one resolution keeps the
    versions equal - and ⭐ **absolute 4 already answers the worry**: version
@@ -299,7 +293,7 @@ nothing is. The clone question under *Settled decisions* is spent too.
    independent resolutions landing on two versions is a vendor that moved
    mid-capture, and catching it is the correct outcome rather than something to
    design around.
-5. **`CI-09`**, the capture-to-publisher path, which now sits behind those.
+4. **`CI-09`**, the capture-to-publisher path, which now sits behind those.
    ⭐ `assemble-capture` and `check-assemble` are written and the refusals above
    are its measurement. ⛔ **The v7/v8 question still cannot be reached**, because
    the publisher downloads `bundle` and nothing in the tree produces that name,
@@ -307,8 +301,8 @@ nothing is. The clone question under *Settled decisions* is spent too.
    between them is `assemble-release`, which reads a store of records, and no
    record exists. The gap is declared in the workflow and enforced by
    `check-project`.
-6. **`OBS-10`**, which needs a second platform, so it follows the captures.
-7. **`CI-07` and `CI-08`**, which harden the gate rather than extend it: the
+5. **`OBS-10`**, which needs a second platform, so it follows the captures.
+6. **`CI-07` and `CI-08`**, which harden the gate rather than extend it: the
    declared PowerShell rows, and the host defaults the scripts inherit rather
    than state. ⭐ **`FOUND-05` is closed**: `sh scripts/doctor/provision.sh`
    installs the three tools a session used to install by hand, verifying each
@@ -320,9 +314,9 @@ nothing is. The clone question under *Settled decisions* is spent too.
    question: CI pins `shfmt` and takes `shellcheck` and `pwsh` from the runner
    image, so a session host now runs a MORE pinned set of tools than the lane it
    is meant to match.
-8. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
+7. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
    bind attestations to.
-9. The remaining client and engine breadth, then refinements.
+8. The remaining client and engine breadth, then refinements.
 
 ## Settled decisions
 

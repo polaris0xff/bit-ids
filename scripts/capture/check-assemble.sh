@@ -146,7 +146,6 @@ write_lane() { # tag route resolver-url commit binary-digest version peer-id [co
     # they are there - and `x86_64` is spelled with the underscore the kernel
     # uses rather than the hyphen this project's vocabulary uses.
     printf 'platform=Linux 0.0.0-fixture x86_64\n'
-    printf 'package=elf-binary\n'
     printf 'started_at=2026-09-09T15:08:24Z\nfinished_at=2026-09-09T15:09:14Z\n'
     printf 'fixture=sha256:%s\n' "$(printf 'fixture-%s' "$1" | sha256sum | cut -d' ' -f1)"
     printf 'egress=closed\n'
@@ -172,7 +171,7 @@ write_lane() { # tag route resolver-url commit binary-digest version peer-id [co
     printf 'preexisting_binary=\npreexisting_binary_sha256=\n'
     printf 'installed_binary=/usr/local/bin/fixture-client\n'
     printf 'installed_binary_sha256=%s\n' "$5"
-    printf 'acquired=yes\nsource_commit=%s\n' "$4"
+    printf 'acquired=yes\nsource_commit=%s\npackage=elf-binary\n' "$4"
     printf 'adapter=scripts/capture/adapters/fixture.sh\n'
     printf 'started_at=2026-09-09T15:08:17Z\nfinished_at=2026-09-09T15:08:18Z\n'
   } >"$_cap/install-$2.txt"
@@ -362,10 +361,9 @@ write_lane good-source source "$REFS" "$COMMIT" "$DIGEST_B" 1.2.3 "$PEER_A" "$PE
 # hardcoded them would file a Windows capture of one version at the Linux
 # capture's path - the non-injective-path defect `store.rs` refuses at length.
 # ⚠ The first draft did hardcode all three, and only a claim audit found it.
-sed 's/^package=elf-binary$//' "$WORK/good-source-capture/capture/attestation.txt" \
-  >"$WORK/nopkg.txt"
-cp "$WORK/nopkg.txt" "$WORK/good-source-capture/capture/attestation.txt"
-case_is 1 "records no \`package\`" \
+grep -v '^package=' "$WORK/good-source-capture/install-source.txt" >"$WORK/nopkg.txt"
+cp "$WORK/nopkg.txt" "$WORK/good-source-capture/install-source.txt"
+case_is 1 "carries no \`package\`" \
   "an attestation with no package cannot be filed, because the path is derived from it" \
   nopkg good-release good-source
 write_lane good-source source "$REFS" "$COMMIT" "$DIGEST_B" 1.2.3 "$PEER_A" "$PEER_A" || exit 2

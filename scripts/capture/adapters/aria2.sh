@@ -82,6 +82,20 @@ binary() {
 COMMAND="$1"
 shift
 
+# What each route of this adapter delivers, as `Build.package` spells it.
+#
+# ⚠ The two differ, which is the point: the package route installs Ubuntu's
+# `.deb`, whose `/usr/bin/aria2c` is a 14-kilobyte shim over `libaria2.so.0`,
+# and the release route compiles the vendor's source tarball into a
+# self-contained executable. `ACQ-03` measured both on 2026-09-08.
+package_format() { # route
+  case "$1" in
+    package) printf 'deb\n' ;;
+    release) printf 'elf-binary\n' ;;
+    *) return 1 ;;
+  esac
+}
+
 case "$COMMAND" in
   describe)
     printf 'target=aria2\n'
@@ -126,6 +140,8 @@ case "$COMMAND" in
     ROUTE="$1"
     WORKDIR="$2"
     mkdir -p "$WORKDIR" || cannot "cannot create $WORKDIR"
+    _format=$(package_format "$ROUTE") ||
+      cannot "this adapter does not say how the $ROUTE route packages a build"
     case "$ROUTE" in
       package)
         # ⚠ The distribution's own index. Its version trails upstream, and that
@@ -221,6 +237,17 @@ case "$COMMAND" in
         ;;
       *) cannot "unknown route: $ROUTE" ;;
     esac
+    # ⛔ WHAT THE ROUTE DELIVERED, WRITTEN WHERE `install-client` READS IT.
+    # `Build.package` is part of the identity tuple a store path is derived
+    # from, so a record filed without it - or with one this project guessed -
+    # files two packagings of one version at one name. Measured on 2026-09-09 by
+    # assembling capture-client run 14: nothing any adapter wrote said how the
+    # build arrived, and `assemble-capture` refused both lanes for it.
+    # ⚠ THE KEY IS `package` BECAUSE THAT IS THE RECORD'S OWN VOCABULARY, and
+    # the ROUTE also called `package` is the host's package-manager route. They
+    # are different things and this is the one file where both appear.
+    printf '%s\n' "$_format" >"$WORKDIR/package" ||
+      refuse "the route installed and could not record how it packaged the build"
     ;;
 
   version)
