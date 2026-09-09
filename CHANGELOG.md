@@ -5,6 +5,25 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-09T02:51:47Z
+
+- ⛔ A gate run left four untracked files in `scripts/capture/`, and the only
+  thing that noticed was a person reading `git add -A`. The two probe cases added
+  minutes earlier wrote their scratch files beside the file they were handed, and
+  two callers hand `store_probe_guards` a **tracked** path. Every harness header
+  says it plants only in disposable state; nothing compared the tree before and
+  after. Record: [`scripts/common/check-gate.sh`](scripts/common/check-gate.sh).
+- ⭐ `tree-unchanged` is a row in both gate halves now, and each was proved by
+  planting its own defect: the sh half over probes writing beside a tracked file,
+  the PowerShell half over a check that creates one.
+- ⚠ It is a comparison and not a demand for a clean tree, because the gate runs
+  while somebody is editing - so it sees the run that makes the mess and not the
+  one after. Measured: the second run over the same planted tree went green,
+  reading the first run's droppings as its own `before`. A lane that starts from
+  a fresh checkout fires every time.
+- Deployment: nothing deployed.
+
+
 ### 2026-09-09T02:21:06Z
 
 - ⛔ The second acquisition route was unrunnable and the missing piece was the

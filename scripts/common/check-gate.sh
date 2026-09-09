@@ -128,6 +128,34 @@ mkdir -p "$OUT" || {
 }
 trap 'rm -rf "$OUT"' EXIT INT TERM
 
+# ⛔ WHAT THE TREE LOOKED LIKE BEFORE ANY CHECK RAN. A check plants defects in
+# disposable state and must leave the working tree exactly as it found it; every
+# harness here says so in its own header and nothing compared the two.
+#
+# ⚠ MEASURED ON 2026-09-09, BY BREAKING IT. Two new probe cases in
+# `store-lib.sh` wrote their scratch files beside the file they were handed, and
+# two callers hand that function a TRACKED path - so a gate run left four
+# untracked files in `scripts/capture/` and the only thing that noticed was a
+# person reading `git add -A`.
+#
+# ⛔ IT IS A COMPARISON AND NEVER A REQUIREMENT OF A CLEAN TREE. This runs while
+# somebody is editing, so demanding a clean tree would refuse the ordinary case;
+# what is refused is a tree the gate itself moved.
+#
+# ⚠ SO IT SEES THE RUN THAT MAKES THE MESS AND NOT THE ONE AFTER. Measured while
+# planting the defect above: the first run over a planted tree went red and the
+# second went green, because the droppings the first left were already there when
+# the second read its `before`. ⭐ A CI lane starts from a fresh checkout, so
+# there it fires every time; on a host that already carries the dirt it does not,
+# which is a property of a before-and-after comparison rather than of this one.
+TREE_BEFORE="$OUT/tree-before"
+if command -v git >/dev/null 2>&1 &&
+  git -C "$HERE" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  git -C "$HERE" status --porcelain >"$TREE_BEFORE" 2>/dev/null || : >"$TREE_BEFORE"
+else
+  rm -f "$TREE_BEFORE"
+fi
+
 # ⚠ NO PRESENCE TEST LIVES HERE. An earlier version tested `$1` after the
 # shift, which is the interpreter rather than the script, so every row reported
 # "not present" and the runner printed a green verdict having executed nothing.
@@ -288,6 +316,26 @@ fi
 # the slowest part of the gate to learn nothing. On a machine with no pwsh at
 # all, check-twins reports that itself.
 [ "$have_pwsh" = "1" ] || row "note  pwsh absent; the PowerShell halves were not exercised"
+
+# ⛔ AND THE TREE IS COMPARED AGAINST WHAT IT WAS. A harness that planted into
+# the working tree, or left a scratch file in it, is a harness whose next run
+# starts from a tree the last one wrote. It counts as a failed check rather than
+# a note, because every case downstream of such a run is measuring something
+# nobody chose.
+if [ -f "$TREE_BEFORE" ]; then
+  git -C "$HERE" status --porcelain >"$OUT/tree-after" 2>/dev/null || : >"$OUT/tree-after"
+  if diff "$TREE_BEFORE" "$OUT/tree-after" >"$OUT/tree-diff" 2>&1; then
+    row "✅ ok    tree-unchanged"
+    PASS=$((PASS + 1))
+  else
+    row "❌ FAIL  tree-unchanged  (a check moved the working tree)"
+    row "note  $(grep '^[<>]' "$OUT/tree-diff" | head -6 | tr '\n' ' ')"
+    FAIL=$((FAIL + 1))
+  fi
+else
+  row "SKIP  tree-unchanged  (not a git work tree)"
+  SKIP=$((SKIP + 1))
+fi
 
 TOTAL=$((PASS + FAIL + SKIP + NA))
 

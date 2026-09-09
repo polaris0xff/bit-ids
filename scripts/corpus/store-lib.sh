@@ -221,30 +221,44 @@ store_probe_guards() { # file present-literal ambiguous-literal
   fi
 
   # ⛔ AND THE TWO SHAPES THAT MADE THE COUNTING AND THE REPLACING DISAGREE.
-  # These plant into a scratch sibling rather than into the caller's file,
-  # because each needs a specific content and no caller's file has it.
+  # Each needs a file with specific content, so each writes its own rather than
+  # editing the caller's.
   #
+  # ⛔ IN A SCRATCH DIRECTORY OF ITS OWN, NEVER BESIDE THE CALLER'S FILE. Two
+  # callers hand this a TRACKED path - `check-capture` and `check-capture-client`
+  # both pass a runner script in the working tree - so a sibling written next to
+  # `$1` is an untracked dropping in the source tree, left behind by any run that
+  # is interrupted. ⚠ It is the same rule the harnesses already follow about
+  # editing a tracked file, and the first version of these two probes broke it.
+  _probe_dir="${TMPDIR:-/tmp}/.storeprobe.$$"
+  mkdir -p "$_probe_dir" || {
+    fail "probe    a scratch directory for the plant probes could not be made"
+    return 0
+  }
+
   # ⚠ The first is the one that cost a case silently: over `axb then a.b` the
   # LITERAL `a.b` occurs once and a REGEX `a.b` matches `axb` first, so the plant
   # applied in a place no case named. It asserts WHERE the edit landed, not that
   # one happened.
-  printf 'axb then a.b\n' >"$1.metachar"
-  if replace_once "$1.metachar" 'a.b' 'PLANTED' &&
-    [ "$(cat "$1.metachar")" = "axb then PLANTED" ]; then
+  printf 'axb then a.b\n' >"$_probe_dir/metachar"
+  if replace_once "$_probe_dir/metachar" 'a.b' 'PLANTED' &&
+    [ "$(cat "$_probe_dir/metachar")" = "axb then PLANTED" ]; then
     pass "probe    a literal carrying a regex metacharacter plants where it occurs"
   else
-    fail "probe    a metacharacter literal planted [$(cat "$1.metachar")]"
+    fail "probe    a metacharacter literal planted [$(cat "$_probe_dir/metachar")]"
   fi
 
   # ⚠ The second could not plant at all: a `/` ends sed's own `s` command, so
   # every literal naming a path was a case that quietly never ran.
-  printf 'keep a/b here\n' >"$1.slash"
-  if replace_once "$1.slash" 'a/b' 'PLANTED' &&
-    [ "$(cat "$1.slash")" = "keep PLANTED here" ]; then
+  printf 'keep a/b here\n' >"$_probe_dir/slash"
+  if replace_once "$_probe_dir/slash" 'a/b' 'PLANTED' &&
+    [ "$(cat "$_probe_dir/slash")" = "keep PLANTED here" ]; then
     pass "probe    a literal carrying a path separator can be planted"
   else
-    fail "probe    a literal carrying a slash planted [$(cat "$1.slash")]"
+    fail "probe    a literal carrying a slash planted [$(cat "$_probe_dir/slash")]"
   fi
+
+  rm -rf "$_probe_dir"
 }
 
 # The shared verdict. ⛔ A run that passed nothing is red whatever else it says:

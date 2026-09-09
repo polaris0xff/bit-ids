@@ -99,6 +99,25 @@ function Add-Unavailable([string]$Name, [string]$Reason) {
 
 $logFile = Join-Path ([System.IO.Path]::GetTempPath()) ("checkgate." + $PID + ".log")
 
+# ⛔ WHAT THE TREE LOOKED LIKE BEFORE ANY CHECK RAN. A check plants defects in
+# disposable state and must leave the working tree exactly as it found it, and
+# until 2026-09-09 nothing compared the two on either lane: two probe cases wrote
+# their scratch files beside the file they were handed, two callers hand that a
+# TRACKED path, and a gate run left four untracked files in the source tree.
+#
+# ⛔ A COMPARISON, NEVER A REQUIREMENT OF A CLEAN TREE. This runs while somebody
+# is editing. ⚠ And it sees the run that makes the mess rather than the one
+# after, because the second run reads the first run's droppings as its own
+# `before`; a lane that starts from a fresh checkout fires every time.
+$treeBefore = $null
+$gitPresent = [bool](Get-Command git -CommandType Application -ErrorAction SilentlyContinue)
+if ($gitPresent) {
+    $probe = & git -C $here rev-parse --is-inside-work-tree 2>$null
+    if ($LASTEXITCODE -eq 0 -and $probe -eq 'true') {
+        $treeBefore = (& git -C $here status --porcelain 2>$null) -join "`n"
+    }
+}
+
 function Invoke-Check([string]$Name, [string]$Script, [string[]]$ExtraArgs = @()) {
     $path = Join-Path $here $Script
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
@@ -258,6 +277,25 @@ else {
 }
 
 Remove-Item -LiteralPath $logFile -ErrorAction SilentlyContinue
+
+# ⛔ AND THE TREE IS COMPARED AGAINST WHAT IT WAS, the same row the sh half
+# carries. A harness whose scratch file lands in the working tree is one whose
+# next run starts from a tree the last one wrote.
+if ($null -ne $treeBefore) {
+    $treeAfter = (& git -C $here status --porcelain 2>$null) -join "`n"
+    if ($treeAfter -ceq $treeBefore) {
+        Add-Row '✅ ok    tree-unchanged'
+        $pass++
+    }
+    else {
+        Add-Row '❌ FAIL  tree-unchanged  (a check moved the working tree)'
+        $fail++
+    }
+}
+else {
+    Add-Row 'SKIP  tree-unchanged  (not a git work tree)'
+    $skip++
+}
 
 $total = $pass + $fail + $skip + $na
 
