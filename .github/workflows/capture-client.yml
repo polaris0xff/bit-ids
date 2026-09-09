@@ -14,7 +14,16 @@ on:
         description: >-
           Which adapters to run, as a JSON array, e.g. ["aria2","transmission"]
         required: true
-        default: '["aria2","transmission","qbittorrent"]'
+        # ⛔ THE DEFAULT IS THE DISPATCH WORTH RUNNING, and it changed on
+        # 2026-09-09. It was aria2, transmission and qbittorrent; aria2 has now
+        # hung inside *Install the client* on eleven dispatches out of eleven,
+        # producing no log and no artifact and burning the job's whole 25
+        # minutes, so a bare dispatch spent most of its time on the one lane that
+        # cannot succeed. ⭐ `aria2-next` captures on both its routes in about
+        # two minutes and eight, and with `routes` below is the only pairing
+        # this project has that reaches a two-route comparison.
+        # ⚠ The others are still one word away: pass them as this input.
+        default: '["aria2-next"]'
         type: string
       # ⛔ ONE ROUTE PER HOST, WHICH IS WHY THIS IS A MATRIX DIMENSION AND NOT A
       # SECOND INSTALL STEP. `ACQ-03` compares what two routes installed, and two
@@ -29,9 +38,13 @@ on:
       # carries what a comparison needs beyond two green jobs.
       routes:
         description: >-
-          Which acquisition routes to run, as a JSON array, e.g. ["package","release"]
+          Which acquisition routes to run, as a JSON array. One of package,
+          release or source, e.g. ["release","source"]. A route a target cannot
+          satisfy fails its own job and leaves the others' measurements intact.
         required: true
-        default: '["package"]'
+        # ⚠ RELEASE AND SOURCE, because `aria2-next` has no package route and
+        # those two are what run 14 measured at one version.
+        default: '["release","source"]'
         type: string
       seconds:
         description: How long the observer serves before its own deadline stops it

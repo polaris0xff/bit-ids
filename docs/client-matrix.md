@@ -38,7 +38,7 @@ Sources:
 | `utorrent` | Windows | proprietary | vendor installer | WinGet/community package | `CLIENT-03` |
 | `bitcomet` | Windows | proprietary | vendor installer | package registry | `CLIENT-04` |
 | `aria2` | Linux, Windows | open source | GitHub release | distro/WinGet package | `CLIENT-05` |
-| `aria2-next` | Linux, Windows | open source fork | its own GitHub release | source build at the matching tag | `CLIENT-14` |
+| `aria2-next` | Linux, Windows | open source fork | its own GitHub release ⭐ | source build at the matching tag ⭐ | `CLIENT-14` |
 | `transmission` | Linux, Windows where supported | open source | upstream release/build | distro/WinGet package | `CLIENT-06` |
 | `deluge` | Linux, Windows | open source | upstream/PyPI release | distro/Windows package | `CLIENT-07` |
 | `bittorrent` | Windows | proprietary | vendor installer | package registry | `CLIENT-08` |
@@ -63,11 +63,19 @@ was filed", and on 2026-09-09 it started: the target was listed, fetched,
 verified against the vendor's own digests, installed in 1.2 seconds, asked its
 version and driven over JSON-RPC. `CLIENT-14` carries every measurement.
 
-⛔ **Its route B is a candidate and nothing more, which is what this table's
-columns are for.** No package index carries this fork - measured - so the
-second route is a source build nobody has attempted. ⚠ A record needs two routes
-and `E-ACQ-01` refuses one, so this row does not yet describe a publishable
-target.
+⭐ **BOTH OF ITS ROUTES ARE MEASURED, WHICH NO OTHER ROW CAN SAY.** The ⭐ marks
+them: `capture-client` run 14 acquired this target through both on two hosts, and
+both installed **2.7.5** with different binary digests. ⚠ Every other row's two
+columns are candidates - that is what this table's columns are for - and these
+two are not.
+⛔ **It took a source build because no package index carries this fork**, which
+was measured rather than assumed, and because the obvious fallback succeeds:
+`apt-get install aria2` exits 0 having installed a different product.
+⚠ **That pairing is weaker independence than a package index against a vendor
+release** - different resolver and delivery, same origin - and `CLIENT-14` says
+so. ⛔ Two routes make a record writable and not publishable: `E-PUB-02` keeps a
+measured field provisional while one connector could see it, and both lanes used
+one.
 
 ⚠ **And a correction about how this table is held to the catalogue.** It said
 the target set is "pinned by `check-project` against the catalogue in both

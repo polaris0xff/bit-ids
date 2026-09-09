@@ -1360,9 +1360,9 @@ rather than checked afterwards.
 | source | `-qB5230-*eQ2phy)!)RO` |
 
 ⭐ **Four captures of this target now agree on the eight-byte prefix and differ
-in every twelve-byte tail.** Two of those four were built by different means -
-the vendor's stripped 14 MB release asset and a 256 MB `RelWithDebInfo` build
-made here from the tag - and both put `-qB5230-` on the wire. ⚠ So the prefix is
+in every twelve-byte tail.** ⭐ Three of the four ran the vendor's stripped 14 MB
+release asset and the fourth ran a 256 MB `RelWithDebInfo` build made **on the
+runner** from the tag, and all four put `-qB5230-` on the wire. ⚠ So the prefix is
 a property of the source rather than of the vendor's build pipeline, which one
 route alone could not have separated.
 

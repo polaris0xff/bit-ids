@@ -146,8 +146,34 @@ read their sockets this way.
 
 ⛔ **Two independent routes per target, and `E-ACQ-07`/`E-ACQ-08` are what
 refuse a pair that shares a resolver or a delivery mechanism.** `package` is the
-host's own package manager and `release` is the vendor's published artifact.
-Two package aliases pointing at one index are one route.
+host's own package manager, `release` is the vendor's published artifact, and
+`source` is a build of the resolved tag. Two package aliases pointing at one
+index are one route.
+
+⭐ **`source` was added on 2026-09-09 because a target had no package.** No index
+carries `aria2-next`, and the dangerous fallback is that the obvious one
+SUCCEEDS: `apt-get install aria2` exits 0 having installed a different product at
+a different version. ⚠ The pairing that worked is `release` against `source` -
+the vendor's published binary against a build of the same tag - and run 14
+measured both at 2.7.5 with different digests.
+
+⛔ **A `source` route resolves its TAG from the same resolution the `release`
+route reads its URL from.** Two resolutions per lane would let a vendor whose
+newest release moves between two reads hand the two routes different versions,
+which is what absolute 4 forbids; sharing one resolution makes them equal rather
+than checking it afterwards.
+
+⚠ **AND `source` BESIDE `release` IS WEAKER INDEPENDENCE THAN `package` BESIDE
+`release`.** They differ in resolver and in delivery, which is what `E-ACQ-07`
+and `E-ACQ-08` compare, and they do NOT differ in origin: whoever controls that
+repository controls both. An adapter that has a real package route should prefer
+it, and one that does not should say so where the record can see it.
+
+⚠ **A source build is minutes, not seconds, and the caller's bound has to know.**
+`aria2-next`'s took 366 seconds on a session host and **496** on a runner - about
+1.35x - so a locally measured build time is a lower bound on what a runner needs
+and never an estimate of it. The workflow raises `BIT_IDS_INSTALL_TIMEOUT` for
+`source` lanes alone.
 
 ### The release route's artifact, declared where the target is known
 
