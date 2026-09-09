@@ -36,8 +36,8 @@ for path in README.md LICENSE Cargo.toml Cargo.lock catalogue/clients.toml \
   [ -f "$path" ] || say_fail "missing $path"
 done
 
-for id in qbittorrent qbittorrent-enhanced utorrent bitcomet aria2 transmission \
-  deluge bittorrent biglybt tixati ktorrent fdm zona libtorrent \
+for id in qbittorrent qbittorrent-enhanced utorrent bitcomet aria2 aria2-next \
+  transmission deluge bittorrent biglybt tixati ktorrent fdm zona libtorrent \
   anacrolix-torrent rqbit; do
   grep -Fq "id = \"$id\"" catalogue/clients.toml 2>/dev/null || say_fail "missing target $id"
   # shellcheck disable=SC2016

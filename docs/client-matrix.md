@@ -38,6 +38,7 @@ Sources:
 | `utorrent` | Windows | proprietary | vendor installer | WinGet/community package | `CLIENT-03` |
 | `bitcomet` | Windows | proprietary | vendor installer | package registry | `CLIENT-04` |
 | `aria2` | Linux, Windows | open source | GitHub release | distro/WinGet package | `CLIENT-05` |
+| `aria2-next` | Linux, Windows | open source fork | its own GitHub release | source build at the matching tag | `CLIENT-14` |
 | `transmission` | Linux, Windows where supported | open source | upstream release/build | distro/WinGet package | `CLIENT-06` |
 | `deluge` | Linux, Windows | open source | upstream/PyPI release | distro/Windows package | `CLIENT-07` |
 | `bittorrent` | Windows | proprietary | vendor installer | package registry | `CLIENT-08` |
@@ -52,14 +53,30 @@ records three routes considered, keeps the target open and moves to the next
 unblocked client.
 
 ⚠ **The `aria2` row names `CLIENT-05` and that is no longer where the first
-two-route capture is attempted.** Ten dispatches of that target produced no
-capture at all, so by operator direction on 2026-09-09 `CLIENT-14` carries the
-attempt through a different upstream, acquired from its own releases and driven
-over RPC. ⛔ The row is not changed and no row is added, because this table's
-target set is pinned by `check-project` against the catalogue in both directions:
-a target here is a target this project has committed to acquiring, and nothing
-about the new one has been fetched, listed, installed or driven. It joins both
-when `CLIENT-14` starts rather than when it was filed.
+capture is attempted.** Ten dispatches of that target produced no capture at all,
+so by operator direction on 2026-09-09 `CLIENT-14` carries the attempt through a
+different upstream, acquired from its own releases and driven over RPC.
+
+⭐ **`aria2-next` has a row now because it has been measured.** The paragraph
+here used to say it joins this table "when `CLIENT-14` starts rather than when it
+was filed", and on 2026-09-09 it started: the target was listed, fetched,
+verified against the vendor's own digests, installed in 1.2 seconds, asked its
+version and driven over JSON-RPC. `CLIENT-14` carries every measurement.
+
+⛔ **Its route B is a candidate and nothing more, which is what this table's
+columns are for.** No package index carries this fork - measured - so the
+second route is a source build nobody has attempted. ⚠ A record needs two routes
+and `E-ACQ-01` refuses one, so this row does not yet describe a publishable
+target.
+
+⚠ **And a correction about how this table is held to the catalogue.** It said
+the target set is "pinned by `check-project` against the catalogue in both
+directions", and it is not: `check-project` carries a **list of ids** and asks
+that each appear in the catalogue *and* in this table. A target added to the
+catalogue and forgotten here is not caught by anything, in either half of the
+check. ⭐ `aria2-next` is on that list, so this row and its catalogue entry are
+pinned to each other; the general claim was wrong and is withdrawn rather than
+restated.
 
 ## Library targets
 

@@ -51,8 +51,16 @@ that installed nothing is detected, and a target that is absent then is the
 ordinary case rather than an error: exit 2, and the caller records that the host
 had nothing. ⚠ An adapter whose `version` started a daemon, wrote a profile or
 assumed containment would be changing the host at the one moment the caller is
-trying to observe it unchanged. All three shipped adapters run
-`<binary> --version` and nothing else.
+trying to observe it unchanged. Every shipped adapter runs `<binary> --version`
+and nothing else.
+
+⚠ **That is also the limit of "driven over RPC".** `aria2-next` is driven over
+its own RPC interface wherever RPC answers the same question, and `version` is
+the case where it cannot: `install-client` asks before the route runs, when
+nothing is installed and no daemon exists to ask. RPC answers that question
+*better* once a build is running - `aria2.getVersion` returns a structured
+`version` field rather than a line of prose - and it cannot answer it at all at
+the moment the caller needs it.
 
 ⛔ **`install` is never called under containment.** By the time a capture runs
 there is no route off the host, so an install that needed one would have to
@@ -100,6 +108,21 @@ destination of its own. An adapter that turned off DHT alone would leave the
 other two on, which is the one-gated-door shape
 [`../../../docs/methodology/reviews.md`](../../../docs/methodology/reviews.md)
 calls the most recurring hole there is.
+
+⛔ **Three is this contract's floor and not every product's ceiling, and that
+was measured rather than reasoned.** `aria2-next` has a FOURTH:
+`bt-port-mapping`, "Enable UPnP and NAT-PMP port mapping", defaults to **true**.
+Driven on 2026-09-09 with all three documented switches off, the build was still
+bound to **UDP 1900** - SSDP multicast - read out of `/proc` rather than out of
+its own report. ⚠ A contained host has no default route, so a tracker or a DHT
+bootstrap fails; a multicast to `239.255.255.250` is link-local and does not.
+
+⭐ **So an adapter enumerates its own product's surfaces, and the way to find
+them is to run the build and read its sockets.** The help text names the switch
+only if you already suspect it; the socket table names it whether or not you do.
+⚠ Whether `aria2`, `transmission` and `qbittorrent` have surfaces of their own
+that this list does not cover is an open question and not a claim - nothing has
+read their sockets this way.
 
 ## The routes
 

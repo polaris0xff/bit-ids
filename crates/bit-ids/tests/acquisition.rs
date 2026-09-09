@@ -42,7 +42,12 @@ fn acquisition_route_kinds_cover_the_catalogue() {
     let listed = candidate_routes();
     // ⛔ A scan that found nothing would make every assertion below pass for
     // the wrong reason, which is the exact shape a coverage check exists to
-    // refuse. The catalogue carries 17 targets naming at least two routes each.
+    // refuse. So this is a FLOOR under the scan, not a count of the catalogue:
+    // every target names at least two routes, and a scanner that had stopped
+    // reading would come back with far fewer than a catalogue's worth.
+    // ⚠ It said "the catalogue carries 17 targets" until 2026-09-09, when the
+    // catalogue carried 16 - a count in prose is a value in two places with
+    // nothing comparing them, and this one had already drifted.
     assert!(
         listed.len() >= 34,
         "the scan found {} candidate routes, so it is not reading the catalogue",

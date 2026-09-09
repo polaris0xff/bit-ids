@@ -57,6 +57,13 @@ redistribute = "refused"
 notice = ""
 
 [[targets]]
+id = "aria2-next"
+licence = "GPL-2.0"
+licence_source = "github-api"
+redistribute = "refused"
+notice = "The installed build's own --version output states GPL v2 or later and credits the original aria2 copyright; the repository is not marked a fork of aria2/aria2."
+
+[[targets]]
 id = "transmission"
 licence = "unverified"
 licence_source = "github-api"

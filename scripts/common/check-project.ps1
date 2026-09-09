@@ -36,8 +36,8 @@ try {
     } else { '' }
     $ids = @(
         'qbittorrent', 'qbittorrent-enhanced', 'utorrent', 'bitcomet', 'aria2',
-        'transmission', 'deluge', 'bittorrent', 'biglybt', 'tixati', 'ktorrent',
-        'fdm', 'zona', 'libtorrent', 'anacrolix-torrent', 'rqbit'
+        'aria2-next', 'transmission', 'deluge', 'bittorrent', 'biglybt', 'tixati',
+        'ktorrent', 'fdm', 'zona', 'libtorrent', 'anacrolix-torrent', 'rqbit'
     )
     foreach ($id in $ids) {
         if ($catalogue -notmatch ('(?m)^id = "' + [regex]::Escape($id) + '"$')) {

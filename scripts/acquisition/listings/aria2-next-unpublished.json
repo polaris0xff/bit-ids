@@ -1,0 +1,57 @@
+[
+  {
+    "tag_name": "v2.7.5",
+    "prerelease": false,
+    "draft": false,
+    "published_at": "2026-09-09T12:11:10Z",
+    "assets": []
+  },
+  {
+    "tag_name": "v2.7.4",
+    "prerelease": false,
+    "draft": false,
+    "published_at": "2026-09-08T15:37:50Z",
+    "assets": [
+      {
+        "name": "aria2-next-2.7.4-android-arm64",
+        "browser_download_url": "https://github.com/AnInsomniacy/aria2-next/releases/download/v2.7.4/aria2-next-2.7.4-android-arm64",
+        "size": 13160720
+      },
+      {
+        "name": "aria2-next-2.7.4-checksums.sha256",
+        "browser_download_url": "https://github.com/AnInsomniacy/aria2-next/releases/download/v2.7.4/aria2-next-2.7.4-checksums.sha256",
+        "size": 684
+      },
+      {
+        "name": "aria2-next-2.7.4-linux-aarch64",
+        "browser_download_url": "https://github.com/AnInsomniacy/aria2-next/releases/download/v2.7.4/aria2-next-2.7.4-linux-aarch64",
+        "size": 13467000
+      },
+      {
+        "name": "aria2-next-2.7.4-linux-x86_64",
+        "browser_download_url": "https://github.com/AnInsomniacy/aria2-next/releases/download/v2.7.4/aria2-next-2.7.4-linux-x86_64",
+        "size": 14382192
+      },
+      {
+        "name": "aria2-next-2.7.4-macos-arm64",
+        "browser_download_url": "https://github.com/AnInsomniacy/aria2-next/releases/download/v2.7.4/aria2-next-2.7.4-macos-arm64",
+        "size": 11750664
+      },
+      {
+        "name": "aria2-next-2.7.4-macos-x86_64",
+        "browser_download_url": "https://github.com/AnInsomniacy/aria2-next/releases/download/v2.7.4/aria2-next-2.7.4-macos-x86_64",
+        "size": 12598328
+      },
+      {
+        "name": "aria2-next-2.7.4-windows-arm64.exe",
+        "browser_download_url": "https://github.com/AnInsomniacy/aria2-next/releases/download/v2.7.4/aria2-next-2.7.4-windows-arm64.exe",
+        "size": 11261952
+      },
+      {
+        "name": "aria2-next-2.7.4-windows-x86_64.exe",
+        "browser_download_url": "https://github.com/AnInsomniacy/aria2-next/releases/download/v2.7.4/aria2-next-2.7.4-windows-x86_64.exe",
+        "size": 13169152
+      }
+    ]
+  }
+]

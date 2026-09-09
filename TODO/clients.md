@@ -1057,21 +1057,141 @@ project needs to keep. ⚠ `CLIENT-05` stays open on the hang; this entry is wha
 the two-route capture is attempted through.
 
 Prove: `sh scripts/acquisition/check-release-route.sh` selects exactly one asset
-for the new adapter from a recorded listing, `sh scripts/capture/check-capture-client.sh`
-accepts the adapter's `describe`, and a dispatched two-route capture reaches the
-*Capture* step and uploads an evidence bundle that `sha256sum -c` verifies
-outside the run that wrote it.
+for the new adapter from a recorded listing and refuses a newest release that
+carries none, `sh scripts/capture/check-capture-client.sh` holds, and a
+dispatched capture reaches the *Capture* step and uploads an evidence bundle that
+`sha256sum -c` verifies outside the run that wrote it.
 
-### ⚠ What this entry does not claim
+⚠ **The Prove said "a dispatched TWO-ROUTE capture" and that is now known to be
+unreachable for this target**, because no package index carries it and no second
+route has been measured. Amended on 2026-09-09 rather than left standing: a
+`Prove` must stay runnable against the current tree, and one that waits on a
+route this entry has established does not exist would never close. ⛔ The
+two-route record the work order needs is not this entry's to produce; what this
+entry can produce is the first capture that reaches the *Capture* step.
 
-⛔ **Nothing here has been run.** The target has not been fetched, no release of
-it has been listed, no version of it has been installed and no RPC call has been
-made. The direction is recorded so the next session starts from it rather than
-from the hang.
+### ⭐ What has now been measured, on 2026-09-09
+
+⛔ **The paragraph that stood here said "nothing here has been run", and that is
+no longer true.** The target has been listed, fetched, verified, installed,
+asked its version and driven over RPC on this session's host. Installing a
+product and asking it questions is not a capture, so it needed no disposable
+host; nothing below was driven against a tracker, and no capture has run.
+
+**The build.** `aria2-next-2.7.4-linux-x86_64`, fetched from the project's own
+release and verified against the vendor's published
+`aria2-next-2.7.4-checksums.sha256` with `sha256sum -c` **before it was run** -
+a reader this project did not write, checking a digest this project did not
+compute. It answers `Aria2 Next version 2.7.4` and lists
+`libtorrent/2.1.1` among its libraries, so this is an aria2-compatible front end
+over libtorrent rather than a fork of aria2's own BitTorrent code.
+
+| question | measured answer |
+| --- | --- |
+| release tags | `v2.7.4`, so prefix `v` and three components |
+| assets per release | eight: seven builds over four platforms - Android arm64 only, the other three in two architectures - plus a checksums file |
+| the Linux artifact | `aria2-next-{version}-linux-x86_64`, matching exactly one |
+| install cost | **1.2 seconds** - a download and a `chmod`, where `aria2`'s release route is a source build taking minutes |
+| `version` over the command line | `Aria2 Next version 2.7.4` |
+| `version` over RPC | `{"product":"aria2-next","version":"2.7.4","rpcVersion":"1.1.0",...}` |
+| `start` over RPC | `aria2.addTorrent` accepted a base64 torrent and named a download |
+| `stop` over RPC | `aria2.shutdown` answered `OK` and the build exited on its own in ~6 seconds |
+
+⛔ **THE VERSION IS THE FOURTH FIELD AND `aria2.sh`'s PARSE WOULD HAVE PUBLISHED
+THE WORD `version`.** aria2 prints `aria2 version 1.37.0`; this prints `Aria2
+Next version 2.7.4`. `awk '{print $3}'` returns the literal string `version`
+here, and it would have passed every check in this repository: it is a non-empty
+field. ⭐ The adapter anchors on the `version` token instead of a column, because
+the product name is prose whose word count is the vendor's to change.
+
+⛔ **`--enable-dht6` DOES NOT EXIST ON THIS BUILD AND IS ACCEPTED ANYWAY**, with
+`Legacy aria2 input from command line: enable-dht6; accepted and skipped;
+libtorrent uses one DHT switch for both families`. A flag that is accepted and
+skipped is worse than one that is refused: the step succeeds and the switch it
+named was never set.
+
+⛔ **AND A FOURTH DISCOVERY SURFACE, FOUND BY READING SOCKETS RATHER THAN HELP
+TEXT.** With DHT, LPD and peer exchange all off - the three the adapter contract
+names - the running build was still bound to **UDP 1900**, read out of
+`/proc/<pid>/fd` and `/proc/net/udp`. `bt-port-mapping`, "Enable UPnP and NAT-PMP
+port mapping", defaults to **true**. ⚠ Why a link-local announce escapes a
+contained host when a tracker does not is in
+[`../scripts/capture/adapters/README.md`](../scripts/capture/adapters/README.md),
+which owns the switch list. With `--bt-port-mapping=false` the build binds its
+RPC port, its peer port on TCP and UDP, and nothing else.
+
+⭐ **RPC IS WHAT MAKES THAT CHECKABLE, AND IT IS THE CASE THE ENTRY WAS OPENED
+FOR.** A command line reports what was *passed*; `aria2.getGlobalOption` reports
+what took *effect*. On a product that accepts an option it does not have, those
+are different questions, and only one of them is worth recording. The adapter
+reads all five switches back from the build and refuses if any is not `false`.
+
+### ⛔ The second route, which is now a measured absence rather than a question
+
+**`aria2-next` is in no package index.** `apt-cache search aria2` on this image
+lists `aria2`, `libaria2-0`, `libaria2-0-dev` and `persepolis`, and no fork.
+
+⚠ **The hazard is not the missing package - it is that the obvious fallback
+SUCCEEDS.** `apt-get install aria2` exits 0, installs a different product at a
+different version, and hands `ACQ-03` a second route that acquired somebody
+else's build. The adapter's `package` route therefore refuses by name and says
+why, rather than being absent and letting a caller improvise.
+
+⛔ **So this target has ONE route today and `E-ACQ-01` refuses a record with
+one.** That is the same wall `CLIENT-05` hit, reached from the other side: aria2
+has two routes and cannot be installed, and aria2-next installs in a second and
+has one route. ⚠ `candidate_routes` in the catalogue names `source-build` as the
+second, which is a research lead and not an availability claim - nothing has
+built this target from source.
+
+### ⛔ A release can be newest and empty, and that was caught live
+
+**Measured on 2026-09-09:** `v2.7.5` was published at `12:11:10Z` and carried
+**zero** assets when read 47 seconds later, while `v2.7.4` beside it carried
+eight. A live resolution against the vendor at that moment refused:
+`select-asset: aria2-next 2.7.5 (v2.7.5) offers 0 asset(s)`.
+
+⭐ **The resolver does not fall back, and that is now proved rather than
+assumed.** Rule 5 targets the newest stable release, so quietly resolving
+`v2.7.4` because `v2.7.5` had nothing to offer would be wrong in a way that looks
+like success. `aria2-next-unpublished.json` keeps both releases so the fallback
+has something to fall back *to*, and `check-release-route.sh` reads `2.7.5` back
+out of the refusal, because "it refused" is satisfied by refusing for any reason
+at all.
+
+⚠ **This is a property of every target with a release route, not of this
+vendor.** A release exists from the moment it is created; its binaries arrive
+when whatever builds them finishes. Any capture dispatched inside that window
+resolves nothing.
+
+### ⚠ What this entry still does not claim
+
+⛔ **No capture has run, and nothing here establishes that this target avoids the
+hang.** Every measurement above was taken on a session host, which is not the
+runner image and has never been the thing in question: `CLIENT-05`'s hang is in
+*Install the client* on `ubuntu-24.04`, and the only way to learn whether this
+target reaches the *Capture* step is to dispatch one.
+
+⚠ **What is different is worth stating and is not the same as evidence.** The
+aria2 install that hangs is a package route that installs nothing plus a version
+call against a preinstalled binary; this target has no package route, is absent
+from the image, and installs by downloading one file. ⭐ That removes the
+asymmetry `PROGRESS.md` records as present in every hung run and absent from
+every green one - which makes it a hypothesis worth dispatching, not a result.
+
+⚠ **And the peer ID has not been observed on the wire.** The build's default
+`bt-peer-id-prefix` reads back as `-qB5230-`, so a stock `aria2-next` is
+configured to present itself as qBittorrent 5.2.3.0. ⛔ That is a configured
+value read over RPC, not an identity observed from a running swarm participant,
+and this project publishes the second. ⚠ It is also exactly the case the
+catalogue exists to catch: a peer-ID table would file this build under
+qBittorrent. Nothing in the adapter overrides the prefix, because the identity a
+stock build emits is the measurement.
 
 ⚠ **And RPC is a seam, not a guarantee.** Driving a build through its own RPC
 interface means the capture measures what that interface causes the build to put
 on the wire, which is the same standard every adapter here already meets - and it
 also means an adapter failure and a product refusal arrive through one channel,
-so the adapter must keep them apart the way `install-client` keeps a refusal
-apart from a timeout.
+so the adapter keeps them apart: a JSON-RPC error arrives with HTTP 200 and an
+`error` member, so a caller reading only curl's status would take a refusal for
+an answer.

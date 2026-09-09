@@ -18,12 +18,18 @@
 //! project and compare rather than take this file's word for it.
 //!
 //! ```text
-//! project-listing <listing-file> <source-url> [tag]
+//! project-listing <listing-file> <source-url> [tag...]
 //! ```
 //!
-//! Writes the projection to stdout. With a tag, only that release is kept; with
-//! none, every release is. Exit codes: 0 written, 1 the tag is not in the
-//! listing, 2 could not run.
+//! Writes the projection to stdout. With tags, only those releases are kept, in
+//! the order the source listed them; with none, every release is. Exit codes: 0
+//! written, 1 a named tag is not in the listing, 2 could not run.
+//!
+//! ⛔ **Every named tag must match, and a tag that matches nothing is a
+//! refusal rather than one fewer release.** A fixture whose point is that two
+//! releases sit beside each other is worthless if a typo in one tag quietly
+//! projects the other alone - the harness reading it would then prove a
+//! different question and still pass.
 
 use std::process::ExitCode;
 
@@ -54,13 +60,9 @@ struct Asset {
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let (path, source, tag) = match args.as_slice() {
-        [path, source] => (path, source, None),
-        [path, source, tag] => (path, source, Some(tag)),
-        _ => {
-            eprintln!("usage: project-listing <listing-file> <source-url> [tag]");
-            return ExitCode::from(2);
-        }
+    let [path, source, tags @ ..] = args.as_slice() else {
+        eprintln!("usage: project-listing <listing-file> <source-url> [tag...]");
+        return ExitCode::from(2);
     };
 
     let body = match std::fs::read(path) {
@@ -78,13 +80,28 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    let kept: Vec<Release> = match tag {
-        Some(tag) => releases
+    let kept: Vec<Release> = if tags.is_empty() {
+        releases
+    } else {
+        // ⚠ THE SOURCE'S OWN ORDER IS KEPT, not the order the tags were typed.
+        // The resolver reads this list as the vendor served it, so a projection
+        // that re-ordered it would be asking a different question than the one
+        // a live fetch asks.
+        releases
             .into_iter()
-            .filter(|release| &release.tag_name == tag)
-            .collect(),
-        None => releases,
+            .filter(|release| tags.iter().any(|tag| tag == &release.tag_name))
+            .collect()
     };
+    // ⛔ EVERY NAMED TAG IS ACCOUNTED FOR SEPARATELY, because a non-empty
+    // projection is not the same as the projection that was asked for: two tags
+    // of which one is a typo keep one release and look exactly like a fixture
+    // that was meant to hold one.
+    for tag in tags {
+        if !kept.iter().any(|release| &release.tag_name == tag) {
+            eprintln!("project-listing: {path} carries no release tagged {tag}");
+            return ExitCode::FAILURE;
+        }
+    }
     if kept.is_empty() {
         eprintln!("project-listing: {path} carries no release to keep");
         return ExitCode::FAILURE;

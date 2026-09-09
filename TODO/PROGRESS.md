@@ -151,8 +151,18 @@ the way the adapters assume.
 either is refused with `E-FIX-07`. `local_discovery` and `pex` have codecs and
 no fixture of their own, for reasons `docs/architecture.md` section 10 gives.
 
-⛔ **No route has been shown to acquire anything, and two of them provably did
-not.** `aria2` ships on `ubuntu-24.04`, so the `package` route there is an
+⭐ **A `release` route has now acquired a build from a published binary, in 1.2
+seconds.** `aria2-next` 2.7.4 was resolved from its own releases, fetched,
+verified against the vendor's `sha256` sidecar by `sha256sum -c`, installed, and
+asked its version - which it answered as the build rather than as a filename.
+⚠ On a session host, not a capture host, and the product was then driven over its
+own JSON-RPC interface rather than captured. ⛔ Every discovery surface was read
+back from the running build and one of them was live by default:
+`bt-port-mapping` had it bound to **UDP 1900**, found by reading `/proc` rather
+than the help text. `CLIENT-14` carries the measurements.
+
+⛔ **No route has been shown to acquire anything ON A CAPTURE HOST, and two of
+them provably did not.** `aria2` ships on `ubuntu-24.04`, so the `package` route there is an
 `apt-get install` that prints `already the newest version` and exits 0; every
 `release` route in the tree fetches its artifact into the workdir and never makes
 it the executable the adapter asks. ⚠ Two such routes satisfy `E-ACQ-07` and
@@ -195,15 +205,24 @@ written and the dependency question under *Settled decisions* is spent.
 every answer it gives about a real client today is *not measured*, because
 nothing is. The clone question under *Settled decisions* is spent too.
 
-0. ⭐ **`CLIENT-14` FIRST, by operator direction on 2026-09-09.** Ten dispatches
-   produced no aria2 capture: every lane stops inside *Install the client*, four
-   independent bounds have been measured not to fire on that step, five readings
-   of it have been refuted, and no such job has ever produced a log or an
-   artifact. ⛔ The direction is to change the target rather than to keep
-   diagnosing - `AnInsomniacy/aria2-next`, acquired from its own releases and
-   driven over RPC. ⚠ Nothing about that target is measured yet; `CLIENT-14` is
-   the record of the direction. `CLIENT-05` stays open on the hang, which is a
-   property of this capture path rather than of one product.
+0. ⭐ **`CLIENT-14` FIRST, by operator direction on 2026-09-09, and the target is
+   now measured.** Ten dispatches produced no aria2 capture: every lane stops
+   inside *Install the client*, four independent bounds have been measured not to
+   fire on that step, five readings of it have been refuted, and no such job has
+   ever produced a log or an artifact. ⛔ The direction is to change the target
+   rather than to keep diagnosing - `AnInsomniacy/aria2-next`, acquired from its
+   own releases and driven over RPC.
+   ⭐ **The adapter exists and every subcommand has been driven on this host.**
+   The build was fetched, verified against the vendor's published digests with
+   `sha256sum -c`, installed in **1.2 seconds**, asked its version, started over
+   `aria2.addTorrent` and stopped over `aria2.shutdown`. `CLIENT-14` carries all
+   of it.
+   ⛔ **What it does NOT establish is that this target avoids the hang.** A
+   session host is not the runner image, and only a dispatch answers that.
+   ⛔ **And the second route is now a measured absence rather than an open
+   question**: no package index carries this fork, so the target has ONE route
+   and `E-ACQ-01` refuses a record with one. `CLIENT-05` stays open on the hang,
+   which is a property of this capture path rather than of one product.
 1. **`CLIENT-01`, `CLIENT-06`, `CLIENT-05`**, the first complete vertical
    captures. ⭐ Every layer below the product is written and proved, and
    `capture-client.yml` is the workflow that runs them. ⚠ What remains is a

@@ -116,9 +116,42 @@ while read -r target expected; do
   fi
 done <<ADAPTER_TABLE
 aria2 aria2-1.37.0.tar.bz2
+aria2-next aria2-next-2.7.4-linux-x86_64
 qbittorrent qbittorrent-5.2.3_x86_64.AppImage
 transmission transmission-4.1.3.tar.xz
 ADAPTER_TABLE
+
+# -- 1b. a newest release that carries no assets at all ----------------------
+#
+# ⛔ THIS IS NOT A HYPOTHETICAL AND IT IS NOT A VENDOR BEHAVING BADLY. Measured
+# on 2026-09-09: `AnInsomniacy/aria2-next` published `v2.7.5` at 12:11:10Z and
+# the release carried ZERO assets when it was read 47 seconds later, while
+# `v2.7.4` beside it carried eight. A release exists from the moment it is
+# created and its binaries arrive when whatever builds them finishes, so every
+# target with a release route has a window in which its newest release is empty.
+#
+# ⭐ THE QUESTION IS NOT WHETHER THE RUN FAILS - IT IS WHETHER IT FALLS BACK.
+# `resolve-stable` picks the newest release and `select-asset` then reads assets
+# off the one that won. A resolver that quietly took `v2.7.4` because `v2.7.5`
+# had nothing to offer would be targeting a release that is not the newest,
+# which rule 5 forbids, and it would do it on a lane nobody was watching. ⚠ A
+# fixture holding the empty release ALONE cannot ask this: the fallback needs an
+# older release with assets sitting right there to fall back TO, which is why
+# `aria2-next-unpublished.json` keeps both.
+resolve unpublished "$ADAPTERS/aria2-next.sh" "$LISTINGS/aria2-next-unpublished.json"
+rc=$?
+if [ "$rc" = 1 ] && said unpublished "no asset of that release matches"; then
+  # ⛔ AND THE VERSION IT REFUSED OVER IS READ BACK, because "it refused" is
+  # satisfied by refusing for any reason at all. This asserts it got as far as
+  # the NEWEST release and stopped there.
+  if said unpublished "2.7.5"; then
+    pass "unpublished a newest release with no assets is refused, naming 2.7.5"
+  else
+    fail "unpublished refused without naming 2.7.5: $(tail -2 "$WORK/unpublished.err")"
+  fi
+else
+  fail "unpublished a newest release with no assets exited $rc: $(tail -1 "$WORK/unpublished.err")"
+fi
 
 # -- 2. the declared repository is the catalogue's upstream ------------------
 #

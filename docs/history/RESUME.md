@@ -44,12 +44,18 @@ matrix dimension and `resolve-release.sh` chooses the artifact.
 
 **Next, in order:**
 
-1. ⛔ **`CLIENT-14`, and it is the operator's direction rather than a choice to
-   re-make.** Ten dispatches produced no aria2 capture, so the target changes:
-   `AnInsomniacy/aria2-next`, acquired from its own releases, driven over RPC
-   wherever RPC answers the same question as the command line. Nothing about it
-   is measured yet. Read the next section before assuming the new target avoids
-   the hang - nothing has established that.
+1. ⭐ **`CLIENT-14`'s ADAPTER EXISTS AND ITS TARGET IS MEASURED. What is left is
+   a dispatch.** `scripts/capture/adapters/aria2-next.sh` was written from
+   measurements rather than by analogy, and every subcommand has been driven on a
+   session host: fetched, verified with `sha256sum -c` against the vendor's own
+   digests, installed in **1.2 seconds**, asked its version, started over
+   `aria2.addTorrent`, stopped over `aria2.shutdown`. ⛔ **Nothing about that
+   establishes it avoids the hang** - a session host is not the runner image, and
+   the hang lives in *Install the client* on `ubuntu-24.04`. Dispatch
+   `capture-client.yml` for it and read the run back.
+   ⛔ **Its second route is a measured absence, not an open question:** no
+   package index carries this fork, so it has ONE route and `E-ACQ-01` refuses a
+   record with one. The two-route record is not this entry's to produce.
 2. **A record in the store**, once a two-route capture exists. `not_corroborated`
    is a recordable state; one route is not.
 3. **`CI-07`**, the PowerShell halves for the declared rows. ⭐ Its cheap half is
@@ -153,6 +159,13 @@ cases run the gate. It is about 20 minutes and the CI lane runs it in a job of
 its own. ⚠ Killing and restarting it costs the whole 20 minutes: make every edit
 first, then run it once.
 
+⛔ **AND DO NOT RUN THE GATE WHILE `check-workflow` IS RUNNING.** Observed on
+2026-09-09: a gate run started beside one reported `1 failed`, and the same gate
+over the same tree reported `30 passed, 0 failed` as soon as the concurrent run
+was stopped, with nothing else changed. ⚠ Two observations are not a mechanism,
+and the cost of assuming they are unrelated is a session chasing a failure that
+is not in the tree. They run one at a time.
+
 ⛔ **Read exit codes from the process that produced them, unpiped.**
 
 ---
@@ -197,7 +210,24 @@ happened this session.
 **A plant whose expected outcome is a PASS proves nothing.**
 
 ⛔ **A rule a document says this repository has is not a rule it has.** Grep for
-the check before believing it runs.
+the check before believing it runs. ⚠ Third instance, found on 2026-09-09:
+`docs/client-matrix.md` said its target set is "pinned by `check-project` against
+the catalogue in both directions", and `check-project` in fact carries a **list
+of ids** and asks that each appear in both files. A target added to the catalogue
+and forgotten in the matrix is caught by nothing, in either half of the check.
+
+⛔ **A product's help text names a switch only if you already suspect it; its
+socket table names it whether or not you do.** `aria2-next` was run with all
+three discovery switches the adapter contract names turned off and was still
+bound to **UDP 1900**, because `bt-port-mapping` - UPnP and NAT-PMP - defaults to
+true. It was found in `/proc/<pid>/fd` and `/proc/net/udp`, not in the help.
+⚠ Whether the other three adapters have surfaces of their own that nobody has
+read this way is an open question.
+
+⚠ **A version is not always the third field.** `aria2` prints `aria2 version
+1.37.0` and `aria2-next` prints `Aria2 Next version 2.7.4`, so the adapter beside
+it would have published the literal string `version` - and it would have passed
+every check here, because it is a non-empty field.
 
 **The strongest control available is a reader this project did not write.**
 

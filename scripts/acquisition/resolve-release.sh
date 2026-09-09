@@ -2,8 +2,8 @@
 # resolve-release.sh - decide which artifact the `release` route will fetch, on
 # a host that still has a route off itself.
 #
-# ⛔ THIS IS WHY EVERY `release` ROUTE IN THIS TREE HAS BEEN UNRUNNABLE. Each of
-# the three adapters refuses without `BIT_IDS_RELEASE_URL` "resolved before the
+# ⛔ THIS IS WHY EVERY `release` ROUTE IN THIS TREE HAS BEEN UNRUNNABLE. Every
+# adapter refuses without `BIT_IDS_RELEASE_URL` "resolved before the
 # route was cut", and nothing in the repository resolved one: `resolve-stable`
 # orders versions and does not choose an artifact, so `capture-client.yml` passed
 # `--route package` and only that. This is the missing half.

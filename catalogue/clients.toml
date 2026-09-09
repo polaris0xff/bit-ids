@@ -49,6 +49,15 @@ upstream = "https://github.com/aria2/aria2"
 candidate_routes = ["github-release", "linux-package-manager", "windows-package-manager"]
 
 [[targets]]
+id = "aria2-next"
+display_name = "Aria2 Next"
+kind = "client"
+open_source = true
+platforms = ["linux", "windows"]
+upstream = "https://github.com/AnInsomniacy/aria2-next"
+candidate_routes = ["github-release", "source-build"]
+
+[[targets]]
 id = "transmission"
 display_name = "Transmission"
 kind = "client"

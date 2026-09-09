@@ -5,6 +5,38 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-09T12:29:06Z
+
+- ⭐ **`CLIENT-14`'s adapter exists and its target is measured.**
+  `scripts/capture/adapters/aria2-next.sh` installs from the project's own
+  releases and drives `start` and `stop` over JSON-RPC. Every subcommand was run
+  on a session host: the build was fetched, verified against the vendor's
+  published `sha256` sidecar with `sha256sum -c`, installed in **1.2 seconds**,
+  asked its version, handed a torrent over `aria2.addTorrent` and shut down over
+  `aria2.shutdown`.
+- ⛔ **The version is the fourth field, not the third.** `aria2` prints `aria2
+  version 1.37.0`; this prints `Aria2 Next version 2.7.4`. The adapter beside it
+  would have published the literal string `version`, and nothing here would have
+  refused it. The parse is anchored on the `version` token instead of a column.
+- ⛔ **A fourth discovery surface, found by reading sockets rather than help
+  text.** With DHT, LPD and peer exchange off, the running build was still bound
+  to **UDP 1900**: `bt-port-mapping` - UPnP and NAT-PMP - defaults to true. The
+  adapter switches it off and reads all five switches back from the build.
+- ⛔ **No package index carries this fork**, so it has one route and `E-ACQ-01`
+  refuses a record with one. The `package` route refuses by name, because
+  `apt-get install aria2` would exit 0 having installed a different product.
+- ⭐ **A newest release can carry no assets, and it was caught live.** `v2.7.5`
+  was published at `12:11:10Z` with zero assets while `v2.7.4` beside it carried
+  eight. `check-release-route.sh` now proves the resolver refuses rather than
+  falling back to the older release, and `project-listing` takes several tags so
+  a fixture can hold both.
+- ⚠ **Two corrections.** `docs/client-matrix.md` claimed its target set is pinned
+  "against the catalogue in both directions" and `check-project` in fact pins a
+  hardcoded list of ids; the claim is withdrawn and `aria2-next` is on that list.
+  A test comment said the catalogue carries 17 targets when it carried 16.
+- Record: [`TODO/clients.md`](TODO/clients.md), `CLIENT-14`. No version bump and
+  no deploy: nothing is released, and no capture has been dispatched.
+
 ### 2026-09-09T11:55:09Z
 
 - ⭐ **`CLIENT-14` is filed, by operator direction**: the two-route capture is
