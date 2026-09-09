@@ -30,18 +30,24 @@ this step could read that failure as a defect in the tree.
 
 ## Where the work is
 
-**In flight:** nothing. `CLIENT-14` closed on 2026-09-09. `CLIENT-05` and `CI-09`
-are open and are still the same blocker as each other.
+**In flight:** nothing. `CLIENT-14` closed on 2026-09-09 and its target gained a
+second acquisition route after closure. `CLIENT-05` is open on the aria2 hang;
+`CI-09` is open and is no longer blocked by the route question.
 
-⛔ **THE RECORD THE WORK ORDER WAITS ON CANNOT BE WRITTEN FROM ANY CAPTURE THIS
-PROJECT HAS RUN.** One connector **validates** and `E-PUB-02` refuses to publish
-it; one route is refused at the **validity** gate by `E-ACQ-01`. Every capture so
-far is one route, so `Profile::to_json` will not write it and the store cannot
-hold it. ⭐ `E-ACQ-01` is right: the product IS the two-route claim.
+⭐ **THE ROUTE HALF IS SOLVED AND THE CONNECTOR HALF IS NOT.** This paragraph
+used to say no capture this project had run could produce a record, because every
+one was a single route and `E-ACQ-01` refuses that at the **validity** gate.
+`capture-client` run 14 changed it: two routes, one version, two different
+builds. ⛔ **So a record can now be WRITTEN and STORED, and still not
+PUBLISHED**: `E-PUB-02` keeps any measured field provisional while only one
+connector could see it, and every capture so far has used one - this project's
+own Rust observer. `not_corroborated` is a recordable state and one route was
+not.
 
-**What unblocks it is a two-route capture**, and aria2 is the only target whose
-two routes resolve the same version. `capture-client.yml` takes the route as a
-matrix dimension and `resolve-release.sh` chooses the artifact.
+**What is left for a PUBLISHED record is a second connector**, which is
+`OBS-07`'s. What is left for a STORED record is assembling the two install
+records and two evidence bundles into a `Profile`, which is `CI-09`'s and needs a
+store to write into.
 
 ⭐ **`CLIENT-14` IS CLOSED AND THE HANG IS NOT IN FRONT OF THAT TARGET.**
 `capture-client` runs 11 and 12 both reached the *Capture* step - the eleventh
