@@ -5,6 +5,32 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-09T10:29:21Z
+
+- ⭐ **Transmission captured green a fourth time** on client capture run 9, in
+  three minutes, as the control beside an aria2 lane on the same image and the
+  same step. Record: [`TODO/clients.md`](TODO/clients.md).
+- ⛔ **And the watchdog in the step's own shell did not fire.** aria2's
+  *Install the client* ran fifteen minutes against a 480-second deadline that
+  loop would have enforced had the shell been looping. That is the third bound
+  measured not to fire here, after `timeout` inside `install-client` and the
+  runner's own `timeout-minutes`.
+- ⚠ Transmission's install was 121 seconds where earlier runs recorded fourteen,
+  so these hosts are slow today - and slow is what the aria2 lane is not, because
+  a slow install would have been ended by the 420-second bound around the install
+  call.
+- ⭐ **So the bound moves outside the shell entirely.**
+  [`scripts/acquisition/install-step.sh`](scripts/acquisition/install-step.sh)
+  holds what the step did inline, and the workflow runs it under `timeout`, so
+  the bounded process is the step's own and nothing inside it has to be reachable.
+- ⛔ What that buys is not a faster failure but a job that reaches its uploads at
+  all: runs 7, 8 and 9 each ended with no log and no artifact, so a hanging aria2
+  lane has taught nothing three times running.
+- ⭐ Two cases hold the new bound: it fires and the step ends with coreutils' 124,
+  and a product that finishes inside it is not killed.
+- Deployment: nothing deployed.
+
+
 ### 2026-09-09T09:39:11Z
 
 - ⛔ **Client capture run 8 refuted the reading it was dispatched to test.** Both

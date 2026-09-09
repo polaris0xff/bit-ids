@@ -107,6 +107,15 @@ from any working directory.
   `preexisting_version` and `acquired`: a route that installs nothing exits 0,
   and two of those agree on one binary's version while declaring two independent
   routes.
+- [`acquisition/install-step.sh`](acquisition/install-step.sh) is what
+  *Install the client* runs, in a file so the step's own process can be bounded
+  from outside it. ⛔ Every bound tried before it was measured failing: `timeout`
+  inside `install-client` ends its own child and cannot end a shell blocked
+  around it, the runner's `timeout-minutes` did not end the step on run 6, and a
+  watchdog loop in the step's own shell did not fire on run 9 - its deadline
+  passed by seven minutes. ⭐ It runs the install in the background, appends a
+  process table with `stat` and `etimes` every few seconds, and sends the route's
+  output to a file so nothing it spawns inherits the step's own pipe.
 - [`capture/check-capture-client.sh`](capture/check-capture-client.sh) proves
   both of those. ⭐ Its stub adapter reads the announce URL out of the
   `.torrent` rather than being handed it, which is what makes it stand for a

@@ -734,6 +734,24 @@ without reading an expression. ⭐ The four aria2 install logs already collected
 say what that route does; what run 7 bought instead is where the hang actually
 sits.
 
+### ⭐ Transmission's fourth capture, and aria2's fifth hang
+
+**Client capture run 9, 2026-09-09, `["aria2","transmission"] × ["package"]` on
+`42bd206`.** Transmission captured green in three minutes with a 121-second
+install; aria2's *Install the client* began at 10:13:54Z and had not returned
+fifteen minutes later.
+
+⛔ **The step's own watchdog deadline was 480 seconds and it passed by seven
+minutes.** That loop runs in the step's shell, so a shell that was looping would
+have fired it - which makes this a fact about the step rather than about the
+install, and the third bound measured not to fire.
+
+⚠ **Transmission is the control that keeps it attributable**: same run, same
+image, same step and the same `apt-get`. ⚠ Its install is itself far slower than
+the fourteen seconds earlier runs recorded, so these hosts are slow today - and
+slow is what the aria2 lane is not, because `install-client` bounds the install
+call at 420 seconds and would have refused.
+
 ### ⛔ Run 8 refuted the reading it was dispatched to test
 
 **Dispatched 2026-09-09 as `["aria2"] × ["package","release"]` on `5911c0d`**, the

@@ -296,6 +296,10 @@ mkdir -p "$TREE/scripts/acquisition" "$TREE/scripts/capture/adapters" "$TREE/bin
   "$TREE/state" "$TREE/temp" || exit 2
 mkdir -p "$TREE/scripts/ci" || exit 2
 cp "$ROOT/scripts/acquisition/install-client.sh" "$TREE/scripts/acquisition/" || exit 2
+# ⚠ AND THE STEP'S OWN FILE, WHICH IS WHAT THE BODY NOW RUNS. The install step is
+# one `timeout` around this script, so the scratch tree needs the real one or the
+# cases would be about a missing file rather than about what it does.
+cp "$ROOT/scripts/acquisition/install-step.sh" "$TREE/scripts/acquisition/" || exit 2
 # ⚠ THE HOLDER REPORT IS THE REAL ONE TOO. The install block calls it, so a
 # scratch tree without it would make both install cases fail on a missing file
 # rather than on what they are about.
@@ -486,43 +490,51 @@ if lift "$CLIENT_WF" linux "Install the client" "$WORK/install.sh"; then
   # fd 3 at the LOG - fd 1 is already the log by then - and the case reported the
   # hang not happening over a plant that had duplicated the wrong file. Written
   # before the redirection, `3>&1` is the step's own pipe.
-  cp "$WORK/install.sh" "$WORK/install-leaky.sh"
-  # ⛔ THE DOLLAR SIGNS ARE THE POINT AGAIN. These are the workflow's own text,
-  # matched and replaced literally; a shell that expanded them would look for a
-  # line the block does not contain and the plant would not apply.
+  #
+  # ⚠ IT PLANTS IN THE TREE'S COPY OF THE STEP SCRIPT rather than in the lifted
+  # body, because the body is now one `timeout` around that script. The tracked
+  # file is never touched: the copy under the scratch tree is.
+  # ⛔ THE DOLLAR SIGNS ARE THE POINT. This is the script's own text, matched and
+  # replaced literally; a shell that expanded them would look for a line the file
+  # does not contain and the plant would not apply.
   # shellcheck disable=SC2016
-  if replace_once "$WORK/install-leaky.sh" \
+  if replace_once "$TREE/scripts/acquisition/install-step.sh" \
     '>"$WORKDIR/step.log" 2>&1 &' \
     '3>&1 >"$WORKDIR/step.log" 2>&1 &'; then
+    stub_adapter 'sleep 8 &'
     rm -rf "$TREE/temp/install-package" "$TREE/temp/install-package.txt"
-    run_body "$WORK/install-leaky.sh" default "$TREE"
+    run_body "$WORK/install.sh" default "$TREE"
     hangs "sh       one leaked descriptor onto the step's output brings it back" 0
   else
     fail "sh       the leaked-descriptor plant did not apply"
   fi
+  cp "$ROOT/scripts/acquisition/install-step.sh" "$TREE/scripts/acquisition/" || exit 2
 
   # ⛔ AND THE STEP'S OWN BOUND IS SEEN TO FIRE, because a bound nobody has
   # watched fire is a bound nobody knows works - and this repository has shipped
-  # two that did not. The product is made to take longer than the deadline, and
-  # what the case asserts is the whole point of the bound: the step ENDS, with a
-  # status saying it was killed, so the job goes on to upload the evidence.
-  # ⚠ 137 is `wait` reporting a child killed by signal 9, which is what the
-  # block does when its deadline passes.
-  stub_adapter 'sleep 20'
-  rm -rf "$TREE/temp/install-package" "$TREE/temp/install-package.txt"
-  BIT_IDS_INSTALL_DEADLINE=1
-  export BIT_IDS_INSTALL_DEADLINE
-  run_body "$WORK/install.sh" default "$TREE"
-  ended "sh       the step's own deadline fires and the step ends anyway" 137
-  unset BIT_IDS_INSTALL_DEADLINE
+  # THREE that did not: `timeout` inside install-client, the runner's
+  # `timeout-minutes`, and a watchdog loop in the step's own shell. This one is
+  # around the step's own process, which is why it can end a step whose insides
+  # are not reachable.
+  # ⚠ 124 IS coreutils' VERDICT FOR "IT NEVER ANSWERED", and it is the whole
+  # point: the step ENDS, so the job goes on to upload the evidence.
+  cp "$WORK/install.sh" "$WORK/install-bounded.sh"
+  if replace_once "$WORK/install-bounded.sh" 'timeout -k 30 540 ' 'timeout -k 1 2 '; then
+    stub_adapter 'sleep 20'
+    rm -rf "$TREE/temp/install-package" "$TREE/temp/install-package.txt"
+    run_body "$WORK/install-bounded.sh" default "$TREE"
+    ended "sh       the bound around the step's own process fires and it ends" 124
+  else
+    fail "sh       the step-bound plant did not apply"
+  fi
 
-  # ⛔ AND THE CONTROL: THE SAME SLOW PRODUCT UNDER THE SHIPPED DEADLINE IS NOT
-  # KILLED. Without it the case above passes equally over a block that kills
+  # ⛔ AND THE CONTROL: THE SHIPPED BOUND DOES NOT KILL A PRODUCT THAT FINISHES
+  # INSIDE IT. Without it the case above passes equally over a block that kills
   # every install it is given, which would be a bound that refuses correct work.
-  rm -rf "$TREE/temp/install-package" "$TREE/temp/install-package.txt"
   stub_adapter 'sleep 2'
+  rm -rf "$TREE/temp/install-package" "$TREE/temp/install-package.txt"
   run_body "$WORK/install.sh" default "$TREE"
-  ended "sh       a product slower than one tick and inside the deadline survives" 0
+  ended "sh       a product slower than one tick and inside the bound survives" 0
 else
   fail "sh       capture-client.yml has no linux step named Install the client (exit $?)"
 fi

@@ -154,107 +154,34 @@ jobs:
             >"$RUNNER_TEMP/release/url.txt"
           cat "$RUNNER_TEMP/release/resolution.txt"
 
-      # ⛔ AND NOTHING THE ROUTE SPAWNS INHERITS THIS STEP'S OUTPUT, which is the
-      # one structural change this step has had since the aria2 hang started. A
-      # runner ends a `run:` step when the command has exited AND the step's
-      # output pipe has reached end of file, so a single process the product
-      # leaves behind holding that pipe keeps the step open with an exit code of
-      # 0 sitting in it - and no bound helps, because there is nothing left to
-      # bound. `scripts/ci/check-step-bodies.sh` runs this exact block and
-      # measures it: over a stub product that leaks one process the block does
-      # not end, and over one that does not it ends at once.
+      # ⛔ THE WORK IS IN A FILE SO THE STEP'S OWN PROCESS CAN BE BOUNDED. That is
+      # the one place a bound has not been tried here, and every other place has
+      # been measured failing: `install-step.sh` says which and why.
       #
-      # ⚠ IT IS A MITIGATION AND ITS OUTCOME IS THE MEASUREMENT. If an aria2 lane
-      # now gets past this step, the class is what the hang was; if it hangs
-      # anyway, a fourth reading is refuted with something that separates it.
-      # `CI-08` carries both branches.
+      # ⛔ AND NOTHING THE ROUTE SPAWNS INHERITS THIS STEP'S OUTPUT. A runner ends
+      # a `run:` step when the command has exited AND the step's output pipe has
+      # reached end of file, so a single process the product leaves behind holding
+      # that pipe keeps the step open with an exit code of 0 sitting in it.
+      # `scripts/ci/check-step-bodies.sh` runs this step's body and measures both
+      # halves of that.
       - name: Install the client
         env:
           ADAPTER: scripts/capture/adapters/${{ matrix.adapter }}.sh
           ROUTE: ${{ matrix.route }}
-        run: |
-          set -eu
-          # ⚠ THE URL TRAVELS THROUGH A FILE RATHER THAN THROUGH GITHUB_ENV, so
-          # the value the install used is in the uploaded workdir beside the
-          # record that names it. A variable set in one step and read in another
-          # leaves nothing on disk to compare a fetch against afterwards.
-          if [ "$ROUTE" = release ]; then
-            BIT_IDS_RELEASE_URL=$(cat "$RUNNER_TEMP/release/url.txt")
-            export BIT_IDS_RELEASE_URL
-            printf 'the release route will fetch %s\n' "$BIT_IDS_RELEASE_URL"
-          fi
-          # ⛔ THE DIRECTORY IS MADE BEFORE THE REDIRECTION, NOT BY THE SCRIPT,
-          # for the reason *Resolve the release artifact* gives above: a shell
-          # opens `>` targets before it execs.
-          WORKDIR="$RUNNER_TEMP/install-$ROUTE"
-          mkdir -p "$WORKDIR"
-          # ⛔ THE INSTALL RUNS IN THE BACKGROUND SO THIS SHELL CAN WATCH IT, and
-          # this is the only bound that can end this step from wherever the work
-          # actually stops. `timeout` ends its own child, so it cannot end a
-          # shell blocked in a command substitution AROUND that child;
-          # `timeout-minutes` is the runner's and was measured on run 6 not to
-          # end the step at all. ⚠ Run 8 is why it is here: both aria2 lanes sat
-          # in this step for fifteen minutes, which is past the moment
-          # install-client's own 420-second bound would have ended the install
-          # call - so whatever is slow or stopped is not inside that call.
-          sudo -E sh scripts/acquisition/install-client.sh \
-            --adapter "$ADAPTER" \
-            --route "$ROUTE" \
-            --workdir "$WORKDIR" \
-            --record "$RUNNER_TEMP/install-$ROUTE.txt" \
-            >"$WORKDIR/step.log" 2>&1 &
-          INSTALL_PID=$!
-          # ⚠ OVERRIDABLE SO A HARNESS CAN MAKE THE BOUND FIRE. A bound nobody
-          # has seen fire is a bound nobody knows works, and two of them have
-          # already been shipped here that did not.
-          DEADLINE=${BIT_IDS_INSTALL_DEADLINE:-480}
-          INTERVAL=${BIT_IDS_INSTALL_INTERVAL:-5}
-          WAITED=0
-          # ⭐ AND EVERY TICK LEAVES A PROCESS SNAPSHOT, which is the evidence
-          # five dispatches could not produce. A job whose runner is killed has
-          # no log to fetch - measured again on run 8, where rule 8's route
-          # answers 302 to a blob that does not exist yet while the job is still
-          # running - so what the job uploads afterwards is the only thing that
-          # survives, and that needs the step to END.
-          # ⚠ `etimes` is what separates a command that is SLOW from one that is
-          # stopped: a process whose elapsed time grows while its state stays R
-          # is working, and one sitting in D or S is not.
-          while kill -0 "$INSTALL_PID" 2>/dev/null; do
-            if [ "$WAITED" -ge "$DEADLINE" ]; then
-              printf 'the install did not answer within %ss\n' "$DEADLINE" >&2
-              # ⛔ THE DIAGNOSTIC IS BOUNDED TOO. It walks every process's
-              # descriptors, so it is the one thing added to this step that
-              # could itself be slow - and a diagnostic that held the step open
-              # would be the failure it exists to explain, wearing its own name.
-              timeout 60 sudo sh scripts/ci/report-holders.sh "$WORKDIR/step.log" \
-                >"$WORKDIR/holders.log" 2>&1 ||
-                printf 'the holder report could not run\n' >&2
-              sudo kill -9 "$INSTALL_PID" 2>/dev/null || :
-              break
-            fi
-            sleep "$INTERVAL"
-            WAITED=$((WAITED + INTERVAL))
-            {
-              printf '## +%ss %s\n' "$WAITED" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-              ps -eo pid,ppid,pgid,stat,etimes,comm,args 2>&1 || :
-            } >>"$WORKDIR/watchdog.log"
-          done
-          wait "$INSTALL_PID" && rc=0 || rc=$?
-          cat "$WORKDIR/step.log"
-          # ⭐ AND WHATEVER IS STILL HOLDING THAT FILE IS NAMED, on the path that
-          # worked as well as on the one that did not. ⚠ Under sudo, because the
-          # install ran as root and an unprivileged reader of /proc reports
-          # "nobody holds it" over a file root processes are holding. ⚠ Its own
-          # status is read and printed rather than discarded: a diagnostic that
-          # failed silently would be replacing a missing answer with a wrong one,
-          # and one that failed the STEP would throw away an install that worked.
-          held=0
-          timeout 60 sudo sh scripts/ci/report-holders.sh \
-            "$WORKDIR/step.log" \
-            >>"$WORKDIR/holders.log" 2>&1 || held=$?
-          printf 'the holder report exited %s\n' "$held"
-          [ "$rc" = 0 ] || exit "$rc"
-          cat "$RUNNER_TEMP/install-$ROUTE.txt"
+        # ⛔ THE BOUND IS ON THE STEP'S OWN PROCESS, WHICH IS THE ONE PLACE IT HAS
+        # NOT BEEN TRIED. `timeout` inside `install-client` ends its own child and
+        # cannot end a shell blocked around it; `timeout-minutes` is the runner's
+        # and was measured on run 6 not to end the step; and a watchdog loop in
+        # the step's own shell was measured on run 9 not to fire, its deadline
+        # passing by three minutes. This one needs nothing inside the step to be
+        # reachable.
+        #
+        # ⚠ 540 SECONDS, UNDER THE JOB'S 25 MINUTES WITH ROOM FOR THE CAPTURE AND
+        # THE UPLOADS. What it buys is not a faster failure: it is a job that
+        # reaches its uploads at all, because a runner that is killed leaves no
+        # log and no artifact - measured on runs 7, 8 and 9.
+        run: timeout -k 30 540 sh scripts/acquisition/install-step.sh
+        # ⚠ The body this replaced is in that file, unchanged in what it does.
 
       # ⛔ BOTH ADDRESS FAMILIES. A host with IPv4 unplugged and IPv6 up still
       # reaches the internet.

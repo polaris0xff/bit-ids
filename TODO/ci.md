@@ -1710,9 +1710,48 @@ the job finishes, and only an uploaded artifact survives.
 
 ⭐ **The bound is seen to fire rather than assumed to.** Two cases in
 `check-step-bodies`: a product made slower than the deadline is killed and the
-step still ENDS, with `wait` reporting 137; and a product slower than one tick but
-inside the deadline is not killed. ⚠ Without the second, the first passes equally
-over a block that kills every install it is given.
+step still ENDS, and a product slower than one tick but inside the deadline is
+not killed. ⚠ Without the second, the first passes equally over a block that
+kills every install it is given.
+
+### ⛔ Run 9: the watchdog in the step's own shell did not fire either
+
+**Dispatched 2026-09-09 as `["aria2","transmission"] × ["package"]` on
+`42bd206`**, with transmission as the control.
+
+| lane | outcome |
+| --- | --- |
+| `transmission` `package` | ⭐ **green: a complete capture**, install 121s, whole job three minutes |
+| `aria2` `package` | ⛔ *Install the client* began 10:13:54Z and had not returned at 10:28:45Z - **fifteen minutes** |
+
+⛔ **The deadline was 480 seconds and it passed by seven minutes.** That loop runs
+in the step's own shell, so a shell that was looping would have fired it. ⚠ So
+the step's shell is not reaching the loop, or is not running at all - which is a
+fact about the step rather than about the install, and it is the third bound
+measured not to fire here.
+
+⭐ **And transmission is the control that keeps this attributable.** Same run,
+same image, same step, same `apt-get`: 121 seconds and green. ⚠ That install is
+itself far slower than the 14 seconds earlier runs recorded, so these hosts are
+slow today - and slow is exactly what the aria2 lane is not, because a slow
+install would have been ended by `install-client`'s own 420-second bound.
+
+### ⭐ So the bound moves outside the shell entirely
+
+[`../scripts/acquisition/install-step.sh`](../scripts/acquisition/install-step.sh)
+holds what the step used to do inline, and the workflow runs it as
+`timeout -k 30 540 sh …`. ⛔ **The bounded process is now the step's own**, so
+nothing inside the step has to be reachable for the bound to work.
+
+⚠ **What that buys is not a faster failure. It is a job that reaches its uploads
+at all**: runs 7, 8 and 9 each ended with no log and no artifact, so an aria2
+lane that hangs has taught nothing three times running. ⭐ A step that ends leaves
+`watchdog.log`, `step.log` and `holders.log` behind, and `stat` beside `etimes`
+is what separates a command that is slow from one that is stopped.
+
+⭐ **Two cases hold it**, both in `check-step-bodies`: the bound around the step's
+own process fires and the step ends with coreutils' 124, and a product that
+finishes inside the bound is not killed.
 
 ### Acceptance for the harness, run on 2026-09-09
 
