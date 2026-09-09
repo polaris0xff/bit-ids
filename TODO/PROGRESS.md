@@ -119,6 +119,14 @@ published. `docs/publishing.md` carries the forms and says they are unexercised.
 ⚠ **Nothing schedules the staleness monitor.** `CI-02` built the comparison and
 its driving surface; no capture request has ever been opened.
 
+⭐ **A SECOND ACQUISITION ROUTE NOW EXISTS.** `aria2-next` gained a `source`
+route on 2026-09-09: a git clone of the resolved tag plus the project's own
+`cmake --preset default` build, 366 seconds through the adapter, producing a
+256 MB binary where the release asset is 14 MB - **both answering 2.7.5**. ⛔ No
+two-route capture has been dispatched yet, so `ACQ-03` has not compared two
+installed builds and no `Profile` exists. ⚠ Their independence is weaker than
+package-versus-vendor: different resolver and delivery, same origin.
+
 ⭐ **CLIENT CAPTURES HAVE NOW REACHED THE *Capture* STEP AND UPLOADED VERIFIED
 BUNDLES.** `capture-client` runs 11 and 12 measured `aria2-next` 2.7.5 on
 2026-09-09, in about two minutes each, every step green. Both observed a peer ID

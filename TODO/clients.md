@@ -1290,12 +1290,50 @@ Driven after the fix: the file is mode `600` while the build runs, absent after
 the tree that `check-no-secrets` scans. It was found by downloading the artifact
 a real dispatch produced and listing what was in it.
 
+### ⭐ ADDED AFTER CLOSURE on 2026-09-09: the second route exists
+
+⛔ **The closure evidence above is a dated measurement and is not rewritten.**
+This section records what was built after it, because the sentence below it -
+"this target has ONE acquisition route" - stopped being true the same day.
+
+⭐ **`aria2-next` now has a `source` route and both routes resolve 2.7.5.**
+Measured here: `git clone --depth 1 --branch v2.7.5`, then the project's own
+documented build - `cmake --preset default` and `cmake --build --preset default`
+- produced a binary answering `Aria2 Next version 2.7.5`, the same version the
+release asset carries.
+
+| | release route | source route |
+| --- | --- | --- |
+| resolver | the releases API | git refs |
+| delivery | one HTTPS asset | a git clone |
+| artifact | 14 MB, stripped | **256 MB**, `RelWithDebInfo` |
+| cost | 1.2 seconds | **366 seconds**, driven through the adapter |
+| version | 2.7.5 | 2.7.5 |
+
+⭐ **One version, two provably different builds** - which is the case `ACQ-03`
+exists to classify, and the first time this project has had one.
+
+⚠ **HOW INDEPENDENT THEY ARE IS STATED RATHER THAN CLAIMED.** They differ in
+resolver and in delivery, which is what `E-ACQ-07` and `E-ACQ-08` compare.
+⛔ They do NOT differ in origin: whoever controls that repository controls both.
+That is weaker than a distribution index against a vendor release, and it is
+written here so two green checks do not imply otherwise.
+
+⛔ **The bound needed room and only one route got it.** `install-client` bounds
+the adapter call at 420 seconds and the build measured 366 - fifty-four seconds
+of margin, which a slower runner spends. The workflow now passes
+`BIT_IDS_INSTALL_TIMEOUT: 500` for `source` lanes and 420 for every other, which
+keeps it under the step's own 540 so an overrun is refused by `install-client`
+with a message rather than killed by the outer bound with nothing to read.
+⚠ The outer `timeout -k 30 540` literal is deliberately untouched:
+`check-step-bodies` plants against that exact string.
+
 ### ⚠ What this entry still does not claim
 
-⛔ **One capture is not a published record.** This target has ONE acquisition
-route, `E-ACQ-01` refuses a record with one, and no `Profile` has been written or
-published. What exists is an attestation and an evidence bundle, which is the
-same state Transmission and qBittorrent have been in since 2026-09-08.
+⛔ **A route that installs is not yet a capture that agreed.** No two-route
+capture has been dispatched at the time of writing, so `ACQ-03` has not compared
+two installed builds and no `Profile` has been written or published. What exists
+is the second route and the measurement that both resolve one version.
 
 ⭐ **A SECOND CAPTURE ANSWERED THE SAMPLE QUESTION. capture-client run 12** ran
 the fixed adapter - `adapter_sha256` differs from run 11's, which is how the

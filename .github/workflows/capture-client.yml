@@ -135,8 +135,14 @@ jobs:
       # ⚠ THE PACKAGE LANE SKIPS IT because a package index needs no artifact
       # chosen, and a step that ran anyway would fetch a vendor listing that
       # nothing in that lane reads.
+      # ⭐ AND THE SOURCE LANE RESOLVES THROUGH THE SAME STEP, because both
+      # routes must land on ONE stable version. The release lane reads the asset
+      # URL out of the resolution and the source lane reads the tag; a second
+      # resolution per lane would let a vendor whose newest release moves between
+      # two reads hand the two routes different versions, which is exactly what
+      # absolute 4 forbids.
       - name: Resolve the release artifact
-        if: matrix.route == 'release'
+        if: matrix.route == 'release' || matrix.route == 'source'
         env:
           ADAPTER: scripts/capture/adapters/${{ matrix.adapter }}.sh
         run: |
@@ -215,6 +221,16 @@ jobs:
         env:
           ADAPTER: scripts/capture/adapters/${{ matrix.adapter }}.sh
           ROUTE: ${{ matrix.route }}
+          # ⭐ THE INNER BOUND IS RAISED FOR A SOURCE BUILD AND ONLY FOR ONE.
+          # `install-client` bounds the adapter call at 420 seconds by default,
+          # and `aria2-next`'s source route was measured at 366 - fifty-four
+          # seconds of margin, which a slower runner spends. ⚠ 500 keeps it UNDER
+          # the step's own 540, so a build that overruns is refused by
+          # `install-client` with a message naming the timeout rather than killed
+          # by the outer bound with nothing to read.
+          # ⛔ Every other route keeps 420 exactly: the aria2 lanes are what that
+          # number was measured against, and this must not quietly move it.
+          BIT_IDS_INSTALL_TIMEOUT: ${{ matrix.route == 'source' && '500' || '420' }}
         # ⛔ THE BOUND IS ON THE STEP'S OWN PROCESS, WHICH IS THE ONE PLACE IT HAS
         # NOT BEEN TRIED. `timeout` inside `install-client` ends its own child and
         # cannot end a shell blocked around it; `timeout-minutes` is the runner's

@@ -59,6 +59,26 @@ if [ "$ROUTE" = release ]; then
   printf 'the release route will fetch %s\n' "$BIT_IDS_RELEASE_URL"
 fi
 
+# ⭐ THE SOURCE ROUTE NEEDS THE TAG AND ONE RESOLVER ANSWERS BOTH LANES. It is
+# read out of the SAME resolution record the release lane writes, so the version
+# a source build is made of and the version a release asset carries cannot come
+# from two different reads of a vendor whose newest release moves between them.
+# ⚠ Absolute 4 wants two routes resolving the same stable version; sharing the
+# resolution is how that is made true rather than checked afterwards.
+if [ "$ROUTE" = source ]; then
+  [ -f "$RUNNER_TEMP/release/resolution.txt" ] || {
+    printf 'install-step: the source lane has no resolution to take a tag from\n' >&2
+    exit 2
+  }
+  BIT_IDS_RELEASE_TAG=$(sed -n 's/^selected_tag=//p' "$RUNNER_TEMP/release/resolution.txt")
+  [ -n "$BIT_IDS_RELEASE_TAG" ] || {
+    printf 'install-step: the resolution record names no selected_tag\n' >&2
+    exit 2
+  }
+  export BIT_IDS_RELEASE_TAG
+  printf 'the source route will build %s\n' "$BIT_IDS_RELEASE_TAG"
+fi
+
 # ⛔ THE INSTALL RUNS IN THE BACKGROUND SO THIS SHELL CAN RECORD WHAT THE HOST IS
 # DOING WHILE IT RUNS. ⚠ That loop is NOT the bound any more - run 9 measured it
 # not firing - it is the evidence: `stat` beside `etimes` is what separates a

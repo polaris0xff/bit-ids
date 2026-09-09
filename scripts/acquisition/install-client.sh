@@ -121,11 +121,15 @@ KILL_AFTER=${BIT_IDS_KILL_AFTER:-20}
 command -v timeout >/dev/null 2>&1 || cannot "timeout is not on this host"
 
 # ⛔ THE ROUTE VOCABULARY IS CLOSED. `docs/client-matrix.md` names two candidate
-# routes per target and `RouteKind` is the type they become, so a third spelling
-# arriving here would install through something no record can describe.
+# routes per target and `RouteKind` is the type they become, so a spelling
+# arriving here that is not in this list would install through something no
+# record can describe. ⭐ `source` was added on 2026-09-09 for `aria2-next`,
+# which no package index carries: its two routes are the vendor's published
+# binary and a build of the same tag, and `RouteKind::SourceBuild` is the type
+# the second becomes.
 case "$ROUTE" in
-  package | release) : ;;
-  *) cannot "unknown route: $ROUTE (package or release)" ;;
+  package | release | source) : ;;
+  *) cannot "unknown route: $ROUTE (package, release or source)" ;;
 esac
 
 HERE=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)

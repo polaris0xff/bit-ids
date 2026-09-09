@@ -198,6 +198,64 @@ no package index carries it, and installing aria2 would acquire a different prod
         [ -x "$PREFIX/bin/aria2-next" ] ||
           refuse "the release route reported an install and left no aria2-next in $PREFIX/bin"
         ;;
+      source)
+        # ⭐ THE SECOND ROUTE, AND IT EXISTS BECAUSE THIS TARGET HAS NO PACKAGE.
+        # `E-ACQ-01` refuses a record built from one route, and absolute 4 wants
+        # two routes resolving the SAME stable version. Measured on 2026-09-09:
+        # this build from tag `v2.7.5` answers `Aria2 Next version 2.7.5`, the
+        # same version the release asset reports, from a 256-megabyte
+        # `RelWithDebInfo` executable where the published one is 14 megabytes
+        # stripped. ⭐ One version, two provably different builds, which is the
+        # case `ACQ-03` exists to classify.
+        #
+        # ⚠ HOW INDEPENDENT THESE TWO ROUTES ARE IS STATED RATHER THAN CLAIMED.
+        # They differ in resolver - the releases API against git refs - and in
+        # delivery - one HTTPS asset against a git clone - which is what
+        # `E-ACQ-07` and `E-ACQ-08` compare. ⛔ They do NOT differ in origin:
+        # whoever controls the repository controls both. That is weaker than a
+        # distribution index against a vendor release, and the record says so
+        # rather than letting two green checks imply otherwise.
+        #
+        # ⚠ MEASURED COST: about 350 seconds for configure and build together on
+        # a four-core host, against the caller's 540-second bound. It builds the
+        # project's test binaries too, because `--preset default` is what the
+        # project's own README and CI run and a narrower target would be this
+        # repository inventing a build the vendor does not document.
+        [ -n "${BIT_IDS_RELEASE_TAG:-}" ] ||
+          cannot "the source route needs BIT_IDS_RELEASE_TAG, resolved before the route was cut"
+        for _need in git cmake ninja c++; do
+          command -v "$_need" >/dev/null 2>&1 ||
+            cannot "the source route builds from source and $_need is not on this host"
+        done
+        PREFIX=${BIT_IDS_PREFIX:-/usr/local}
+        mkdir -p "$PREFIX/bin" || cannot "cannot create $PREFIX/bin"
+        # ⚠ THE REPOSITORY IS THE ONE `describe` ALREADY NAMES, so the two routes
+        # cannot drift onto different upstreams. ⛔ A shallow clone of one tag:
+        # the history is not the measurement and fetching it would be minutes of
+        # network for bytes nothing reads.
+        _repo=AnInsomniacy/aria2-next
+        git clone --depth 1 --branch "$BIT_IDS_RELEASE_TAG" \
+          "https://github.com/$_repo.git" "$WORKDIR/src" \
+          </dev/null >"$WORKDIR/install.log" 2>&1 ||
+          refuse "the source route could not clone $BIT_IDS_RELEASE_TAG"
+        (cd "$WORKDIR/src" && cmake --preset default) \
+          </dev/null >>"$WORKDIR/install.log" 2>&1 ||
+          refuse "the source route could not configure a build"
+        (cd "$WORKDIR/src" && cmake --build --preset default) \
+          </dev/null >>"$WORKDIR/install.log" 2>&1 ||
+          refuse "the source route could not build aria2-next"
+        # ⚠ THE BUILT PATH IS THE PRESET'S, found rather than composed twice: the
+        # `default` preset writes into `build/default` and that is where the
+        # project's own CI reads its binary from.
+        [ -x "$WORKDIR/src/build/default/aria2-next" ] ||
+          refuse "the source route built nothing at build/default/aria2-next"
+        cp "$WORKDIR/src/build/default/aria2-next" "$PREFIX/bin/.aria2-next.new" ||
+          refuse "the source route could not stage its build in $PREFIX/bin"
+        mv "$PREFIX/bin/.aria2-next.new" "$PREFIX/bin/aria2-next" ||
+          refuse "the source route could not install into $PREFIX/bin"
+        [ -x "$PREFIX/bin/aria2-next" ] ||
+          refuse "the source route reported an install and left no aria2-next in $PREFIX/bin"
+        ;;
       *) cannot "unknown route: $ROUTE" ;;
     esac
     ;;

@@ -56,13 +56,21 @@ with one.
 
 **Next, in order:**
 
-1. **A SECOND ROUTE, and it is the only thing between this project and its first
-   published record.** Every layer is now proved end to end - resolve, install,
-   contain, capture, bundle, verify - on a target with one route. ⭐ The cheapest
-   candidates are a `source-build` of `aria2-next` at the matching tag, which the
-   catalogue already names as its route B, or a target whose package and release
-   routes both install (`transmission` and `qbittorrent` install from the package
-   index today; their release routes do not).
+1. ⭐ **THE SECOND ROUTE EXISTS. Dispatch a two-route capture and read it back.**
+   `aria2-next` now has a `source` route beside its `release` one and both
+   resolve **2.7.5**: a git clone of the tag plus the project's own documented
+   `cmake --preset default` build, driven through the adapter in **366 seconds**,
+   producing a 256 MB `RelWithDebInfo` binary where the published asset is 14 MB
+   stripped. ⭐ One version, two provably different builds - the case `ACQ-03`
+   exists to classify, and the first this project has had.
+   ⛔ Dispatch `capture-client.yml` with `adapters=["aria2-next"]` and
+   `routes=["release","source"]`, then compare the two install records.
+   ⚠ **Their independence is weaker than the package-versus-vendor kind** and the
+   record says so: different resolver and delivery, same origin.
+   ⚠ Other targets cannot do this today - measured: Ubuntu ships aria2 1.37.0
+   against upstream 1.37.0, transmission 4.0.5 against 4.1.3, and qbittorrent
+   4.6.3 against 5.2.3, so aria2 is the only same-version package pair and its
+   install hangs.
 2. **A record in the store**, once a two-route capture exists. `not_corroborated`
    is a recordable state; one route is not.
 3. **`CI-07`**, the PowerShell halves for the declared rows. ⭐ Its cheap half is
