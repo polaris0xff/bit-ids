@@ -202,7 +202,11 @@ the whole install step, and the pipe is only examined after the body exits, so
 under load the plant expired before it was measured. `LEAK_SECONDS=45` now names
 it once and a guard checks `LEAK_SECONDS > CLOSE_SECONDS`. `CI-08` carries it.
 ⭐ **The lesson is the method, not the constant:** when a gate row goes red at
-random, run the gate in a loop and READ THE LOG IT PRINTS before theorising. ⭐ Its cases time
+random, run the gate in a loop and READ THE LOG IT PRINTS before theorising.
+⭐ Corroborated by the harness that was failing: `check-workflow` runs the whole
+gate about ten times and lost one `gate_control` case on each of its two runs
+before the fix, a different one each time; on the final tree it reported
+**97 of 97**. ⭐ Its cases time
 things - a bound that must fire as `124`, "a product slower than one tick and
 inside the bound survives", and whether a step's output pipe reaches end of file
 - so a loaded host can move a case across its own boundary.

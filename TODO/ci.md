@@ -1911,8 +1911,12 @@ mutation-proven (exit 2, each naming its own reason). ⚠ The cost is stated in 
 file: a `sleep` orphan can outlive the check by up to 45 seconds where the old
 value bounded that at 8.
 
-**Verified:** 5 consecutive full gate runs green, against 3 red in roughly 9
-before the change. ⚠ That is a rate on one host and not a proof; the failure is
+**Verified twice over:** 5 consecutive full gate runs green, against 3 red in
+roughly 9 before the change - and `sh scripts/ci/check-workflow.sh` came back
+**97 cases, 97 passed, 0 failed** on the final tree. ⭐ That last one matters
+because it is the harness that was failing: it runs the whole gate about ten
+times, and both of its runs before the fix lost exactly one `gate_control` case,
+a different one each time. After the fix it lost none. ⚠ That is a rate on one host and not a proof; the failure is
 load-dependent, and `LEAK_SECONDS=4` still passes on an idle host. ⛔ Which is
 also why the guard compares the two bounds: the relation is what matters, and a
 number that happens to work today is what went stale.
