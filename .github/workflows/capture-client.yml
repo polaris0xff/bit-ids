@@ -154,6 +154,20 @@ jobs:
             >"$RUNNER_TEMP/release/url.txt"
           cat "$RUNNER_TEMP/release/resolution.txt"
 
+      # ⛔ AND NOTHING THE ROUTE SPAWNS INHERITS THIS STEP'S OUTPUT, which is the
+      # one structural change this step has had since the aria2 hang started. A
+      # runner ends a `run:` step when the command has exited AND the step's
+      # output pipe has reached end of file, so a single process the product
+      # leaves behind holding that pipe keeps the step open with an exit code of
+      # 0 sitting in it - and no bound helps, because there is nothing left to
+      # bound. `scripts/ci/check-step-bodies.sh` runs this exact block and
+      # measures it: over a stub product that leaks one process the block does
+      # not end, and over one that does not it ends at once.
+      #
+      # ⚠ IT IS A MITIGATION AND ITS OUTCOME IS THE MEASUREMENT. If an aria2 lane
+      # now gets past this step, the class is what the hang was; if it hangs
+      # anyway, a fourth reading is refuted with something that separates it.
+      # `CI-08` carries both branches.
       - name: Install the client
         env:
           ADAPTER: scripts/capture/adapters/${{ matrix.adapter }}.sh
@@ -169,11 +183,32 @@ jobs:
             export BIT_IDS_RELEASE_URL
             printf 'the release route will fetch %s\n' "$BIT_IDS_RELEASE_URL"
           fi
+          # ⛔ THE DIRECTORY IS MADE BEFORE THE REDIRECTION, NOT BY THE SCRIPT,
+          # for the reason *Resolve the release artifact* gives above: a shell
+          # opens `>` targets before it execs.
+          mkdir -p "$RUNNER_TEMP/install-$ROUTE"
+          rc=0
           sudo -E sh scripts/acquisition/install-client.sh \
             --adapter "$ADAPTER" \
             --route "$ROUTE" \
             --workdir "$RUNNER_TEMP/install-$ROUTE" \
-            --record "$RUNNER_TEMP/install-$ROUTE.txt"
+            --record "$RUNNER_TEMP/install-$ROUTE.txt" \
+            >"$RUNNER_TEMP/install-$ROUTE/step.log" 2>&1 || rc=$?
+          cat "$RUNNER_TEMP/install-$ROUTE/step.log"
+          # ⭐ AND WHATEVER IS STILL HOLDING THAT FILE IS NAMED, which is the
+          # first positive evidence this project will have about what the route
+          # leaves behind. ⚠ Under sudo, because the install ran as root and an
+          # unprivileged reader of /proc reports "nobody holds it" over a file
+          # root processes are holding. ⚠ Its own status is read and printed
+          # rather than discarded: a diagnostic that failed silently would be
+          # replacing a missing answer with a wrong one, and one that failed the
+          # STEP would throw away an install that worked.
+          held=0
+          sudo sh scripts/ci/report-holders.sh \
+            "$RUNNER_TEMP/install-$ROUTE/step.log" \
+            >"$RUNNER_TEMP/install-$ROUTE/holders.log" 2>&1 || held=$?
+          printf 'the holder report exited %s\n' "$held"
+          [ "$rc" = 0 ] || exit "$rc"
           cat "$RUNNER_TEMP/install-$ROUTE.txt"
 
       # ⛔ BOTH ADDRESS FAMILIES. A host with IPv4 unplugged and IPv6 up still

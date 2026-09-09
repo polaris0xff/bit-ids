@@ -285,7 +285,12 @@ fi
 TREE="$WORK/tree"
 mkdir -p "$TREE/scripts/acquisition" "$TREE/scripts/capture/adapters" "$TREE/bin" \
   "$TREE/state" "$TREE/temp" || exit 2
+mkdir -p "$TREE/scripts/ci" || exit 2
 cp "$ROOT/scripts/acquisition/install-client.sh" "$TREE/scripts/acquisition/" || exit 2
+# ⚠ THE HOLDER REPORT IS THE REAL ONE TOO. The install block calls it, so a
+# scratch tree without it would make both install cases fail on a missing file
+# rather than on what they are about.
+cp "$ROOT/scripts/ci/report-holders.sh" "$TREE/scripts/ci/" || exit 2
 
 # ⚠ A `sudo` THAT IS NOT sudo. The install body runs `sudo -E sh ...`, and this
 # session is not a place to ask for privilege; dropping the flags and running the
@@ -446,13 +451,42 @@ if lift "$CLIENT_WF" linux "Install the client" "$WORK/install.sh"; then
   run_body "$WORK/install.sh" default "$TREE"
   ended "sh       the install block ends over a product that behaves" 0
 
-  # ⛔ AND THE ONE THAT MATTERS. Same block, same command, a product that leaves
-  # one process holding the step's output - and the step never ends, with an
-  # exit code of 0 sitting in it.
+  # ⭐ AND THE ONE THAT MATTERS: THE SAME BLOCK OVER A PRODUCT THAT LEAKS ONE
+  # PROCESS, WHICH NOW ENDS. The route's output goes to a file, so nothing it
+  # spawns inherits the step's own pipe and the runner has nothing left to wait
+  # on. ⚠ The leaked process is still there - this does not stop a product
+  # leaking, it stops a leak holding the step open.
   stub_adapter 'sleep 8 &'
   rm -rf "$TREE/temp/install-package" "$TREE/temp/install-package.txt"
   run_body "$WORK/install.sh" default "$TREE"
-  hangs "sh       the install block does NOT end over a product that leaks one" 0
+  ended "sh       the install block ends over a product that leaks one process" 0
+
+  # ⛔ AND THE CONTROL THAT SAYS THE REDIRECTION IS WHAT DOES IT. Without this
+  # the case above passes equally over a block that never had the problem. The
+  # plant hands the route one extra descriptor onto the step's own output -
+  # `3>&1`, which is how such a thing arrives in real life - and the same
+  # product, leaking the same single process, then holds the step open with an
+  # exit code of 0 in it.
+  #
+  # ⚠ THE ORDER OF THE REDIRECTIONS IS THE WHOLE PLANT, and the first version
+  # got it wrong: a shell applies them left to right, so `>log 2>&1 3>&1` points
+  # fd 3 at the LOG - fd 1 is already the log by then - and the case reported the
+  # hang not happening over a plant that had duplicated the wrong file. Written
+  # before the redirection, `3>&1` is the step's own pipe.
+  cp "$WORK/install.sh" "$WORK/install-leaky.sh"
+  # ⛔ THE DOLLAR SIGNS ARE THE POINT AGAIN. These are the workflow's own text,
+  # matched and replaced literally; a shell that expanded them would look for a
+  # line the block does not contain and the plant would not apply.
+  # shellcheck disable=SC2016
+  if replace_once "$WORK/install-leaky.sh" \
+    '>"$RUNNER_TEMP/install-$ROUTE/step.log" 2>&1 || rc=$?' \
+    '3>&1 >"$RUNNER_TEMP/install-$ROUTE/step.log" 2>&1 || rc=$?'; then
+    rm -rf "$TREE/temp/install-package" "$TREE/temp/install-package.txt"
+    run_body "$WORK/install-leaky.sh" default "$TREE"
+    hangs "sh       one leaked descriptor onto the step's output brings it back" 0
+  else
+    fail "sh       the leaked-descriptor plant did not apply"
+  fi
 else
   fail "sh       capture-client.yml has no linux step named Install the client (exit $?)"
 fi

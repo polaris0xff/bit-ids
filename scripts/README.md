@@ -139,8 +139,15 @@ from any working directory.
   finished - and no exit code says so. ⭐ It records both facts per body and
   keeps them apart, which is what lets it accept `capture.yml`'s *Restore the
   route* block as it stands, refuse it in the form that failed capture run 1, and
-  report `capture-client.yml`'s install block as a step that would not end when
-  the product it drives leaks one process.
+  measure `capture-client.yml`'s install block ending over a product that leaks
+  one process - with a planted `3>&1` bringing the hang straight back, which is
+  what says the redirection is doing the work rather than the case being easy.
+- [`ci/report-holders.sh`](ci/report-holders.sh) names the processes still
+  holding an open descriptor on a file, and prints the process table beside them.
+  ⚠ It reports and never refuses: a step that went red because its diagnostic
+  found nothing would replace a missing answer with a wrong one. ⛔ It has to run
+  as the user the work ran as - an unprivileged reader of `/proc` reports nobody
+  holding a file three root processes are holding.
 - [`corpus/store-lib.sh`](corpus/store-lib.sh) is sourced by **every** mutation
   harness except `acquisition/check-runner.sh`, and by
   `publishing/publish-data.sh`, which is not a harness. It is never run.

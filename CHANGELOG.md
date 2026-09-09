@@ -5,6 +5,32 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-09T08:42:57Z
+
+- ⭐ *Install the client* sends the route's output to a **file** and prints it
+  afterwards, so nothing the product spawns inherits the step's own output pipe.
+  Record: [`TODO/ci.md`](TODO/ci.md), `CI-08`, and
+  [`TODO/clients.md`](TODO/clients.md), `CLIENT-05`.
+- ⛔ Three cases hold it: the block ends over a product that behaves, it ends
+  over one that leaks a single process, and a planted extra descriptor onto the
+  step's own output brings the hang straight back. Without the third the second
+  passes equally over a block that never had the problem.
+- ⚠ That plant was wrong on its first run and the reason is worth keeping: a
+  shell applies redirections left to right, so a duplicate written after
+  `>log 2>&1` points at the log rather than at the step's pipe. The case
+  reported the hang not happening, over a plant that had duplicated the wrong
+  file.
+- ⭐ [`scripts/ci/report-holders.sh`](scripts/ci/report-holders.sh) names every
+  process still holding an open descriptor on the route's log and prints the
+  process table beside it, into the workdir the `always()` upload collects.
+  ⚠ It runs under `sudo` because the install did: an unprivileged reader of
+  `/proc` reports nobody holding a file that root processes are holding.
+- ⛔ It is a mitigation and its outcome is the measurement. A lane that gets past
+  that step says the class is what the hang was; one that hangs anyway refutes
+  the reading with something that separates it rather than with another guess.
+- Deployment: nothing deployed.
+
+
 ### 2026-09-09T07:58:50Z
 
 - ⭐ A capture workflow's step bodies are now RUN, which nothing here did.

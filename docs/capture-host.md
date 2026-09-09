@@ -203,7 +203,7 @@ what happened without reading an expression.
 | claim the host | ⛔ first, and before the install as well as before the capture: a product installed on a host nothing established was disposable is state on a machine that may be kept |
 | build the observer | while the network still exists, and it is every binary the job runs rather than only the observer |
 | resolve the release artifact | ⛔ before the install, which needs its answer, and therefore before the route is cut. Only on the `release` lane: a package index needs no artifact chosen |
-| install the client | ⛔ also while the network still exists. `capture-client` refuses to install anything, and a package index is unreachable from a host with no default route |
+| install the client | ⛔ also while the network still exists. `capture-client` refuses to install anything, and a package index is unreachable from a host with no default route. ⛔ The route's output goes to a **file** and is printed afterwards, so nothing the product spawns inherits the step's own output pipe: a runner ends a step when the command has gone *and* that pipe has reached end of file, and one process left holding it keeps the step open with a zero exit code in it |
 | cut the route off this host | both address families, routes saved first |
 | assert containment | the guard reads the kernel, not the step above |
 | capture | the build is handed the torrent and reads the tracker's address out of it |

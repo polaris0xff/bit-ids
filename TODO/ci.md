@@ -1574,6 +1574,40 @@ collapses two of them, as it always has; the new harness does not, because a ste
 it names and the workflow no longer has is rot rather than a rule that quietly
 passed.
 
+### ⭐ And what the instrument says to do about the install step
+
+**Changed 2026-09-09.** *Install the client* sends the route's output to a file
+and prints it afterwards, so nothing the product spawns inherits the step's own
+output pipe. Three cases in the harness carry it: the block ends over a product
+that behaves, it ends over one that leaks a single process, and a planted `3>&1`
+- one extra descriptor onto the step's own output, written before the
+redirection - brings the hang straight back. ⛔ Without that third case the
+second passes equally over a block that never had the problem.
+
+⚠ **THE ORDER OF THE REDIRECTIONS IS THE PLANT, and the first version of it was
+wrong**: a shell applies them left to right, so `>log 2>&1 3>&1` points fd 3 at
+the log rather than at the step's pipe, and the case reported the hang not
+happening over a plant that had duplicated the wrong file. It is the same class
+as an in-place `sed` editing a line nobody named - a plant that applied
+somewhere other than where the case says.
+
+⭐ **The step also names what is holding the file now.**
+[`../scripts/ci/report-holders.sh`](../scripts/ci/report-holders.sh) lists every
+process with an open descriptor on the route's log and prints the process table
+beside it, into `holders.log` in the workdir the `always()` upload collects. ⚠ It
+runs under `sudo` because the install did: an unprivileged reader of `/proc`
+reports nobody holding a file that root processes are holding, which is a
+diagnostic that answers confidently and wrongly. Driven here against a known
+holder: it named the process by pid, comm and arguments, reported `0 holder(s)`
+for a path nothing held, and exited 2 with no arguments.
+
+⛔ **It is a mitigation and its outcome is the measurement.** If an aria2 lane
+now gets past *Install the client*, the class is what the hang was; if it hangs
+anyway, this reading is refuted by something that separates it rather than by
+another guess. ⚠ Either way the lane leaves `holders.log` behind, which is the
+first positive evidence this project will have about what that route leaves
+running.
+
 ### Acceptance for the harness, run on 2026-09-09
 
 - `sh scripts/ci/check-step-bodies.sh`

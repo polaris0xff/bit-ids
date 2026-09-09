@@ -734,6 +734,28 @@ without reading an expression. ⭐ The four aria2 install logs already collected
 say what that route does; what run 7 bought instead is where the hang actually
 sits.
 
+### ⛔ What the eighth dispatch is for, and what it changes first
+
+**Prepared 2026-09-09.** Nothing about aria2's adapter or its routes changed.
+What changed is the workflow step they run in: the route's output goes to a file
+rather than to the step's own pipe, because a runner ends a step when the command
+has exited **and** that pipe has reached end of file. `CI-08` carries the
+instrument that measures it and the plant that proves the redirection is what
+does the work.
+
+⚠ **This is not a fourth cause and it is not offered as one.** What made it worth
+doing is a comparison of two runs rather than a theory about a mechanism: runs 6
+and 7 ran the same install from commits whose only functional difference is where
+a later step sits, and it took six seconds in one and had not returned after
+sixteen minutes in the other.
+
+⭐ **Both outcomes of the next dispatch are informative.** A lane that gets past
+*Install the client* says the class is what the hang was; a lane that hangs
+anyway refutes it with something that separates rather than with another guess.
+⚠ Either way the job now leaves `holders.log` behind - every process still
+holding the route's log, with the process table beside it - which is the first
+positive evidence about what an aria2 install leaves running on a runner.
+
 ### ⭐ Transmission's third capture, and a third peer ID
 
 | what | value |
