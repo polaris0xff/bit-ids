@@ -44,18 +44,19 @@ matrix dimension and `resolve-release.sh` chooses the artifact.
 
 **Next, in order:**
 
-1. ⭐ **`CLIENT-14`'s ADAPTER EXISTS AND ITS TARGET IS MEASURED. What is left is
-   a dispatch.** `scripts/capture/adapters/aria2-next.sh` was written from
-   measurements rather than by analogy, and every subcommand has been driven on a
-   session host: fetched, verified with `sha256sum -c` against the vendor's own
-   digests, installed in **1.2 seconds**, asked its version, started over
-   `aria2.addTorrent`, stopped over `aria2.shutdown`. ⛔ **Nothing about that
-   establishes it avoids the hang** - a session host is not the runner image, and
-   the hang lives in *Install the client* on `ubuntu-24.04`. Dispatch
-   `capture-client.yml` for it and read the run back.
-   ⛔ **Its second route is a measured absence, not an open question:** no
-   package index carries this fork, so it has ONE route and `E-ACQ-01` refuses a
-   record with one. The two-route record is not this entry's to produce.
+1. ⭐ **`CLIENT-14` CAPTURED. THE HANG IS NOT IN FRONT OF THIS TARGET.**
+   `capture-client` run 11 is the eleventh dispatch and the first to reach the
+   *Capture* step: every step passed, in 2 minutes 1 second, with a one-second
+   install. It attests `stock_client=true`, `measured_build=2.7.5`,
+   `egress=closed`, and its bundle verifies with `sha256sum -c` outside the run.
+   ⛔ **The measured peer ID is `-qB5230-s2QbzYjt(LOQ`** - qBittorrent 5.2.3.0's
+   prefix, emitted by a stock `aria2-next`.
+   ⛔ **It is still not a record.** One acquisition route, and `E-ACQ-01` refuses
+   a record with one, so this is an attestation and a bundle. The two-route
+   record is not this entry's to produce.
+   ⚠ **One capture is one sample.** Whether the `-qB5230-` prefix is stable
+   across runs is unmeasured; Transmission gave three distinct peer IDs over four
+   captures. Dispatch it again and compare before treating the prefix as fixed.
 2. **A record in the store**, once a two-route capture exists. `not_corroborated`
    is a recordable state; one route is not.
 3. **`CI-07`**, the PowerShell halves for the declared rows. ⭐ Its cheap half is
@@ -159,12 +160,23 @@ cases run the gate. It is about 20 minutes and the CI lane runs it in a job of
 its own. ⚠ Killing and restarting it costs the whole 20 minutes: make every edit
 first, then run it once.
 
-⛔ **AND DO NOT RUN THE GATE WHILE `check-workflow` IS RUNNING.** Observed on
-2026-09-09: a gate run started beside one reported `1 failed`, and the same gate
-over the same tree reported `30 passed, 0 failed` as soon as the concurrent run
-was stopped, with nothing else changed. ⚠ Two observations are not a mechanism,
-and the cost of assuming they are unrelated is a session chasing a failure that
-is not in the tree. They run one at a time.
+⛔ **AND DO NOT RUN THE GATE WHILE `check-workflow` IS RUNNING**, or `git add`
+while it is, which corrupts its plant-and-restore accounting.
+
+⚠ **`check-step-bodies` IS THE FLAKY ROW, AND IT IS FLAKY BY CONSTRUCTION.**
+Measured on 2026-09-09: a gate run reported `FAIL check-step-bodies (exit 1)`,
+the harness run alone immediately afterwards reported `24 cases: 24 passed`
+exit 0, and the next gate over the same tree was green. ⭐ Its cases time
+things - a bound that must fire as `124`, "a product slower than one tick and
+inside the bound survives", and whether a step's output pipe reaches end of file
+- so a loaded host can move a case across its own boundary.
+
+⚠ **That is one measured instance plus a mechanism, not a proven cause of every
+red.** `check-workflow` failed one `gate_control` case on each of two runs, a
+DIFFERENT case each time, and those cases only report "the clean tree failed a
+check" without naming which - and the harness deletes its workdir, so the naming
+log is gone. ⛔ Do not spend a session bisecting a tree over this: run the failing
+check alone first, and believe a red only when it repeats unloaded.
 
 ⛔ **Read exit codes from the process that produced them, unpiped.**
 
@@ -230,6 +242,14 @@ it would have published the literal string `version` - and it would have passed
 every check here, because it is a non-empty field.
 
 **The strongest control available is a reader this project did not write.**
+
+⛔ **A CAPTURE'S WORKDIR IS ITS EVIDENCE BUNDLE, so rule 12 applies to what an
+adapter writes there.** Found on capture-client run 11 by downloading the
+artifact and listing it: `aria2-next` wrote a per-run RPC token where `stop`
+could read it, and `capture-client` packed that directory, so the token shipped
+inside the artifact as `client/rpc-token`. ⚠ Neither step was wrong alone, no
+reading found it, and the gate structurally cannot - the bundle is not in the
+tree `check-no-secrets` scans. ⭐ Look in the artifact a real dispatch produced.
 
 ---
 

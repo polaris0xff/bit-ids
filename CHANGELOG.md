@@ -5,6 +5,40 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-09T13:40:18Z
+
+- ⭐ **A client capture reached the *Capture* step for the first time.**
+  `capture-client` run 11 measured `aria2-next` 2.7.5 on a hosted runner: every
+  step passed, in 2 minutes 1 second, with a one-second install. Ten earlier
+  dispatches of `aria2` stopped inside *Install the client* and produced no log
+  and no artifact.
+- ⭐ **The evidence bundle verifies outside the run that wrote it.** Downloaded
+  and checked with `sha256sum -c SHA256SUMS`: three files, all `OK`, exit 0.
+- ⛔ **A stock `aria2-next` announces as qBittorrent.** The measured peer ID is
+  `-qB5230-s2QbzYjt(LOQ`, whose first eight bytes are qBittorrent 5.2.3.0's
+  prefix. Predicted from an RPC option read, then observed on the wire - and a
+  peer-ID table would have filed this build under the wrong product.
+- ⛔ **Run 11 found a secret in the artifact, and the gate structurally could
+  not.** The adapter wrote its per-run RPC token into the workdir so `stop` could
+  authenticate a shutdown, and `capture-client` packs that workdir, so the token
+  shipped as `client/rpc-token`. `stop` now unlinks it before anything packs the
+  directory and `start` writes it under `umask 077`; `adapters/README.md` carries
+  the rule that a workdir IS the evidence bundle.
+- ⚠ **The asset-less release was transient and the window is still real.** Run 11
+  resolved `2.7.5`, the release that carried zero assets at `12:11:57Z`. The
+  fixture and the harness case keep the refusal pinned whether or not the window
+  is open today.
+- ⚠ **`check-step-bodies` is a flaky gate row and it is flaky by construction.**
+  A gate run reported it failed; the harness alone reported 24 of 24 passing, and
+  the next gate over the same tree was green. Its cases time a bound that must
+  fire as `124` and a step whose output pipe must reach end of file, so a loaded
+  host can move a case across its own boundary. Recorded in
+  [`docs/history/RESUME.md`](docs/history/RESUME.md) so the next red is checked
+  alone before anything is bisected.
+- Record: [`TODO/clients.md`](TODO/clients.md), `CLIENT-14`. No version bump and
+  no deploy: nothing is released, and one acquisition route means `E-ACQ-01`
+  still refuses a record built from this capture.
+
 ### 2026-09-09T12:29:06Z
 
 - ⭐ **`CLIENT-14`'s adapter exists and its target is measured.**

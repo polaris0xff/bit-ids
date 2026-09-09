@@ -243,12 +243,26 @@ no package index carries it, and installing aria2 would acquire a different prod
     # ⛔ A PER-RUN TOKEN, GENERATED HERE AND WRITTEN TO RUN STATE. A literal in
     # this file would be a shared secret in the tree, which rule 12 refuses; a
     # daemon with no token would accept an RPC call from anything that reached
-    # the port. It goes in the workdir because that is run state the bundle
-    # already carries, never into the tree.
+    # the port.
+    #
+    # ⛔ AND `stop` DELETES IT, BECAUSE THE WORKDIR IS THE EVIDENCE BUNDLE.
+    # Measured on capture-client run 11: this file shipped inside the uploaded
+    # artifact as `client/rpc-token`, which is rule 12's "a secret never enters
+    # ... artifacts" in the one place no reading had looked - the run wrote it,
+    # the run bundled the directory it was in, and nothing between them was
+    # wrong. ⚠ A short-lived token for a loopback port on a host that is about to
+    # be destroyed is a weak secret, and rule 12 does not grade them.
+    #
+    # ⚠ 077 SO IT IS NEVER WORLD-READABLE EVEN WHILE IT EXISTS, and the umask is
+    # restored straight after: a subshell would not do, because the file has to
+    # outlive it.
     TOKEN=$(od -An -tx1 -N16 /dev/urandom 2>/dev/null | tr -d ' \n')
     [ -n "$TOKEN" ] || cannot "cannot generate an RPC token"
+    _oldmask=$(umask)
+    umask 077
     printf '%s\n' "$TOKEN" >"$WORKDIR/rpc-token" ||
       cannot "cannot record the RPC token"
+    umask "$_oldmask"
     printf '%s\n' "$RPC_PORT" >"$WORKDIR/rpc-port" ||
       cannot "cannot record the RPC port"
 
@@ -377,6 +391,12 @@ no package index carries it, and installing aria2 would acquire a different prod
       TOKEN=$(cat "$WORKDIR/rpc-token")
       [ ! -f "$WORKDIR/rpc-port" ] || RPC_PORT=$(cat "$WORKDIR/rpc-port")
       rpc aria2.shutdown "[\"token:$TOKEN\"]" "$WORKDIR/rpc-shutdown.json" || :
+      # ⛔ GONE BEFORE ANYTHING BUNDLES THIS DIRECTORY, and gone whether or not
+      # the shutdown was accepted. `capture-client` calls `stop` and then packs
+      # the workdir, so this unlink is the whole of what keeps the token out of
+      # the artifact. ⚠ It is removed HERE rather than at the end of `stop`,
+      # because every path below this line can exit.
+      rm -f "$WORKDIR/rpc-token"
       # ⚠ TEN SECONDS, AND THE NUMBER IS MEASURED RATHER THAN ROUND. Driven on
       # 2026-09-09: `aria2.shutdown` answered `OK` and the build was still alive
       # five seconds later, so a five-second grace fell through to a signal every

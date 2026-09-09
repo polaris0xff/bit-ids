@@ -93,6 +93,24 @@ own case because a stub blocking on `read` would demonstrate only the redirect.
 `qbittorrent-nox` asks for its legal notice to be confirmed - on `--version` as
 well as on a run, which is a control on one of two paths into the same product.
 
+## ⛔ The workdir IS the evidence bundle
+
+**Anything an adapter writes into the workdir is uploaded as an artifact.**
+`capture-client` calls `stop` and then packs that directory, so a file left
+there ships.
+
+⚠ **Which makes rule 12 an adapter rule and not only a repository one.**
+Measured on capture-client run 11: `aria2-next` generated a per-run JSON-RPC
+token, wrote it to `<workdir>/rpc-token` so `stop` could authenticate its
+shutdown, and the token was then inside the uploaded bundle as
+`client/rpc-token`. Nothing between those two steps was wrong on its own. ⛔ A
+short-lived token, for a loopback port, on a host about to be destroyed, is a
+weak secret and rule 12 does not grade them.
+
+⭐ **So an adapter that must persist a secret deletes it in `stop`, before
+anything packs the directory** - and writes it under `umask 077` in the
+meantime. An adapter that needs no secret should not invent one.
+
 ## What an adapter must switch off
 
 ⛔ **Public peer discovery, on every route into it.** A capture host has no

@@ -114,6 +114,13 @@ published. `docs/publishing.md` carries the forms and says they are unexercised.
 ⚠ **Nothing schedules the staleness monitor.** `CI-02` built the comparison and
 its driving surface; no capture request has ever been opened.
 
+⭐ **A CLIENT CAPTURE HAS NOW REACHED THE *Capture* STEP AND UPLOADED A VERIFIED
+BUNDLE.** `capture-client` run 11 measured `aria2-next` 2.7.5 on 2026-09-09 and
+observed peer ID `-qB5230-s2QbzYjt(LOQ` - qBittorrent 5.2.3.0's prefix, emitted
+by a different product. ⛔ Still an attestation and a bundle rather than a
+`Profile`: that target has one acquisition route and `E-ACQ-01` refuses a record
+with one. `CLIENT-14` carries it.
+
 ⭐ **The capture workflow has been dispatched twice and run 2 is green on both
 platforms.** ⛔ **Run 1 bought a defect no reading had found**: its Windows job
 went red on *Restore the route* over a restore that had worked. That step runs
@@ -212,17 +219,22 @@ nothing is. The clone question under *Settled decisions* is spent too.
    ever produced a log or an artifact. ⛔ The direction is to change the target
    rather than to keep diagnosing - `AnInsomniacy/aria2-next`, acquired from its
    own releases and driven over RPC.
-   ⭐ **The adapter exists and every subcommand has been driven on this host.**
-   The build was fetched, verified against the vendor's published digests with
-   `sha256sum -c`, installed in **1.2 seconds**, asked its version, started over
-   `aria2.addTorrent` and stopped over `aria2.shutdown`. `CLIENT-14` carries all
-   of it.
-   ⛔ **What it does NOT establish is that this target avoids the hang.** A
-   session host is not the runner image, and only a dispatch answers that.
-   ⛔ **And the second route is now a measured absence rather than an open
-   question**: no package index carries this fork, so the target has ONE route
-   and `E-ACQ-01` refuses a record with one. `CLIENT-05` stays open on the hang,
-   which is a property of this capture path rather than of one product.
+   ⭐ **THE CAPTURE RAN AND EVERY STEP PASSED. capture-client run 11 is the
+   ELEVENTH dispatch and the FIRST to reach the *Capture* step**, in 2 minutes 1
+   second, with an install step of one second. It attests `kind=client`,
+   `stock_client=true`, `measured_build=2.7.5`, `acquired=yes`, `egress=closed`,
+   and its evidence bundle verifies with `sha256sum -c` outside the run that
+   wrote it.
+   ⛔ **AND THE IDENTITY IS NOT THE PRODUCT'S OWN**: the measured peer ID is
+   `-qB5230-s2QbzYjt(LOQ`, whose first eight bytes are qBittorrent 5.2.3.0's
+   prefix. A stock `aria2-next` announces as qBittorrent, observed on the wire
+   rather than read from a table.
+   ⛔ **The second route is a measured absence**: no package index carries this
+   fork, so the target has ONE route and `E-ACQ-01` still refuses a record with
+   one. ⚠ So run 11 produced an attestation and an evidence bundle, not a
+   `Profile`. `CLIENT-05` stays open on the hang, which run 11 does not diagnose:
+   a different target installing cleanly is not an explanation of why aria2 does
+   not.
 1. **`CLIENT-01`, `CLIENT-06`, `CLIENT-05`**, the first complete vertical
    captures. ⭐ Every layer below the product is written and proved, and
    `capture-client.yml` is the workflow that runs them. ⚠ What remains is a

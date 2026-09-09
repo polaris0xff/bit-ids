@@ -1164,29 +1164,103 @@ vendor.** A release exists from the moment it is created; its binaries arrive
 when whatever builds them finishes. Any capture dispatched inside that window
 resolves nothing.
 
+### ⭐ THE CAPTURE RAN. capture-client run 11, 2026-09-09
+
+⛔ **THE ELEVENTH DISPATCH IS THE FIRST TO REACH THE *Capture* STEP, AND IT PASSED
+EVERY STEP.** Ten aria2 dispatches stopped inside *Install the client* and
+produced no log and no artifact. This job ran **2 minutes 1 second** end to end
+(13:30:55Z to 13:32:56Z) and its install step took **one second**.
+
+| field | value |
+| --- | --- |
+| `kind` | `client` |
+| `stock_client` | `true` |
+| `measured_build` | `2.7.5` |
+| `acquired` | `yes`, with `preexisting_version` empty |
+| `installed_binary` | `/usr/local/bin/aria2-next`, sha256 `5190b4f5…` |
+| `egress` | `closed`, from `/proc/net/route` |
+| `announces` | 1 |
+| `peer_streams` | 1, dialled at `127.0.0.1:51413` |
+| `evidence` | 3 files, `evidence_verified_by=sha256sum` |
+
+⭐ **AND THE BUNDLE VERIFIES OUTSIDE THE RUN THAT WROTE IT.** Downloaded here and
+checked with `sha256sum -c SHA256SUMS`: three files, all `OK`, exit 0. That is
+the last clause of this entry's `Prove`, met by a reader this project did not
+write.
+
+### ⛔ The identity: a stock aria2-next announces as qBittorrent
+
+The attestation records peer ID `2d7142353233302d733251627a596a74284c4f51`,
+which is twenty bytes reading `-qB5230-s2QbzYjt(LOQ`.
+
+⛔ **Its first eight bytes are qBittorrent 5.2.3.0's Azureus-style prefix**, put
+on the wire by a stock `aria2-next` 2.7.5 announcing to this project's own
+tracker on a host with no route off it.
+
+⚠ **The hex is written in backticks after the words "peer ID" on purpose.**
+`check-no-secrets --public` refuses a bare forty-digit hex identifier and allows
+exactly that shape; writing the field as it appears in the attestation turned the
+gate red here first. The narrow exclusion is the convention, not a workaround -
+`docs/security/secrets.md` says to narrow a pattern rather than switch the rule
+off, and this needed no narrowing at all.
+
+⭐ **This was predicted from an RPC read and then OBSERVED, and the difference is
+the whole point.** Before the capture, `aria2.getGlobalOption` reported
+`bt-peer-id-prefix: -qB5230-`; that is a configured value. The attestation above
+is the identity the running build actually emitted. This project publishes the
+second and uses the first only to know where to look. ⚠ Nothing in the adapter
+overrides the prefix, because the identity a stock build emits IS the
+measurement.
+
+⚠ **It is exactly the case the catalogue exists to catch.** A peer-ID table, a
+client-ID list or a swarm statistic would file this build under qBittorrent
+5.2.3.0. Only a capture separates them - and separating them is what
+`docs/AGENTS.md` absolute 1 is for.
+
+### ⭐ The asset-less release was real and it was transient
+
+⚠ **The run resolved and installed `2.7.5`,** the same release that carried zero
+assets when this session read it at `12:11:57Z`. The vendor's assets arrived some
+time before `13:31:34Z`. ⛔ That does not weaken the measurement - it is the
+measurement: the window is real, it is short, and a capture dispatched inside it
+resolves nothing. The fixture and the harness case keep the behaviour pinned
+whether or not the window is open today.
+
+### ⛔ What run 11 found that no reading had: a secret in the artifact
+
+⛔ **The uploaded evidence bundle contained `client/rpc-token`.** The adapter
+generates a per-run JSON-RPC token so `stop` can authenticate its shutdown and
+writes it into the workdir - and `capture-client` packs that workdir as the
+artifact. ⚠ Each step was reasonable and the composition put a secret inside an
+artifact, which is what `docs/AGENTS.md` rule 12 refuses without grading how weak
+the secret is.
+
+⭐ **Fixed in the adapter and promoted to a contract rule.** `stop` unlinks the
+token before anything packs the directory, `start` writes it under `umask 077`,
+and `adapters/README.md` now says that the workdir IS the evidence bundle.
+Driven after the fix: the file is mode `600` while the build runs, absent after
+`stop`, and `rpc-shutdown.json` still records `"result":"OK"`.
+
+⚠ **No reading found it and the gate could not**, because the bundle is not in
+the tree that `check-no-secrets` scans. It was found by downloading the artifact
+a real dispatch produced and listing what was in it.
+
 ### ⚠ What this entry still does not claim
 
-⛔ **No capture has run, and nothing here establishes that this target avoids the
-hang.** Every measurement above was taken on a session host, which is not the
-runner image and has never been the thing in question: `CLIENT-05`'s hang is in
-*Install the client* on `ubuntu-24.04`, and the only way to learn whether this
-target reaches the *Capture* step is to dispatch one.
+⛔ **One capture is not a published record.** This target has ONE acquisition
+route, `E-ACQ-01` refuses a record with one, and no `Profile` has been written or
+published. What exists is an attestation and an evidence bundle, which is the
+same state Transmission and qBittorrent have been in since 2026-09-08.
 
-⚠ **What is different is worth stating and is not the same as evidence.** The
-aria2 install that hangs is a package route that installs nothing plus a version
-call against a preinstalled binary; this target has no package route, is absent
-from the image, and installs by downloading one file. ⭐ That removes the
-asymmetry `PROGRESS.md` records as present in every hung run and absent from
-every green one - which makes it a hypothesis worth dispatching, not a result.
+⚠ **One capture is also one sample.** Four captures of Transmission 4.0.5
+reported three distinct peer IDs, so the twelve bytes after this prefix should be
+expected to move; whether the `-qB5230-` prefix is stable across runs and
+versions is unmeasured, and a second capture is what would establish it.
 
-⚠ **And the peer ID has not been observed on the wire.** The build's default
-`bt-peer-id-prefix` reads back as `-qB5230-`, so a stock `aria2-next` is
-configured to present itself as qBittorrent 5.2.3.0. ⛔ That is a configured
-value read over RPC, not an identity observed from a running swarm participant,
-and this project publishes the second. ⚠ It is also exactly the case the
-catalogue exists to catch: a peer-ID table would file this build under
-qBittorrent. Nothing in the adapter overrides the prefix, because the identity a
-stock build emits is the measurement.
+⛔ **And this says nothing about `CLIENT-05`'s hang.** A different target
+installing cleanly does not diagnose why aria2 does not. `CLIENT-05` stays open
+on that, and what run 11 removes is the blockage in front of this entry rather
+than the question behind that one.
 
 ⚠ **And RPC is a seam, not a guarantee.** Driving a build through its own RPC
 interface means the capture measures what that interface causes the build to put
