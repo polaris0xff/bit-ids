@@ -5,6 +5,30 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-09T06:54:06Z
+
+- ⭐ The three deep-review passes, and what each found. Record:
+  [`docs/history/SESSION-2026-09-09-SECONDROUTE.md`](docs/history/SESSION-2026-09-09-SECONDROUTE.md),
+  which `check-docs` refuses unless the history index links it.
+- ⛔ The door sweep found four readers of `describe`'s `key=value` format in three
+  spellings, one of which - `awk -F= '{ print $2 }'` - truncates at a second `=`.
+  Measured over `weird=a=b`, which it reads as `a`. All four read the whole value
+  now. ⚠ No key an adapter prints today carries one, which is exactly when a
+  reader is easiest to get wrong.
+- ⭐ The same pass established that no **existing** caller of `replace_once` had
+  been mis-planting: their literals carry no regex metacharacter, so the defect
+  fixed earlier today was latent for every shipped case and live only for the one
+  added with it.
+- ⛔ The guard-mutation pass found the one new rule without its own refutation -
+  every upload comes after *Restore the route* - and planted against it, plus its
+  silence on a workflow that uploads no install logs.
+- ⛔ The claim audit checked two numbers against the tree. "Nine gate runs inside
+  `check-workflow`" is right; "nine checks call `cargo build --example`" was
+  wrong - it is fourteen - and is now "most of them", because a count in prose is
+  a value in two places with nothing comparing them.
+- Deployment: nothing deployed.
+
+
 ### 2026-09-09T05:15:32Z
 
 - ⭐ CI was 30.5 minutes and one step was 25.9 of them. Measured on run 83 before
@@ -41,7 +65,7 @@ Nothing is released yet. Entries accumulate here until the first
 - ⛔ Every exit code is still read from the process that produced it, and every
   row is still assembled at its own index, so two runs over one tree produce one
   report. There is no pipeline in either change.
-- ⭐ Nine checks call `cargo build --example` and cargo locks the target
+- ⭐ Most of the checks call `cargo build --example` and cargo locks the target
   directory, so the examples are built once before the queue - the same work,
   done once instead of nine times, without which the concurrency bought nothing.
 - ⚠ What was not changed is what `check-workflow` runs: it executes the

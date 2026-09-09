@@ -858,6 +858,25 @@ if [ -f "$CLIENTWF" ]; then
     pass "probe    the resolve-order rule is silent on a workflow that resolves nothing"
   fi
 
+  # ⚠ AND THE UPLOAD-AFTER-RESTORE RULE IS REFUTED ON ITS OWN. It was added
+  # because that step MOVED - it sat before the route was cut for four dispatches
+  # - so a reader that could not see it move is a rule that would not have caught
+  # the position it was written for.
+  swap_steps "Restore the route" "Upload the install logs" "$MUTWF"
+  _a=$(step_index "$MUTWF" linux "Restore the route")
+  _b=$(step_index "$MUTWF" linux "Upload the install logs")
+  if [ -n "$_a" ] && [ -n "$_b" ] && [ "$_a" -gt "$_b" ]; then
+    pass "probe    the order reader sees an install-logs upload moved before the restore"
+  else
+    fail "probe    the order reader missed an install-logs upload moved before the restore"
+  fi
+
+  if [ -n "$(step_index "$ROOT/.github/workflows/capture.yml" linux "Upload the install logs")" ]; then
+    fail "probe    the upload-order rule found an install-logs step in the fixture workflow"
+  else
+    pass "probe    the upload-order rule is silent on a workflow that uploads no install logs"
+  fi
+
   # ⛔ AND THE RULE MUST NOT FIRE ON A WORKFLOW THAT INSTALLS NOTHING. It is
   # conditional on the step existing, and a condition that was always true would
   # have failed capture.yml, whose own Prove says it installs nothing.

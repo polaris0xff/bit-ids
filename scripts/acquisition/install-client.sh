@@ -146,7 +146,14 @@ MARKER=$(sh "$GUARD" --marker) || cannot "the guard could not report its marker 
 mkdir -p "$WORKDIR" || cannot "cannot create $WORKDIR"
 WORKDIR=$(CDPATH='' cd -- "$WORKDIR" && pwd)
 
-TARGET=$(sh "$ADAPTER" describe 2>/dev/null | awk -F= '$1 == "target" { print $2; exit }')
+# ⚠ THE WHOLE VALUE, NOT THE SECOND FIELD. `awk -F= '{ print $2 }'` stops at a
+# second `=`, so a value carrying one arrives truncated with nothing saying so.
+# Measured on 2026-09-09 over `weird=a=b`, which that form reads as `a`. ⛔ No key
+# an adapter prints today carries one - `binary` is a path and `target` a slug -
+# which is exactly when a reader is easiest to get wrong, and `release_asset` is
+# a pattern whose future shapes nobody here has fixed.
+TARGET=$(sh "$ADAPTER" describe 2>/dev/null |
+  awk -F= '$1 == "target" { sub(/^[^=]*=/, ""); print; exit }')
 [ -n "$TARGET" ] || cannot "the adapter named no target"
 
 STARTED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -198,7 +205,8 @@ PREEXISTING_RC=$?
 # is available without a sixth subcommand. An adapter that names none simply
 # leaves the field empty and the verdict falls back to the version.
 adapter_binary() {
-  sh "$ADAPTER" describe 2>/dev/null | awk -F= '$1 == "binary" { print $2; exit }'
+  sh "$ADAPTER" describe 2>/dev/null |
+    awk -F= '$1 == "binary" { sub(/^[^=]*=/, ""); print; exit }'
 }
 digest_of() {
   [ -n "$1" ] && [ -f "$1" ] || return 0

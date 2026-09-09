@@ -206,7 +206,7 @@ own header already claimed: each makes its own scratch directory, binds only
 loopback, and reads the tree without writing to it. ⚠ `tree-unchanged` is the row
 that keeps that claim honest, and it stayed green through the change.
 
-⭐ **One thing had to be added rather than only reordered.** Nine of the checks
+⭐ **One thing had to be added rather than only reordered.** Most of the checks
 call `cargo build --example` and cargo locks the target directory, so started at
 once they queued behind each other and the concurrency bought nothing. The
 examples are built once, before the queue - the same work, done once instead of

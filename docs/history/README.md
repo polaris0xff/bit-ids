@@ -58,3 +58,11 @@ summary of the session that read the aria2 hang out of an artifact rather than
 dispatching for it, found that no route in this tree had ever been shown to
 install anything, acquired one target twice, and turned three rules that existed
 only in prose into checks.
+
+[`SESSION-2026-09-09-SECONDROUTE.md`](SESSION-2026-09-09-SECONDROUTE.md) is the
+saved summary of the session that wired the second acquisition route into the
+capture workflow and answered the question it rested on - which artifact of a
+release a route fetches. It also found that the record the work order was waiting
+for cannot be written from any capture this project has run, refuted two more
+readings of the aria2 hang, and cut the lane a contributor waits for from thirty
+minutes to under four.

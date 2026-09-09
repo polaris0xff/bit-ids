@@ -230,8 +230,8 @@ timeout -k "$ADAPTER_KILL_AFTER" "$ADAPTER_SECONDS" sh "$ADAPTER" describe </dev
   >"$ADAPTER_DESC" 2>"$OUT/adapter.err" ||
   cannot "the adapter could not describe itself"
 
-TARGET=$(awk -F= '$1 == "target" { print $2; exit }' "$ADAPTER_DESC")
-ADAPTER_KIND=$(awk -F= '$1 == "kind" { print $2; exit }' "$ADAPTER_DESC")
+TARGET=$(awk -F= '$1 == "target" { sub(/^[^=]*=/, ""); print; exit }' "$ADAPTER_DESC")
+ADAPTER_KIND=$(awk -F= '$1 == "kind" { sub(/^[^=]*=/, ""); print; exit }' "$ADAPTER_DESC")
 [ -n "$TARGET" ] || cannot "the adapter named no target"
 case "$ADAPTER_KIND" in
   stock | stub) : ;;

@@ -249,7 +249,7 @@ have_pwsh=0
 command -v pwsh >/dev/null 2>&1 && have_pwsh=1
 
 # ⭐ EVERY EXAMPLE THE HARNESSES NEED, BUILT ONCE, BEFORE ANY OF THEM STARTS.
-# Nine of the checks below call `cargo build --example` through `store_build`,
+# Most of the checks below call `cargo build --example` through `store_build`,
 # and cargo takes a lock on the target directory: started at once they would
 # queue behind each other and the concurrency above would buy nothing. ⚠ This is
 # the same work, done once instead of nine times, so it costs nothing on a cold
