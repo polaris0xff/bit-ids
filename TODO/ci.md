@@ -173,6 +173,24 @@ to eleven seconds of gate per second of deadline, paid nine times over by
 ⭐ **So the shipped gate is 118-125 seconds rather than 73**, measured twice at
 each stage, and the reason it is not 73 is written where the schedule is.
 
+### ⭐ What it did to the lane, measured on run 85
+
+| | run 83, before | run 85, after |
+| --- | ---: | ---: |
+| **wall clock** | **30.5 min** | **21.3 min** |
+| Linux gate | 30.5 min | **3.7 min** |
+| Workflow acceptance | (inside the Linux gate, 25.9 min) | 21.2 min |
+| Windows gate | 2.4 min | 2.6 min |
+
+⭐ **The number a contributor feels is the first row of the lane, and it went from
+thirty minutes to under four.** Compile, tests, lints and the gate now answer in
+3.7 minutes; the acceptance harness answers separately and no longer holds them.
+
+⛔ **And the wall is now that harness alone**, which is where the next work is
+and why the residual below names sharding rather than anything inside the gate.
+⚠ Both fast jobs were green while it was still running, which is the split doing
+what it was written for rather than a claim about it.
+
 ⛔ **Every exit code is still read from the process that produced it.** `wait
 "$pid"` returns that child's status and nothing else's, which is the same
 guarantee the serial form had; there is no pipeline anywhere in either change,

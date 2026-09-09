@@ -33,6 +33,11 @@ Nothing is released yet. Entries accumulate here until the first
   a second line the pattern was not meant to reach - `SECS="$2"` inside an
   embedded stub, because `[0-9]*` matches no digits at all. Record:
   [`docs/conventions/shell.md`](docs/conventions/shell.md) section 2.
+- ⭐ **Measured on the lane rather than promised.** Run 85 against run 83: the
+  wall clock is **30.5 minutes to 21.3**, and the Linux gate - compile, tests,
+  lints and the gate, which is the answer a contributor waits for - is **30.5
+  minutes to 3.7**. Both fast jobs were green while the acceptance harness was
+  still running. `check-workflow` is 95 of 95 locally at 1195 seconds.
 - ⛔ Every exit code is still read from the process that produced it, and every
   row is still assembled at its own index, so two runs over one tree produce one
   report. There is no pipeline in either change.
