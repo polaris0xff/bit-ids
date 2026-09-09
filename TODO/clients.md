@@ -436,6 +436,35 @@ section is what that establishes.
 ⚠ Nothing here establishes that the runner image would carry the toolchain if it
 changed; it carries one today, measured by a build that completed.
 
+### ⛔ A SIXTH READING, REFUTED ON 2026-09-09 BY A CONTROL IN THE SAME JOB
+
+⛔ **"The version call against the preinstalled `aria2c` is what hangs" is
+WRONG.** That reading was the sharpest correlation this entry had: `aria2` ships
+on `ubuntu-24.04`, so an aria2 lane's *Install the client* asks the adapter for a
+version and that call executes a real binary, while a transmission lane finds no
+binary and runs nothing - present in every hung run, absent from every green one.
+
+⭐ **`CI-08`'s probes were built to test exactly that and had never been
+dispatched against `aria2`.** capture-client run 13, on 2026-09-09, is the first
+aria2 lane to run them. *Probe the preinstalled product* executes
+`timeout 30 sh scripts/capture/adapters/aria2.sh version` - the same call, on the
+same host, in the same job, one step earlier.
+
+**It took 0 seconds and succeeded.** The very next step, *Install the client*,
+hung as it has in all ten previous dispatches.
+
+⛔ **So the call is not slow and is not stopped**, and the correlation was a
+correlation. ⚠ What survives is narrower and better: whatever hangs is inside
+*Install the client* and is NOT the adapter's `version`, NOT `describe`, NOT
+`sudo` itself and NOT host resources - the other two probes also returned in 0
+seconds. What that step still does and the probes do not is run `install-client`
+under `sudo -E`, which for the `package` route is an `apt-get update` and an
+`apt-get install`, and for the `release` route is a source build.
+
+⚠ **A refuted reading is not a diagnosis.** This narrows where to look and names
+nothing. ⛔ Do not record a seventh reading without something that separates it
+from the sixth, which looked stronger than any of them and was still wrong.
+
 ## CLIENT-06: Transmission capture adapter
 
 Source: operator scope and bit-cli source-profile generator study

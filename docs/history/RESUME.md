@@ -43,8 +43,6 @@ hold it. ⭐ `E-ACQ-01` is right: the product IS the two-route claim.
 two routes resolve the same version. `capture-client.yml` takes the route as a
 matrix dimension and `resolve-release.sh` chooses the artifact.
 
-**Next, in order:**
-
 ⭐ **`CLIENT-14` IS CLOSED AND THE HANG IS NOT IN FRONT OF THAT TARGET.**
 `capture-client` runs 11 and 12 both reached the *Capture* step - the eleventh
 and twelfth dispatches, after ten that did not - each in about two minutes with a
@@ -76,11 +74,11 @@ with one.
 
 ---
 
-## The aria2 hang, as far as ten runs can answer it
+## The aria2 hang, as far as eleven runs can answer it
 
-⛔ **TEN DISPATCHES, NO aria2 CAPTURE, AND NOT ONE REACHED THE *Capture* STEP.**
-Every lane stops inside *Install the client*; transmission and qBittorrent pass
-through the same step on the same image in the same runs.
+⛔ **ELEVEN aria2 DISPATCHES, NO aria2 CAPTURE, AND NOT ONE REACHED THE *Capture*
+STEP.** Every lane stops inside *Install the client*; transmission, qBittorrent
+and `aria2-next` pass through the same step on the same image.
 
 ⛔ **FOUR BOUNDS AT FOUR LEVELS HAVE BEEN MEASURED NOT TO FIRE**: `timeout -k 20
 420` inside `install-client` (run 8), the runner's `timeout-minutes` (run 6), a
@@ -94,22 +92,24 @@ would leave a runner able to enforce one of four bounds and to upload a log.
 ⛔ That is a reading and it is not recorded as a cause; what it changes is where
 to look - at the host rather than at the shell.
 
-⚠ **The step is NAMED *Install the client* and the install is not the only thing
-in it.** aria2 ships on `ubuntu-24.04`, so the package route's `apt-get install`
-is a measured no-op; the same step also asks the adapter for a version before and
-after the route, and that call executes the preinstalled `aria2c`. A transmission
-lane finds no binary there and runs nothing. ⛔ That asymmetry is in every hung
-run and absent from every green one, and it is a correlation rather than a
-mechanism.
+⛔ **A SIXTH READING WAS REFUTED ON 2026-09-09 AND IT WAS THE STRONGEST ONE.**
+The reading: aria2 ships on `ubuntu-24.04`, so an aria2 lane's *Install the
+client* asks the adapter for a version and that call executes a real binary,
+while a transmission lane finds none and runs nothing - present in every hung
+run, absent from every green one. ⭐ Run 13 is the first aria2 lane to carry
+`CI-08`'s probes, and *Probe the preinstalled product* runs that exact call one
+step earlier: it took **0 seconds** and succeeded, and the next step hung anyway.
+⚠ All three probes returned in 0 seconds, so host resources, `sudo` and the
+adapter are all cleared. What *Install the client* still does that they do not is
+run `install-client` under `sudo -E`.
 
-⭐ **Three bounded probes now run before the install** - host resources, `sudo`,
-and the preinstalled product - because when a job produces no log, no artifact
-and no bound, the one signal left is which step the API last reported in
-progress. ⚠ **They have now been dispatched and they have never run against
-`aria2`.** Runs 11 and 12 exercised all three on `aria2-next` lanes, where all
-three passed and the job went on to capture - so what they establish is that the
-probes work, not anything about the hang. An `aria2` lane has not been dispatched
-since they landed.
+⭐ **Three bounded probes run before the install** - host resources, `sudo`, and
+the preinstalled product - because when a job produces no log, no artifact and no
+bound, the one signal left is which step the API last reported in progress.
+⭐ **They have now been dispatched on both kinds of lane and they are what
+refuted the sixth reading**: all three returned in 0 seconds on runs 11 and 12
+(`aria2-next`, which then captured) and all three returned in 0 seconds on run 13
+(`aria2`, which then hung).
 
 ### The four readings refuted before those bounds
 
