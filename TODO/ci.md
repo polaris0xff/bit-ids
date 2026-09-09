@@ -1192,6 +1192,32 @@ case:
 capture workflow's block correctly on the first attempt, so what the harness
 needs is the environment and the seam, not a new parser.
 
+### ⛔ The hang this entry owns: a second reading refuted, and a clock on it
+
+**Client capture run 5, 2026-09-09.** The `release` route runs no package
+operation of any kind, and *Upload the install logs* hung exactly as it does on
+the `package` route. `TODO/clients.md` carries the table; what belongs here is
+what it does to this entry.
+
+⭐ **The step's own work finishes in five seconds and the step runs for
+thirteen minutes.** The artifact was written at 03:17:23Z into a step that began
+at 03:17:18Z, and the step had not returned at 03:30:43Z. Earlier runs could say
+only that the artifact was complete; this one times it.
+
+⛔ **Two named causes have now been refuted and neither was found by reading.**
+`NEEDRESTART_MODE` fell to install logs saying `0 newly installed`; "the aria2
+package rather than the route" fell to a route that touches no package index.
+⚠ A third guess is what this entry exists to avoid: what is left is a runner
+default nobody has swept, and the sweep is the Approach above rather than another
+dispatch.
+
+⭐ **The bound is the part that did not need the diagnosis.** The step is
+`timeout-minutes: 5` and `continue-on-error: true` now, because the artifact is
+on the server before the hang begins - so the cost of whatever this is drops from
+a whole job to five minutes, and a capture that would have been thrown away is
+not. ⚠ That is a mitigation and not an answer, and this entry stays open on the
+answer.
+
 ### The second half of the Prove is done, measured 2026-09-08
 
 ⭐ **The gate gives the same verdict under a hostile environment.**

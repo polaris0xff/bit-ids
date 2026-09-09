@@ -392,12 +392,49 @@ matches all three and is refused rather than resolved - measured, as a case in
 selected, one of six assets matched, and the URL that came out served bytes
 `sha256sum -c` verified against the digest the 2026-09-08 measurement recorded.
 
-⛔ **A dispatch is still what this entry needs**, and now there is one to make: a
-`["package","release"]` dispatch is two hosts, one per route, and `ACQ-03` has
-two installs to compare for the first time. ⚠ Nothing here establishes that the
-runner image carries the C++ toolchain and OpenSSL headers the source build
-needs; the route refuses with `configure`'s own log if it does not, which is a
-route that failed rather than one that silently produced nothing.
+### ⭐ Client capture run 5: a release route acquired a build on a capture host
+
+**Dispatched 2026-09-09 as `["aria2"] × ["release"]`**, deliberately without the
+package route: that lane is the one with the unexplained hang, and running it
+again would have cost twenty-five minutes to re-observe something four dispatches
+already established. What was unknown was whether the new path works at all.
+
+| step | measured |
+| --- | --- |
+| *Resolve the release artifact* | 03:14:53Z to 03:14:54Z, **one second**, success |
+| *Install the client* | 03:14:54Z to 03:17:18Z, **144 seconds**, success |
+
+⭐ **That is the first time any `release` route in this tree has acquired
+anything on a host this project may capture on.** It fetched the tarball,
+configured, compiled and installed into `/usr/local`, and the executable answered
+`aria2 version 1.37.0`.
+
+⭐ **And the tarball the runner fetched is the one this project already
+measured.** Its bytes came down inside the install artifact, unauthenticated
+through rule 8's route, and `sha256sum -c` verifies them against the digest
+`ACQ-03` recorded on 2026-09-08 from an entirely different fetch.
+
+⛔ **Two builds, one version, measured on the capture host rather than argued
+for.** `install-client` asks the adapter for a version before the route runs and
+after, and both answers are in the artifact:
+
+| | before the route | after the route |
+| --- | --- | --- |
+| version | `1.37.0` | `1.37.0` |
+| features | Async DNS, BitTorrent, Firefox3 Cookie, GZip, HTTPS, Message Digest, Metalink, XML-RPC, SFTP | BitTorrent, GZip, HTTPS, Message Digest |
+| libraries | zlib/1.3 libxml2/2.9.14 sqlite3/3.45.1 GnuTLS/3.8.3 nettle GMP/6.3.0 c-ares/1.27.0 libssh2/1.11.0 | zlib/1.3 OpenSSL/3.0.0m |
+| compiler | gcc 13.2.0 | gcc 13.3.0 |
+
+⚠ **The TLS library is not the same one.** A record holding `1.37.0` and nothing
+else would say these two builds are one, and one of them speaks HTTPS through
+GnuTLS and the other through OpenSSL. That is the argument for keeping the
+build's whole answer, arriving from a runner instead of from a session host.
+
+⛔ **The capture did not run**, because the step after the install hung. The next
+section is what that establishes.
+
+⚠ Nothing here establishes that the runner image would carry the toolchain if it
+changed; it carries one today, measured by a build that completed.
 
 ## CLIENT-06: Transmission capture adapter
 
@@ -605,11 +642,55 @@ the next step is where the job stops. ⚠ Two adapters doing the same `apt-get`
 on the same image do not hang, so it is the `aria2` package rather than the
 route.
 
+### ⛔ Run 5 refutes that boundary: it is not the package and not apt
+
+**The release route runs no package operation at all** - it fetches a tarball
+with `curl`, unpacks it, configures, compiles and installs - and *Upload the
+install logs* hung identically.
+
+| | runs 3 and 4 | run 5 |
+| --- | --- | --- |
+| route | `package` | `release` |
+| apt operations | `update` and `install`, installing nothing | **none** |
+| install step | success in 6s | success in 144s |
+| where the job stopped | *Upload the install logs* | *Upload the install logs* |
+
+⛔ **So the second guess is refuted the way the first one was.** `NEEDRESTART_MODE`
+was refuted by install logs saying `0 newly installed`; "the aria2 package rather
+than the route" is refuted by a route that touches no package index. Two readings
+of this hang have now been named and both were wrong.
+
+⭐ **And run 5 puts a clock on what was previously only "complete and
+downloadable".** The artifact was written at 03:17:23Z, five seconds into a step
+that started at 03:17:18Z, and the step had still not returned at 03:30:43Z -
+**thirteen minutes** later. The upload's work finishes almost immediately; what
+holds the runner open afterwards is not the upload.
+
+⛔ **What remains common across all five is the aria2 job and nothing else that
+has been isolated.** Naming a cause here would be the third guess, and `CI-08` is
+the entry for a runner default nobody swept.
+
+⭐ **The step is bounded and non-fatal now, which is a fix that needs no
+diagnosis.** The artifact is already on the server before the hang begins, so a
+five-minute bound loses nothing and the capture that follows stops being thrown
+away. ⚠ `continue-on-error` is on this upload alone: it is a diagnostic aid that
+already declares `if-no-files-found: warn`, while the evidence bundle stays
+fatal.
+
 ⚠ Its install log uploaded on every run since the `always()` step landed, so the
 next session reads `update.log` and `install.log` from
 `install-aria2-<run>-1` rather than dispatching to find out. ⚠ That artifact name
 carries the route now - `install-aria2-package-<run>-1` - because two matrix legs
 share an adapter.
+
+⛔ **And what that step uploaded was wrong on the release lane, measured on run
+5.** The path was the install workdir, which for a source-build route is where
+the tarball was unpacked and compiled: **1867 entries, 42.6 megabytes**, for a
+step called *Upload the install logs*. ⚠ It looked right for four dispatches
+because the package route's workdir happens to hold two log files. It also
+omitted `install-<route>.txt`, the record `ACQ-03` compares, which went up only
+inside the evidence bundle - so a job that hung before the capture uploaded its
+logs and not its verdict. The paths are named now.
 
 ### ⚠ The release route declares its artifact and still refuses, 2026-09-09
 

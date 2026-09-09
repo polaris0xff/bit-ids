@@ -5,6 +5,39 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-09T03:42:01Z
+
+- ⭐ Client capture run 5: **a `release` route acquired a build on a capture
+  host**, the first time any route of that kind in this tree has installed
+  anything on one. The resolve step took one second and the source build took 144
+  seconds. Record: [`TODO/clients.md`](TODO/clients.md).
+- ⭐ The tarball the runner fetched came back inside the install artifact,
+  unauthenticated, and `sha256sum -c` verifies it against the digest `ACQ-03`
+  recorded on 2026-09-08 from a different fetch.
+- ⛔ Two builds, one version, measured on the capture host rather than argued
+  for: the image's aria2 1.37.0 enables Async DNS, Firefox3 Cookie, Metalink,
+  XML-RPC and SFTP against GnuTLS 3.8.3, and the 1.37.0 the route compiled enables
+  none of them and speaks HTTPS through OpenSSL. Different compilers too.
+- ⛔ **The aria2 hang is not the package and not apt.** The release route runs no
+  package operation of any kind and *Upload the install logs* hung identically.
+  Two named causes have now been refuted, neither by reading.
+- ⭐ And there is a clock on it: the artifact was written five seconds into that
+  step, and the step had not returned thirteen minutes later. The step is bounded
+  and non-fatal now, which needs no diagnosis - the artifact is on the server
+  before the hang begins, so the capture that follows stops being thrown away.
+  `CI-08` still owns the cause.
+- ⛔ That upload was sending a build tree: 1867 entries and 42.6 megabytes for a
+  step called *Upload the install logs*, because a source-build route compiles
+  inside the workdir the path named. It also omitted the install record itself.
+  The paths are named now.
+- ⭐ `check-workflow` refuses an evidence upload that is `continue-on-error` or
+  that stops declaring `if-no-files-found: error`, because a green capture with
+  no evidence is the worst outcome this workflow has. Its step reader is refuted
+  first: an over-wide one would read the neighbouring upload's own
+  `continue-on-error` and the rule would look like it works.
+- Deployment: nothing deployed.
+
+
 ### 2026-09-09T02:58:42Z
 
 - ⛔ The work order said a single-route capture could become a record and it

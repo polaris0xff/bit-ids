@@ -295,6 +295,43 @@ step_index() { # workflow job step
   job_steps "$1" "$2" | grep -n -x -F -e "$3" | head -1 | cut -d: -f1
 }
 
+# Every line of one named step, its `- name:` included.
+#
+# ⚠ A step ends where the next `- ` at its own indent begins, or where the job
+# does. Reading forward to the next `name:` would stop at an artifact name inside
+# `with:`, which is a `name:` belonging to something else - the same confusion
+# `check-project`'s artifact rule had to be planted against.
+step_block() { # workflow job step
+  awk -v WANTJOB="$2" -v WANTSTEP="$3" '
+    function indent(s,   i) { i = match(s, /[^ ]/); return i ? i - 1 : -1 }
+    /^jobs:[ \t]*$/ { injobs = 1; next }
+    !injobs { next }
+    {
+      line = $0
+      sub(/\r$/, "", line)
+      ind = indent(line)
+      if (ind < 0) { if (inblock) print ""; next }
+      if (ind == 0) { injobs = 0; inblock = 0; next }
+      if (ind == 2 && line ~ /^ *[A-Za-z0-9_-]+:[ \t]*$/) {
+        job = line; sub(/^ +/, "", job); sub(/:.*$/, "", job)
+        inblock = 0; next
+      }
+      if (line ~ /^ *- /) {
+        if (inblock && ind <= stepind) inblock = 0
+        if (job == WANTJOB && line ~ /^ *- name:/) {
+          s = line
+          sub(/^ *- name:[ \t]*/, "", s)
+          gsub(/^["'"'"']|["'"'"']$/, "", s)
+          if (s == WANTSTEP) { inblock = 1; stepind = ind }
+        }
+      } else if (inblock && ind <= stepind) {
+        inblock = 0
+      }
+      if (inblock) print $0
+    }
+  ' "$1"
+}
+
 # The declared default of one workflow_dispatch input.
 input_default() { # workflow input
   awk -v WANT="$2" '
@@ -632,6 +669,33 @@ for CAPWF in $CAPTURE_WORKFLOWS; do
       *"$CAPRUNNER"*) pass "workflow  $CAPNAME $job runs $CAPRUNNER" ;;
       *) fail "workflow  $CAPNAME $job: the Capture step does not run $CAPRUNNER" ;;
     esac
+
+    # ⛔ THE EVIDENCE UPLOAD IS FATAL AND STAYS FATAL. A capture that measured a
+    # build and uploaded nothing must be red; `if-no-files-found: error` says so
+    # and `continue-on-error: true` would silently undo it, leaving a green run
+    # with no evidence anywhere - the worst outcome this workflow has, and one a
+    # reader would have to notice two keys apart to see.
+    #
+    # ⚠ THE ASYMMETRY IS THE RULE. The install-logs upload IS non-fatal on
+    # purpose: it is a diagnostic aid that already declares `warn`, and bounding
+    # it is what stops a hang in that step throwing away a finished capture.
+    # Enforcing "no step is continue-on-error" would refuse that, so the rule
+    # names the step whose failure means there is no measurement.
+    _bundle=$(step_block "$CAPWF" "$job" "Upload the evidence bundle")
+    if [ -z "$_bundle" ]; then
+      fail "workflow  $CAPNAME $job has no step named [Upload the evidence bundle]"
+    else
+      if printf '%s\n' "$_bundle" | grep -q 'if-no-files-found:[ ]*error'; then
+        pass "workflow  $CAPNAME $job: the evidence upload is red when it finds nothing"
+      else
+        fail "workflow  $CAPNAME $job: the evidence upload does not declare if-no-files-found: error"
+      fi
+      if printf '%s\n' "$_bundle" | grep -q 'continue-on-error'; then
+        fail "workflow  $CAPNAME $job: the evidence upload is continue-on-error, so a run with no evidence would be green"
+      else
+        pass "workflow  $CAPNAME $job: the evidence upload cannot be skipped over"
+      fi
+    fi
   done
 done
 
@@ -791,6 +855,45 @@ if [ -f "$CLIENTWF" ]; then
     fail "probe    the install-order rule found an install step in the fixture workflow"
   else
     pass "probe    the install-order rule is silent on a workflow that installs nothing"
+  fi
+
+  # ⛔ THE STEP READER IS REFUTED BEFORE THE TWO RULES BUILT ON IT. A reader that
+  # returned the whole job would satisfy both of them from a neighbouring step's
+  # keys: the install-logs upload two steps earlier carries exactly the
+  # `continue-on-error` the evidence rule forbids, so an over-wide block would
+  # report the evidence upload as non-fatal and the rule would look like it
+  # works. ⚠ That is the scope defect this repository has shipped twice.
+  PROBE_BLOCK="$WORK/step-block"
+  step_block "$CLIENTWF" linux "Upload the evidence bundle" >"$PROBE_BLOCK"
+  if grep -q -F -e 'Upload the evidence bundle' "$PROBE_BLOCK" &&
+    ! grep -q -F -e 'Upload the install logs' "$PROBE_BLOCK"; then
+    pass "probe    the step reader returns one step and not its neighbours"
+  else
+    fail "probe    the step reader returned $(grep -c 'name:' "$PROBE_BLOCK") name line(s)"
+  fi
+
+  # ⚠ And each rule is refuted by planting what it forbids, separately, because
+  # they are two rules over one step and a single plant would leave whichever it
+  # did not move a reader nobody has seen refuse anything.
+  sed 's/if-no-files-found: error/if-no-files-found: warn/' "$CLIENTWF" >"$MUTWF"
+  step_block "$MUTWF" linux "Upload the evidence bundle" >"$PROBE_BLOCK"
+  if cmp -s "$CLIENTWF" "$MUTWF"; then
+    fail "probe    the if-no-files-found mutation did not change the workflow"
+  elif grep -q 'if-no-files-found:[ ]*error' "$PROBE_BLOCK"; then
+    fail "probe    the evidence-upload reader still sees error after the flip"
+  else
+    pass "probe    the evidence-upload reader sees if-no-files-found weakened"
+  fi
+
+  awk '/- name: Upload the evidence bundle/ { print; print "        continue-on-error: true"; next } { print }' \
+    "$CLIENTWF" >"$MUTWF"
+  step_block "$MUTWF" linux "Upload the evidence bundle" >"$PROBE_BLOCK"
+  if cmp -s "$CLIENTWF" "$MUTWF"; then
+    fail "probe    the continue-on-error mutation did not change the workflow"
+  elif grep -q 'continue-on-error' "$PROBE_BLOCK"; then
+    pass "probe    the evidence-upload reader sees an added continue-on-error"
+  else
+    fail "probe    the evidence-upload reader missed an added continue-on-error"
   fi
 fi
 

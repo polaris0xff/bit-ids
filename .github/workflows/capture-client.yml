@@ -189,17 +189,38 @@ jobs:
       # share an adapter and differ only in the route, so a name built from the
       # adapter alone would be two uploads under one name in one run - which the
       # upload action refuses, turning a green capture into a failed upload for a
-      # reason nothing in the step says. ⚠ The release workdir goes up beside the
-      # install one, because the URL a route fetched is evidence of what it
-      # acquired and it lives there.
+      # reason nothing in the step says.
+      #
+      # ⛔ LOGS AND RECORDS, NAMED, RATHER THAN THE WHOLE WORKDIR. A source-build
+      # route unpacks a tarball and compiles it *in* that workdir, so uploading
+      # the directory uploads a build tree: measured on capture client run 5,
+      # 42.6 megabytes for a step called *Upload the install logs*. ⚠ The package
+      # route's workdir happens to hold two log files, which is why the directory
+      # form looked right for four dispatches.
+      #
+      # ⛔ AND IT IS BOUNDED AND NON-FATAL, WHICH IS A FIX THAT NEEDS NO
+      # DIAGNOSIS. This step has hung on every aria2 job since run 3 - after
+      # completing its upload: run 5's artifact was written at 03:17:23Z and the
+      # step had still not returned twelve minutes later. Whatever holds it open,
+      # the artifact is already on the server, so a bound loses nothing and the
+      # capture that follows stops being thrown away. ⚠ `continue-on-error` is
+      # deliberate here and nowhere else: this upload is a diagnostic aid and
+      # already declares `warn`, while the evidence bundle below stays fatal.
+      # `CI-08` owns the cause.
       - name: Upload the install logs
         if: always()
+        continue-on-error: true
+        timeout-minutes: 5
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: install-${{ matrix.adapter }}-${{ matrix.route }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            ${{ runner.temp }}/install-${{ matrix.route }}
-            ${{ runner.temp }}/release
+            ${{ runner.temp }}/install-${{ matrix.route }}/*.log
+            ${{ runner.temp }}/install-${{ matrix.route }}/*.err
+            ${{ runner.temp }}/install-${{ matrix.route }}.txt
+            ${{ runner.temp }}/release/*.txt
+            ${{ runner.temp }}/release/*.json
+            ${{ runner.temp }}/release/*.err
           if-no-files-found: warn
           retention-days: 30
 
