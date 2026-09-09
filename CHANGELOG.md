@@ -16,11 +16,23 @@ Nothing is released yet. Entries accumulate here until the first
   synthetic lanes: 15 cases, and the control - two routes, two resolvers, two
   connectors, one identity on the wire - is accepted and reaches
   `build_equivalent`.
-- ⛔ **Run 14 cannot become a record.** Both lanes' `release/resolution.txt`
-  differ only in their timestamps, so `E-ACQ-07` calls them one route; nothing
-  the capture path wrote carried the source route's commit, which `E-ACQ-06`
-  needs; every attestation names one connector, which `E-CAP-01` refuses; and the
-  two lanes' peer-ID tails differ, which `classify_across` reads as `Divergent`.
+- ⛔ **Run 14 cannot become a record**, and the tool reports every reason in one
+  run rather than the first it trips on. Both lanes' `release/resolution.txt`
+  differ only in their timestamps, so `E-ACQ-07` calls them one route; every
+  attestation declares one connector, which `E-CAP-01` refuses at the validity
+  gate; nothing records how the artifact was packaged, and `package` is part of
+  the identity tuple a store path is derived from; and nothing the capture path
+  wrote carried the source route's commit, which `E-ACQ-06` needs.
+- ⚠ **`classify_across` never ran on run 14** and could not - it takes two
+  `Profile`s. What is measured is that the pair's shape is `Divergent`: a peer
+  ID's tail is per-connection, a single capture can only state such a field as
+  `constant` with one sample, and any disagreement on a shared field is
+  `Divergent`. Both directions are cases in `check-assemble`.
+- ⛔ **`platform`, `arch` and `package` are derived rather than written in.** The
+  first draft of the assembler hardcoded `linux`, `x86-64` and `elf-binary`,
+  which would have filed a Windows capture of one version at the Linux capture's
+  path - the non-injective layout `store.rs` refuses at length. Found by a claim
+  audit against the module's own "every field is derived" header.
 - ⛔ **A capture declaring ONE connector is invalid, not merely unpublishable**,
   and three handoffs said otherwise. Measured by stripping the golden fixture two
   ways with each exit code read unpiped: two connectors declared and one

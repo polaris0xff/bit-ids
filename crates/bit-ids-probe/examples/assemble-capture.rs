@@ -10,7 +10,15 @@
 //! one transcript per surface, and the install artifact, which carries the
 //! install record, the release resolution and the bytes the build printed when
 //! it was asked its version. This reads a lane of each and writes the
-//! [`Profile`] and [`RunManifest`] they support.
+//! [`Profile`] they support.
+//!
+//! ⚠ **It does NOT write the [`RunManifest`](bit_ids::RunManifest) that has to
+//! sit beside a record**, and that is a declared gap rather than an oversight. A
+//! manifest carries the run's ordered phases, both clocks, the sampling plan and
+//! the host facts; an attestation carries a start, a finish, a platform string
+//! and a claim fingerprint, and inventing the rest would be a document `bind`
+//! then compares against a record that agrees with it for no reason. `CI-09`
+//! carries it.
 //!
 //! # ⛔ Every field is derived from an artifact, and a field with no artifact is
 //! a refusal
@@ -640,9 +648,61 @@ fn constant(
     })
 }
 
+/// The host family, the architecture and the package format the record is filed
+/// under.
+///
+/// ⛔ **THESE THREE ARE IN [`StoreKey`], SO HARDCODING THEM IS THE
+/// NON-INJECTIVE-PATH DEFECT `store.rs` EXISTS TO REFUSE.** A path built from
+/// fewer components than the identity tuple files two measurements at one name
+/// and one of them silently wins. ⚠ The first draft of this example wrote
+/// `linux`, `x86-64` and `elf-binary` as literals, which would have filed a
+/// Windows capture of the same version at the Linux capture's path.
+///
+/// ⭐ The first two are derived from the attestation's own `platform` line,
+/// which is `uname -srm`: a system name, a kernel release and a machine.
+/// ⛔ The third is a **refusal**, because nothing in a capture's artifacts
+/// records how the artifact was packaged - not the attestation, not the install
+/// record, not the release resolution, and not `catalogue/clients.toml`, which
+/// carries `candidate_routes` and no package format.
+fn identity_of(lane: &Lane) -> Result<(Slug, Slug, Slug), String> {
+    let attestation = Path::new("capture/attestation.txt");
+    let platform_line = need(&lane.attestation, "platform", attestation)?;
+    let mut parts = platform_line.split_whitespace();
+    let (Some(system), Some(_release), Some(machine)) = (parts.next(), parts.next(), parts.next())
+    else {
+        return Err(format!(
+            "the attestation's platform is {platform_line:?}, which is not `uname -srm` output"
+        ));
+    };
+    let platform = Slug::parse(&system.to_ascii_lowercase())
+        .map_err(|error| format!("a platform derived from {system:?}: {error}"))?;
+    // ⚠ `uname -m` spells it `x86_64` and this project's vocabulary spells it
+    // `x86-64`, so the underscore is mapped rather than the value passed
+    // through. A slug cannot hold an underscore at all, so an unmapped machine
+    // name is a refusal naming the value rather than a silently wrong path.
+    let arch = Slug::parse(&machine.to_ascii_lowercase().replace('_', "-"))
+        .map_err(|error| format!("an architecture derived from {machine:?}: {error}"))?;
+    let package = match lane.attestation.get("package").map(String::as_str) {
+        Some(text) if !text.is_empty() => {
+            Slug::parse(text).map_err(|error| format!("package: {error}"))?
+        }
+        _ => {
+            return Err(
+                "the attestation records no `package`, and it is part of the identity tuple a \
+                 store path is derived from. Nothing in a capture's artifacts says how the \
+                 artifact was packaged, so hardcoding one here would file two packagings of one \
+                 version at one path"
+                    .to_owned(),
+            );
+        }
+    };
+    Ok((platform, arch, package))
+}
+
 fn profile_of(lanes: &[Lane], watched: usize, version: &Version) -> Result<Profile, String> {
     let lane = &lanes[watched];
     let attestation = Path::new("capture/attestation.txt");
+    let (platform, arch, package) = identity_of(lane)?;
     let mut acquisition = Vec::new();
     for other in lanes {
         acquisition.push(route_of(other, version)?);
@@ -681,15 +741,34 @@ fn profile_of(lanes: &[Lane], watched: usize, version: &Version) -> Result<Profi
             schema: &SchemaVersion::parse(PROFILE_SCHEMA).map_err(|error| error.to_string())?,
             target: &slug(need(&lane.attestation, "target", attestation)?),
             version,
-            platform: &slug("linux"),
-            arch: &slug("x86-64"),
-            package: &slug("elf-binary"),
+            platform: &platform,
+            arch: &arch,
+            package: &package,
             capture: &capture.id,
         }),
         target: Target {
             id: slug(need(&lane.attestation, "target", attestation)?),
-            display_name: "aria2-next".to_owned(),
-            kind: TargetKind::Client,
+            // ⚠ THE IDENTIFIER, BECAUSE NOTHING A CAPTURE UPLOADS CARRIES A
+            // DISPLAY NAME. `catalogue/clients.toml` does, and reading it would
+            // mean a TOML dependency for one cosmetic field, which
+            // `docs/supply-chain.md` would refuse. It is not part of the
+            // identity tuple, so unlike the three above it cannot file a record
+            // at the wrong path; whatever publishes a record is where a display
+            // name should be joined on.
+            display_name: need(&lane.attestation, "target", attestation)?.to_owned(),
+            kind: match need(&lane.attestation, "kind", attestation)? {
+                "client" => TargetKind::Client,
+                "library" => TargetKind::Library,
+                // ⛔ `kind=fixture` is what `capture.yml` writes, and a fixture
+                // is not a measurement of anything. Refusing it here is what
+                // stops a fixture bundle becoming a record that reads like one.
+                other => {
+                    return Err(format!(
+                        "the attestation says kind={other}, which is not a target kind. A \
+                         `fixture` capture measured no build"
+                    ));
+                }
+            },
             // ⚠ `libtorrent/2.1.1` is in what the build printed, and nothing has
             // measured the relationship. `null` is the honest value until
             // something does.
@@ -698,9 +777,9 @@ fn profile_of(lanes: &[Lane], watched: usize, version: &Version) -> Result<Profi
         build: Build {
             version: version.clone(),
             channel: ReleaseChannel::Stable,
-            platform: slug("linux"),
-            arch: slug("x86-64"),
-            package: slug("elf-binary"),
+            platform,
+            arch,
+            package,
             executable: Sha256Digest::parse(&format!(
                 "sha256:{}",
                 need(
@@ -725,6 +804,40 @@ fn profile_of(lanes: &[Lane], watched: usize, version: &Version) -> Result<Profi
         corroboration_of(lane, &profile.observations, &profile.capture.connectors)?;
     profile.evidence.sort_by_key(|entry| entry.id.to_string());
     Ok(profile)
+}
+
+/// Everything one lane's artifacts cannot supply, probed independently.
+///
+/// ⛔ **Each derivation is asked separately so one gap cannot hide another.** The
+/// record-building path is a chain of `?`, which reports what it tripped on
+/// first and nothing about the rest; this file promises a reader every field the
+/// capture path would have to record, and that promise needs a probe per field.
+fn lane_gaps(lane: &Lane) -> Vec<String> {
+    let mut out = Vec::new();
+    if let Err(error) = identity_of(lane) {
+        out.push(error);
+    }
+    match lane.connectors() {
+        // ⛔ COUNTED HERE AND NOT ONLY AT VALIDATION. `E-CAP-01` fires inside
+        // `validate`, which a lane missing any other field never reaches - so
+        // the one gap every capture this project has run shares would be the
+        // one a report never mentioned.
+        Ok(connectors) if connectors.len() < 2 => out.push(format!(
+            "the attestation declares {} connector(s). `E-CAP-01` refuses a record with fewer \
+             than two at the VALIDITY gate, so this is not a publication question: name the \
+             second in `connectors=` and give it a report in the bundle",
+            connectors.len()
+        )),
+        Ok(_) => {}
+        Err(error) => out.push(error),
+    }
+    if let Err(error) = source_identity(lane) {
+        out.push(error);
+    }
+    if let Err(error) = lane.resolver() {
+        out.push(error);
+    }
+    out
 }
 
 /// The one version every lane must have reported, or a refusal naming the pair.
@@ -795,6 +908,21 @@ fn run(lanes: &[Lane], out: &Path) -> Result<String, String> {
     }
 
     for index in 0..lanes.len() {
+        // ⛔ EVERY GAP, NOT THE FIRST. This file's own header promises that a run
+        // which cannot produce a record says exactly what the capture path would
+        // have to record, and a `?` chain says only what it tripped on first.
+        // ⚠ Measured on run 14: adding the `package` derivation moved that
+        // refusal in front of the commit one, and two gaps a previous run had
+        // named silently disappeared from the report.
+        let gaps = lane_gaps(&lanes[index]);
+        if !gaps.is_empty() {
+            for gap in gaps {
+                refusals += 1;
+                writeln!(report, "  ⛔ lane {}: {gap}", lanes[index].route)
+                    .expect("a String cannot fail");
+            }
+            continue;
+        }
         let profile = match profile_of(lanes, index, &version) {
             Ok(profile) => profile,
             Err(error) => {

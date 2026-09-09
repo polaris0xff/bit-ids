@@ -52,9 +52,13 @@ and stored and would merely fail to publish for want of a second connector.
 | what the artifacts say | what refuses it |
 | --- | --- |
 | both lanes' `release/resolution.txt` differ **only in their timestamps** - one `source_url`, one `listing_sha256`, one `asset_url` | ⛔ `E-ACQ-07`: two routes sharing a resolver are one route |
+| every attestation declares **one** connector | ⛔ `E-CAP-01`, at the **validity** gate |
+| nothing records how the artifact was **packaged**, and `package` is in `StoreKey` | ⛔ a guessed package files two packagings of one version at one path |
 | nothing the capture path writes carries the source route's commit | ⛔ `E-ACQ-06` - ⭐ **repaired**: the adapter now records `rev-parse HEAD` and `install-client` refuses a `source` route without one |
-| every attestation names **one** connector | ⛔ `E-CAP-01`, at the **validity** gate |
-| the two lanes put different peer-ID tails on the wire | ⛔ `classify_across` answers `Divergent`, never `BuildEquivalent` |
+
+⚠ **`classify_across` never ran on run 14** - it takes two `Profile`s and neither
+exists. What is measured is that the pair's **shape** is `Divergent`, read off
+two records the harness builds that differ only in their peer-ID tails.
 
 ⛔ **AND THE CONNECTOR CLAIM WAS WRONG IN THE DIRECTION THAT MATTERS.** Measured
 by stripping the golden fixture two ways, each exit code read unpiped: a record
@@ -108,9 +112,11 @@ one-second install, each attesting `stock_client=true`, `measured_build=2.7.5`,
 `egress=closed`, and each bundle verifying with `sha256sum -c` outside the run
 that wrote it. ⛔ **Both measured a peer ID beginning `-qB5230-`**, qBittorrent
 5.2.3.0's prefix, emitted by a stock `aria2-next`; the twelve bytes after it
-differ between the runs, so the prefix is stable and the tail is per-run.
-⛔ **Still not a record**: one acquisition route, and `E-ACQ-01` refuses a record
-with one.
+differ between the runs. ⚠ This paragraph said "so the tail is per-run", and the
+section above refutes the wording: it differs between two surfaces of one run,
+so it is per-connection.
+⛔ **Still not a record**, and `E-ACQ-01` is no longer the reason: run 14 gave
+that target a second lane, and the table above is what refuses the pair.
 
 **Next, in order:**
 
@@ -129,18 +135,27 @@ with one.
    catching it is the right outcome. `git ls-remote --tags` is the second
    resolver; `aria2-next.sh`'s comment about "git refs" describes a design nobody
    wired.
-3. **`CI-09`**, which now sits behind both. ⭐ `assemble-capture` and
+3. ⛔ **A recorded `package`.** It is in `StoreKey`, and nothing a capture
+   uploads says how the artifact arrived - not the attestation, not the install
+   record, not the resolution, and not `catalogue/clients.toml`. The assembler
+   refuses rather than guessing, because a guessed one files two packagings of
+   a version at one path.
+4. **`CI-09`**, which now sits behind those three. ⭐ `assemble-capture` and
    `check-assemble` are written and green; what is missing is a capture whose
-   artifacts it accepts.
+   artifacts it accepts. ⚠ It writes a `Profile` and not the `RunManifest` that
+   has to sit beside one; the entry's residuals say why.
    ⚠ **The bounds are freshly sized and only just.** The source install took 496
    seconds where this host takes 366 - a runner is about 1.35x slower - so a
    locally measured build time is a lower bound and never an estimate.
-4. **`CI-07`**, the PowerShell halves for the declared rows. ⭐ Its cheap half is
+5. **`CI-07`**, the PowerShell halves for the declared rows. ⭐ Its cheap half is
    done: `check-gate-rows` compares the two runners' row lists, and both runners
-   now carry 32 rows. ⚠ `check-assemble` is the nineteenth declared-unavailable
-   row and it needs `store-lib.ps1` like the rest.
-5. **`CI-08`'s new residual**, the load-sensitive `check-step-bodies` row.
-6. **Shard `check-workflow` across runners.** It is still the whole CI wall
+   now carry 32 rows. ⚠ `check-assemble` is another declared-unavailable row and
+   it needs `store-lib.ps1` like the rest. ⛔ **No count of those rows is written
+   here**: `CI-01` and `CI-07` each record one going stale in prose, and this
+   sentence carried a third - "the nineteenth" - over a runner declaring
+   eighteen, until a claim audit counted them.
+6. **`CI-08`'s new residual**, the load-sensitive `check-step-bodies` row.
+7. **Shard `check-workflow` across runners.** It is still the whole CI wall
    clock. `CI-01`'s residual says why it is its own unit.
 
 ---

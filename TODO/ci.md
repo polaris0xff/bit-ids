@@ -1989,9 +1989,20 @@ an attestation:
 | what the artifacts say | what refuses it |
 | --- | --- |
 | both lanes' `resolution.txt` differ **only in their timestamps** - one `source_url`, one `listing_sha256`, one `asset_url` | ⛔ `E-ACQ-07`: two routes sharing a resolver are one route |
-| no document the capture path writes carries the source route's commit | ⛔ `E-ACQ-06`: a source identity needs a full object name |
-| every attestation names one connector | ⛔ `E-CAP-01`, at the **validity** gate |
-| the two lanes put different peer-ID tails on the wire | ⛔ `classify_across` answers `Divergent`, not `BuildEquivalent` |
+| every attestation declares **one** connector | ⛔ `E-CAP-01`, at the **validity** gate |
+| nothing records how the artifact was **packaged**, and `package` is in `StoreKey` | ⛔ a record filed under a guessed package is the non-injective path `store.rs` refuses |
+| no document the capture path writes carries the source route's commit | ⛔ `E-ACQ-06`: a source identity needs a full object name - ⭐ **repaired below** |
+
+⚠ **`classify_across` is NOT in that table, because it never ran on run 14**: it
+takes two `Profile`s and neither exists. What is measured is that the pair's
+**shape** reaches `Divergent` - `check-assemble` builds two records differing
+only in their peer-ID tails and reads that verdict off them.
+
+⭐ **The tool reports all of them in one run** rather than the first it trips on.
+⚠ It did not at first: adding the `package` derivation moved that refusal in
+front of the commit one and two gaps a previous run had named vanished from the
+report. Each derivation is probed separately now, because this file's own header
+promises a reader every field the capture path would have to record.
 
 ⚠ **The first is a design decision rather than an oversight, and
 `capture-client.yml` argues for it in a comment**: *"THE SOURCE LANE RESOLVES
@@ -2064,13 +2075,39 @@ silent**, which is `E-COR-07`'s rule applied where the record is written.
 ⚠ That is a contract this entry declares and `OBS-07` implements; no capture has
 written one.
 
+### ⚠ Residuals
+
+- ⛔ **It writes a `Profile` and not the `RunManifest` that has to sit beside
+  one.** A manifest carries the run's ordered phases, both clocks, the sampling
+  plan and the host facts; an attestation carries a start, a finish, a platform
+  string and a claim fingerprint. Inventing the rest would produce a document
+  `bind` then compares against a record that agrees with it for no reason. ⚠ So
+  the store this writes is a store of records with no runs, which `check-store`
+  accepts and a publication would not.
+- ⛔ **The door sweep found two more readers of a transcript, and both are
+  `grep`.** `capture-run.sh` and `capture-client.sh` each assert a token appears
+  in `tracker-http.transcript.json` with a fixed-string match. ⚠ A substring
+  match cannot tell what the BUILD sent from what the lab sent, because both
+  directions are in the document; the peer-ID check is meant to establish the
+  first. `parse_transcript_document` is what would answer it properly, and
+  wiring a Rust reader into the capture runner is a change to the capture path
+  that needs a dispatch to prove. Filed rather than made unproven.
+- ⚠ **`display_name` is the target identifier**, because nothing a capture
+  uploads carries a display name and `catalogue/clients.toml` does. Reading it
+  would mean a TOML dependency for one cosmetic field. It is not in the identity
+  tuple, so unlike `platform`, `arch` and `package` it cannot file a record at
+  the wrong path.
+- ⚠ **The artifact digest is the installed executable's**, because nothing the
+  capture uploads carries a digest of the bytes that arrived. `ACQ-05` is where
+  a retrieval digest would come from.
+
 ### ⛔ What is left, and it is no longer this entry's alone
 
 The publisher's dry run still cannot be reached, for the reason below and now
-for three more. ⭐ The order is fixed rather than open: `OBS-07`'s second
-connector and an independent resolution for the source route are both
-**prerequisites for a record existing**, and the v7/v8 question sits behind
-them.
+for several more. ⭐ The order is fixed rather than open: `OBS-07`'s second
+connector, an independent resolution for the source route, and a recorded
+package format are all **prerequisites for a record existing**, and the v7/v8
+question sits behind them.
 
 ### What a real capture artifact answered on 2026-09-08, and what it refused
 

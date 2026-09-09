@@ -32,8 +32,8 @@ builds**: runs 11 and 12 on 2026-09-09 each attest `kind=client`,
 `stock_client=true`, `measured_build=2.7.5` for `aria2-next`, with an evidence
 bundle that verifies outside the run that wrote it. ⛔ Still not a `Profile`, and
 the reason is no longer `E-ACQ-01`: run 14 gained a second lane, and assembling
-it found `E-ACQ-07`, `E-ACQ-06` and `E-CAP-01` instead. The table below carries
-all four.
+it found `E-ACQ-07`, `E-CAP-01`, an unrecorded package format and `E-ACQ-06`
+instead. The table under *Limits* carries all four.
 
 What exists is every layer a capture passes through, and each one is closed:
 
@@ -136,14 +136,16 @@ four artifacts and refuses. Four reasons, none of them in an attestation:
 | what the artifacts say | what refuses it |
 | --- | --- |
 | both lanes' `resolution.txt` differ **only in their timestamps** | ⛔ `E-ACQ-07`: two routes sharing a resolver are one route |
+| every attestation declares **one** connector | ⛔ `E-CAP-01`, at the **validity** gate |
+| nothing records how the artifact was **packaged**, and `package` is in `StoreKey` | ⛔ a guessed package files two packagings of one version at one path |
 | nothing the capture path writes carries the source route's commit | ⛔ `E-ACQ-06`: a source identity needs a full object name |
-| every attestation names **one** connector | ⛔ `E-CAP-01`, at the **validity** gate |
-| the two lanes put different peer-ID tails on the wire | ⛔ `classify_across` answers `Divergent` |
 
-⭐ **The second is repaired**: the adapter records `rev-parse HEAD` and
+⭐ **The last is repaired**: the adapter records `rev-parse HEAD` and
 `install-client` refuses a `source` route without a full object name.
-⛔ **The first and third are prerequisites for a record existing at all**, and
-`CI-09` carries both with the commands that measured them.
+⛔ **The other three are prerequisites for a record existing at all**, and
+`CI-09` carries each with the command that measured it.
+⚠ **`BuildEquivalent` is unreachable for a real client through this path**, and
+`CI-09` carries why and what was measured instead.
 
 ⭐ **CLIENT CAPTURES HAVE NOW REACHED THE *Capture* STEP AND UPLOADED VERIFIED
 BUNDLES.** `capture-client` runs 11 and 12 measured `aria2-next` 2.7.5 on
@@ -283,7 +285,13 @@ nothing is. The clone question under *Settled decisions* is spent too.
    one connector: `E-CAP-01` refuses it as an **invalid document**. Every capture
    this project has run declares one. So a second connector is a prerequisite for
    a record existing, exactly as a second route is.
-3. **A second, independent resolution for the `source` route.** ⛔ Run 14's two
+3. ⛔ **A recorded `package`, which is in `StoreKey`.** Nothing a capture uploads
+   says how the artifact arrived - not the attestation, not the install record,
+   not the resolution, and not `catalogue/clients.toml`, which carries
+   `candidate_routes` and no package format. ⚠ The assembler refuses rather than
+   guessing, because a guessed one files two packagings of a version at one
+   path, which is the non-injective layout `store.rs` refuses at length.
+4. **A second, independent resolution for the `source` route.** ⛔ Run 14's two
    lanes read one listing, which `E-ACQ-07` calls one route.
    `capture-client.yml` argues for that in a comment - one resolution keeps the
    versions equal - and ⭐ **absolute 4 already answers the worry**: version
@@ -291,7 +299,7 @@ nothing is. The clone question under *Settled decisions* is spent too.
    independent resolutions landing on two versions is a vendor that moved
    mid-capture, and catching it is the correct outcome rather than something to
    design around.
-4. **`CI-09`**, the capture-to-publisher path, which now sits behind those two.
+5. **`CI-09`**, the capture-to-publisher path, which now sits behind those.
    ⭐ `assemble-capture` and `check-assemble` are written and the refusals above
    are its measurement. ⛔ **The v7/v8 question still cannot be reached**, because
    the publisher downloads `bundle` and nothing in the tree produces that name,

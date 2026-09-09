@@ -141,7 +141,12 @@ write_lane() { # tag route resolver-url commit binary-digest version peer-id [co
   {
     printf 'bit-ids/capture-attestation/1\nrun=cap-%s\nkind=client\n' "$1"
     printf 'target=fixture-client\nmeasured_build=%s\nstock_client=true\n' "$6"
+    # ⚠ `uname -srm`, which is what the real attestation carries, so the
+    # platform and the architecture in the record are DERIVED here exactly as
+    # they are there - and `x86_64` is spelled with the underscore the kernel
+    # uses rather than the hyphen this project's vocabulary uses.
     printf 'platform=Linux 0.0.0-fixture x86_64\n'
+    printf 'package=elf-binary\n'
     printf 'started_at=2026-09-09T15:08:24Z\nfinished_at=2026-09-09T15:09:14Z\n'
     printf 'fixture=sha256:%s\n' "$(printf 'fixture-%s' "$1" | sha256sum | cut -d' ' -f1)"
     printf 'egress=closed\n'
@@ -350,6 +355,47 @@ case_is 1 "must resolve one stable version" \
 rm -f "$WORK/good-source-install/install-source/version.err"
 case_is 2 "E-ACQ-10" "a lane with no process output for its version cannot run" \
   novers good-release good-source
+write_lane good-source source "$REFS" "$COMMIT" "$DIGEST_B" 1.2.3 "$PEER_A" "$PEER_A" || exit 2
+
+# ⛔ THE THREE FIELDS A STORE PATH IS DERIVED FROM ARE DERIVED, NOT WRITTEN IN.
+# `platform`, `arch` and `package` are in `StoreKey`, so an assembler that
+# hardcoded them would file a Windows capture of one version at the Linux
+# capture's path - the non-injective-path defect `store.rs` refuses at length.
+# ⚠ The first draft did hardcode all three, and only a claim audit found it.
+sed 's/^package=elf-binary$//' "$WORK/good-source-capture/capture/attestation.txt" \
+  >"$WORK/nopkg.txt"
+cp "$WORK/nopkg.txt" "$WORK/good-source-capture/capture/attestation.txt"
+case_is 1 "records no \`package\`" \
+  "an attestation with no package cannot be filed, because the path is derived from it" \
+  nopkg good-release good-source
+write_lane good-source source "$REFS" "$COMMIT" "$DIGEST_B" 1.2.3 "$PEER_A" "$PEER_A" || exit 2
+
+# ⛔ AND A FIXTURE CAPTURE IS NOT A MEASUREMENT. `capture.yml` writes
+# `kind=fixture` over a run that installed nothing, and a record built from one
+# would read exactly like a record of a build.
+sed 's/^kind=client$/kind=fixture/' "$WORK/good-source-capture/capture/attestation.txt" \
+  >"$WORK/fixture.txt"
+cp "$WORK/fixture.txt" "$WORK/good-source-capture/capture/attestation.txt"
+case_is 1 "which is not a target kind" \
+  "a fixture capture is refused rather than recorded as a build" \
+  fixturekind good-release good-source
+write_lane good-source source "$REFS" "$COMMIT" "$DIGEST_B" 1.2.3 "$PEER_A" "$PEER_A" || exit 2
+
+# ⛔ E-ACQ-08 HAD NO CASE UNTIL A GUARD-MUTATION PASS ASKED FOR ONE. Two lanes
+# that were delivered the same way are one route however their resolvers differ,
+# and a guard nobody has seen refuse is a guard nobody knows works.
+write_lane twin-release release "$REFS" "" "$DIGEST_B" 1.2.3 "$PEER_A" "$PEER_A" || exit 2
+case_is 1 "E-ACQ-08" "two lanes delivered the same way are refused as one route" \
+  twin good-release twin-release
+
+# ⛔ AND A DOCUMENT WITH NO BANNER IS NOT ONE OF THIS PROJECT'S. Every artifact
+# the capture path writes opens with its own schema name, and a reader that took
+# any key=value file would accept an artifact somebody else produced.
+grep -v '^bit-ids/install-record/1$' "$WORK/good-source-capture/install-source.txt" \
+  >"$WORK/nobanner.txt"
+cp "$WORK/nobanner.txt" "$WORK/good-source-capture/install-source.txt"
+case_is 2 "bit-ids document banner" "a record with no schema banner cannot run" \
+  nobanner good-release good-source
 write_lane good-source source "$REFS" "$COMMIT" "$DIGEST_B" 1.2.3 "$PEER_A" "$PEER_A" || exit 2
 
 # ⛔ ONE LANE IS ONE ROUTE. `E-ACQ-01` refuses a record with one, so the
