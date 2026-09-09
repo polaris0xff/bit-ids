@@ -1246,6 +1246,38 @@ workflow reads as a control the next reader will trust.
 
 ⚠ That is a mitigation and not an answer, and this entry stays open on the answer.
 
+### ⚠ Three routes to the answer that were tried and did not give one
+
+⛔ **The hung jobs' logs are not retrievable.** An authenticated read of both of
+run 6's jobs answers **HTTP 404**, as it does for run 4's aria2 job: a job whose
+runner was killed or cancelled has no log to fetch. ⭐ That is why the artifact
+route matters and why the install logs go up at all - the log is the one piece of
+evidence a killed job does not leave, and this is now measured rather than
+inferred from two dispatches that "lost their diagnosis".
+
+⚠ **The last line of a job that DID complete is `Cleaning up orphan
+processes`**, read from run 4's qbittorrent job. That is the runner's own
+post-job step and it appears on every successful job, so it is a pointer and not
+a finding: it says the runner tracks processes a step leaves behind, which is a
+place to look rather than a cause.
+
+⛔ **And the aria2 package install leaves nothing running, measured here.** The
+adapter's package route was run directly on this host - no claim, no
+`install-client`, because installing a product and asking its version is not a
+capture - and the process count was **82 before and 82 after**, with nothing
+matching `apt`, `dpkg`, `aria2`, `needrestart` or `unattended` alive afterwards.
+⚠ This host is not the runner image, and it proved that in the same run: `aria2`
+was **absent** here, so the install actually installed, where on `ubuntu-24.04`
+it is a no-op. So the negative result is about this host and narrows rather than
+settles.
+
+⚠ **What would discriminate is a non-aria2 job reaching that step**, which every
+completed job so far has passed through without hanging. With the step at the end
+of the job, a `transmission` lane on the `release` route reaches it after an
+install that refuses by design - so one dispatch would say whether the step or
+the target is the subject. That is a case this entry can name rather than a guess
+about a mechanism.
+
 ### The second half of the Prove is done, measured 2026-09-08
 
 ⭐ **The gate gives the same verdict under a hostile environment.**
