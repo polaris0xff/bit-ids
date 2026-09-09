@@ -30,7 +30,8 @@ this step could read that failure as a defect in the tree.
 
 ## Where the work is
 
-**In flight:** `CLIENT-05` and `CI-09`, and they are still the same blocker.
+**In flight:** nothing. `CLIENT-14` closed on 2026-09-09. `CLIENT-05` and `CI-09`
+are open and are still the same blocker as each other.
 
 ⛔ **THE RECORD THE WORK ORDER WAITS ON CANNOT BE WRITTEN FROM ANY CAPTURE THIS
 PROJECT HAS RUN.** One connector **validates** and `E-PUB-02` refuses to publish
@@ -44,24 +45,33 @@ matrix dimension and `resolve-release.sh` chooses the artifact.
 
 **Next, in order:**
 
-1. ⭐ **`CLIENT-14` CAPTURED. THE HANG IS NOT IN FRONT OF THIS TARGET.**
-   `capture-client` run 11 is the eleventh dispatch and the first to reach the
-   *Capture* step: every step passed, in 2 minutes 1 second, with a one-second
-   install. It attests `stock_client=true`, `measured_build=2.7.5`,
-   `egress=closed`, and its bundle verifies with `sha256sum -c` outside the run.
-   ⛔ **The measured peer ID is `-qB5230-s2QbzYjt(LOQ`** - qBittorrent 5.2.3.0's
-   prefix, emitted by a stock `aria2-next`.
-   ⛔ **It is still not a record.** One acquisition route, and `E-ACQ-01` refuses
-   a record with one, so this is an attestation and a bundle. The two-route
-   record is not this entry's to produce.
-   ⚠ **One capture is one sample.** Whether the `-qB5230-` prefix is stable
-   across runs is unmeasured; Transmission gave three distinct peer IDs over four
-   captures. Dispatch it again and compare before treating the prefix as fixed.
+⭐ **`CLIENT-14` IS CLOSED AND THE HANG IS NOT IN FRONT OF THAT TARGET.**
+`capture-client` runs 11 and 12 both reached the *Capture* step - the eleventh
+and twelfth dispatches, after ten that did not - each in about two minutes with a
+one-second install, each attesting `stock_client=true`, `measured_build=2.7.5`,
+`egress=closed`, and each bundle verifying with `sha256sum -c` outside the run
+that wrote it. ⛔ **Both measured a peer ID beginning `-qB5230-`**, qBittorrent
+5.2.3.0's prefix, emitted by a stock `aria2-next`; the twelve bytes after it
+differ between the runs, so the prefix is stable and the tail is per-run.
+⛔ **Still not a record**: one acquisition route, and `E-ACQ-01` refuses a record
+with one.
+
+**Next, in order:**
+
+1. **A SECOND ROUTE, and it is the only thing between this project and its first
+   published record.** Every layer is now proved end to end - resolve, install,
+   contain, capture, bundle, verify - on a target with one route. ⭐ The cheapest
+   candidates are a `source-build` of `aria2-next` at the matching tag, which the
+   catalogue already names as its route B, or a target whose package and release
+   routes both install (`transmission` and `qbittorrent` install from the package
+   index today; their release routes do not).
 2. **A record in the store**, once a two-route capture exists. `not_corroborated`
    is a recordable state; one route is not.
 3. **`CI-07`**, the PowerShell halves for the declared rows. ⭐ Its cheap half is
-   done: `check-gate-rows` compares the two runners' row lists.
-4. **Shard `check-workflow` across runners.** It is still the whole CI wall
+   done: `check-gate-rows` compares the two runners' row lists. 18 rows are
+   declared unavailable on the Windows lane.
+4. **`CI-08`'s new residual**, the load-sensitive `check-step-bodies` row.
+5. **Shard `check-workflow` across runners.** It is still the whole CI wall
    clock. `CI-01`'s residual says why it is its own unit.
 
 ---
@@ -95,7 +105,11 @@ mechanism.
 ⭐ **Three bounded probes now run before the install** - host resources, `sudo`,
 and the preinstalled product - because when a job produces no log, no artifact
 and no bound, the one signal left is which step the API last reported in
-progress. They are pushed and **not yet dispatched**.
+progress. ⚠ **They have now been dispatched and they have never run against
+`aria2`.** Runs 11 and 12 exercised all three on `aria2-next` lanes, where all
+three passed and the job went on to capture - so what they establish is that the
+probes work, not anything about the hang. An `aria2` lane has not been dispatched
+since they landed.
 
 ### The four readings refuted before those bounds
 
@@ -164,9 +178,10 @@ first, then run it once.
 while it is, which corrupts its plant-and-restore accounting.
 
 ⚠ **`check-step-bodies` IS THE FLAKY ROW, AND IT IS FLAKY BY CONSTRUCTION.**
-Measured on 2026-09-09: a gate run reported `FAIL check-step-bodies (exit 1)`,
-the harness run alone immediately afterwards reported `24 cases: 24 passed`
-exit 0, and the next gate over the same tree was green. ⭐ Its cases time
+Measured TWICE on 2026-09-09: each time the gate reported
+`FAIL check-step-bodies (exit 1)`, the harness run alone immediately afterwards
+reported `24 cases: 24 passed` exit 0, and the next gate over the same tree was
+green. `CI-08` carries it as a residual with an acceptance. ⭐ Its cases time
 things - a bound that must fire as `124`, "a product slower than one tick and
 inside the bound survives", and whether a step's output pipe reaches end of file
 - so a loaded host can move a case across its own boundary.

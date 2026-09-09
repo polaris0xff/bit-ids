@@ -1025,7 +1025,7 @@ blocker and no Zona profile is published.
 
 Source: operator direction on 2026-09-09, after ten dispatches produced no aria2
 capture
-Priority: P1 | Effort: L | Status: OPEN
+Priority: P1 | Effort: L | Status: DONE
 
 Problem: `CLIENT-05`'s target cannot be captured. Ten client capture runs have
 been dispatched and not one has reached the *Capture* step: every aria2 lane
@@ -1069,6 +1069,19 @@ route has been measured. Amended on 2026-09-09 rather than left standing: a
 route this entry has established does not exist would never close. ⛔ The
 two-route record the work order needs is not this entry's to produce; what this
 entry can produce is the first capture that reaches the *Capture* step.
+
+Closure evidence: run on 2026-09-09. `sh scripts/acquisition/check-release-route.sh`
+is 23 cases, 23 passed, 0 failed, exit 0 - including `aria2-next` selecting
+`aria2-next-2.7.4-linux-x86_64` and the newest-release-with-no-assets case
+refusing and naming 2.7.5. `sh scripts/common/check-gate.sh` is 31 checks, 30
+passed, 0 failed, 1 skipped (`check-remote-items`, the one observed skip on a
+session host), exit 0. `cargo test --workspace --locked --all-targets` is 559
+passed, 0 failed over 53 binaries; `cargo clippy --workspace --locked
+--all-targets -- -D warnings` and `cargo fmt --all -- --check` exit 0.
+capture-client runs 11 and 12 both completed with every step green, each in about
+two minutes, and each bundle verified with `sha256sum -c` outside the run that
+wrote it - three files, all `OK`, exit 0. CI run 94 on `f10021f` is green on all
+three jobs.
 
 ### ⭐ What has now been measured, on 2026-09-09
 
@@ -1252,10 +1265,25 @@ route, `E-ACQ-01` refuses a record with one, and no `Profile` has been written o
 published. What exists is an attestation and an evidence bundle, which is the
 same state Transmission and qBittorrent have been in since 2026-09-08.
 
-⚠ **One capture is also one sample.** Four captures of Transmission 4.0.5
-reported three distinct peer IDs, so the twelve bytes after this prefix should be
-expected to move; whether the `-qB5230-` prefix is stable across runs and
-versions is unmeasured, and a second capture is what would establish it.
+⭐ **A SECOND CAPTURE ANSWERED THE SAMPLE QUESTION. capture-client run 12** ran
+the fixed adapter - `adapter_sha256` differs from run 11's, which is how the
+record says so - and measured the same build, `2.7.5`, on a fresh host.
+
+| run | peer ID | prefix |
+| --- | --- | --- |
+| 11 | `-qB5230-s2QbzYjt(LOQ` | `-qB5230-` |
+| 12 | `-qB5230-*MWZBxpa4ngj` | `-qB5230-` |
+
+⭐ **The eight-byte prefix is identical and the twelve bytes after it are not.**
+That is the shape a peer ID is specified to have - a client identity followed by
+a per-run random tail - and it is now measured for this build rather than assumed
+from the specification. ⚠ Two samples of one version on one platform: it says the
+prefix is stable across runs, and nothing about across versions.
+
+⭐ **Run 12 also confirms the rule 12 fix on the real path.** Its bundle carries
+`rpc-add.json`, `rpc-options.json`, `rpc-shutdown.json` and `rpc-version.json`
+and NO `rpc-token`, and `sha256sum -c` verifies its three evidence files outside
+the run that wrote it.
 
 ⛔ **And this says nothing about `CLIENT-05`'s hang.** A different target
 installing cleanly does not diagnose why aria2 does not. `CLIENT-05` stays open

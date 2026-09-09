@@ -2,10 +2,10 @@
 
 State instant: 2026-09-09
 Total: 64
-Open: 23
+Open: 22
 In progress: 0
 Blocked: 0
-Done: 41
+Done: 42
 
 ⚠ Those five counts are compared against
 [`INDEX.md`](INDEX.md) by `check-project.sh` on every gate, so they cannot go
@@ -24,9 +24,14 @@ record in the tree is still synthetic and says so: the schema fixtures under
 a target that does not exist, and the wire fixtures under
 [`../crates/bit-ids-wire/tests/fixtures/`](../crates/bit-ids-wire/tests/fixtures/)
 were written by hand from published BEPs. Nothing has been published.
-⚠ **Three fixture captures have now run on hosted runners** and not one of them
-measured a build: no client is installed, and every attestation says
+⚠ **Three FIXTURE captures have run on hosted runners** and not one of them
+measured a build: no client is installed, and each of those attestations says
 `kind=fixture`, `measured_build=none`, `stock_client=false`.
+⭐ **The CLIENT capture workflow is a different path and it has now measured
+builds**: runs 11 and 12 on 2026-09-09 each attest `kind=client`,
+`stock_client=true`, `measured_build=2.7.5` for `aria2-next`, with an evidence
+bundle that verifies outside the run that wrote it. ⛔ Still not a `Profile`:
+that target has one acquisition route and `E-ACQ-01` refuses a record with one.
 
 What exists is every layer a capture passes through, and each one is closed:
 
@@ -114,12 +119,14 @@ published. `docs/publishing.md` carries the forms and says they are unexercised.
 ⚠ **Nothing schedules the staleness monitor.** `CI-02` built the comparison and
 its driving surface; no capture request has ever been opened.
 
-⭐ **A CLIENT CAPTURE HAS NOW REACHED THE *Capture* STEP AND UPLOADED A VERIFIED
-BUNDLE.** `capture-client` run 11 measured `aria2-next` 2.7.5 on 2026-09-09 and
-observed peer ID `-qB5230-s2QbzYjt(LOQ` - qBittorrent 5.2.3.0's prefix, emitted
-by a different product. ⛔ Still an attestation and a bundle rather than a
-`Profile`: that target has one acquisition route and `E-ACQ-01` refuses a record
-with one. `CLIENT-14` carries it.
+⭐ **CLIENT CAPTURES HAVE NOW REACHED THE *Capture* STEP AND UPLOADED VERIFIED
+BUNDLES.** `capture-client` runs 11 and 12 measured `aria2-next` 2.7.5 on
+2026-09-09, in about two minutes each, every step green. Both observed a peer ID
+whose first eight bytes are `-qB5230-` - qBittorrent 5.2.3.0's prefix, emitted by
+a different product - with different twelve-byte tails, so the prefix is stable
+across runs and the tail is per-run. ⛔ Still attestations and bundles rather than
+`Profile`s: that target has one acquisition route and `E-ACQ-01` refuses a record
+with one. `CLIENT-14` carries it and is closed.
 
 ⭐ **The capture workflow has been dispatched twice and run 2 is green on both
 platforms.** ⛔ **Run 1 bought a defect no reading had found**: its Windows job
@@ -212,13 +219,13 @@ written and the dependency question under *Settled decisions* is spent.
 every answer it gives about a real client today is *not measured*, because
 nothing is. The clone question under *Settled decisions* is spent too.
 
-0. ⭐ **`CLIENT-14` FIRST, by operator direction on 2026-09-09, and the target is
-   now measured.** Ten dispatches produced no aria2 capture: every lane stops
-   inside *Install the client*, four independent bounds have been measured not to
-   fire on that step, five readings of it have been refuted, and no such job has
-   ever produced a log or an artifact. ⛔ The direction is to change the target
-   rather than to keep diagnosing - `AnInsomniacy/aria2-next`, acquired from its
-   own releases and driven over RPC.
+0. ⭐ **`CLIENT-14` IS CLOSED.** It was first by operator direction on 2026-09-09,
+   after ten dispatches produced no aria2 capture: every lane stopped inside
+   *Install the client*, four independent bounds were measured not to fire on
+   that step, five readings of it were refuted, and no such job ever produced a
+   log or an artifact. ⛔ The direction was to change the target rather than to
+   keep diagnosing - `AnInsomniacy/aria2-next`, acquired from its own releases and
+   driven over RPC - and that target captured on the first dispatch.
    ⭐ **THE CAPTURE RAN AND EVERY STEP PASSED. capture-client run 11 is the
    ELEVENTH dispatch and the FIRST to reach the *Capture* step**, in 2 minutes 1
    second, with an install step of one second. It attests `kind=client`,

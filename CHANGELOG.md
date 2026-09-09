@@ -29,8 +29,9 @@ Nothing is released yet. Entries accumulate here until the first
   fixture and the harness case keep the refusal pinned whether or not the window
   is open today.
 - ⚠ **`check-step-bodies` is a flaky gate row and it is flaky by construction.**
-  A gate run reported it failed; the harness alone reported 24 of 24 passing, and
-  the next gate over the same tree was green. Its cases time a bound that must
+  Twice on this date a gate reported it failed; each time the harness alone
+  reported 24 of 24 passing seconds later, and the next gate over the same tree
+  was green. Filed as a residual on `CI-08` with an acceptance. Its cases time a bound that must
   fire as `124` and a step whose output pipe must reach end of file, so a loaded
   host can move a case across its own boundary. Recorded in
   [`docs/history/RESUME.md`](docs/history/RESUME.md) so the next red is checked

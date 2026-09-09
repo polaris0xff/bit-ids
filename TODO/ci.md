@@ -1816,6 +1816,34 @@ a second question this entry owns: the Linux lane pins `shfmt` and takes
 `shellcheck` and `pwsh` from the runner image, so a session host runs a MORE
 pinned set of tools than the lane it exists to match.
 
+### ⚠ Residual, filed 2026-09-09: `check-step-bodies` is a load-sensitive row
+
+⛔ **A gate row that fails under load and passes alone is the same class this
+entry is about** - a behaviour inherited from the host rather than stated - and
+it is now measured **twice** on one session host. Both times the gate reported
+`FAIL check-step-bodies (exit 1)`; both times
+`sh scripts/ci/check-step-bodies.sh` run alone immediately afterwards reported
+`24 cases: 24 passed, 0 failed`, exit 0; and both times the next gate over the
+same tree was green.
+
+⭐ **The mechanism is in the harness's own subject.** Its cases time things: a
+bound that must fire as `124`, a case named "a product slower than one tick and
+inside the bound survives", and whether a step's output pipe has reached end of
+file. A loaded host moves a case across its own boundary, which is a timing
+assumption inherited from whatever else is running.
+
+⚠ **What is NOT established is that this explains every red seen today.**
+`check-workflow` failed one `gate_control` case on each of two runs, a different
+case each time, and those cases report only "the clean tree failed a check"
+without naming which - and the harness deletes its workdir, so the naming log is
+gone. ⛔ It is consistent with this row flaking and it is not proof of it.
+
+⛔ **It can turn the CI Linux lane red over a correct tree**, because that lane
+runs the gate with `--strict`. Not observed there yet: CI runs 93 and 94 were
+green on all three jobs. Acceptance for closing it: the timed cases assert against
+a measured floor rather than a fixed tick, or the harness reports which case
+moved, and a gate run under deliberate load stays green.
+
 ## CI-09: The capture-to-publisher path, end to end
 
 Source: two workflows that have each never run, joined by an artifact
