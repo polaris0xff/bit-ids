@@ -97,8 +97,11 @@ OBSERVER="${CARGO_TARGET_DIR:-$ROOT/target}/debug/examples/client-capture"
 WORK=$(store_workdir checkclient) || exit 2
 trap 'rm -rf "$WORK"' EXIT INT TERM
 
-# ⚠ SHORT ON PURPOSE. The runner waits on the observer's own line rather than on
-# a delay, so the only cost of a longer deadline here is gate time.
+# ⚠ SHORT ON PURPOSE, and `check-capture` carries what lengthening it costs:
+# measured on 2026-09-09, this harness is 48 seconds at `5` and **168 at `20`**,
+# because several cases here are ones the deadline itself has to end. ⛔ That is
+# why the gate runs this harness apart from its saturating batch rather than
+# buying robustness with a bigger number.
 SECS=5
 RUN=capture-0001
 

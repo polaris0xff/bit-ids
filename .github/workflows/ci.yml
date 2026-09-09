@@ -25,15 +25,14 @@ jobs:
   linux:
     name: Linux gate
     runs-on: ubuntu-24.04
-    # ⚠ THE BUDGET IS SPENT ALMOST ENTIRELY BY *Workflow acceptance*, and that
-    # step grows with every case that plants against the gate: each one runs the
-    # whole gate again. Measured on this lane: run 61 took 13.4 minutes in total,
-    # and run 62, with five more gate-planting cases, took 24.4 of the 30 it then
-    # had - 20.4 of them in that one step. ⛔ A lane that runs out of time reports
-    # as infrastructure rather than as a defect, and reads as a flake nobody
-    # root-causes. The headroom is deliberate, and a case that plants against the
-    # gate costs roughly two minutes here: add one as a decision.
-    timeout-minutes: 45
+    # ⚠ THE BUDGET USED TO BE SPENT ALMOST ENTIRELY BY *Workflow acceptance*, and
+    # that step now has a job of its own below. Measured on run 83, the last one
+    # that carried both: the lane took 30.5 minutes and 25.9 of them were that one
+    # step, with *Repository gate* at 3.5 and everything else together under one.
+    # ⛔ A lane that runs out of time reports as infrastructure rather than as a
+    # defect, and reads as a flake nobody root-causes, so the headroom stays
+    # generous relative to what is left here.
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
@@ -86,10 +85,55 @@ jobs:
         run: cargo clippy --workspace --locked --all-targets -- -D warnings
       - name: Repository gate
         run: sh scripts/common/check-gate.sh --strict
-      # Last, and only on this lane. It plants a defect of each class the gate
-      # exists to catch and runs the steps above against it, so it needs every
-      # one of them working first. It is deliberately absent from check-gate.sh:
-      # a runner inside the gate that also runs the gate recurses.
+
+  # ⭐ A JOB OF ITS OWN, BECAUSE IT WAS THE LANE. It plants a defect of each class
+  # the gate exists to catch and runs the offending step against it, and several
+  # of those cases run the whole gate - nine times in total - so it costs more
+  # than everything else in this workflow put together. Measured on run 83: 25.9
+  # minutes of a 30.5-minute lane. ⛔ Serialising it behind the Linux gate bought
+  # nothing: it repeats that gate itself, so a tree it would reject is one the
+  # first case reports with its own message.
+  #
+  # ⚠ IT IS DELIBERATELY ABSENT FROM check-gate.sh, and that is unchanged: a
+  # runner inside the gate that also runs the gate recurses.
+  #
+  # ⚠ THE SETUP IS REPEATED RATHER THAN SHARED. A minute of checkout and cache
+  # restore on a job that saves a quarter of an hour is a trade worth naming
+  # rather than hiding behind a composite action nothing else would use.
+  acceptance:
+    name: Workflow acceptance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Install pinned Rust toolchain
+        run: rustup show active-toolchain
+      - name: Cache downloaded crates
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: ${{ runner.os }}-crates-${{ hashFiles('Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-crates-
+      - name: Cache build artifacts
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: target
+          key: ${{ runner.os }}-target-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
+      # ⛔ THE SAME PINNED shfmt THE OTHER LANE INSTALLS. Several of the cases
+      # below run the gate, and the gate runs shell checks; a lane without it
+      # would report a skip where the Linux lane reports a pass.
+      - name: Install pinned shfmt
+        run: |
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          go install mvdan.cc/sh/v3/cmd/shfmt@v3.14.0
       - name: Workflow acceptance
         run: sh scripts/ci/check-workflow.sh
 

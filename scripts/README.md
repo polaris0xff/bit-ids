@@ -137,7 +137,14 @@ from any working directory.
   harness needs: build an example, make a scratch tree, digest a directory,
   verify a plant landed, count a row.
 - [`common/check-gate.sh`](common/check-gate.sh) and
-  [`common/check-gate.ps1`](common/check-gate.ps1) run the local gate.
+  [`common/check-gate.ps1`](common/check-gate.ps1) run the local gate. ⭐ The
+  `sh` half runs its checks **concurrently** and reads their verdicts in list
+  order, because every check here is hermetic and the wall clock is not: it went
+  from 198 seconds to 73 on the host that measured it, and `check-workflow` runs
+  the whole gate nine times, so the saving multiplies. ⛔ Each exit code is still
+  read from the process that produced it - `wait` on that child and nothing
+  else - and each row is still assembled at its own index, so two runs over one
+  tree produce one report.
 - `common/check-project.sh` and `common/check-project.ps1` validate bit-ids
   structure, catalogue coverage, todo counts, action pins, the shell-first
   implementation rule, that a `.ps1` carrying non-ASCII starts with a UTF-8 BOM,

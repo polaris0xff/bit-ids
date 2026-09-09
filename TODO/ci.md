@@ -122,12 +122,116 @@ in its case list. ⚠ Its static readers are checked against a workflow with eac
 property **removed**, because a reader that answers present over a file that
 lacks it would pass on any workflow at all.
 
+### ⭐ The lane was thirty minutes and one step was twenty-six of them
+
+**Measured on run 83, 2026-09-09, before anything was changed**, because "CI is
+slow" is not a place to start optimising:
+
+| step | of a 30.5-minute Linux lane |
+| --- | ---: |
+| *Workflow acceptance* | **25.9 min** |
+| *Repository gate* | 3.5 min |
+| everything else together | under 1 min |
+| the whole Windows lane | 2.4 min |
+
+⛔ **And the gate is not one gate.** `check-workflow` plants against it, so
+several of its cases run the whole thing: **nine gate runs** inside that one
+step. A second saved in the gate is nine seconds saved on the lane, which is why
+the gate was measured next rather than the harness.
+
+⚠ **The gate was three checks.** On this host its 29 checks took **198 seconds**
+and 183 of them were `check-twins` at 90.7s, `check-capture-client` at 47.9s and
+`check-capture` at 44.6s; everything else together was under fifteen. Serialising
+twenty-six sub-second checks behind those three was the whole cost.
+
+⭐ **Three changes, each measured, none of them weakening a verdict.**
+
+| change | measured |
+| --- | --- |
+| the gate's checks run concurrently, verdicts read in list order | 198s to 100s |
+| `check-twins` runs its twelve pairs concurrently, and each pair's two halves at once | 90.7s to **69s**, taking the gate to 73s |
+| the two socket harnesses run after that batch rather than inside it | back up to **118-125s**, and correct under load |
+| *Workflow acceptance* becomes a job of its own, beside the two lanes | it no longer serialises behind a gate it repeats |
+
+⛔ **THE THIRD ROW IS A COST PAID ON PURPOSE AND IT IS MOST OF THE SAVING.** The
+73-second gate was **wrong**: `check-capture` drives real sockets against a
+three-second deadline, and under a batch of twenty-seven other checks it reported
+*a run that recorded no bytes is refused (exit 1, but did not say 'recorded no
+bytes at all')* - a refusal that arrived for a reason the case had not planted.
+⚠ The same harness passed alone on the same tree minutes later, which is what
+identifies it as load and not a defect. A faster gate that is red for no defect
+is worse than a slow one.
+
+⚠ **Raising the deadline was tried first, and measured, and rejected.** It looked
+free - those harnesses wait on the observer's own line rather than on a delay -
+and it is not, because several of their cases are ones the deadline itself has to
+end: `check-capture` goes from **45 seconds at `3` to 79 at `6`**, and
+`check-capture-client` from **48 at `5` to 168 at `20`**. That is roughly eight
+to eleven seconds of gate per second of deadline, paid nine times over by
+`check-workflow`, to buy back forty-seven.
+
+⭐ **So the shipped gate is 118-125 seconds rather than 73**, measured twice at
+each stage, and the reason it is not 73 is written where the schedule is.
+
+⛔ **Every exit code is still read from the process that produced it.** `wait
+"$pid"` returns that child's status and nothing else's, which is the same
+guarantee the serial form had; there is no pipeline anywhere in either change,
+because a pipeline's status is this repository's oldest refusal.
+
+⛔ **And the rows are still in list order.** Each check and each pair writes to a
+file of its own and its row is assembled at its own index, so a report cannot
+come out in the order things happened to finish - which would make two runs over
+one tree produce two different reports.
+
+⭐ **The concurrency is safe because every check is hermetic**, which each one's
+own header already claimed: each makes its own scratch directory, binds only
+loopback, and reads the tree without writing to it. ⚠ `tree-unchanged` is the row
+that keeps that claim honest, and it stayed green through the change.
+
+⭐ **One thing had to be added rather than only reordered.** Nine of the checks
+call `cargo build --example` and cargo locks the target directory, so started at
+once they queued behind each other and the concurrency bought nothing. The
+examples are built once, before the queue - the same work, done once instead of
+nine times. ⚠ Its failure is deliberately not a gate row: a build that fails
+there fails again inside whichever harness needed it, where it is reported with
+that check's own name.
+
+⚠ **What was NOT changed is what `check-workflow` runs.** It executes the
+workflow's own step commands, read out of `ci.yml` by job and step name, so
+passing `--fast` to make its nine inner gate runs cheaper would mean changing
+what the lane itself runs. The saving comes from the gate being faster, not from
+it doing less.
+
 ### Residuals
 
 - ⚠ `check-workflow.sh` is not in `check-gate.sh` and cannot be, so a
   contributor's local gate does not run it. The workflow runs it on every push
   and it is this entry's acceptance; a gate runner that listed it would re-enter
   itself.
+- ⚠ The concurrency is unbounded: every check is launched at once. On a
+  four-processor host that is why the gate stops at 73 seconds rather than at the
+  90 one check needs - the machine is saturated, not the ordering. A bound would
+  be worth having on a host that cannot afford twenty-nine processes, and nothing
+  here has met one.
+- ⚠ `check-gate.ps1` is still serial. The Windows lane is 2.4 minutes end to end
+  and its gate is 59 seconds, so there is nothing there to win; the two halves
+  now differ in how they schedule and not in what they answer, and
+  `check-twins` does not pair the runners.
+- ⚠ **`check-workflow` is now the lane, and the next win is sharding it across
+  runners rather than anything inside it.** Measured after the change: 764
+  seconds locally, of which nine gate runs at roughly 70 seconds each are about
+  ten minutes. ⛔ Those nine cannot be overlapped within one job - the gate
+  already saturates four processors, which is why it stops at 73 seconds rather
+  than the 69 its longest check needs - so the only way down is a shard per
+  runner.
+  ⛔ **It is deliberately not done here, and the reason is the failure mode.** A
+  shard selector that silently claims no case leaves a rule nobody runs while
+  every lane stays green, which is the exact defect this entry's own `--strict`
+  work exists to prevent. It needs the partition to be provable by construction -
+  `index mod N`, with the runner printing what it ran and skipped - and the
+  workflow to be checked for running all `N`. That is a change to the harness
+  every other guard is proved by, and it should be made as its own unit with its
+  own plants rather than alongside a speedup.
 - ⚠ On a host with no authenticated `gh` the harness's gate cases cannot use the
   exit code as their control, because the clean tree exits 1 there. They read
   the runner's failure count instead and say so in the row. `check-remote-items`
@@ -1277,6 +1381,39 @@ of the job, a `transmission` lane on the `release` route reaches it after an
 install that refuses by design - so one dispatch would say whether the step or
 the target is the subject. That is a case this entry can name rather than a guess
 about a mechanism.
+
+### ⭐ Run 7 ran that case, and it moves the boundary twice
+
+**Four lanes: two transmission and two aria2, over both routes.**
+
+⛔ **The step is not the subject.** Both transmission lanes ran *Upload the
+install logs* in **one second** - one after a green capture and one after an
+install that refused - in the same run, on the same image, as two aria2 lanes
+that hung.
+
+⛔ **And the hang is not attached to that step at all.** Moved to the end of the
+job, it stopped hanging; what hung instead was *Install the client*, the step it
+used to follow. Run 6's aria2 package install took **six seconds**; run 7's took
+**ten minutes** and never completed. ⚠ Nothing about the install changed between
+those two runs except which step comes after it.
+
+⭐ **So the subject is the boundary after the aria2 install, not any particular
+action.** That is a sharper statement than four dispatches could make and it is
+what this entry now owns: whatever the aria2 install leaves behind, the runner
+does not finish the adjacent step over it, and it does so whether that step is a
+`uses:` upload or a `run:` block.
+
+⚠ **Two local reproductions came back negative and neither settles it.** The
+aria2 package route run directly on this host left 82 processes before and after,
+and `aria2c --version` under the same bound `install-client` uses left 78 before
+and after. ⛔ This host is not the runner image - `aria2` was absent here, so the
+install actually installed, where on `ubuntu-24.04` it is a no-op - so both are
+about a different code path than the one that hangs.
+
+⚠ **And the move has a cost this entry records rather than trades away.** With
+the install step hanging, run 7 produced no aria2 artifact at all, where runs 3
+to 6 produced one. The four already collected say what that route does; what was
+bought instead is where the hang sits.
 
 ### The second half of the Prove is done, measured 2026-09-08
 

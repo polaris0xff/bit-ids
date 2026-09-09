@@ -296,43 +296,94 @@ fi
 # scope rule is proven by adding a fixture that exercises it, not by trusting
 # this comparison to notice.
 printf '\n  twin pairs, same tree:\n'
+
+# ⭐ THE PAIRS RUN CONCURRENTLY AND THEIR VERDICTS ARE READ IN LIST ORDER, for
+# the reason `check-gate.sh` gives about the checks it runs: each pair reads the
+# same tree and writes nothing to it, so running twelve at once changes the wall
+# clock and nothing else. ⚠ It matters more here than anywhere: this file was
+# 90.7 of the gate's 198 seconds on the host it was measured on, and starting
+# `pwsh` twelve times in sequence is most of that - two seconds of process
+# startup before either half reads a byte.
+#
+# ⛔ THE TWO HALVES OF ONE PAIR ALSO RUN AT ONCE, and that is the second half of
+# the saving: a pair used to cost sh plus ps and now costs the slower of them.
+# ⚠ They are still two separate processes with two separate exit codes, read
+# from the process that produced each; ⛔ writing this as one pipeline is the
+# defect that was found in this very function once already.
+TWIN_JOBS=0
+
 compare_pair() {
-  _p_name="$1"
-  _p_sh="$2"
-  _p_shargs="$3"
-  _p_ps="$4"
-  _p_psargs="$5"
+  TWIN_JOBS=$((TWIN_JOBS + 1))
+  _q="$TMP/pair.$TWIN_JOBS"
+  printf '%s\n' "$1" >"$_q.name"
+  # ⚠ THE SUBSHELL BELOW INHERITS THIS FUNCTION'S POSITIONAL PARAMETERS, so it
+  # reads $1..$5 without being handed them. Handing them over is not available:
+  # `( ... ) "$@"` is a syntax error rather than a command with arguments.
+  (
+    _p_name="$1"
+    _p_sh="$2"
+    _p_shargs="$3"
+    _p_ps="$4"
+    _p_psargs="$5"
 
-  # shellcheck disable=SC2086
-  # The argument strings are deliberately word-split: each is a fixed literal
-  # written in the table below, never user input.
-  # ⛔ RUN UNPIPED, READ THE EXIT CODE, THEN FILTER. Writing this as
-  # `check | grep '^{'` and reading $? gives the GREP's status, so a check that
-  # exited 1 reads as 0 and a check that exited 2 reads as 1. That is this
-  # repository's oldest stated rule and it was broken here, in the file whose
-  # job is comparing guards, while writing this very function.
-  #
-  # ⚠ ONLY THE MACHINE-READABLE LINE IS COMPARED. A pair that also printed
-  # timestamped progress reported a disagreement while agreeing exactly, because
-  # two runs a second apart are never byte-identical. Comparing the JSON
-  # compares the ANSWER; comparing the transcript compares the clock.
-  _a_raw=$(cd "$REPO_ROOT" && sh "$REPO_ROOT/scripts/common/$_p_sh" $_p_shargs 2>/dev/null)
-  ra=$?
-  # shellcheck disable=SC2086
-  _b_raw=$(cd "$REPO_ROOT" && "$PWSH" -NoProfile -File "$REPO_ROOT/scripts/common/$_p_ps" $_p_psargs 2>/dev/null)
-  rb=$?
-  a=$(printf '%s\n' "$_a_raw" | grep '^{' || true)
-  b=$(printf '%s\n' "$_b_raw" | grep '^{' || true)
+    # shellcheck disable=SC2086
+    # The argument strings are deliberately word-split: each is a fixed literal
+    # written in the table below, never user input.
+    # ⛔ RUN UNPIPED, READ THE EXIT CODE, THEN FILTER. Writing this as
+    # `check | grep '^{'` and reading $? gives the GREP's status, so a check that
+    # exited 1 reads as 0 and a check that exited 2 reads as 1. That is this
+    # repository's oldest stated rule and it was broken here, in the file whose
+    # job is comparing guards, while writing this very function.
+    #
+    # ⚠ ONLY THE MACHINE-READABLE LINE IS COMPARED. A pair that also printed
+    # timestamped progress reported a disagreement while agreeing exactly, because
+    # two runs a second apart are never byte-identical. Comparing the JSON
+    # compares the ANSWER; comparing the transcript compares the clock.
+    (cd "$REPO_ROOT" && sh "$REPO_ROOT/scripts/common/$_p_sh" $_p_shargs 2>/dev/null) >"$_q.a" &
+    _sh_pid=$!
+    # shellcheck disable=SC2086
+    (cd "$REPO_ROOT" && "$PWSH" -NoProfile -File "$REPO_ROOT/scripts/common/$_p_ps" $_p_psargs 2>/dev/null) >"$_q.b" &
+    _ps_pid=$!
+    wait "$_sh_pid"
+    ra=$?
+    wait "$_ps_pid"
+    rb=$?
+    a=$(grep '^{' "$_q.a" || true)
+    b=$(grep '^{' "$_q.b" || true)
 
-  if [ "$a" = "$b" ] && [ "$ra" = "$rb" ]; then
-    ok "$_p_name: both say $([ -n "$a" ] && printf '%s' "$a" || printf 'nothing'), exit $ra"
-  else
-    note "$_p_name: the twins disagree"
+    if [ "$a" = "$b" ] && [ "$ra" = "$rb" ]; then
+      printf '  ok     %s: both say %s, exit %s\n' \
+        "$_p_name" "$([ -n "$a" ] && printf '%s' "$a" || printf 'nothing')" "$ra"
+      exit 0
+    fi
+    printf '  DRIFT  %s: the twins disagree\n' "$_p_name"
     printf '           sh: exit %s  %s\n' "$ra" "$a"
     printf '           ps: exit %s  %s\n' "$rb" "$b"
     printf '           ⛔ One rule, two answers. Fix BOTH; do not widen this\n'
     printf '           comparison to make the failure go away.\n'
-  fi
+    exit 1
+  ) >"$_q.out" 2>&1 &
+  printf '%s\n' "$!" >"$_q.pid"
+}
+
+# ⛔ NOTHING HAS BEEN WAITED ON UNTIL THIS RUNS. Every pair's exit code is read
+# from its own process, and every pair's lines are printed at its own index, so
+# the report cannot come out in the order the pairs happened to finish.
+harvest_pairs() {
+  _i=1
+  while [ "$_i" -le "$TWIN_JOBS" ]; do
+    _q="$TMP/pair.$_i"
+    wait "$(cat "$_q.pid")"
+    _rc=$?
+    # ⚠ A DRIFTING PAIR PRINTS EVEN UNDER --json, because the json line carries
+    # only a count and the lines below it are the only place the two answers
+    # appear. An agreeing pair prints nothing there, the way it did before.
+    if [ "$_rc" != 0 ] || [ "$JSON" != "1" ]; then
+      cat "$_q.out"
+    fi
+    [ "$_rc" = 0 ] || DRIFT=$((DRIFT + 1))
+    _i=$((_i + 1))
+  done
 }
 
 compare_pair "check-docs" check-docs.sh "--json" check-docs.ps1 "-Json"
@@ -371,6 +422,8 @@ compare_pair "mine-repo --selftest" mine-repo.sh "--selftest --json" mine-repo.p
 # run, not that it passed. ⛔ Do not drop the row on a machine with no gh; a
 # comparison skipped for convenience is a comparison that stops happening.
 compare_pair "check-remote-items" check-remote-items.sh "--json" check-remote-items.ps1 "-Json"
+
+harvest_pairs
 
 # --- 8. per-tool verdicts, on request ----------------------------------------
 if [ "$VERBOSE" = "1" ]; then

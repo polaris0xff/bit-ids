@@ -114,6 +114,39 @@ pwsh -NoProfile -File scripts/check-thing.ps1
 Not `check | grep`, not `check | Select-String`, not `check | tee`. Run it,
 read `$?` or `$LASTEXITCODE`, then look at the output separately if you need to.
 
+⛔ **AND TWO CHECKS JOINED BY `&&` ARE ONE CHECK.** `check-a && check-b` runs
+`check-b` only when `check-a` says nothing, so a finding in the first means the
+second never ran - and the terminal shows one block of output, which reads
+exactly like both of them passing.
+
+⚠ **Measured on 2026-09-09, on this repository's own gate work.**
+`shellcheck file && shfmt -d file >/dev/null && echo "LINT OK"` was run over a
+script that had a real formatting defect. shellcheck reported an *info*-level
+finding and exits 1 for that, so shfmt was never invoked, "LINT OK" was never
+printed - and the missing line was read as the diff being empty. ⭐ The defect was
+caught eleven minutes later by `check-workflow`, whose own control runs the two
+as separate commands the way `ci.yml` does.
+
+⛔ **AND AN IN-PLACE `sed` EDITS EVERY LINE THAT MATCHES, NOT THE ONE YOU MEANT.**
+Measured the same day, while timing a harness against different values of a
+constant: `sed -i 's/^SECS=[0-9]*/SECS=6/' check-capture.sh` was written to change
+one assignment and changed two, because `[0-9]*` matches **zero** digits - so
+`SECS="$2"`, a line inside an embedded stub script, became `SECS=6"$2"`.
+
+⚠ **It fails the way `replace_once` was built to prevent**: the edit lands, the
+command exits 0, and nothing says the file now has a second change in it. ⭐ The
+rule is the one that function already states - an edit whose match count you have
+not established is an edit somewhere you did not look - and it applies to a
+one-off command at a prompt exactly as it does to a harness.
+
+⭐ **So run each one and read each status.** The CI step this repository ships is
+two lines for exactly this reason:
+
+```bash
+find scripts -name '*.sh' -print0 | xargs -0 shellcheck
+find scripts -name '*.sh' -print0 | xargs -0 shfmt -d -i 2 -ci
+```
+
 The same rule in PowerShell has a second edge: `-ErrorAction SilentlyContinue`
 suppresses the error *output* while the cmdlet failure still sets a failing
 status. To make a failure genuinely non-fatal, promote it and swallow it:

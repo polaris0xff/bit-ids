@@ -209,6 +209,20 @@ what happened without reading an expression.
 | capture | the build is handed the torrent and reads the tracker's address out of it |
 | restore the route | only to upload, after the measurement is on disk |
 | upload the evidence bundle | the bundle and the install record together, `if-no-files-found: error` |
+| upload the install logs | ⛔ last, and `if: always()`. It sat between the install and the route cut for four dispatches on the reasoning that a job which never reached the capture would upload nothing - and an `always()` step at the end runs after a failed step too, which run 7 measured: a lane whose install refused still uploaded its logs from here. ⚠ What the early position cost was every aria2 capture, to a hang `CI-08` owns |
+
+⛔ **Every upload is after the restore, and that is a rule rather than a
+habit.** Between *Cut the route* and *Restore the route* the host has no way off
+itself, so an upload placed there cannot reach GitHub at all.
+[`../scripts/ci/check-workflow.sh`](../scripts/ci/check-workflow.sh) asserts it
+for both uploads, because the install logs have already moved once.
+
+⛔ **The evidence upload is fatal and the install-logs upload is not, and the
+asymmetry is enforced.** A capture that measured a build and uploaded nothing
+must be red, so that step declares `if-no-files-found: error` and carries no
+`continue-on-error`; a `continue-on-error: true` two keys away would silently
+undo it and leave a green run with no evidence anywhere. The install-logs upload
+is a diagnostic aid and is non-fatal on purpose.
 
 ⚠ **Those two install constraints are new and nothing else enforces them**, so
 [`../scripts/ci/check-workflow.sh`](../scripts/ci/check-workflow.sh) asserts both

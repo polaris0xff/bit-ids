@@ -5,6 +5,52 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-09T05:15:32Z
+
+- ⭐ CI was 30.5 minutes and one step was 25.9 of them. Measured on run 83 before
+  anything was changed: *Workflow acceptance* 25.9 min, *Repository gate* 3.5,
+  everything else on that lane under one, and the whole Windows lane 2.4.
+  Record: [`TODO/ci.md`](TODO/ci.md).
+- ⛔ That step runs the whole gate **nine times**, so the gate was measured next:
+  198 seconds for 29 checks, of which 183 were three - `check-twins` 90.7s,
+  `check-capture-client` 47.9s, `check-capture` 44.6s. Twenty-six sub-second
+  checks were serialised behind them.
+- ⭐ The gate now runs its checks concurrently (198s to 100s) and `check-twins`
+  runs its twelve pairs concurrently with each pair's two halves at once (90.7s
+  to 69s, taking the gate to 73s). *Workflow acceptance* is a job of its own
+  beside the two lanes rather than the tail of one.
+- ⛔ **But 73 seconds was wrong.** `check-capture` drives real sockets against a
+  three-second deadline, and under twenty-seven concurrent checks it reported a
+  refusal that arrived for a reason the case had not planted - passing alone on
+  the same tree minutes later. The two socket harnesses run after that batch now,
+  and the shipped gate is **118-125 seconds**, measured twice.
+- ⚠ Raising the deadline was tried first and measured: `check-capture` is 45
+  seconds at `3` and 79 at `6`, `check-capture-client` 48 at `5` and 168 at `20`,
+  because several of their cases are ones the deadline itself has to end. Eight
+  to eleven seconds of gate per second of deadline, paid nine times over, to buy
+  back forty-seven.
+- ⛔ And an ad-hoc `sed -i 's/^SECS=[0-9]*/.../'` run while measuring that edited
+  a second line the pattern was not meant to reach - `SECS="$2"` inside an
+  embedded stub, because `[0-9]*` matches no digits at all. Record:
+  [`docs/conventions/shell.md`](docs/conventions/shell.md) section 2.
+- ⛔ Every exit code is still read from the process that produced it, and every
+  row is still assembled at its own index, so two runs over one tree produce one
+  report. There is no pipeline in either change.
+- ⭐ Nine checks call `cargo build --example` and cargo locks the target
+  directory, so the examples are built once before the queue - the same work,
+  done once instead of nine times, without which the concurrency bought nothing.
+- ⚠ What was not changed is what `check-workflow` runs: it executes the
+  workflow's own step commands read out of `ci.yml`, so the saving comes from the
+  gate being faster rather than from it doing less.
+- ⛔ And the harness caught a defect the work introduced, which is the argument
+  for it: `shellcheck file && shfmt -d file >/dev/null && echo "LINT OK"` runs
+  shfmt only when shellcheck says nothing, so an info-level finding meant shfmt
+  never ran and the absent "LINT OK" read as an empty diff. Two checks joined by
+  `&&` are one check. Record:
+  [`docs/conventions/shell.md`](docs/conventions/shell.md) section 2.
+- Deployment: nothing deployed.
+
+
 ### 2026-09-09T04:14:03Z
 
 - ⛔ The bound added an hour earlier does not fire. Client capture run 6 dispatched

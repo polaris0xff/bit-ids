@@ -693,6 +693,70 @@ times more does.
 bought nothing, and from the end a hang costs the job's tail rather than the
 capture. `CI-08` carries the measurement and what it does to the mitigation.
 
+### ⭐ Run 7: four lanes, and the hang stops being about the upload
+
+**Dispatched as two adapters over both routes**, which is the first run of the
+matrix at its full width. Two lanes finished and two did not, and the split is
+the finding.
+
+| lane | outcome |
+| --- | --- |
+| `transmission` `package` | ⭐ **green: a complete capture in three minutes** |
+| `transmission` `release` | the install refuses by design, and every `always()` step still ran |
+| `aria2` `package` | ⛔ stuck in *Install the client* from 04:41:15Z until it was cancelled |
+| `aria2` `release` | ⛔ stuck in *Install the client* from 04:41:17Z until it was cancelled |
+
+⛔ **The hang is not in `actions/upload-artifact`.** Two transmission lanes ran
+*Upload the install logs* in **one second** each - one after a successful capture
+and one after a failed install - from the same step, on the same image, in the
+same run as two aria2 lanes that hung.
+
+⛔ **And it is not "the upload step" either.** With that step moved to the end,
+the hang appeared in the step it used to follow: on run 6 the aria2 package
+install took **six seconds** and on run 7 the same install ran **ten minutes**
+without completing. ⚠ So what hangs is not a particular action but whatever step
+sits next to the aria2 install, which is a boundary no previous run could draw.
+
+⭐ **The move is measured to buy what it was argued to buy, and the transmission
+release lane is the proof.** Its install failed at 04:41:16Z, every step between
+there and the end was skipped, and *Upload the install logs* still ran and
+succeeded at 04:41:16Z. ⛔ **The early position bought nothing**: the reason it
+was placed before the route cut was that a job which never reached the capture
+would otherwise upload nothing, and an `always()` step at the end uploads it.
+
+⚠ **What the move costs is aria2's own diagnosis, and that is on the record
+rather than traded away quietly.** With the install step itself hanging, run 7
+produced no aria2 artifact at all, where runs 3 to 6 produced one. A conditional
+early step for one adapter was the rejected alternative:
+[`../docs/capture-host.md`](../docs/capture-host.md) argues against a step that
+sometimes runs, in the one file where every reader has to see what happened
+without reading an expression. ⭐ The four aria2 install logs already collected
+say what that route does; what run 7 bought instead is where the hang actually
+sits.
+
+### ⭐ Transmission's third capture, and a third peer ID
+
+| what | value |
+| --- | --- |
+| build | `transmission-daemon` `4.0.5`, package route, `acquired=yes` |
+| executable | `/usr/bin/transmission-daemon`, `sha256:4444bc9e…` |
+| announces | 2 |
+| peer ID on the wire | `2d5452343035302d336b37613967686a37383172`, which is `-TR4050-3k7a9ghj781r` |
+| transcript | 9 segments, 3 artifacts, `sha256sum -c` reports `OK` for all three |
+| peer surface | one stream, dialled at `127.0.0.1:51413` |
+
+⭐ **Three captures of one build, three different peer IDs.** Runs 1 and 4 each
+reported the peer ID `2d5452343035302d756435383564356171646f73`, and this one
+differs after the `-TR4050-` prefix. That is what a per-session identity looks like and it is
+exactly what `SCHEMA-04`'s sampling model exists for; three samples is still not a
+lifetime measurement and nothing here claims one.
+
+⚠ **The install record now travels inside the evidence bundle**, so a reader who
+downloads one artifact has both the measurement and the verdict about what
+acquired it. It says `preexisting_version=` empty and `acquired=yes`, which is a
+route that genuinely installed - unlike the aria2 package route, whose whole
+`acquired` machinery exists because it does not.
+
 ⚠ Its install log uploaded on every run since the `always()` step landed, so the
 next session reads `update.log` and `install.log` from
 `install-aria2-<run>-1` rather than dispatching to find out. ⚠ That artifact name

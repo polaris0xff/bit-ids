@@ -107,16 +107,6 @@ ROWS=""
 row() { ROWS="$ROWS  $1
 "; }
 
-# ⛔ DECLARED HERE, WITH A REASON, OR IT IS NOT DECLARED. The reason is the
-# whole difference between this row and an observed skip: one is a fact about
-# the platform that somebody wrote down and can be argued with, and the other
-# is a check that stopped working. A row added here without a reason turns
-# --strict back into the flag that could not be used.
-unavailable() { # name reason
-  row "n/a   $1  ($2)"
-  NA=$((NA + 1))
-}
-
 # ⛔ THE EXIT CODE IS TAKEN FROM THE PROCESS, UNPIPED. Output goes to a file
 # and $? is read on the next line. `run ... | tee` would report tee's status,
 # which is 0 whatever the check did, and that is the single defect this whole
@@ -162,57 +152,138 @@ fi
 # ⭐ That is the exact defect this script's header is about, produced by the
 # script itself on its first run. Presence is decided by the caller, which is
 # the only place that knows the path.
-run() { # name  command...
-  _name="$1"
+# ⭐ THE CHECKS RUN CONCURRENTLY AND THEIR VERDICTS ARE READ IN LIST ORDER.
+# Every check here is hermetic - each makes its own scratch directory, binds only
+# loopback and reads only the tree - so nothing about running them at once
+# changes what any of them answers. What it changes is the wall clock, and that
+# multiplies: `check-workflow` runs this whole gate NINE times, so a second saved
+# here is nine seconds saved on the lane.
+#
+# ⚠ MEASURED BEFORE IT WAS CHANGED, because "the gate is slow" is not a place to
+# start optimising. On this host the 29 checks took 198 seconds and three of them
+# were 183 of it: check-twins 90.7s, check-capture-client 47.9s, check-capture
+# 44.6s. Everything else together is under fifteen seconds, so serialising them
+# behind those three was the whole cost.
+#
+# ⛔ THE EXIT CODE IS STILL READ FROM THE PROCESS THAT PRODUCED IT. `wait "$pid"`
+# returns that child's status and nothing else's, which is the same guarantee the
+# serial form had; a `for` loop over a pipeline's status is what this repository
+# refuses, and there is no pipeline here.
+#
+# ⛔ AND THE ROWS ARE STILL IN LIST ORDER. Each check writes to a log of its own
+# and its row is assembled at its own index, so a report cannot come out in the
+# order the checks happened to finish - which would make two runs of one tree
+# produce two different reports.
+JOBS=0
+
+queue() { # name command...
+  JOBS=$((JOBS + 1))
+  printf '%s\n' "$1" >"$OUT/name.$JOBS"
+  rm -f "$OUT/miss.$JOBS"
   shift
-  "$@" >"$OUT/log" 2>&1
-  _rc=$?
-  case "$_rc" in
-    0)
-      row "✅ ok    $_name"
-      PASS=$((PASS + 1))
-      ;;
-    2)
-      row "SKIP  $_name  ($(head -1 "$OUT/log" 2>/dev/null | cut -c1-60))"
-      SKIP=$((SKIP + 1))
-      ;;
-    *)
-      row "❌ FAIL  $_name  (exit $_rc)"
-      FAIL=$((FAIL + 1))
-      # ⛔ THE TAIL, NOT THE HEAD. Every check here prints its verdict last, and
-      # the mutation harnesses print dozens of passing rows first. Measured on
-      # 2026-09-08: a red CI lane showed `FAIL check-capture` followed by eleven
-      # PASSING rows and nothing else, so the log did not contain the failure and
-      # it had to be reproduced locally to be found. store_report reprints the
-      # failing rows just above its summary so this excerpt lands on them.
-      [ "$JSON" = "1" ] || sed 's/^/          /' "$OUT/log" | tail -20
-      ;;
-  esac
+  "$@" >"$OUT/log.$JOBS" 2>&1 &
+  printf '%s\n' "$!" >"$OUT/pid.$JOBS"
+}
+
+# A row that needs no process: a check that is not present, or one this runner
+# declares unavailable. ⚠ It is queued rather than printed so that it keeps its
+# place among the rows the concurrent checks produce.
+#
+# ⛔ AN `n/a` IS DECLARED WITH A REASON OR IT IS NOT DECLARED. The reason is the
+# whole difference between that row and an observed skip: one is a fact about the
+# platform that somebody wrote down and can be argued with, and the other is a
+# check that stopped working. A declared row without a reason turns `--strict`
+# back into the flag that could not be used.
+queue_row() { # name row-text kind
+  JOBS=$((JOBS + 1))
+  printf '%s\n' "$1" >"$OUT/name.$JOBS"
+  printf '%s\n%s\n' "$3" "$2" >"$OUT/miss.$JOBS"
+  rm -f "$OUT/pid.$JOBS"
+}
+
+HARVESTED=0
+
+harvest() {
+  _i=$((HARVESTED + 1))
+  while [ "$_i" -le "$JOBS" ]; do
+    _name=$(cat "$OUT/name.$_i")
+    if [ -f "$OUT/miss.$_i" ]; then
+      _kind=$(sed -n 1p "$OUT/miss.$_i")
+      row "$(sed -n 2p "$OUT/miss.$_i")"
+      case "$_kind" in
+        skip) SKIP=$((SKIP + 1)) ;;
+        *) NA=$((NA + 1)) ;;
+      esac
+      _i=$((_i + 1))
+      continue
+    fi
+    wait "$(cat "$OUT/pid.$_i")"
+    _rc=$?
+    case "$_rc" in
+      0)
+        row "✅ ok    $_name"
+        PASS=$((PASS + 1))
+        ;;
+      2)
+        row "SKIP  $_name  ($(head -1 "$OUT/log.$_i" 2>/dev/null | cut -c1-60))"
+        SKIP=$((SKIP + 1))
+        ;;
+      *)
+        row "❌ FAIL  $_name  (exit $_rc)"
+        FAIL=$((FAIL + 1))
+        # ⛔ THE TAIL, NOT THE HEAD. Every check here prints its verdict last, and
+        # the mutation harnesses print dozens of passing rows first. Measured on
+        # 2026-09-08: a red CI lane showed `FAIL check-capture` followed by eleven
+        # PASSING rows and nothing else, so the log did not contain the failure and
+        # it had to be reproduced locally to be found. store_report reprints the
+        # failing rows just above its summary so this excerpt lands on them.
+        [ "$JSON" = "1" ] || sed 's/^/          /' "$OUT/log.$_i" | tail -20
+        ;;
+    esac
+    _i=$((_i + 1))
+  done
+  HARVESTED=$JOBS
 }
 
 have_pwsh=0
 command -v pwsh >/dev/null 2>&1 && have_pwsh=1
+
+# ⭐ EVERY EXAMPLE THE HARNESSES NEED, BUILT ONCE, BEFORE ANY OF THEM STARTS.
+# Nine of the checks below call `cargo build --example` through `store_build`,
+# and cargo takes a lock on the target directory: started at once they would
+# queue behind each other and the concurrency above would buy nothing. ⚠ This is
+# the same work, done once instead of nine times, so it costs nothing on a cold
+# tree and is a no-op on a warm one.
+#
+# ⛔ ITS FAILURE IS NOT A GATE ROW. A build that fails here fails again inside
+# whichever harness needed it, where it is reported as that check's own exit 2
+# with that check's own name - and inventing a row for it would be a verdict
+# about a subject no entry owns.
+if command -v cargo >/dev/null 2>&1; then
+  ROOT=$(CDPATH='' cd -- "$HERE/../.." && pwd)
+  cargo build --manifest-path "$ROOT/Cargo.toml" -p bit-ids -p bit-ids-probe \
+    --locked --examples >/dev/null 2>&1 || :
+fi
 
 # The sh halves. Each is the authority on its own subject.
 for c in check-docs check-markers check-one-home check-placeholders \
   check-control-bytes check-changelog check-no-secrets check-project \
   check-licences; do
   if [ -f "$HERE/$c.sh" ]; then
-    run "$c" sh "$HERE/$c.sh"
+    queue "$c" sh "$HERE/$c.sh"
   else
-    row "SKIP  $c  (not present)"
-    SKIP=$((SKIP + 1))
+    queue_row "$c" "SKIP  $c  (not present)" skip
   fi
 done
 
 # ⚠ --public is a DIFFERENT question from the default run, not a stricter one.
 # Emails, absolute home paths and long hex are legitimate content in a private
 # project, so this row is a second call rather than a flag on the first.
-[ -f "$HERE/check-no-secrets.sh" ] && run "check-no-secrets --public" sh "$HERE/check-no-secrets.sh" --public
+[ -f "$HERE/check-no-secrets.sh" ] && queue "check-no-secrets --public" sh "$HERE/check-no-secrets.sh" --public
 
 # ⚠ NEEDS gh AND THE NETWORK, so it exits 2 on a machine without them and that
 # reads as a skip rather than a pass. That is correct: nothing was verified.
-[ -f "$HERE/check-remote-items.sh" ] && run "check-remote-items" sh "$HERE/check-remote-items.sh"
+[ -f "$HERE/check-remote-items.sh" ] && queue "check-remote-items" sh "$HERE/check-remote-items.sh"
 
 # ⛔ NOT IN common/, AND IN THE GATE ANYWAY. `check-runner` mutation-proves the
 # guards that stand between this project and installing an untrusted client on a
@@ -222,10 +293,9 @@ done
 # PowerShell half; scripts/README.md carries why.
 RUNNER="$HERE/../acquisition/check-runner.sh"
 if [ -f "$RUNNER" ]; then
-  run "check-runner" sh "$RUNNER"
+  queue "check-runner" sh "$RUNNER"
 else
-  row "SKIP  check-runner  (not present)"
-  SKIP=$((SKIP + 1))
+  queue_row "check-runner" "SKIP  check-runner  (not present)" skip
 fi
 
 # ⛔ MOSTLY NOT IN common/, AND IN THE GATE FOR THE SAME REASON. These
@@ -266,8 +336,23 @@ fi
 # one directory and differ in one property: two of check-workflow's cases run
 # this gate, so a runner that listed it would re-enter itself. check-staleness
 # runs no gate.
+#
+# ⛔ THE TWO CAPTURE HARNESSES ARE NOT IN THIS LIST, AND THE BATCH BELOW IS WHY.
+# Each drives real sockets against a run deadline, and the first concurrent run
+# of this gate turned one of them red: `check-capture` reported *a run that
+# recorded no bytes is refused (exit 1, but did not say 'recorded no bytes at
+# all')* - a refusal that arrived for a reason the case had not planted - while
+# the same harness on the same tree passed alone minutes later. A faster gate
+# that is red for no defect is worse than a slow one.
+#
+# ⚠ RAISING THE DEADLINE WAS TRIED FIRST AND MEASURED, because it looked like the
+# cheaper answer: those harnesses wait on the observer's own line, so a bigger
+# maximum should be nearly free. ⛔ It is not. Several of their cases are ones the
+# deadline itself has to end, so `check-capture` goes from 45 seconds at `3` to
+# **79 at `6`** and `check-capture-client` from 48 at `5` to **168 at `20`** -
+# more gate time than the whole concurrency saves, paid nine times over by
+# `check-workflow`. The numbers live beside each `SECS`.
 for spec in acquisition/check-cache acquisition/check-release-route \
-  capture/check-capture capture/check-capture-client \
   corpus/check-store \
   corpus/check-corpus corpus/check-indexes publishing/check-release \
   publishing/check-formats publishing/check-publish publishing/check-access \
@@ -292,24 +377,63 @@ for spec in acquisition/check-cache acquisition/check-release-route \
   esac
   SEEN_NAMES="$SEEN_NAMES $NAME"
   if [ -f "$PROVER" ]; then
-    run "$NAME" sh "$PROVER"
+    queue "$NAME" sh "$PROVER"
   else
-    row "SKIP  $NAME  (not present)"
-    SKIP=$((SKIP + 1))
+    queue_row "$NAME" "SKIP  $NAME  (not present)" skip
   fi
 done
 
 # ⭐ THE SLOW ONE. Measured on one Windows 11 Pro 26200 machine, 2026-08-28:
 # check-twins alone is most of a full run's wall time, because it starts both
 # halves of every pair. --fast drops it and nothing else.
+#
+# ⭐ AND IT IS WHY THE CONCURRENCY IS WORTH HAVING: a concurrent run finishes
+# when its longest member does, and this is that member. ⚠ Queue order is not
+# start order here - nothing bounds how many run at once, so every check is
+# already running by the time this one is queued - and the ROW still prints in
+# list order, so the report does not move.
 if [ "$FAST" = "1" ]; then
-  unavailable "check-twins" "--fast"
+  queue_row "check-twins" "n/a   check-twins  (--fast)" na
 elif [ -f "$HERE/check-twins.sh" ]; then
-  run "check-twins" sh "$HERE/check-twins.sh"
+  queue "check-twins" sh "$HERE/check-twins.sh"
 else
-  row "SKIP  check-twins  (not present)"
-  SKIP=$((SKIP + 1))
+  queue_row "check-twins" "SKIP  check-twins  (not present)" skip
 fi
+
+# ⛔ NOTHING HAS BEEN WAITED ON UNTIL HERE. Every queue above returned as soon as
+# it had a process; this is where their exit codes are read, in list order.
+harvest
+
+# ⛔ AND THE TWO THAT DRIVE SOCKETS RUN AFTER THAT BATCH HAS FINISHED, with the
+# machine to themselves and to each other. Each measures whether an observer
+# answered inside a deadline, so a saturated host changes their ANSWER and not
+# merely their duration - and a refusal that arrives for the wrong reason is a
+# case reporting a guard proved by something it did not plant.
+#
+# ⚠ TWO AT ONCE IS DELIBERATE AND ONE AT A TIME IS NOT NEEDED. They bind port
+# zero, so the operating system separates them, and each holds its own scratch
+# directory; two processes on a four-processor host is not the condition that
+# broke either.
+#
+# ⚠ THEIR ROWS THEREFORE PRINT LAST, which is a change to the report's order and
+# should be read as what it is: these two ran apart from the rest.
+for spec in capture/check-capture capture/check-capture-client; do
+  PROVER="$HERE/../$spec.sh"
+  NAME=${spec#*/}
+  case " $SEEN_NAMES " in
+    *" $NAME "*)
+      printf 'check-gate: two checks are both named %s; a row name is a name\n' "$NAME" >&2
+      exit 2
+      ;;
+  esac
+  SEEN_NAMES="$SEEN_NAMES $NAME"
+  if [ -f "$PROVER" ]; then
+    queue "$NAME" sh "$PROVER"
+  else
+    queue_row "$NAME" "SKIP  $NAME  (not present)" skip
+  fi
+done
+harvest
 
 # ⚠ THE POWERSHELL HALVES ARE NOT RE-RUN HERE. check-twins already runs both
 # halves of every pair and compares them, so running them again would double

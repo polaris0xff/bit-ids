@@ -115,8 +115,22 @@ OBSERVER="${CARGO_TARGET_DIR:-$ROOT/target}/debug/examples/evidence-bundle"
 WORK=$(store_workdir checkcapture) || exit 2
 trap 'rm -rf "$WORK"' EXIT INT TERM
 
-# ⚠ SHORT ON PURPOSE. The runner waits on the observer's own line rather than on
-# a delay, so the only cost of a longer deadline here is gate time.
+# ⚠ SHORT ON PURPOSE, AND THE COST OF LENGTHENING IT IS NOW MEASURED. The runner
+# waits on the observer's own line rather than on a delay, so a longer deadline
+# costs only gate time - but "only gate time" turned out to be steep, because
+# several cases here are ones the deadline itself has to end. Measured on
+# 2026-09-09: this harness is 45 seconds at `3` and **79 at `6`**, so roughly
+# eleven seconds of gate per second of deadline, and `check-capture-client` is 48
+# at `5` and **168 at `20`**.
+#
+# ⛔ SO A LONGER DEADLINE IS NOT THE FIX FOR A LOADED MACHINE, and it was tried.
+# On 2026-09-09 the gate first ran its checks concurrently and this harness
+# reported *a run that recorded no bytes is refused (exit 1, but did not say
+# 'recorded no bytes at all')* - a refusal that arrived for a reason the case had
+# not planted - while the same harness passed alone on the same tree minutes
+# later. Raising the bound fixed that and cost more gate time than the whole
+# concurrency saved. ⭐ `check-gate.sh` runs the two socket harnesses apart from
+# the saturating batch instead.
 SECS=3
 RUN=capture-0001
 
