@@ -138,9 +138,10 @@ that target a second lane, and the table above is what refuses the pair.
    ⚠ **The bounds are freshly sized and only just.** The source install took 496
    seconds where this host takes 366 - a runner is about 1.35x slower - so a
    locally measured build time is a lower bound and never an estimate.
-4. **`CI-07`**, the PowerShell halves for the declared rows. ⭐ Its cheap half is
-   done: `check-gate-rows` compares the two runners' row lists, and both runners
-   now carry 32 rows. ⚠ `check-assemble` is another declared-unavailable row and
+4. **`CI-07`**, the PowerShell halves for the declared rows. ⭐ Two cheap halves
+   are done: `check-gate-rows` compares the two runners' row lists, and the sweep
+   has classified every declared row - only the ones whose subject is portable
+   Rust are this entry's work, and `store-lib.ps1` is most of that. ⚠ `check-assemble` is another declared-unavailable row and
    it needs `store-lib.ps1` like the rest. ⛔ **No count of those rows is written
    here**: `CI-01` and `CI-07` each record one going stale in prose, and this
    sentence carried a third - "the nineteenth" - over a runner declaring

@@ -230,24 +230,24 @@ else {
 # says so. ⚠ A documented gap whose reason is wrong is worse than an undocumented
 # one, because --strict permits it forever on the strength of a sentence nobody
 # re-read. Found by a claim audit while CI-03 was being closed.
-Add-Unavailable 'check-cache' 'shares that harness; no PowerShell half'
-Add-Unavailable 'check-store' 'the plants need a POSIX filesystem; no PowerShell half'
-Add-Unavailable 'check-corpus' 'shares that harness; no PowerShell half'
-Add-Unavailable 'check-indexes' 'shares that harness; no PowerShell half'
-Add-Unavailable 'check-release' 'shares that harness; no PowerShell half'
-Add-Unavailable 'check-formats' 'shares that harness; no PowerShell half'
-Add-Unavailable 'check-publish' 'shares that harness; no PowerShell half'
+Add-Unavailable 'check-cache' 'a portable Rust subject; it needs store-lib.ps1; CI-07 class A'
+Add-Unavailable 'check-store' 'its plants are a symlink and a named pipe; reconsider them, do not translate; CI-07 class B'
+Add-Unavailable 'check-corpus' 'a portable Rust subject; it needs store-lib.ps1; CI-07 class A'
+Add-Unavailable 'check-indexes' 'a portable Rust subject; it needs store-lib.ps1; CI-07 class A'
+Add-Unavailable 'check-release' 'a portable Rust subject; it needs store-lib.ps1; CI-07 class A'
+Add-Unavailable 'check-formats' 'a portable Rust subject; it needs store-lib.ps1; CI-07 class A'
+Add-Unavailable 'check-publish' 'its subject publish-data.sh has no PowerShell half; CI-07 class C'
 
 # ⚠ DECLARED FOR A DIFFERENT REASON, AND THE WORDING SAYS WHICH. check-staleness
 # plants nothing on a filesystem and needs no POSIX-only feature; it is an sh
 # harness with no PowerShell half, and it needs python3 for the independent
 # derivation of a request identifier. Copying the row above would have recorded a
 # reason that is not this one.
-Add-Unavailable 'check-access' 'shares that harness; no PowerShell half'
-Add-Unavailable 'check-catalogue' 'shares that harness; no PowerShell half'
-Add-Unavailable 'check-examples' 'an sh harness with no PowerShell half'
-Add-Unavailable 'check-handbook' 'an sh harness with no PowerShell half'
-Add-Unavailable 'check-staleness' 'an sh harness with no PowerShell half'
+Add-Unavailable 'check-access' 'its subject publish-data.sh has no PowerShell half; CI-07 class C'
+Add-Unavailable 'check-catalogue' 'a portable Rust subject; it needs store-lib.ps1; CI-07 class A'
+Add-Unavailable 'check-examples' 'it RUNS a document sh fenced blocks and there is no sh here; CI-07 class D'
+Add-Unavailable 'check-handbook' 'it RUNS a document sh fenced blocks and there is no sh here; CI-07 class D'
+Add-Unavailable 'check-staleness' 'a portable Rust subject; it needs store-lib.ps1; CI-07 class A'
 
 # ⛔ AND THIS ONE IS THE ROW THAT WATCHES THIS LIST. check-gate-rows compares the
 # names this runner declares against the ones the sh runner queues, so a prover
@@ -255,7 +255,7 @@ Add-Unavailable 'check-staleness' 'an sh harness with no PowerShell half'
 # ordinary reason - it is an sh harness - and a PowerShell half would have to run
 # the sh runner anyway to ask the question, so what it would add is a second
 # implementation of a comparison rather than a second platform's answer.
-Add-Unavailable 'check-gate-rows' 'an sh harness with no PowerShell half; it runs both runners; CI-07'
+Add-Unavailable 'check-gate-rows' 'it runs the sh runner itself, so there is no half to write; CI-07 class D'
 
 # ⛔ AND THIS ONE'S REASON IS THE MOST SPECIFIC ON THE LANE, because a
 # PowerShell half of it would not be the same check. check-step-bodies runs a
@@ -267,14 +267,14 @@ Add-Unavailable 'check-gate-rows' 'an sh harness with no PowerShell half; it run
 # ⭐ It runs the `pwsh` half of its SUBJECT anyway: three of its cases execute
 # capture.yml's Windows *Restore the route* block under GitHub's own wrapper
 # form, which is why this row is declared and not a gap in what is proved.
-Add-Unavailable 'check-step-bodies' 'an sh harness; it runs the pwsh half of its subject; CI-07'
+Add-Unavailable 'check-step-bodies' 'it lifts a Linux-only workflow bodies and already runs the pwsh ones; CI-07 class D'
 
 # ⚠ AND THIS ONE IS DECLARED WHILE ITS SUBJECT IS EXERCISED ANYWAY, which is the
 # third kind of reason on this lane. check-capture is an sh harness, so it cannot
 # run here; what it drives includes capture-run.ps1, which the Windows job of the
 # capture workflow runs on a real Windows host with no route table argument. That
 # is a stronger control than this lane could give and it happens elsewhere.
-Add-Unavailable 'check-capture' 'an sh harness; the capture workflow exercises the PowerShell half'
+Add-Unavailable 'check-capture' 'its subject PowerShell half exists and the capture workflow runs it; CI-07 class D'
 
 # ⛔ ITS REASON IS NOT check-capture's, AND COPYING THAT ONE WOULD RECORD A GAP
 # THAT CLOSES ON THE WRONG EVENT. check-capture is declared because its SUBJECT
@@ -296,7 +296,7 @@ Add-Unavailable 'check-release-route' 'an sh harness whose subject has no PowerS
 # the harness that writes the synthetic lanes and plants in them. ⚠ It is
 # `store-lib.sh`'s again - the shared library CI-07 names as its first step -
 # rather than anything about the assembler, which is platform-independent.
-Add-Unavailable 'check-assemble' 'an sh harness over a portable subject; it needs store-lib.ps1; CI-07'
+Add-Unavailable 'check-assemble' 'a portable Rust subject; it needs store-lib.ps1; CI-07 class A'
 
 # ⚠ Its reason is `check-release-route`'s exactly: the decision it proves is in
 # Rust and the Rust suite exercises it on both lanes; what this lane does not

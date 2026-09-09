@@ -1242,6 +1242,68 @@ fewer declared rows than it has today, each new half is mutation-proven against
 the same plants as its twin, and `check-twins` compares the pair per planted
 mutation rather than on a clean tree.
 
+### ⭐ THE SWEEP, done 2026-09-09: the declared rows are FOUR kinds, not one
+
+⛔ **This entry's backlog was every declared row, and that overstates it.** The
+Approach already said `check-store` needs its plants reconsidered rather than
+translated, and the paragraph below it said `check-examples` is a platform fact.
+Nothing had gone through the rest. ⚠ Measured by reading what each harness
+actually drives - the Rust examples it builds and the `sh` scripts it runs -
+rather than by reading the reason each row declares, because those reasons were
+written one at a time.
+
+**A. The harness is the only missing half, and `store-lib.ps1` is most of it.**
+Each drives Rust examples this project builds on both lanes, plus the shared
+library. Nothing in the subject is `sh`.
+
+| row | what it drives |
+| --- | --- |
+| `check-cache` | `cache-scenario`, and `check-licences`, which HAS a PowerShell twin |
+| `check-corpus` | `build-store`, `validate-corpus`, `check-store` |
+| `check-indexes` | `build-store`, `build-indexes` |
+| `check-release` | `build-store`, `build-indexes`, `assemble-release` |
+| `check-formats` | `build-store`, `build-formats`, `assemble-release` |
+| `check-catalogue` | the four above plus `catalogue-lookup` |
+| `check-staleness` | `build-store`, `resolve-stable`, `survey-staleness` |
+| `check-assemble` | `assemble-capture` |
+
+⭐ **So the library is the first step and it is not a translation of fifteen
+harnesses.** `store-lib.sh` is twelve functions, four of them the mutation-probe
+machinery, and `check-twins` compares the two halves' answers per planted
+mutation - so a `store-lib.ps1` whose `replace_once` or `store_probe_guards`
+differed in semantics would make every twin that used it disagree at once.
+
+**B. The plants need reconsidering, not translating.** `check-store` plants a
+symbolic link and a named pipe, which an unprivileged Windows session cannot
+create. ⚠ A half that silently skipped two plants would report a smaller pass
+under the same name.
+
+**C. The SUBJECT is `sh` and has no PowerShell half, so the harness cannot
+precede it.** Writing the harness first would be a twin proving a script that
+does not exist.
+
+| row | the subject it has no half of |
+| --- | --- |
+| `check-publish`, `check-access` | `publish-data.sh` |
+| `check-capture-client` | `capture-client.sh` |
+| `check-release-route` | `resolve-release.sh` |
+| `check-source-route` | `resolve-source.sh` |
+
+**D. A fact about the platform rather than work nobody has done.** ⛔ These
+close on nothing this entry can write.
+
+| row | why |
+| --- | --- |
+| `check-examples`, `check-handbook` | they RUN the ```sh fenced blocks of a document, and there is no `sh` on a Windows runner |
+| `check-gate-rows` | it runs `check-gate.sh --rows`, which is the `sh` runner itself |
+| `check-step-bodies` | it lifts and runs a Linux-only workflow's step bodies; the `pwsh` half of its subject is what it already runs |
+| `check-capture` | its subject's PowerShell half exists and the capture workflow exercises it |
+
+⚠ **No count of any of these is written here**, for the reason this entry
+already records twice: a number in prose is a value in two places with nothing
+comparing them, and both previous counts went stale. `check-gate.ps1` declares
+each row with its own reason and `check-gate-rows` compares the two lists.
+
 ⭐ **`CI-06` built and ran the last clause of that Prove and did not keep it.**
 Its three new rules were proved by planting into a scratch workflow, running both
 halves of `check-project` on each plant, and comparing their exit codes and their

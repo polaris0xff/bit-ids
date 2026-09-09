@@ -300,7 +300,9 @@ nothing is. The clone question under *Settled decisions* is spent too.
 5. **`OBS-10`**, which needs a second platform, so it follows the captures.
 6. **`CI-07` and `CI-08`**, which harden the gate rather than extend it: the
    declared PowerShell rows, and the host defaults the scripts inherit rather
-   than state. ⭐ **`FOUND-05` is closed**: `sh scripts/doctor/provision.sh`
+   than state. ⭐ **`CI-07`'s sweep is done**: the declared rows are four kinds
+   and only one of them is this entry's work, which is what makes `store-lib.ps1`
+   the first step; each row's own reason names its class now. ⭐ **`FOUND-05` is closed**: `sh scripts/doctor/provision.sh`
    installs the three tools a session used to install by hand, verifying each
    download against a pinned digest first.
    ⭐ **`CI-08` has written the harness `CI-06` needed**: a capture workflow's

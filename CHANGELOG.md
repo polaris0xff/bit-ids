@@ -5,6 +5,29 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-09T19:57:55Z
+
+- ⭐ **`CI-07`'s backlog is four kinds of row, not one**, measured by reading
+  what each declared harness actually drives rather than the reason it declares.
+  Only one kind is work that entry can do: the rows whose subject is portable
+  Rust and whose only missing half is the harness, which is what makes
+  `store-lib.ps1` the first step rather than fifteen translations.
+- ⛔ **Several rows have an `sh` SUBJECT with no PowerShell half**, so a harness
+  written for them would be a twin proving a script that does not exist:
+  `publish-data.sh` behind `check-publish` and `check-access`, and the capture
+  and resolution scripts behind the rest.
+- ⛔ **And several are facts about the platform that close on nothing.**
+  `check-examples` and `check-handbook` RUN a document's ```sh fenced blocks and
+  there is no `sh` on a Windows runner; `check-gate-rows` runs the `sh` runner
+  itself; `check-step-bodies` lifts a Linux-only workflow's bodies and already
+  runs the `pwsh` ones; and `check-capture`'s subject has a PowerShell half the
+  capture workflow exercises.
+- ⭐ **Each row's declared reason now names its class and the event that would
+  close it**, so the sweep lives in the runner rather than only in an entry.
+  ⚠ No count of them is written in prose, for the reason that entry records
+  twice: both previous counts went stale.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-07`. No version bump and no deploy.
+
 ### 2026-09-09T18:52:46Z
 
 - ⭐ **The `source` route resolves its own tag**, from `git ls-remote --tags
