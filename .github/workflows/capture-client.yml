@@ -16,6 +16,23 @@ on:
         required: true
         default: '["aria2","transmission","qbittorrent"]'
         type: string
+      # ⛔ ONE ROUTE PER HOST, WHICH IS WHY THIS IS A MATRIX DIMENSION AND NOT A
+      # SECOND INSTALL STEP. `ACQ-03` compares what two routes installed, and two
+      # routes on one machine means the second installs over the first: the
+      # digest comparison then has one host's final state to look at rather than
+      # two independent acquisitions. A host per route is what makes the pair
+      # comparable at all.
+      #
+      # ⚠ THE DEFAULT IS THE PACKAGE ROUTE ALONE, which is what every dispatch so
+      # far ran. Adding `"release"` runs a second host per adapter; the pair is
+      # then two artifacts to compare rather than one, and `TODO/acquisition.md`
+      # carries what a comparison needs beyond two green jobs.
+      routes:
+        description: >-
+          Which acquisition routes to run, as a JSON array, e.g. ["package","release"]
+        required: true
+        default: '["package"]'
+        type: string
       seconds:
         description: How long the observer serves before its own deadline stops it
         required: true
@@ -45,7 +62,7 @@ env:
 
 jobs:
   linux:
-    name: Linux client capture (${{ matrix.adapter }})
+    name: Linux client capture (${{ matrix.adapter }}, ${{ matrix.route }})
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     # ⛔ READ ONLY. A capture produces an artifact and never a commit.
@@ -57,8 +74,16 @@ jobs:
       # the first red would throw away measurements that had already been taken
       # on machines that are about to be destroyed.
       fail-fast: false
+      # ⛔ THE CROSS PRODUCT IS THE POINT, NOT AN ACCIDENT OF THE SHAPE. Every
+      # (adapter, route) pair is a separate host that acquires one target through
+      # one route, which is the design `install-client` already enforces by
+      # taking one `--route` per call. ⚠ A route a target cannot satisfy fails
+      # its own job and leaves every other job's measurement intact - which is
+      # what `fail-fast: false` above is for, and is the honest state for
+      # transmission's release route today.
       matrix:
         adapter: ${{ fromJSON(inputs.adapters) }}
+        route: ${{ fromJSON(inputs.routes) }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -69,15 +94,26 @@ jobs:
       # had established was disposable.
       - name: Claim the host
         env:
-          RUN_ID: capture-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.adapter }}
+          RUN_ID: capture-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.adapter }}-${{ matrix.route }}
         run: sudo sh scripts/acquisition/assert-disposable.sh --claim "$RUN_ID"
 
       - name: Install pinned Rust toolchain
         run: rustup show active-toolchain
 
-      # ⛔ THE BUILD HAPPENS HERE, WHILE THE NETWORK STILL EXISTS.
+      # ⛔ THE BUILD HAPPENS HERE, WHILE THE NETWORK STILL EXISTS - and that is
+      # every binary this job will run, not only the observer. `resolve-release`
+      # refuses rather than building, for the reason `capture-run` does: a step
+      # that discovered a missing dependency later would have to reach a crate
+      # registry from a host whose route is about to be cut.
+      #
+      # ⚠ Both resolver examples are built on the package lane too, which costs
+      # seconds and keeps this step's command free of a condition. A build that
+      # sometimes ran is a build whose absence is a matrix leg nobody reads.
       - name: Build the observer
-        run: cargo build -p bit-ids-probe --locked --example client-capture
+        run: |
+          set -eu
+          cargo build -p bit-ids-probe --locked --example client-capture
+          cargo build -p bit-ids --locked --example resolve-stable --example select-asset
 
       # ⛔ AND SO DOES THE INSTALL, FOR THE SAME REASON AND ONE MORE. capture-client
       # refuses to install anything, so a product that is not here by now is not
@@ -88,17 +124,51 @@ jobs:
       # configuration out of the environment. The install directory is under
       # RUNNER_TEMP rather than the workspace, so nothing it leaves behind can
       # be mistaken for a tracked file.
-      - name: Install the client
+      # ⛔ AND THE ARTIFACT IS CHOSEN BEFORE THE ROUTE IS CUT, WHICH IS WHY THIS
+      # STEP EXISTS AT ALL. Every `release` route in this tree refuses without
+      # `BIT_IDS_RELEASE_URL`, and until now nothing produced one: `resolve-stable`
+      # orders versions and does not select an artifact. `resolve-release` reads
+      # the repository, the version scheme and the asset pattern out of the
+      # adapter's own `describe`, so this step carries no per-target knowledge and
+      # needs no case over `matrix.adapter`.
+      #
+      # ⚠ THE PACKAGE LANE SKIPS IT because a package index needs no artifact
+      # chosen, and a step that ran anyway would fetch a vendor listing that
+      # nothing in that lane reads.
+      - name: Resolve the release artifact
+        if: matrix.route == 'release'
         env:
           ADAPTER: scripts/capture/adapters/${{ matrix.adapter }}.sh
         run: |
           set -eu
+          sh scripts/acquisition/resolve-release.sh \
+            --adapter "$ADAPTER" \
+            --workdir "$RUNNER_TEMP/release" \
+            --record "$RUNNER_TEMP/release/resolution.txt" \
+            >"$RUNNER_TEMP/release/url.txt"
+          cat "$RUNNER_TEMP/release/resolution.txt"
+
+      - name: Install the client
+        env:
+          ADAPTER: scripts/capture/adapters/${{ matrix.adapter }}.sh
+          ROUTE: ${{ matrix.route }}
+        run: |
+          set -eu
+          # ⚠ THE URL TRAVELS THROUGH A FILE RATHER THAN THROUGH GITHUB_ENV, so
+          # the value the install used is in the uploaded workdir beside the
+          # record that names it. A variable set in one step and read in another
+          # leaves nothing on disk to compare a fetch against afterwards.
+          if [ "$ROUTE" = release ]; then
+            BIT_IDS_RELEASE_URL=$(cat "$RUNNER_TEMP/release/url.txt")
+            export BIT_IDS_RELEASE_URL
+            printf 'the release route will fetch %s\n' "$BIT_IDS_RELEASE_URL"
+          fi
           sudo -E sh scripts/acquisition/install-client.sh \
             --adapter "$ADAPTER" \
-            --route package \
-            --workdir "$RUNNER_TEMP/install-package" \
-            --record "$RUNNER_TEMP/install-package.txt"
-          cat "$RUNNER_TEMP/install-package.txt"
+            --route "$ROUTE" \
+            --workdir "$RUNNER_TEMP/install-$ROUTE" \
+            --record "$RUNNER_TEMP/install-$ROUTE.txt"
+          cat "$RUNNER_TEMP/install-$ROUTE.txt"
 
       # ⛔ THE INSTALL'S OWN LOGS GO UP WHETHER OR NOT THE INSTALL WORKED, and
       # this step exists because two dispatches lost their diagnosis. The
@@ -108,12 +178,22 @@ jobs:
       # `warn` here rather than `error`: a job that failed before the workdir
       # existed has nothing to upload, and failing this step would replace one
       # missing diagnosis with another.
+      #
+      # ⛔ THE ROUTE IS IN THE NAME, AND IT HAS TO BE. Two legs of this matrix now
+      # share an adapter and differ only in the route, so a name built from the
+      # adapter alone would be two uploads under one name in one run - which the
+      # upload action refuses, turning a green capture into a failed upload for a
+      # reason nothing in the step says. ⚠ The release workdir goes up beside the
+      # install one, because the URL a route fetched is evidence of what it
+      # acquired and it lives there.
       - name: Upload the install logs
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: install-${{ matrix.adapter }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/install-package
+          name: install-${{ matrix.adapter }}-${{ matrix.route }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/install-${{ matrix.route }}
+            ${{ runner.temp }}/release
           if-no-files-found: warn
           retention-days: 30
 
@@ -140,7 +220,7 @@ jobs:
       # the product does not already have.
       - name: Capture
         env:
-          RUN_ID: capture-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.adapter }}
+          RUN_ID: capture-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.adapter }}-${{ matrix.route }}
           SECONDS_TO_SERVE: ${{ inputs.seconds }}
           PEER_PORT: ${{ inputs.peer_port }}
           ADAPTER: scripts/capture/adapters/${{ matrix.adapter }}.sh
@@ -196,10 +276,10 @@ jobs:
       - name: Upload the evidence bundle
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: capture-client-${{ matrix.adapter }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: capture-client-${{ matrix.adapter }}-${{ matrix.route }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             ${{ runner.temp }}/capture
-            ${{ runner.temp }}/install-package.txt
+            ${{ runner.temp }}/install-${{ matrix.route }}.txt
           if-no-files-found: error
           retention-days: 90
 
@@ -207,19 +287,25 @@ jobs:
       # and on Linux a repeat really does mean a survived host.
       - name: Report the host fingerprint
         if: always()
+        env:
+          ROUTE: ${{ matrix.route }}
         run: |
           set -eu
           print=$(sh scripts/acquisition/assert-disposable.sh --fingerprint)
           echo "linux host fingerprint: $print"
           {
-            echo "### ${{ matrix.adapter }}"
+            echo "### ${{ matrix.adapter }} (${{ matrix.route }})"
             echo
             echo "host fingerprint \`$print\`"
             echo
             echo 'Compare against the previous **Linux** run. A repeat means the host was not destroyed.'
             echo
             echo '```'
-            cat "$RUNNER_TEMP/install-package.txt" 2>/dev/null || echo 'no install record'
+            cat "$RUNNER_TEMP/release/resolution.txt" 2>/dev/null || echo 'no release resolution'
+            echo '```'
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/install-$ROUTE.txt" 2>/dev/null || echo 'no install record'
             echo '```'
             echo
             echo '```'

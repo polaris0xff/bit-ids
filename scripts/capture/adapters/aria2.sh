@@ -98,6 +98,27 @@ case "$COMMAND" in
     # build from an adapter that declines to say.
     _where=$(binary) || _where=""
     [ -z "$_where" ] || printf 'binary=%s\n' "$_where"
+    # ⛔ AND WHAT THE RELEASE ROUTE NEEDS TO KNOW, DECLARED HERE BECAUSE THIS IS
+    # ALREADY THE FILE THAT KNOWS HOW THIS PRODUCT IS INSTALLED. Which repository
+    # publishes it, how it spells a version and which of a release's artifacts is
+    # the installable one are all target knowledge, and `resolve-release` reads
+    # them from here rather than from a table a workflow would have to carry a
+    # case statement over.
+    #
+    # ⭐ `{version}` IS WHAT MAKES THE PATTERN UNAMBIGUOUS. Measured 2026-09-09
+    # against the live listing: release-1.37.0 carries six assets, three of them
+    # source archives differing only in compression, so `aria2-*.tar.*` matches
+    # three and `select-asset` refuses. `aria2-{version}.tar.bz2` matches one.
+    #
+    # ⚠ bz2 RATHER THAN gz OR xz, and the choice is recorded rather than
+    # implied: the three carry the same source, the bz2 is what `ACQ-03` already
+    # measured a build from, and its digest is the one this project can check a
+    # fetch against without acquiring anything new.
+    printf 'release_repo=aria2/aria2\n'
+    printf 'release_tag_prefix=release-\n'
+    printf 'release_min_components=3\n'
+    printf 'release_max_components=3\n'
+    printf 'release_asset=aria2-{version}.tar.bz2\n'
     ;;
 
   install)

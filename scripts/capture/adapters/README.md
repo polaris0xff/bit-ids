@@ -18,7 +18,7 @@ returns 0 for done, 1 for refused and 2 for could-not-run.
 
 | subcommand | when | must |
 | --- | --- | --- |
-| `describe` | any time | print `target=<slug>` and `kind=stock\|stub`, one per line, plus `binary=<path>` when one is installed |
+| `describe` | any time | print `target=<slug>` and `kind=stock\|stub`, one per line, plus `binary=<path>` when one is installed and the release-route declarations below when it has one |
 | `install <route> <workdir>` | ⛔ **before the route is cut** | install the target through that route alone |
 | `version` | ⛔ **before the route runs, again after it, and again under containment** | ⛔ ask the **installed executable** and print exactly what it answered |
 | `start <torrent> <workdir> <peer-port>` | under containment | launch the build on that torrent and return; the build keeps running |
@@ -107,6 +107,46 @@ calls the most recurring hole there is.
 refuse a pair that shares a resolver or a delivery mechanism.** `package` is the
 host's own package manager and `release` is the vendor's published artifact.
 Two package aliases pointing at one index are one route.
+
+### The release route's artifact, declared where the target is known
+
+⛔ **A release route needs an artifact chosen and `describe` is where the target
+says which.** Five more keys, printed by `describe` and read by
+[`../../acquisition/resolve-release.sh`](../../acquisition/resolve-release.sh).
+An adapter with no release route prints none of them, which is an answer: the
+caller learns this target has no second route rather than watching a fetch fail
+with something that names nothing.
+
+| key | is |
+| --- | --- |
+| `release_repo` | `owner/name`, the repository whose releases the route resolves through |
+| `release_tag_prefix` | the literal stripped before a tag is read as a version, or `-` for none |
+| `release_min_components` | the fewest dot-separated components a version of this target has |
+| `release_max_components` | the most |
+| `release_asset` | which artifact of a release is the installable one |
+
+⛔ **They live here because this file is already the only one that knows how
+this product is installed**, and they are on `describe` rather than on a sixth
+subcommand because both callers already parse `describe` for `binary=`. A second
+door into one answer is the shape this repository's reviews call the most
+recurring hole there is.
+
+⭐ **`release_asset` is a pattern with two constructs and `{version}` is the one
+that matters.** It expands to the version the resolver selected, `*` matches any
+run, and everything else is literal. Measured on 2026-09-09 against the live
+listings: qBittorrent's release-5.2.3 publishes **fourteen** assets including two
+Linux `AppImage` files differing only by an `_lt20`, so
+`qbittorrent-*_x86_64.AppImage` matches both, and aria2's release publishes three
+source archives differing only in compression, so `aria2-*.tar.*` matches three.
+⛔ **Two matches is a refusal, not a first-match answer**: choosing between them
+by the order the source listed them is choosing by a property of the source, and
+the record would look identical the month that order changed.
+
+⚠ **A declared artifact is not an installable one.** `transmission` declares its
+source tarball and its release route still refuses, because nothing here knows
+how to build it. That is the honest split: this project can say which file a
+route would fetch and cannot say how to compile it, and declaring the first is
+what makes the second a named gap rather than a route that is simply unreachable.
 
 ⚠ **A route that installs is not yet a route that agreed.** `ACQ-03`'s
 same-version gate compares what each installed build *reports*, which is why

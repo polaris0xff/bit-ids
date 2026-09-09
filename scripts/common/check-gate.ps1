@@ -223,6 +223,13 @@ Add-Unavailable 'check-capture' 'an sh harness; the capture workflow exercises t
 # CI-07 writes the twin, not when a capture is dispatched.
 Add-Unavailable 'check-capture-client' 'an sh harness whose subject has no PowerShell half yet; CI-07'
 
+# ⛔ AND ITS REASON IS A THIRD ONE AGAIN. check-release-route drives
+# resolve-release.sh, which is `sh`, over recorded listings; the decision it
+# proves is in Rust and the Rust suite exercises it on both lanes. What this lane
+# does not exercise is the shell that composes the three steps. ⚠ It closes when
+# CI-07 writes that twin, and a Windows adapter is what would need one.
+Add-Unavailable 'check-release-route' 'an sh harness whose subject has no PowerShell half yet; CI-07'
+
 # ⭐ THE SLOW ONE, and ⚠ it is the one part of this gate that needs a POSIX
 # shell: check-twins runs the sh half of every pair, so it cannot run on a host
 # without one. That is reported as a skip, never as a pass.

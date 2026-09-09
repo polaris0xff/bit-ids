@@ -188,6 +188,70 @@ where it lands.
 Residual: `fetch-releases.sh` has no PowerShell twin. `../scripts/README.md`
 carries why, and `ACQ-04` owns the Windows runner contract where one is needed.
 
+### ⛔ Residual, closed 2026-09-09: the resolver named a version and nothing named an artifact
+
+**This entry decided which version to acquire and the acquisition still could not
+start**, because every `release` route in the tree refuses without a URL
+"resolved before the route was cut" and nothing in this repository resolved one.
+`capture-client.yml` therefore passed `--route package` and only that, through
+four dispatches, and the second route existed as three adapters that could not be
+called.
+
+⭐ **`select_asset` and `AssetPattern` are the missing half**, beside `resolve`
+because they answer the second half of one question, and
+[`../scripts/acquisition/resolve-release.sh`](../scripts/acquisition/resolve-release.sh)
+composes the fetch, the resolution and the selection into the one command a
+workflow step runs.
+
+⛔ **The asset comes out of the same response the version did.** One retrieval
+answers both questions, so the digest the resolution already records covers both
+decisions, and `select-asset` takes the tag off the candidate that actually won
+rather than re-deriving a version of its own.
+
+⚠ **Which asset is target knowledge, so the adapter declares it** - the
+repository, the tag prefix, the component bounds and the pattern, all through
+`describe`, which both callers already parse. The parsing stays in Rust.
+`scripts/capture/adapters/README.md` carries the five keys.
+
+⭐ **`{version}` in a pattern is what makes it unambiguous on a real release, and
+that is measured rather than argued.** Against the live listings on 2026-09-09:
+
+| target | assets in the newest stable release | a `*` pattern matches | the pinned pattern matches |
+| --- | ---: | ---: | ---: |
+| `aria2` 1.37.0 | 6 | 3 (`aria2-*.tar.*`) | 1 |
+| `qbittorrent` 5.2.3 | 14 | 2 (`qbittorrent-*_x86_64.AppImage`) | 1 |
+| `transmission` 4.1.3 | 11 | 1 | 1 |
+
+⛔ **Two matches refuses rather than taking the first.** Choosing by the order a
+source listed its assets is choosing by a property of the source, and the record
+would look identical the month that order changed. ⚠ The version is expanded into
+a **literal** rather than spliced into the glob, because `Version` accepts what a
+build printed and a value carrying a `*` would widen the pattern meant to pin it.
+
+⭐ **Driven end to end on this host, with the strongest control available.** The
+URL the selection produced was fetched and `sha256sum -c` verified it against the
+`sha256:a75c85…` the two-route table below recorded on 2026-09-08, from a
+different fetch in a different session. The declared size, 2392193, is the size
+on disk. ⚠ Fetching a source tarball is not a capture and needs no disposable
+host.
+
+⚠ **The digest is quoted short here and in full in that table**, because
+`check-no-secrets --public` hunts a bare forty- or sixty-four-digit hex run and
+is right to: this project spells a digest with its algorithm, and a value written
+without one is not the canonical form. The check refused this paragraph's first
+draft.
+
+⚠ **A listing's digest identifies a response and not a release.** Two reads of
+the aria2 endpoint minutes apart inside one session produced two different
+digests over one unchanged release, because the counters the source keeps beside
+an asset move.
+
+Residual: the selection is not in the `Profile`. `ReleaseAsset` carries the name,
+the location and the declared size, and `AcquisitionRoute`'s `ReleaseAsset`
+identity carries a repository, a tag and an asset name - so a record can say
+which asset it asked for and cannot yet say what the source declared about it.
+Whatever first assembles a publication from two real captures is where they meet.
+
 ## ACQ-03: Same-version multi-route verifier
 
 Source: operator requirement to install the same build from two or more routes

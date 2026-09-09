@@ -1,0 +1,40 @@
+[
+  {
+    "tag_name": "release-1.37.0",
+    "prerelease": false,
+    "draft": false,
+    "published_at": "2023-11-15T12:07:32Z",
+    "assets": [
+      {
+        "name": "aria2-1.37.0-aarch64-linux-android-build1.zip",
+        "browser_download_url": "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-aarch64-linux-android-build1.zip",
+        "size": 2508263
+      },
+      {
+        "name": "aria2-1.37.0-win-32bit-build1.zip",
+        "browser_download_url": "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-32bit-build1.zip",
+        "size": 2558495
+      },
+      {
+        "name": "aria2-1.37.0-win-64bit-build1.zip",
+        "browser_download_url": "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-64bit-build1.zip",
+        "size": 2475379
+      },
+      {
+        "name": "aria2-1.37.0.tar.bz2",
+        "browser_download_url": "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0.tar.bz2",
+        "size": 2392193
+      },
+      {
+        "name": "aria2-1.37.0.tar.gz",
+        "browser_download_url": "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0.tar.gz",
+        "size": 3904613
+      },
+      {
+        "name": "aria2-1.37.0.tar.xz",
+        "browser_download_url": "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0.tar.xz",
+        "size": 1705256
+      }
+    ]
+  }
+]

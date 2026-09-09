@@ -95,6 +95,34 @@ case "$COMMAND" in
     # build from an adapter that declines to say.
     _where=$(binary) || _where=""
     [ -z "$_where" ] || printf 'binary=%s\n' "$_where"
+    # ⛔ WHAT THE RELEASE ROUTE NEEDS TO KNOW. `CLIENT-01` recorded on 2026-09-05
+    # that this release "offers a Linux AppImage, a Windows x64_setup.exe and a
+    # source tar.xz"; re-read on 2026-09-09, release-5.2.3 carries FOURTEEN
+    # assets and TWO Linux AppImages - `qbittorrent-5.2.3_x86_64.AppImage` and
+    # `qbittorrent-5.2.3_lt20_x86_64.AppImage` - so the summary was one build
+    # short in exactly the place a route has to choose.
+    #
+    # ⭐ `{version}` IS WHAT SEPARATES THEM. `qbittorrent-*_x86_64.AppImage`
+    # matches both, because a run swallows the `_lt20`; the pinned form matches
+    # the unsuffixed one alone and `select-asset` refuses the ambiguity rather
+    # than taking whichever the source listed first.
+    #
+    # ⚠ WHAT THIS DOES NOT ESTABLISH IS WHICH LIBTORRENT EACH APPIMAGE CARRIES.
+    # The suffix plainly names a variant and nothing here has measured either, so
+    # the pattern selects the vendor's unsuffixed build and the record names the
+    # asset it took: a capture through this route measures whichever it
+    # installed, and says which.
+    #
+    # ⚠ THREE OR FOUR COMPONENTS, from `ACQ-02`'s live dry run. The newest
+    # release object on 2026-09-09 is `release-5.3.0beta1`, which the source
+    # flags a prerelease and whose version text says so too, so the resolver
+    # selects 5.2.3 - which is the pessimistic stability rule doing its job on a
+    # live listing rather than on a fixture.
+    printf 'release_repo=qbittorrent/qBittorrent\n'
+    printf 'release_tag_prefix=release-\n'
+    printf 'release_min_components=3\n'
+    printf 'release_max_components=4\n'
+    printf 'release_asset=qbittorrent-{version}_x86_64.AppImage\n'
     ;;
 
   install)

@@ -136,6 +136,30 @@ tree_files() { # dir
 # report it ambiguous. Measured on 2026-09-05, where exactly that miscounted
 # three plants as NOT-PLANTED. Refusing one outright is honest; counting one
 # wrongly is the defect this function exists to prevent.
+#
+# -- ⛔ THE COUNTING AND THE REPLACING SPEAK ONE LANGUAGE, AND FOR A WHILE THEY
+# DID NOT ---------------------------------------------------------------------
+#
+# This counted with `grep -F`, which is LITERAL, and then edited with
+# `sed "s/$2/$3/"`, which is a REGULAR EXPRESSION over an unescaped pattern and
+# an unescaped replacement. Two consequences, both measured on 2026-09-09 while
+# a new caller tripped over the second:
+#
+#   * ⛔ A literal carrying a regex metacharacter plants somewhere else. Over
+#     `axb then a.b`, the literal `a.b` occurs exactly once - at the end - so the
+#     count accepted it, and sed then replaced `axb`. The plant applied, so no
+#     case reported NOT-PLANTED, and whatever refusal followed was read as proof
+#     about a defect that had been planted in the wrong place.
+#   * ⚠ A literal carrying a `/` ends the `s` command. sed exits non-zero, this
+#     returns 1, and the caller reports a plant that did not apply - which fails
+#     safe for a plant and NOT for `store_probe_guards`' no-op case below, where
+#     a failure is the expected outcome: that row passed over a sed that never
+#     parsed its own expression.
+#
+# ⭐ So the edit is literal on both sides now. `index` and `substr` are string
+# operations with no pattern language behind them, and the two values arrive
+# through the environment rather than through `awk -v`, which processes escape
+# sequences in what it is given.
 replace_once() { # file literal replacement
   case "$2" in
     *"
@@ -146,7 +170,22 @@ replace_once() { # file literal replacement
   _hits=$(grep -o -F -e "$2" "$1" 2>/dev/null | wc -l | tr -d ' ')
   [ "$_hits" = "1" ] || return 1
   _before=$(sha256sum "$1" | cut -d' ' -f1)
-  sed -i "s/$2/$3/" "$1" || return 1
+  # ⚠ A TEMP FILE IN THE SAME DIRECTORY, THEN A RENAME. A killed run leaves the
+  # original intact rather than a half-written file; conventions/shell.md 1.
+  _replace_once_old="$2" _replace_once_new="$3" awk '
+    BEGIN { old = ENVIRON["_replace_once_old"]; new = ENVIRON["_replace_once_new"] }
+    {
+      if (!done) {
+        at = index($0, old)
+        if (at > 0) {
+          $0 = substr($0, 1, at - 1) new substr($0, at + length(old))
+          done = 1
+        }
+      }
+      print
+    }
+  ' "$1" >"$1.replace-once" || return 1
+  mv "$1.replace-once" "$1" || return 1
   _after=$(sha256sum "$1" | cut -d' ' -f1)
   [ "$_before" != "$_after" ] || return 1
   return 0
@@ -179,6 +218,32 @@ store_probe_guards() { # file present-literal ambiguous-literal
     fail "probe    a multi-line literal was reported as planted"
   else
     pass "probe    a multi-line literal is refused"
+  fi
+
+  # ⛔ AND THE TWO SHAPES THAT MADE THE COUNTING AND THE REPLACING DISAGREE.
+  # These plant into a scratch sibling rather than into the caller's file,
+  # because each needs a specific content and no caller's file has it.
+  #
+  # ⚠ The first is the one that cost a case silently: over `axb then a.b` the
+  # LITERAL `a.b` occurs once and a REGEX `a.b` matches `axb` first, so the plant
+  # applied in a place no case named. It asserts WHERE the edit landed, not that
+  # one happened.
+  printf 'axb then a.b\n' >"$1.metachar"
+  if replace_once "$1.metachar" 'a.b' 'PLANTED' &&
+    [ "$(cat "$1.metachar")" = "axb then PLANTED" ]; then
+    pass "probe    a literal carrying a regex metacharacter plants where it occurs"
+  else
+    fail "probe    a metacharacter literal planted [$(cat "$1.metachar")]"
+  fi
+
+  # ⚠ The second could not plant at all: a `/` ends sed's own `s` command, so
+  # every literal naming a path was a case that quietly never ran.
+  printf 'keep a/b here\n' >"$1.slash"
+  if replace_once "$1.slash" 'a/b' 'PLANTED' &&
+    [ "$(cat "$1.slash")" = "keep PLANTED here" ]; then
+    pass "probe    a literal carrying a path separator can be planted"
+  else
+    fail "probe    a literal carrying a slash planted [$(cat "$1.slash")]"
   fi
 }
 

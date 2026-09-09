@@ -201,7 +201,8 @@ what happened without reading an expression.
 | step | why it is where it is |
 | --- | --- |
 | claim the host | ⛔ first, and before the install as well as before the capture: a product installed on a host nothing established was disposable is state on a machine that may be kept |
-| build the observer | while the network still exists |
+| build the observer | while the network still exists, and it is every binary the job runs rather than only the observer |
+| resolve the release artifact | ⛔ before the install, which needs its answer, and therefore before the route is cut. Only on the `release` lane: a package index needs no artifact chosen |
 | install the client | ⛔ also while the network still exists. `capture-client` refuses to install anything, and a package index is unreachable from a host with no default route |
 | cut the route off this host | both address families, routes saved first |
 | assert containment | the guard reads the kernel, not the step above |
@@ -216,9 +217,23 @@ workflow directory rather than the one file it was written for: a rule over one
 workflow is not a rule over the sibling that installs a stranger's binary, which
 is the one-gated-door shape applied to a rule instead of to a code path.
 
-⭐ **One job per adapter, and `fail-fast: false`.** Each is a separate host
-running a separate product, so a matrix that stopped at the first red would throw
-away measurements already taken on machines that are about to be destroyed.
+⭐ **One job per adapter AND per route, and `fail-fast: false`.** Each is a
+separate host acquiring one product through one route, so a matrix that stopped
+at the first red would throw away measurements already taken on machines that are
+about to be destroyed.
+
+⛔ **One route per host is the design rather than the shape the matrix happened
+to take.** `ACQ-03` compares what two routes installed, and two routes on one
+machine means the second installs over the first: the digest comparison then has
+one host's final state to look at rather than two independent acquisitions.
+⚠ The default dispatch runs `["package"]` alone, which is what every dispatch so
+far ran; adding `"release"` runs a second host per adapter.
+
+⛔ **An artifact name carries the route, and it has to.** Two legs now share an
+adapter and differ only in the route, so a name built from the adapter alone
+would be two uploads under one name in one run - which the upload action refuses,
+turning a green capture into a failed upload for a reason nothing in the step
+says.
 
 ⭐ **The driver and the verifier are both somebody else's code.** `curl` is a
 complete HTTP client and puts real bytes through the observer; `sha256sum -c`

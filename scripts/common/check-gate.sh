@@ -100,6 +100,8 @@ PASS=0
 FAIL=0
 SKIP=0
 NA=0
+# Every row label handed out so far, so a second check cannot claim one.
+SEEN_NAMES=""
 ROWS=""
 
 row() { ROWS="$ROWS  $1
@@ -236,7 +238,8 @@ fi
 # one directory and differ in one property: two of check-workflow's cases run
 # this gate, so a runner that listed it would re-enter itself. check-staleness
 # runs no gate.
-for spec in acquisition/check-cache capture/check-capture capture/check-capture-client \
+for spec in acquisition/check-cache acquisition/check-release-route \
+  capture/check-capture capture/check-capture-client \
   corpus/check-store \
   corpus/check-corpus corpus/check-indexes publishing/check-release \
   publishing/check-formats publishing/check-publish publishing/check-access \
@@ -244,6 +247,22 @@ for spec in acquisition/check-cache capture/check-capture capture/check-capture-
   common/check-handbook; do
   PROVER="$HERE/../$spec.sh"
   NAME=${spec#*/}
+  # ⛔ A ROW NAME IS A NAME AND TWO CHECKS MUST NOT SHARE ONE. The label is the
+  # basename, so two harnesses in different directories collide into two rows a
+  # reader cannot tell apart - and a red one then names a file that is not the
+  # one that failed. ⚠ Measured on 2026-09-09: an acquisition harness called
+  # `check-release` was added beside `publishing/check-release`, and the gate
+  # would have printed the name twice with nothing saying so. It is the
+  # non-injective-path defect this project already refuses in a store layout,
+  # arriving in a runner's own labels.
+  # ⛔ Exit 2: a gate that cannot label its own rows has not run.
+  case " $SEEN_NAMES " in
+    *" $NAME "*)
+      printf 'check-gate: two checks are both named %s; a row name is a name\n' "$NAME" >&2
+      exit 2
+      ;;
+  esac
+  SEEN_NAMES="$SEEN_NAMES $NAME"
   if [ -f "$PROVER" ]; then
     run "$NAME" sh "$PROVER"
   else

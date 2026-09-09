@@ -5,6 +5,54 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-09T02:21:06Z
+
+- ⛔ The second acquisition route was unrunnable and the missing piece was the
+  artifact, not the plumbing. Every `release` route refuses without
+  `BIT_IDS_RELEASE_URL` "resolved before the route was cut", and nothing in the
+  tree produced one: `resolve-stable` orders versions and selects no asset. Four
+  dispatches passed `--route package` and only that. Record:
+  [`TODO/acquisition.md`](TODO/acquisition.md).
+- ⭐ `AssetPattern` and `select_asset` choose one artifact of the selected
+  release, from the same response the version came out of, so one recorded digest
+  covers both decisions. The location is read from the listing and never
+  composed.
+- ⭐ `{version}` in a pattern is what makes it unambiguous on a real release, and
+  the two ambiguous cases are measured rather than defensive: qBittorrent's
+  release-5.2.3 carries **fourteen** assets including two Linux `AppImage` files
+  differing only by an `_lt20`, and aria2's release-1.37.0 carries three source
+  archives differing only in compression. Two matches refuses; taking the first
+  would choose by the order the source listed them in.
+- ⛔ `CLIENT-01`'s record said that release "offers a Linux AppImage, a Windows
+  `x64_setup.exe` and a source `tar.xz`". It was one build short, in exactly the
+  place a route has to choose. Record: [`TODO/clients.md`](TODO/clients.md).
+- ⭐ Which artifact is target knowledge, so each adapter declares its repository,
+  its tag scheme and its asset pattern through `describe`; `resolve-release.sh`
+  reads them, so the workflow step carries no case over which product it runs.
+- ⭐ `capture-client.yml` takes the route as a matrix dimension beside the
+  adapter. One route per host is the design: two routes on one machine means the
+  second installs over the first, and `ACQ-03` would compare one host's final
+  state rather than two acquisitions. ⚠ The artifact names carry the route now,
+  because two legs otherwise upload under one name in one run.
+- ⭐ Driven end to end here against all three live listings, and the URL aria2's
+  selection produced served bytes `sha256sum -c` verified against the digest a
+  different session recorded from a different fetch on 2026-09-08.
+- ⛔ `replace_once` counted with `grep -F` and edited with `sed`, so its literal
+  and its pattern were different languages. Over `axb then a.b` the literal
+  `a.b` occurs once, the count accepted, and sed replaced `axb`: the plant
+  applied somewhere no case named, so nothing reported NOT-PLANTED and the
+  refusal that followed was read as proof. A literal carrying a `/` could not
+  plant at all, which turned `store_probe_guards`' no-op row into a pass over a
+  sed that never parsed its own expression. Both are probes now, and both refuse
+  the old implementation. Record: [`scripts/corpus/store-lib.sh`](scripts/corpus/store-lib.sh).
+- ⛔ `check-gate` labels a row with a check's basename, so two harnesses in
+  different directories collide into two rows a reader cannot tell apart. Found
+  by writing `acquisition/check-release` beside `publishing/check-release`. The
+  runner refuses a duplicate label with exit 2 now, and the new harness is
+  `check-release-route`.
+- Deployment: nothing deployed.
+
+
 ### 2026-09-08T23:16:05Z
 
 - ⛔ A third rule that existed only in prose. `docs/history/README.md` carries a

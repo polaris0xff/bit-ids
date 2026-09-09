@@ -875,6 +875,46 @@ The resolution keeps **every** candidate with the verdict it got, the exact
 bytes each source answered with, and the instant the decision was made. A
 selection nobody can re-derive is a claim, not a measurement.
 
+### Choosing which artifact of that release to fetch
+
+⛔ **A version is not an artifact, and for a while nothing chose one.** Every
+`release` route in this tree refuses without a URL "resolved before the route was
+cut", and the resolver above orders versions and selects no asset, so
+`capture-client.yml` passed `--route package` and only that. `AssetPattern` and
+`select_asset` in
+[`../crates/bit-ids/src/resolution.rs`](../crates/bit-ids/src/resolution.rs) are
+the missing half, and
+[`../scripts/acquisition/resolve-release.sh`](../scripts/acquisition/resolve-release.sh)
+is what composes them with the fetch.
+
+⛔ **Which asset is the installable one is target knowledge, so the target
+declares it.** The adapter prints the repository, the version scheme and the
+asset pattern from `describe`; the parsing and the choosing stay in Rust, which
+is the line section 3 draws. A pattern in a workflow would be a case statement
+over products in the one file that is meant to know nothing about any of them.
+
+⭐ **The pattern has two constructs.** `{version}` expands to the version the
+resolver selected and `*` matches any run; everything else is literal. ⚠ The
+version is expanded into a **literal**, never spliced into the glob: `Version`
+accepts what a build printed, so a value carrying a `*` would otherwise widen the
+pattern that was meant to pin it.
+
+⛔ **Zero matches and two matches are both refusals**, which is the same rule the
+resolver applies to a candidate it cannot order. Taking the first of several
+would choose by the order the source happened to list them in, and the record
+would look identical the month that order changed. ⚠ Both cases are real rather
+than defensive: measured on 2026-09-09, qBittorrent's release-5.2.3 carries
+fourteen assets including two Linux `AppImage` files that differ only by an
+`_lt20`, and aria2's release-1.37.0 carries three source archives differing only
+in compression.
+
+⚠ **The asset comes out of the same response the version did**, so one recorded
+digest covers both decisions and nothing is fetched twice. ⛔ **And the location
+is read from the listing rather than composed**: a URL built here from an owner,
+a tag and a file name would be a second derivation of something the source
+already states, and it would go on answering the day a vendor reorganises its
+downloads.
+
 The gate compares the version reported by the installed executable or harness,
 not the requested version. It also records artifact digests. Different bytes
 may still represent the same version and become useful packaging observations;

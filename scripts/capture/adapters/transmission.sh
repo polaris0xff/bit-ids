@@ -88,6 +88,28 @@ case "$COMMAND" in
     # build from an adapter that declines to say.
     _where=$(daemon) || _where=""
     [ -z "$_where" ] || printf 'binary=%s\n' "$_where"
+    # ⛔ WHAT THE RELEASE ROUTE NEEDS TO KNOW, DECLARED EVEN THOUGH THAT ROUTE
+    # STILL REFUSES. The refusal is at the BUILD and not at the artifact: this
+    # project can say exactly which file a release route would fetch and cannot
+    # say how to compile it, and declaring the first is what makes the second a
+    # named gap rather than a whole route that is simply unreachable.
+    #
+    # ⚠ THE TAGS CARRY NO PREFIX, measured by `ACQ-02`'s live dry run: 83
+    # candidates, bare three-component tags, `4.1.3` selected over 10 superseded,
+    # 21 prerelease and 51 predating. `-` is how `resolve-stable` spells "no
+    # prefix", and it is passed through rather than left empty so a missing
+    # declaration stays distinguishable from a declared absence.
+    #
+    # ⚠ ONE SOURCE ARCHIVE AND NO LINUX BINARY. Measured 2026-09-09 against the
+    # live listing: release 4.1.3 carries eleven assets - Windows `.msi` files,
+    # `-pdb.7z` symbol archives, a macOS `.dmg`, a `-dsym.zip` and exactly one
+    # `transmission-4.1.3.tar.xz`. ⛔ Two of them are capitalised `Transmission-`,
+    # which is why the pattern is matched case-sensitively.
+    printf 'release_repo=transmission/transmission\n'
+    printf 'release_tag_prefix=-\n'
+    printf 'release_min_components=3\n'
+    printf 'release_max_components=3\n'
+    printf 'release_asset=transmission-{version}.tar.xz\n'
     ;;
 
   install)

@@ -14,6 +14,18 @@ from any working directory.
   cache through a source that moved and asks `check-licences --permitted` what
   the register allows, so the tie between the two is a call rather than a second
   reading of the register.
+- [`acquisition/resolve-release.sh`](acquisition/resolve-release.sh) decides
+  which artifact a `release` route will fetch, before the route is cut. ⛔ It
+  carries no per-target knowledge: the repository, the version scheme and the
+  asset pattern come out of the adapter's own `describe`, so a workflow driving
+  it needs no case over which product it is running.
+- [`acquisition/check-release-route.sh`](acquisition/check-release-route.sh)
+  proves each shipped adapter's pattern selects exactly one artifact, over
+  [recorded responses](acquisition/listings/README.md) rather than over three
+  vendors. ⛔ The case it exists for is the ambiguous match: qBittorrent's
+  release publishes two Linux `AppImage` files differing only by an `_lt20`, so a
+  selector that took the first match would install whichever the vendor listed
+  first.
 - [`corpus/check-store.sh`](corpus/check-store.sh) plants, in a disposable tree,
   every defect the append-only store exists to refuse, and reads each exit code
   from the process that produced it.

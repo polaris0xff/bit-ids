@@ -743,14 +743,236 @@ fn check_selection(resolution: &Resolution, out: &mut Vec<SchemaError>) {
     }
 }
 
+/// One artifact attached to a release, exactly as the source listed it.
+///
+/// ⛔ **The location comes out of the listing and is never composed.** A URL
+/// built here from an owner, a repository, a tag and a file name would be a
+/// second derivation of something the source already states, and the day a
+/// vendor reorganises its downloads the composed one goes on answering - with
+/// nothing, or with bytes that are not the release's. The size is kept beside
+/// it because it is the cheapest thing a fetch can be checked against.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReleaseAsset {
+    /// The file name the source published it under.
+    pub name: Label,
+    /// Where the source says the bytes are.
+    pub url: Url,
+    /// How many bytes the source says it is.
+    pub size: u64,
+}
+
+/// Why no single asset could be chosen.
+///
+/// ⛔ **Three refusals rather than one, because the fix differs.** A missing
+/// release means the resolution and the listing disagree about what exists; no
+/// match means the pattern is wrong or the vendor renamed an artifact; and an
+/// ambiguous match means the pattern is too wide, which is the one a caller
+/// would otherwise never learn about, because picking the first match hides it.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum AssetRefusal {
+    /// The listing carries no release under that tag.
+    NoSuchRelease,
+    /// Nothing the release carries matches the pattern.
+    NoMatch,
+    /// More than one asset matched, so "the artifact" has no single answer.
+    Ambiguous(Vec<Label>),
+}
+
+impl fmt::Display for AssetRefusal {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NoSuchRelease => f.write_str("the listing carries no release under that tag"),
+            Self::NoMatch => f.write_str("no asset of that release matches the pattern"),
+            Self::Ambiguous(names) => {
+                write!(f, "{} assets match the pattern:", names.len())?;
+                for name in names {
+                    write!(f, " {name}")?;
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
+/// One piece of an [`AssetPattern`].
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum PatternPart {
+    /// Text that must appear exactly.
+    Literal(String),
+    /// Any run of characters, including none.
+    AnyRun,
+}
+
+/// A pattern over an asset's file name, held by the target that knows it.
+///
+/// Two constructs and nothing else: `{version}` stands for the version the
+/// resolver selected, and `*` matches any run of characters including none.
+/// Everything else is literal, and an unrecognised `{...}` is refused rather
+/// than matched as text, because a typo that matched literally would be a
+/// pattern that silently stops finding anything.
+///
+/// ⛔ **The version is expanded into a LITERAL and never spliced into the
+/// glob.** [`Version`] accepts what a build printed, `*` included, so a pattern
+/// built by string substitution could be widened by the very value it was meant
+/// to pin. Expanding into a literal part cannot.
+///
+/// ⭐ **`{version}` is what makes a pattern narrow enough to be unambiguous on
+/// a real vendor's release.** Measured on 2026-09-09 against qBittorrent 5.2.3,
+/// whose release carries fourteen assets and **two** Linux `AppImage` files:
+/// `qbittorrent-5.2.3_x86_64.AppImage` and
+/// `qbittorrent-5.2.3_lt20_x86_64.AppImage`. So `qbittorrent-*_x86_64.AppImage`
+/// matches both and `qbittorrent-{version}_x86_64.AppImage` matches one.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AssetPattern {
+    parts: Vec<PatternPart>,
+}
+
+impl AssetPattern {
+    /// Reads a pattern, expanding `{version}` with the selected version.
+    ///
+    /// # Errors
+    ///
+    /// Returns a message when the pattern is empty, carries an unterminated
+    /// `{`, or names a placeholder other than `version`.
+    pub fn parse(pattern: &str, version: &str) -> Result<Self, String> {
+        if pattern.is_empty() {
+            return Err("an asset pattern is not empty".to_owned());
+        }
+        let mut parts: Vec<PatternPart> = Vec::new();
+        let mut literal = String::new();
+        let mut rest = pattern;
+        while !rest.is_empty() {
+            if let Some(after) = rest.strip_prefix('*') {
+                if !literal.is_empty() {
+                    parts.push(PatternPart::Literal(core::mem::take(&mut literal)));
+                }
+                // ⚠ Adjacent stars collapse here rather than in the matcher, so
+                // the matcher never has to reason about an empty run between two.
+                if parts.last() != Some(&PatternPart::AnyRun) {
+                    parts.push(PatternPart::AnyRun);
+                }
+                rest = after;
+            } else if let Some(after) = rest.strip_prefix('{') {
+                let Some(end) = after.find('}') else {
+                    return Err(format!("{pattern:?} has an unterminated placeholder"));
+                };
+                let name = &after[..end];
+                if name != "version" {
+                    return Err(format!(
+                        "{pattern:?} names placeholder {{{name}}}; the only one is {{version}}"
+                    ));
+                }
+                literal.push_str(version);
+                rest = &after[end + 1..];
+            } else {
+                // ⚠ `rest` begins with neither construct here, so the next
+                // occurrence is at least one byte in and this always advances.
+                let next = rest.find(['*', '{']).unwrap_or(rest.len());
+                literal.push_str(&rest[..next]);
+                rest = &rest[next..];
+            }
+        }
+        if !literal.is_empty() {
+            parts.push(PatternPart::Literal(literal));
+        }
+        Ok(Self { parts })
+    }
+
+    /// Whether a file name matches.
+    ///
+    /// ⚠ Linear and backtracking-free: the pattern is anchored at both ends by
+    /// its own outermost parts, and every literal between two runs is then found
+    /// left to right. A recursive matcher over a name a vendor chose is a place
+    /// to spend exponential time on an input this project does not control.
+    #[must_use]
+    pub fn matches(&self, name: &str) -> bool {
+        let mut segments: Vec<&str> = Vec::new();
+        let mut anchored_start = true;
+        let mut anchored_end = true;
+        for (at, part) in self.parts.iter().enumerate() {
+            match part {
+                PatternPart::Literal(text) => segments.push(text),
+                PatternPart::AnyRun => {
+                    if at == 0 {
+                        anchored_start = false;
+                    }
+                    if at + 1 == self.parts.len() {
+                        anchored_end = false;
+                    }
+                }
+            }
+        }
+        let mut rest = name;
+        if anchored_start && anchored_end {
+            // No run at either end: the pattern is one literal, or it is
+            // literal-run-literal and both ends are pinned.
+            if segments.len() == 1 {
+                return rest == segments[0];
+            }
+        }
+        if anchored_start {
+            let Some(first) = segments.first() else {
+                return rest.is_empty();
+            };
+            let Some(after) = rest.strip_prefix(*first) else {
+                return false;
+            };
+            rest = after;
+            segments.remove(0);
+        }
+        if anchored_end && let Some(last) = segments.pop() {
+            let Some(before) = rest.strip_suffix(last) else {
+                return false;
+            };
+            rest = before;
+        }
+        for segment in segments {
+            let Some(at) = rest.find(segment) else {
+                return false;
+            };
+            rest = &rest[at + segment.len()..];
+        }
+        true
+    }
+}
+
+/// Picks the one asset a route should fetch.
+///
+/// ⛔ **Zero matches and two matches are both refusals.** Taking the first of
+/// several would choose by the order the source happened to list them in, which
+/// is a property of the source rather than of the target, and a route that
+/// installed a different artifact next month would look identical in the record.
+/// That is the same argument [`resolve`] makes for blocking on a candidate it
+/// cannot order rather than skipping it.
+///
+/// # Errors
+///
+/// Returns [`AssetRefusal::NoMatch`] or [`AssetRefusal::Ambiguous`].
+pub fn select_asset<'a>(
+    assets: &'a [ReleaseAsset],
+    pattern: &AssetPattern,
+) -> Result<&'a ReleaseAsset, AssetRefusal> {
+    let matched: Vec<&ReleaseAsset> = assets
+        .iter()
+        .filter(|asset| pattern.matches(asset.name.as_str()))
+        .collect();
+    match matched.as_slice() {
+        [] => Err(AssetRefusal::NoMatch),
+        [one] => Ok(one),
+        many => Err(AssetRefusal::Ambiguous(
+            many.iter().map(|asset| asset.name.clone()).collect(),
+        )),
+    }
+}
+
 /// Reading a source's own answer into candidates.
 ///
 /// ⛔ One reader per source shape, and each one is the only place that knows
 /// that shape. A resolver that accepted a pre-digested list would move the
 /// parsing somewhere with no test and no record of what arrived.
 pub mod sources {
-    use super::Candidate;
-    use crate::canonical::{Instant, Label, Slug};
+    use super::{Candidate, ReleaseAsset};
+    use crate::canonical::{Instant, Label, Slug, Url};
 
     /// Reads the GitHub releases list.
     ///
@@ -794,12 +1016,76 @@ pub mod sources {
             })
             .collect()
     }
+
+    /// Reads the assets of one release out of the same listing bytes.
+    ///
+    /// ⭐ **The same response, read a second time for a different question.**
+    /// Nothing is fetched again: the version was decided from these bytes and
+    /// the artifact is chosen from them too, so the digest the resolution
+    /// records covers both decisions.
+    ///
+    /// `Ok(None)` means the listing carries no release under that tag, which is
+    /// a different fact from a release with no assets and is kept apart from it.
+    ///
+    /// # Errors
+    ///
+    /// Returns a message naming the asset that could not be read. An asset with
+    /// an unusable name or location is refused rather than dropped, for the
+    /// reason [`github_releases`] gives about a quietly shorter list.
+    pub fn github_release_assets(
+        body: &[u8],
+        tag: &Label,
+    ) -> Result<Option<Vec<ReleaseAsset>>, String> {
+        #[derive(serde::Deserialize)]
+        struct Release {
+            tag_name: String,
+            #[serde(default)]
+            assets: Vec<Asset>,
+        }
+
+        #[derive(serde::Deserialize)]
+        struct Asset {
+            name: String,
+            browser_download_url: String,
+            #[serde(default)]
+            size: u64,
+        }
+
+        let releases: Vec<Release> =
+            serde_json::from_slice(body).map_err(|error| format!("not a release list: {error}"))?;
+        let Some(release) = releases
+            .into_iter()
+            .find(|release| release.tag_name == tag.as_str())
+        else {
+            return Ok(None);
+        };
+        release
+            .assets
+            .into_iter()
+            .map(|asset| {
+                let name = Label::parse(&asset.name)
+                    .map_err(|error| format!("asset {:?}: {error}", asset.name))?;
+                let url = Url::parse(&asset.browser_download_url)
+                    .map_err(|error| format!("asset {name}: url: {error}"))?;
+                Ok(ReleaseAsset {
+                    name,
+                    url,
+                    size: asset.size,
+                })
+            })
+            .collect::<Result<Vec<_>, String>>()
+            .map(Some)
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{VersionScheme, text_marks_prerelease};
+    use super::{AssetPattern, VersionScheme, text_marks_prerelease};
     use crate::canonical::Label;
+
+    fn pattern(text: &str, version: &str) -> AssetPattern {
+        AssetPattern::parse(text, version).expect("pattern")
+    }
 
     fn scheme(prefix: Option<&str>, min: u8, max: u8) -> VersionScheme {
         VersionScheme {
@@ -840,6 +1126,77 @@ mod tests {
         assert_eq!(s.strip("release-5.2.3"), Some("5.2.3"));
         assert_eq!(s.strip("v5.2.3"), None);
         assert_eq!(scheme(None, 3, 3).strip("5.2.3"), Some("5.2.3"));
+    }
+
+    #[test]
+    fn a_literal_pattern_matches_that_name_and_nothing_longer() {
+        let p = pattern("aria2-{version}.tar.bz2", "1.37.0");
+        assert!(p.matches("aria2-1.37.0.tar.bz2"));
+        // ⛔ The anchored case a naive prefix/suffix matcher gets wrong: with no
+        // run in the pattern, a longer name is not a match.
+        assert!(!p.matches("aria2-1.37.0.tar.bz2.asc"));
+        assert!(!p.matches("xaria2-1.37.0.tar.bz2"));
+        assert!(!p.matches("aria2-1.37.1.tar.bz2"));
+    }
+
+    #[test]
+    fn the_version_placeholder_is_what_makes_a_real_release_unambiguous() {
+        // ⭐ qBittorrent 5.2.3's own asset list, measured 2026-09-09: two Linux
+        // AppImages, distinguished only by an `_lt20` between the version and
+        // the architecture.
+        let wide = pattern("qbittorrent-*_x86_64.AppImage", "5.2.3");
+        assert!(wide.matches("qbittorrent-5.2.3_x86_64.AppImage"));
+        assert!(
+            wide.matches("qbittorrent-5.2.3_lt20_x86_64.AppImage"),
+            "a run is what makes this pattern match both, which is the defect"
+        );
+        let pinned = pattern("qbittorrent-{version}_x86_64.AppImage", "5.2.3");
+        assert!(pinned.matches("qbittorrent-5.2.3_x86_64.AppImage"));
+        assert!(!pinned.matches("qbittorrent-5.2.3_lt20_x86_64.AppImage"));
+    }
+
+    #[test]
+    fn a_run_matches_any_span_including_none_and_orders_its_literals() {
+        assert!(pattern("*", "1.0").matches("anything at all"));
+        assert!(pattern("a*b", "1.0").matches("ab"), "a run may be empty");
+        assert!(pattern("a*b", "1.0").matches("axxxb"));
+        assert!(
+            !pattern("a*b", "1.0").matches("a"),
+            "the suffix is still due"
+        );
+        assert!(pattern("*mid*", "1.0").matches("xxmidxx"));
+        assert!(!pattern("*mid*", "1.0").matches("xxdimxx"));
+        // ⚠ Literals between two runs are found in order, not as a set.
+        assert!(pattern("*a*b*", "1.0").matches("__a__b__"));
+        assert!(!pattern("*a*b*", "1.0").matches("__b__a__"));
+    }
+
+    #[test]
+    fn a_version_carrying_a_wildcard_is_matched_as_text() {
+        // ⛔ `Version` accepts what a build printed. Splicing one into a glob
+        // would let the value widen the pattern that was meant to pin it.
+        let p = pattern("thing-{version}.tar", "1.*");
+        assert!(p.matches("thing-1.*.tar"));
+        assert!(!p.matches("thing-1.37.0.tar"));
+    }
+
+    #[test]
+    fn an_unknown_placeholder_is_refused_rather_than_matched_as_text() {
+        assert!(AssetPattern::parse("thing-{ver}.tar", "1.0").is_err());
+        assert!(AssetPattern::parse("thing-{version.tar", "1.0").is_err());
+        assert!(AssetPattern::parse("", "1.0").is_err());
+        assert!(AssetPattern::parse("thing-{version}.tar", "1.0").is_ok());
+    }
+
+    #[test]
+    fn adjacent_runs_collapse_and_a_case_difference_is_not_a_match() {
+        assert!(pattern("a**b", "1.0").matches("axb"));
+        // ⚠ An asset name is a file name, so case is part of it. Transmission's
+        // release carries both `transmission-4.1.3.tar.xz` and
+        // `Transmission-4.1.3.dmg`.
+        assert!(
+            !pattern("transmission-{version}.tar.xz", "4.1.3").matches("Transmission-4.1.3.tar.xz")
+        );
     }
 
     #[test]

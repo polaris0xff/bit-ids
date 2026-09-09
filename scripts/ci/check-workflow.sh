@@ -617,6 +617,15 @@ for CAPWF in $CAPTURE_WORKFLOWS; do
       order_case "$job" "Install the client" "Cut the route off this host"
     fi
 
+    # ⛔ AND CHOOSING THE ARTIFACT IS A THIRD. A `release` route refuses without
+    # a URL, so a resolve step after the install would leave the route with
+    # nothing to fetch. ⚠ Only this one constraint is asserted: resolve-before-cut
+    # follows from it and the install rule above, and a rule that cannot fail
+    # independently of another is a rule nobody can ever see refuse.
+    if [ -n "$(step_index "$CAPWF" "$job" "Resolve the release artifact")" ]; then
+      order_case "$job" "Resolve the release artifact" "Install the client"
+    fi
+
     # ⚠ And the capture step must call the runner this workflow is for. Every
     # rule above holds over a workflow whose Capture step runs `true`.
     case "$(step_command "$CAPWF" "$job" Capture)" in
@@ -753,6 +762,26 @@ if [ -f "$CLIENTWF" ]; then
     pass "probe    the order reader sees an install moved before the claim"
   else
     fail "probe    the order reader missed an install moved before the claim"
+  fi
+
+  # ⚠ AND THE RESOLVE RULE IS REFUTED ON ITS OWN, because it is conditional on a
+  # step the sibling workflow does not have: a probe that only moved the install
+  # would leave it a reader nobody has seen refuse anything.
+  swap_steps "Resolve the release artifact" "Install the client" "$MUTWF"
+  _a=$(step_index "$MUTWF" linux "Resolve the release artifact")
+  _b=$(step_index "$MUTWF" linux "Install the client")
+  if [ -n "$_a" ] && [ -n "$_b" ] && [ "$_a" -gt "$_b" ]; then
+    pass "probe    the order reader sees a resolve moved after the install"
+  else
+    fail "probe    the order reader missed a resolve moved after the install"
+  fi
+
+  # ⛔ AND THE RULE MUST BE SILENT ON A WORKFLOW WITH NO SUCH STEP, for the same
+  # reason the install rule is: `capture.yml` resolves nothing.
+  if [ -n "$(step_index "$ROOT/.github/workflows/capture.yml" linux "Resolve the release artifact")" ]; then
+    fail "probe    the resolve-order rule found a resolve step in the fixture workflow"
+  else
+    pass "probe    the resolve-order rule is silent on a workflow that resolves nothing"
   fi
 
   # ⛔ AND THE RULE MUST NOT FIRE ON A WORKFLOW THAT INSTALLS NOTHING. It is

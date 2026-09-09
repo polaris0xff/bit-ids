@@ -1,0 +1,65 @@
+[
+  {
+    "tag_name": "4.1.3",
+    "prerelease": false,
+    "draft": false,
+    "published_at": "2026-06-30T03:24:03Z",
+    "assets": [
+      {
+        "name": "Transmission-4.1.3-dsym.zip",
+        "browser_download_url": "https://github.com/transmission/transmission/releases/download/4.1.3/Transmission-4.1.3-dsym.zip",
+        "size": 6535865
+      },
+      {
+        "name": "transmission-4.1.3-qt5-x64-pdb.7z",
+        "browser_download_url": "https://github.com/transmission/transmission/releases/download/4.1.3/transmission-4.1.3-qt5-x64-pdb.7z",
+        "size": 53699388
+      },
+      {
+        "name": "transmission-4.1.3-qt5-x64.msi",
+        "browser_download_url": "https://github.com/transmission/transmission/releases/download/4.1.3/transmission-4.1.3-qt5-x64.msi",
+        "size": 19869696
+      },
+      {
+        "name": "transmission-4.1.3-qt5-x86-pdb.7z",
+        "browser_download_url": "https://github.com/transmission/transmission/releases/download/4.1.3/transmission-4.1.3-qt5-x86-pdb.7z",
+        "size": 50576641
+      },
+      {
+        "name": "transmission-4.1.3-qt5-x86.msi",
+        "browser_download_url": "https://github.com/transmission/transmission/releases/download/4.1.3/transmission-4.1.3-qt5-x86.msi",
+        "size": 17661952
+      },
+      {
+        "name": "transmission-4.1.3-x64-pdb.7z",
+        "browser_download_url": "https://github.com/transmission/transmission/releases/download/4.1.3/transmission-4.1.3-x64-pdb.7z",
+        "size": 69448018
+      },
+      {
+        "name": "transmission-4.1.3-x64.msi",
+        "browser_download_url": "https://github.com/transmission/transmission/releases/download/4.1.3/transmission-4.1.3-x64.msi",
+        "size": 23326720
+      },
+      {
+        "name": "transmission-4.1.3-x86-pdb.7z",
+        "browser_download_url": "https://github.com/transmission/transmission/releases/download/4.1.3/transmission-4.1.3-x86-pdb.7z",
+        "size": 66469343
+      },
+      {
+        "name": "transmission-4.1.3-x86.msi",
+        "browser_download_url": "https://github.com/transmission/transmission/releases/download/4.1.3/transmission-4.1.3-x86.msi",
+        "size": 20590592
+      },
+      {
+        "name": "Transmission-4.1.3.dmg",
+        "browser_download_url": "https://github.com/transmission/transmission/releases/download/4.1.3/Transmission-4.1.3.dmg",
+        "size": 11186296
+      },
+      {
+        "name": "transmission-4.1.3.tar.xz",
+        "browser_download_url": "https://github.com/transmission/transmission/releases/download/4.1.3/transmission-4.1.3.tar.xz",
+        "size": 11845312
+      }
+    ]
+  }
+]

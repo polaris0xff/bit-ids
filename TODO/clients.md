@@ -163,6 +163,37 @@ this session could not run it, because a session host is not disposable, and the
 dispatch is what establishes whether it works. The Windows half of the Prove
 above is untouched.
 
+### ⛔ The release listing was read once and summarised one build short
+
+**Measured 2026-09-09, re-reading the same endpoint.** The paragraph above says
+release-5.2.3 "offers a Linux `AppImage`, a Windows `x64_setup.exe` and a source
+`tar.xz`, each with a detached `.asc` signature beside it". It carries
+**fourteen** assets, and two of them are Linux AppImages:
+
+```text
+qbittorrent-5.2.3_x86_64.AppImage
+qbittorrent-5.2.3_lt20_x86_64.AppImage
+```
+
+⛔ **The summary was one build short in exactly the place a route has to
+choose.** A pattern written from it - `qbittorrent-*_x86_64.AppImage` - matches
+both, and a selector that took the first match would install whichever the vendor
+listed first, with the record reading the same either way.
+`qbittorrent-{version}_x86_64.AppImage` matches one, and two matches is a refusal
+rather than a first-match answer. `ACQ-02` carries the selector.
+
+⚠ **What is still not measured is which libtorrent each AppImage carries.** The
+suffix plainly names a variant and nothing here has established either, so the
+adapter selects the vendor's unsuffixed build and the record names the asset it
+took. A capture through this route measures whichever it installed, and says
+which.
+
+⭐ **And the resolver skipped a prerelease on a live listing rather than on a
+fixture.** The newest release object on 2026-09-09 is `release-5.3.0beta1`, which
+the source flags a prerelease and whose version text says so too; the resolution
+selected 5.2.3 from five candidates. That listing is the recorded response
+`check-release-route` runs over, kept whole for exactly that reason.
+
 ### What the info hash cost, measured 2026-09-08
 
 ⛔ **Writing that measurement into this record turned CI run 67 red on both
@@ -329,6 +360,44 @@ about whether headers count as acquisition is worse than refusing.
 lab, so the entry stays open on the same four gaps every client entry has. What
 changed is that the second route now exists rather than being fetched and
 discarded.
+
+### ⭐ The second route is wired into the workflow, 2026-09-09
+
+**`capture-client.yml` can now dispatch it**, which it could not before: the
+route is a matrix dimension beside the adapter, and the artifact it fetches is
+resolved in a step of its own before the route is cut.
+
+⛔ **What was actually missing was the artifact, not the plumbing.** This
+adapter's release route refuses without `BIT_IDS_RELEASE_URL` "resolved before
+the route was cut", and nothing in the repository produced one - `resolve-stable`
+orders versions and selects no asset. `ACQ-02` carries the half that closes it;
+what lands here is the declaration:
+
+```text
+release_repo=aria2/aria2
+release_tag_prefix=release-
+release_min_components=3
+release_max_components=3
+release_asset=aria2-{version}.tar.bz2
+```
+
+⚠ **`bz2` rather than `gz` or `xz`, recorded rather than implied.** The release
+carries all three and they are the same source; the `bz2` is the one `ACQ-03`
+already built from, so its digest is a control this project can check a fetch
+against without acquiring anything new. ⛔ A pattern written `aria2-*.tar.*`
+matches all three and is refused rather than resolved - measured, as a case in
+[`../scripts/acquisition/check-release-route.sh`](../scripts/acquisition/check-release-route.sh).
+
+⭐ **Driven here, end to end, against the live listing**: 24 candidates, 1.37.0
+selected, one of six assets matched, and the URL that came out served bytes
+`sha256sum -c` verified against the digest the 2026-09-08 measurement recorded.
+
+⛔ **A dispatch is still what this entry needs**, and now there is one to make: a
+`["package","release"]` dispatch is two hosts, one per route, and `ACQ-03` has
+two installs to compare for the first time. ⚠ Nothing here establishes that the
+runner image carries the C++ toolchain and OpenSSL headers the source build
+needs; the route refuses with `configure`'s own log if it does not, which is a
+route that failed rather than one that silently produced nothing.
 
 ## CLIENT-06: Transmission capture adapter
 
@@ -538,7 +607,38 @@ route.
 
 ⚠ Its install log uploaded on every run since the `always()` step landed, so the
 next session reads `update.log` and `install.log` from
-`install-aria2-<run>-1` rather than dispatching to find out.
+`install-aria2-<run>-1` rather than dispatching to find out. ⚠ That artifact name
+carries the route now - `install-aria2-package-<run>-1` - because two matrix legs
+share an adapter.
+
+### ⚠ The release route declares its artifact and still refuses, 2026-09-09
+
+**Both halves are true at once and the split is the honest one.** This adapter
+now declares which file a release route would fetch:
+
+```text
+release_repo=transmission/transmission
+release_tag_prefix=-
+release_min_components=3
+release_max_components=3
+release_asset=transmission-{version}.tar.xz
+```
+
+and the route still refuses, because nothing here knows how to build it. ⛔ This
+project can say exactly which artifact a route would take and cannot say how to
+compile it; declaring the first is what makes the second a named gap rather than
+a route that is simply unreachable.
+
+⚠ **Measured against the live listing on 2026-09-09**: release 4.1.3 carries
+eleven assets - four `.msi` installers, four `-pdb.7z` symbol archives, a macOS
+`.dmg`, a `-dsym.zip` and exactly one `transmission-4.1.3.tar.xz`. ⛔ Two of them
+are capitalised `Transmission-`, which is why the pattern is matched
+case-sensitively and a case in the Rust suite pins it.
+
+⚠ **And the versions still would not meet.** Ubuntu 24.04 ships 4.0.5 against
+upstream 4.1.3, so a `["package","release"]` dispatch of this adapter is two
+hosts that acquire two different versions - which `AGENTS.md` rule 5 forbids
+resolving by backfilling. The pair to attempt first is `CLIENT-05`'s.
 
 ## CLIENT-07: Deluge capture adapter
 
