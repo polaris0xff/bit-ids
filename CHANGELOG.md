@@ -5,6 +5,38 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-09T15:20:21Z
+
+- ⭐ **The first two-route capture.** `capture-client` run 14 acquired
+  `aria2-next` through its `release` and `source` routes on two hosts. Both
+  report **2.7.5**, both `acquired=yes`, both `egress=closed`, and the installed
+  binaries have **different digests** - one stable version and two provably
+  different builds, which is what absolute 4 asks for and `ACQ-03` exists to
+  classify. Both bundles verify with `sha256sum -c` outside the runs that wrote
+  them.
+- ⭐ **`aria2-next` has a second acquisition route**: a shallow clone of the
+  resolved tag plus the project's own `cmake --preset default` build. Both lanes
+  resolve through the SAME resolution, so the two routes cannot land on different
+  versions. ⚠ Their independence is weaker than package-versus-vendor and the
+  record says so: different resolver and delivery, same origin.
+- ⭐ **The identity is the same from both builds**: `-qB5230-3SGS8~CB*gUf` and
+  `-qB5230-*eQ2phy)!)RO`. Four captures of this target now agree on the
+  eight-byte prefix and differ in every tail, and two of the four were built by
+  different means - so the prefix is a property of the source rather than of the
+  vendor's build pipeline.
+- ⛔ **496 seconds against a 500-second bound is not a margin.** The same build
+  takes 366 seconds on a session host, so a runner is about 1.35x slower and a
+  locally measured build time is a lower bound, never an estimate. The inner
+  bound is now 900 for `source` lanes and unchanged at 420 for every other; the
+  step's own bound moved from 540 to 1080 so it stays the larger of the two, and
+  `check-step-bodies` plants against that literal, so its plant string moved in
+  the same change.
+- ⚠ **Still not a `Profile`.** Nothing has assembled the two install records and
+  two bundles into a record, `ACQ-03`'s comparison has not been run over the
+  pair, and nothing is published.
+- Record: [`TODO/clients.md`](TODO/clients.md), `CLIENT-14`. No version bump and
+  no deploy.
+
 ### 2026-09-09T13:40:18Z
 
 - ⭐ **A client capture reached the *Capture* step for the first time.**

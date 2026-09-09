@@ -555,7 +555,7 @@ if lift "$CLIENT_WF" linux "Install the client" "$WORK/install.sh"; then
   # ⚠ 124 IS coreutils' VERDICT FOR "IT NEVER ANSWERED", and it is the whole
   # point: the step ENDS, so the job goes on to upload the evidence.
   cp "$WORK/install.sh" "$WORK/install-bounded.sh"
-  if replace_once "$WORK/install-bounded.sh" 'timeout -k 30 540 ' 'timeout -k 1 2 '; then
+  if replace_once "$WORK/install-bounded.sh" 'timeout -k 30 1080 ' 'timeout -k 1 2 '; then
     stub_adapter 'sleep 20'
     rm -rf "$TREE/temp/install-package" "$TREE/temp/install-package.txt"
     run_body "$WORK/install-bounded.sh" default "$TREE"

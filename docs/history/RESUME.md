@@ -56,21 +56,22 @@ with one.
 
 **Next, in order:**
 
-1. ⭐ **THE SECOND ROUTE EXISTS. Dispatch a two-route capture and read it back.**
-   `aria2-next` now has a `source` route beside its `release` one and both
-   resolve **2.7.5**: a git clone of the tag plus the project's own documented
-   `cmake --preset default` build, driven through the adapter in **366 seconds**,
-   producing a 256 MB `RelWithDebInfo` binary where the published asset is 14 MB
-   stripped. ⭐ One version, two provably different builds - the case `ACQ-03`
-   exists to classify, and the first this project has had.
-   ⛔ Dispatch `capture-client.yml` with `adapters=["aria2-next"]` and
-   `routes=["release","source"]`, then compare the two install records.
-   ⚠ **Their independence is weaker than the package-versus-vendor kind** and the
-   record says so: different resolver and delivery, same origin.
-   ⚠ Other targets cannot do this today - measured: Ubuntu ships aria2 1.37.0
-   against upstream 1.37.0, transmission 4.0.5 against 4.1.3, and qbittorrent
-   4.6.3 against 5.2.3, so aria2 is the only same-version package pair and its
-   install hangs.
+1. ⭐ **THE FIRST TWO-ROUTE CAPTURE HAS RUN. What is left is assembling it.**
+   `capture-client` run 14 acquired `aria2-next` through `release` and `source`
+   on two hosts: both report **2.7.5**, both `acquired=yes`, the installed
+   digests differ, both bundles verify with `sha256sum -c` outside their runs,
+   and both put `-qB5230-` on the wire. ⭐ Four captures of this target now agree
+   on that eight-byte prefix and differ in every tail - and two of the four were
+   built by different means, so the prefix is a property of the source rather
+   than of the vendor's pipeline.
+   ⛔ **Nothing has assembled those two install records and two bundles into a
+   `Profile`**, `ACQ-03`'s comparison has not been run over the pair, and nothing
+   is published. That is `CI-09`'s and it needs a store to write into.
+   ⚠ **The bounds are freshly sized and only just.** The source install took 496
+   seconds where this host takes 366 - a runner is about 1.35x slower - so a
+   locally measured build time is a lower bound and never an estimate.
+   ⚠ Their independence is weaker than package-versus-vendor: different resolver
+   and delivery, same origin.
 2. **A record in the store**, once a two-route capture exists. `not_corroborated`
    is a recordable state; one route is not.
 3. **`CI-07`**, the PowerShell halves for the declared rows. ⭐ Its cheap half is

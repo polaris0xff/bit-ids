@@ -230,7 +230,13 @@ jobs:
           # by the outer bound with nothing to read.
           # ⛔ Every other route keeps 420 exactly: the aria2 lanes are what that
           # number was measured against, and this must not quietly move it.
-          BIT_IDS_INSTALL_TIMEOUT: ${{ matrix.route == 'source' && '500' || '420' }}
+          # ⛔ 900 FOR A SOURCE BUILD, AND 500 WAS MEASURED TOO TIGHT. The first
+          # two-route capture put that step at **496 seconds** against a bound of
+          # 500: four seconds of margin, which is not a margin. ⚠ The runner is
+          # about 1.35x slower than the host this was sized on, where the same
+          # build took 366 - so a number measured locally is a lower bound on
+          # what a runner needs, never an estimate of it.
+          BIT_IDS_INSTALL_TIMEOUT: ${{ matrix.route == 'source' && '900' || '420' }}
         # ⛔ THE BOUND IS ON THE STEP'S OWN PROCESS, WHICH IS THE ONE PLACE IT HAS
         # NOT BEEN TRIED. `timeout` inside `install-client` ends its own child and
         # cannot end a shell blocked around it; `timeout-minutes` is the runner's
@@ -239,11 +245,19 @@ jobs:
         # passing by three minutes. This one needs nothing inside the step to be
         # reachable.
         #
-        # ⚠ 540 SECONDS, UNDER THE JOB'S 25 MINUTES WITH ROOM FOR THE CAPTURE AND
-        # THE UPLOADS. What it buys is not a faster failure: it is a job that
+        # ⚠ 1080 SECONDS, UNDER THE JOB'S 25 MINUTES WITH ROOM FOR THE CAPTURE
+        # AND THE UPLOADS. What it buys is not a faster failure: it is a job that
         # reaches its uploads at all, because a runner that is killed leaves no
         # log and no artifact - measured on runs 7, 8 and 9.
-        run: timeout -k 30 540 sh scripts/acquisition/install-step.sh
+        # ⛔ IT WAS 540 AND A SOURCE BUILD DOES NOT FIT UNDER THAT. The first
+        # two-route capture spent 496 seconds in this step, so the inner bound
+        # had to grow past 540 and this one with it. ⚠ The relation is what
+        # matters: the inner bound refuses with a message naming the timeout, and
+        # this outer one exists only so a job that blows through it still reaches
+        # its uploads - so this must stay the LARGER of the two.
+        # ⚠ A capture takes about 50 seconds and the uploads about 1, so 1080
+        # leaves the 25-minute job roughly five minutes of slack.
+        run: timeout -k 30 1080 sh scripts/acquisition/install-step.sh
         # ⚠ The body this replaced is in that file, unchanged in what it does.
 
       # ⛔ BOTH ADDRESS FAMILIES. A host with IPv4 unplugged and IPv6 up still

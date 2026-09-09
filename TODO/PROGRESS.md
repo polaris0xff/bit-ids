@@ -119,13 +119,18 @@ published. `docs/publishing.md` carries the forms and says they are unexercised.
 ⚠ **Nothing schedules the staleness monitor.** `CI-02` built the comparison and
 its driving surface; no capture request has ever been opened.
 
-⭐ **A SECOND ACQUISITION ROUTE NOW EXISTS.** `aria2-next` gained a `source`
-route on 2026-09-09: a git clone of the resolved tag plus the project's own
-`cmake --preset default` build, 366 seconds through the adapter, producing a
-256 MB binary where the release asset is 14 MB - **both answering 2.7.5**. ⛔ No
-two-route capture has been dispatched yet, so `ACQ-03` has not compared two
-installed builds and no `Profile` exists. ⚠ Their independence is weaker than
-package-versus-vendor: different resolver and delivery, same origin.
+⭐ **THE FIRST TWO-ROUTE CAPTURE HAS RUN AND BOTH LANES ARE GREEN.**
+`capture-client` run 14 on 2026-09-09 acquired `aria2-next` through its
+`release` and `source` routes on two hosts. Both report **2.7.5**, both
+`acquired=yes`, and the installed binaries have **different digests** - one
+version, two provably different builds, which is what absolute 4 asks for and
+`ACQ-03` exists to classify. Both bundles verify with `sha256sum -c` outside the
+runs that wrote them.
+⛔ **It is still not a `Profile`.** Nothing has assembled the two install records
+and two bundles into a record, `ACQ-03`'s comparison has not been run over the
+pair, and nothing is published. That assembly is `CI-09`'s and needs a store.
+⚠ **How independent those two routes actually are is qualified in `CLIENT-14`**,
+which owns the comparison; it is not the package-versus-vendor kind.
 
 ⭐ **CLIENT CAPTURES HAVE NOW REACHED THE *Capture* STEP AND UPLOADED VERIFIED
 BUNDLES.** `capture-client` runs 11 and 12 measured `aria2-next` 2.7.5 on

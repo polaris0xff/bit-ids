@@ -1328,12 +1328,68 @@ with a message rather than killed by the outer bound with nothing to read.
 ⚠ The outer `timeout -k 30 540` literal is deliberately untouched:
 `check-step-bodies` plants against that exact string.
 
+### ⭐ THE FIRST TWO-ROUTE CAPTURE. capture-client run 14, 2026-09-09
+
+⛔ **Both lanes green, one version, two builds.** This is the first time this
+project has acquired one target through two routes on two hosts and measured
+both.
+
+| | `release` lane | `source` lane |
+| --- | --- | --- |
+| *Install the client* | **6 s** | **496 s** |
+| `reported_version` | 2.7.5 | 2.7.5 |
+| `installed_binary_sha256` | `5190b4f5…` | `5d67f6c7…` |
+| `acquired` | yes | yes |
+| `preexisting_version` | empty | empty |
+| `measured_build` | 2.7.5 | 2.7.5 |
+| `stock_client` | true | true |
+| `egress` | closed | closed |
+| `announces` | 1 | 1 |
+| bundle | 3 files, `sha256sum -c` **OK**, exit 0 | 3 files, `sha256sum -c` **OK**, exit 0 |
+
+⭐ **Two routes, one stable version, two provably different builds**, which is
+what absolute 4 asks for and what `ACQ-03` exists to classify. ⚠ Both lanes
+resolved through the SAME resolution, which is how the version is made equal
+rather than checked afterwards.
+
+### ⭐ And the identity is the same from both builds
+
+| lane | peer ID |
+| --- | --- |
+| release | `-qB5230-3SGS8~CB*gUf` |
+| source | `-qB5230-*eQ2phy)!)RO` |
+
+⭐ **Four captures of this target now agree on the eight-byte prefix and differ
+in every twelve-byte tail.** Two of those four were built by different means -
+the vendor's stripped 14 MB release asset and a 256 MB `RelWithDebInfo` build
+made here from the tag - and both put `-qB5230-` on the wire. ⚠ So the prefix is
+a property of the source rather than of the vendor's build pipeline, which one
+route alone could not have separated.
+
+⭐ **The rule 12 fix held on both lanes**: neither bundle contains `rpc-token`,
+and both still carry `rpc-add`, `rpc-options`, `rpc-shutdown` and `rpc-version`.
+
+### ⛔ 496 against 500 is not a margin, and the bounds moved
+
+⚠ **The source install took 496 seconds against a bound of 500.** Four seconds.
+The same build was measured at **366 seconds** on the session host, so the runner
+is about **1.35x slower** - which makes a locally measured build time a lower
+bound on what a runner needs and never an estimate of it.
+
+⭐ **Raised with the measured number rather than a comfortable one:** the inner
+bound is 900 for `source` lanes and stays 420 for every other, and the step's own
+bound went from 540 to 1080 because the inner one must stay the smaller of the
+two. ⚠ `check-step-bodies` plants against that outer literal, so its plant string
+moved in the same change - and `replace_once` refuses a literal it cannot find,
+so the two cannot drift apart silently.
+
 ### ⚠ What this entry still does not claim
 
-⛔ **A route that installs is not yet a capture that agreed.** No two-route
-capture has been dispatched at the time of writing, so `ACQ-03` has not compared
-two installed builds and no `Profile` has been written or published. What exists
-is the second route and the measurement that both resolve one version.
+⛔ **Two captures are not a `Profile`.** Nothing has assembled these two install
+records and two evidence bundles into a record, nothing has validated one, and
+nothing has been published. `ACQ-03`'s comparison has not been run over this
+pair; what exists is the pair. ⚠ That assembly is `CI-09`'s, and it needs a store
+to write into.
 
 ⭐ **A SECOND CAPTURE ANSWERED THE SAMPLE QUESTION. capture-client run 12** ran
 the fixed adapter - `adapter_sha256` differs from run 11's, which is how the
