@@ -1932,6 +1932,36 @@ which is its default, and read what the download step actually handed it.
 ⛔ Nothing may be published until a measured record exists, so the dry run is
 the whole of this entry and the push stays refused.
 
+### ⭐ What run 14 supplies, stated exactly. 2026-09-09
+
+⛔ **The route blocker on this entry is gone and the connector blocker is not.**
+`capture-client` run 14 acquired one target through two routes on two hosts and
+captured on BOTH, which is the first time this project has had a capture per
+route.
+
+⭐ **That is precisely the input `equivalence::classify_across` needs.** Read the
+four outcomes rather than assume them: `ByteIdentical` is every route installing
+the same bytes; `BuildEquivalent` is installs that differ in bytes where every
+one was **observed** and no overlapping field disagrees; `Divergent` is equal
+versions over conflicting evidence; `Unresolved` is not enough evidence, and the
+module says in as many words that it is what a **single** capture of two
+byte-different installs produces. ⛔ Run 14's installs differ in bytes and both
+were captured, so this pair is the first that can reach `BuildEquivalent` -
+which `publishable()` accepts - instead of `Unresolved`, which it refuses.
+
+⚠ **What it does NOT supply is a `Profile`, and `classify_across` takes two of
+them.** Run 14 produced two install records, two attestations and two evidence
+bundles. Assembling those into two records is this entry's work and it needs a
+store to write into.
+
+⛔ **AND A PUBLISHED RECORD NEEDS MORE THAN THIS ENTRY CAN GIVE IT.** `E-PUB-02`
+keeps any measured field provisional while only one connector could see it, and
+both lanes of run 14 used one - this project's own Rust observer. So the honest
+target for this entry is a record that is **written, stored and provisional**;
+`OBS-07` owns the second connector that would make it publishable. ⚠ Two gates,
+and running them together is what made the old handoff say no record could be
+written at all.
+
 Prove: the publisher's dry run completes against a real capture artifact, its
 `sha256sum -c` step passes on the downloaded bundle, and
 `sh scripts/ci/check-workflow.sh` still asserts the publisher's dispatch-only
