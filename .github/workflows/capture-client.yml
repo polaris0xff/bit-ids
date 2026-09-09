@@ -154,6 +154,53 @@ jobs:
             >"$RUNNER_TEMP/release/url.txt"
           cat "$RUNNER_TEMP/release/resolution.txt"
 
+      # ⛔ THREE BOUNDED PROBES, AND THEIR ONLY PURPOSE IS THEIR NAMES. Four
+      # independent bounds have now been measured NOT to end an aria2 install
+      # step - `timeout` inside `install-client`, the runner's `timeout-minutes`,
+      # a watchdog loop in the step's own shell, and `timeout` around the step's
+      # own process - and no such job has ever produced a log or an artifact.
+      # When nothing inside a job survives, the one signal that does is WHICH
+      # STEP the API last reported in progress.
+      #
+      # ⭐ So the work the install step does first is split into steps of its own,
+      # each named and each bounded. A job that wedges in one of these localises
+      # the subject to a handful of commands without needing a log, an artifact or
+      # a bound that fires; a job that walks through all three has exonerated them
+      # and the install itself is the subject.
+      #
+      # ⚠ THEY ARE DIAGNOSTIC AND THEY DO NOT GUARD ANYTHING. Each ends in a true
+      # so that a probe cannot fail a capture, and `CI-08` owns them - they come
+      # out when the question is answered.
+      - name: Probe the host resources
+        run: |
+          set -u
+          timeout 20 free -m || echo 'free did not answer'
+          timeout 20 df -h / "$RUNNER_TEMP" || echo 'df did not answer'
+          timeout 20 nproc || echo 'nproc did not answer'
+          true
+
+      - name: Probe sudo
+        run: |
+          set -u
+          timeout 20 sudo -n true && echo 'sudo answers' || echo 'sudo did not answer'
+          timeout 20 sudo -n -E sh -c 'echo sudo runs a shell' || echo 'sudo -E did not answer'
+          true
+
+      # ⚠ THE ONE COMMAND THE aria2 LANES RUN AND THE TRANSMISSION LANES DO NOT.
+      # `install-client` asks the adapter for a version BEFORE the route runs, and
+      # `aria2` ships on this image while `transmission-daemon` does not - so on an
+      # aria2 lane that call executes the preinstalled product and on a
+      # transmission lane it finds no binary and refuses without running anything.
+      # That asymmetry has been in every hung run and in none of the green ones.
+      - name: Probe the preinstalled product
+        env:
+          ADAPTER: scripts/capture/adapters/${{ matrix.adapter }}.sh
+        run: |
+          set -u
+          timeout 30 sh "$ADAPTER" describe || echo 'describe did not answer'
+          timeout 30 sh "$ADAPTER" version || echo 'version did not answer or is not installed'
+          true
+
       # ⛔ THE WORK IS IN A FILE SO THE STEP'S OWN PROCESS CAN BE BOUNDED. That is
       # the one place a bound has not been tried here, and every other place has
       # been measured failing: `install-step.sh` says which and why.

@@ -734,6 +734,18 @@ without reading an expression. ⭐ The four aria2 install logs already collected
 say what that route does; what run 7 bought instead is where the hang actually
 sits.
 
+### ⛔ Run 10, and the fourth bound that did not fire
+
+**Dispatched 2026-09-09 as `["aria2"] × ["package","release"]` on `3b5793d`**,
+the first run where the step's own command was wrapped in `timeout -k 30 540`.
+Both lanes entered *Install the client* at 10:57:50Z and 10:57:58Z and neither
+had returned twelve minutes later.
+
+⛔ **Four bounds at four levels have now been measured not to fire on this step,
+and no such job has ever produced a log or an artifact.** `CI-08` carries the
+table and what the combination separates. ⚠ What it changes for this entry is
+that the next dispatch bisects with step names rather than adding a fifth bound.
+
 ### ⭐ Transmission's fourth capture, and aria2's fifth hang
 
 **Client capture run 9, 2026-09-09, `["aria2","transmission"] × ["package"]` on

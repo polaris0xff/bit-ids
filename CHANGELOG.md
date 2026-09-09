@@ -5,6 +5,36 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-09T11:14:54Z
+
+- ⛔ **Run 10: a `timeout` around the step's own command did not fire either.**
+  Both aria2 lanes entered *Install the client* and neither had returned twelve
+  minutes later, against a bound that would have ended it at 570 seconds.
+  Record: [`TODO/ci.md`](TODO/ci.md), `CI-08`.
+- ⛔ **Four independent bounds have now been measured not to fire on this step** -
+  inside `install-client`, the runner's `timeout-minutes`, a watchdog loop in the
+  step's own shell, and a `timeout` around the step's own process - and no such
+  job has ever produced a log or an artifact.
+- ⚠ That combination is what separates a fifth reading from the four guesses
+  before it: a step that were merely stuck would leave a runner able to enforce
+  one of four bounds and to upload a log, and nothing here does either. It is
+  recorded as a reading rather than as a cause, and what it changes is where to
+  look.
+- ⭐ **So the next dispatch bisects with step NAMES**, which is the one signal
+  that survives a job producing nothing: three bounded probes run before the
+  install - host resources, sudo, and the preinstalled product - so a job that
+  wedges localises itself to a handful of commands without a log, an artifact or
+  a bound that fires.
+- ⚠ The third probe is the asymmetry the whole thread rests on: `install-client`
+  asks the adapter for a version before the route runs, and `aria2` ships on the
+  image while `transmission-daemon` does not - so an aria2 lane executes the
+  preinstalled product there and a transmission lane runs nothing. That
+  difference is in every hung run and absent from every green one.
+- ⚠ They are diagnostic rather than guards, and they come out when the question
+  is answered.
+- Deployment: nothing deployed.
+
+
 ### 2026-09-09T10:29:21Z
 
 - ⭐ **Transmission captured green a fourth time** on client capture run 9, in

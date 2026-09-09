@@ -1753,6 +1753,56 @@ is what separates a command that is slow from one that is stopped.
 own process fires and the step ends with coreutils' 124, and a product that
 finishes inside the bound is not killed.
 
+### ⛔ Run 10: that bound did not fire either, and four is a pattern
+
+**Dispatched 2026-09-09 as `["aria2"] × ["package","release"]` on `3b5793d`.**
+Both lanes entered *Install the client* at 10:57:50Z and 10:57:58Z, and neither
+had returned at 11:10:12Z - **twelve minutes** against a `timeout -k 30 540`
+around the step's own command, which would have ended it at 570 seconds.
+
+⛔ **So four independent bounds have now been measured not to fire on this
+step**, each at a different level:
+
+| the bound | where it sits | measured |
+| --- | --- | --- |
+| `timeout -k 20 420` on the adapter call | inside `install-client` | run 8: the step ran three times past it |
+| `timeout-minutes: 5` | the runner's, on the step | run 6: the step ran seventeen minutes |
+| a watchdog loop with a 480s deadline | the step's own shell | run 9: passed by seven minutes |
+| `timeout -k 30 540` on the step's command | the step's own process | run 10: passed by three minutes |
+
+⛔ **And no such job has ever produced a log or an artifact** - runs 7, 8, 9 and
+10. The log blob is never written, which is why rule 8's route answers 302 to a
+`BlobNotFound`, and the run ends `cancelled` around the job timeout.
+
+⚠ **That combination is what separates a fifth reading from the four guesses
+before it.** A step that were merely stuck would still leave a runner able to
+enforce one of four bounds and to upload a log; nothing here does either. What
+the evidence describes is a job that stops being served, not a command that does
+not return - and `TODO/clients.md` carries transmission passing through the same
+step on the same image in the same runs.
+
+⛔ **It is still a reading and it is not recorded as a cause.** What it changes is
+where to look: at the host rather than at the shell.
+
+### ⭐ So the next dispatch bisects with step NAMES, which is the one signal that survives
+
+When nothing inside a job survives - no log, no artifact, no bound - the only
+thing an outside reader still has is **which step the API last reported in
+progress**. Three bounded probes now run before the install, each named, so a job
+that wedges localises itself to a handful of commands without needing any of the
+things these runs do not produce.
+
+⚠ **The third probe is the asymmetry the whole thread rests on.**
+`install-client` asks the adapter for a version *before* the route runs; `aria2`
+ships on `ubuntu-24.04` and `transmission-daemon` does not, so on an aria2 lane
+that call executes the preinstalled product and on a transmission lane it finds
+no binary and refuses without running anything. ⛔ That difference is present in
+every hung run and absent from every green one, and no dispatch has yet isolated
+it.
+
+⚠ **The probes guard nothing and each ends in a `true`**, so a diagnostic cannot
+fail a capture. They come out when the question is answered.
+
 ### Acceptance for the harness, run on 2026-09-09
 
 - `sh scripts/ci/check-step-bodies.sh`
