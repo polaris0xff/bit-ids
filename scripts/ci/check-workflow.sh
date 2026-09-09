@@ -663,6 +663,16 @@ for CAPWF in $CAPTURE_WORKFLOWS; do
       order_case "$job" "Resolve the release artifact" "Install the client"
     fi
 
+    # ⛔ AND EVERY UPLOAD IS AFTER THE RESTORE, NOT ONLY THE EVIDENCE ONE.
+    # Between *Cut the route* and *Restore the route* this host has no way off
+    # itself, so an upload placed there cannot reach GitHub at all. ⚠ The install
+    # logs sat BEFORE the cut for four dispatches, which worked because that is
+    # also before the cut - and the rule a reader would infer from it, that the
+    # step may go anywhere, is the one that breaks the day it moves.
+    if [ -n "$(step_index "$CAPWF" "$job" "Upload the install logs")" ]; then
+      order_case "$job" "Restore the route" "Upload the install logs"
+    fi
+
     # ⚠ And the capture step must call the runner this workflow is for. Every
     # rule above holds over a workflow whose Capture step runs `true`.
     case "$(step_command "$CAPWF" "$job" Capture)" in
@@ -859,7 +869,7 @@ if [ -f "$CLIENTWF" ]; then
 
   # ⛔ THE STEP READER IS REFUTED BEFORE THE TWO RULES BUILT ON IT. A reader that
   # returned the whole job would satisfy both of them from a neighbouring step's
-  # keys: the install-logs upload two steps earlier carries exactly the
+  # keys: the install-logs upload immediately after carries exactly the
   # `continue-on-error` the evidence rule forbids, so an over-wide block would
   # report the evidence upload as non-fatal and the rule would look like it
   # works. ⚠ That is the scope defect this repository has shipped twice.

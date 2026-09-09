@@ -670,12 +670,28 @@ holds the runner open afterwards is not the upload.
 has been isolated.** Naming a cause here would be the third guess, and `CI-08` is
 the entry for a runner default nobody swept.
 
-⭐ **The step is bounded and non-fatal now, which is a fix that needs no
-diagnosis.** The artifact is already on the server before the hang begins, so a
-five-minute bound loses nothing and the capture that follows stops being thrown
-away. ⚠ `continue-on-error` is on this upload alone: it is a diagnostic aid that
-already declares `if-no-files-found: warn`, while the evidence bundle stays
-fatal.
+### ⛔ Run 6: two lanes, one target, and the bound that did not fire
+
+**Dispatched as `["aria2"] × ["package","release"]`** - the two-route pair this
+entry needs. Both lanes claimed a host, both installed, and both then hung in the
+same step.
+
+⭐ **Three things worked and are worth separating from the hang.** The resolve
+step **skipped** on the package lane and succeeded in one second on the release
+lane, so the matrix condition is right; the release route installed in 144
+seconds again, so run 5 was not a one-off; and the named upload paths cut that
+lane's artifact from 42.6 megabytes to **43179 bytes**.
+
+⛔ **`timeout-minutes: 5` did not stop either lane.** The package lane's step
+began at 03:50:11Z, its artifact was written at 03:50:12Z - **one second in**,
+3247 bytes - and the step was still running at 04:07:39Z, seventeen minutes later.
+⭐ That also closes the size question: three kilobytes hangs exactly as thirteen
+times more does.
+
+⭐ **So the step moved to the end of the job instead**, which needs no diagnosis:
+`if: always()` runs after a failed step wherever it sits, so the early position
+bought nothing, and from the end a hang costs the job's tail rather than the
+capture. `CI-08` carries the measurement and what it does to the mitigation.
 
 ⚠ Its install log uploaded on every run since the `always()` step landed, so the
 next session reads `update.log` and `install.log` from

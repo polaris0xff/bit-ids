@@ -1211,12 +1211,40 @@ package rather than the route" fell to a route that touches no package index.
 default nobody has swept, and the sweep is the Approach above rather than another
 dispatch.
 
-⭐ **The bound is the part that did not need the diagnosis.** The step is
-`timeout-minutes: 5` and `continue-on-error: true` now, because the artifact is
-on the server before the hang begins - so the cost of whatever this is drops from
-a whole job to five minutes, and a capture that would have been thrown away is
-not. ⚠ That is a mitigation and not an answer, and this entry stays open on the
-answer.
+### ⛔ Run 6: the bound does not fire, and the step moved instead
+
+**`timeout-minutes: 5` was the mitigation run 5 argued for, and run 6 measured it
+not working.** Both lanes sat in that step far past the bound:
+
+| lane | step began | its artifact was written | still running at |
+| --- | --- | --- | --- |
+| `package` | 03:50:11Z | 03:50:12Z, **one second in**, 3247 bytes | 04:07:39Z, **17 minutes** |
+| `release` | 03:52:32Z | 03:52:34Z, **two seconds in**, 43179 bytes | 04:07:39Z, **15 minutes** |
+
+⛔ **So GitHub's own per-step bound does not stop it**, which is a fact about the
+failure and not only about the fix: `timeout-minutes` is enforced by the runner
+process, so a step it cannot end is a runner that is not enforcing its own bound.
+⚠ Naming what that implies would be the third guess this entry exists to avoid.
+
+⭐ **The size question is closed by the same run.** The package lane's artifact is
+**3247 bytes** - two logs and two stderr files - and it hangs identically to a
+lane whose artifact is thirteen times larger. It is not the upload's volume.
+
+⭐ **What did work needs no diagnosis at all: the step moved to the end of the
+job.** It sat between the install and the route cut on the reasoning that a job
+which never reached the capture would otherwise upload nothing - and `if:
+always()` runs after a failed step wherever it sits, so the early position bought
+nothing the last position does not. From there a hang costs the job's tail rather
+than the measurement, because the capture and the evidence upload have already
+happened. ⚠ `check-workflow` asserts the new constraint the move creates: every
+upload is after *Restore the route*, because between the cut and the restore this
+host has no way off itself.
+
+⚠ **The bound is removed rather than kept alongside.** A bound measured not to
+bound the one failure it was added for is decoration, and decoration in a
+workflow reads as a control the next reader will trust.
+
+⚠ That is a mitigation and not an answer, and this entry stays open on the answer.
 
 ### The second half of the Prove is done, measured 2026-09-08
 

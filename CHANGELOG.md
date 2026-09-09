@@ -5,6 +5,33 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-09T04:14:03Z
+
+- ⛔ The bound added an hour earlier does not fire. Client capture run 6 dispatched
+  both aria2 routes; the package lane's *Upload the install logs* began at
+  03:50:11Z, wrote its 3247-byte artifact at 03:50:12Z and was still running at
+  04:07:39Z - seventeen minutes under a five-minute `timeout-minutes`. Record:
+  [`TODO/ci.md`](TODO/ci.md).
+- ⭐ That also closes the size question the same run opened: three kilobytes hangs
+  exactly as a thirteen-times-larger artifact does, so it is not the upload's
+  volume.
+- ⭐ The step moved to the end of the job instead, which needs no diagnosis.
+  `if: always()` runs after a failed step wherever it sits, so sitting before the
+  route cut bought nothing the last position does not - and from the end a hang
+  costs the job's tail rather than the capture and its evidence.
+- ⚠ The bound is removed rather than kept beside the move. A bound measured not to
+  bound the one failure it was added for is decoration, and decoration in a
+  workflow reads as a control the next reader will trust.
+- ⭐ `check-workflow` asserts the constraint the move creates: every upload comes
+  after *Restore the route*, because between the cut and the restore the host has
+  no way off itself.
+- ⭐ Three things in run 6 worked and are worth separating from the hang: the
+  resolve step skipped on the package lane and ran in one second on the release
+  lane, the release route installed in 144 seconds for the second time, and the
+  named upload paths cut that artifact from 42.6 megabytes to 43179 bytes.
+- Deployment: nothing deployed.
+
+
 ### 2026-09-09T03:42:01Z
 
 - ⭐ Client capture run 5: **a `release` route acquired a build on a capture

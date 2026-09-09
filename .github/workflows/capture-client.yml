@@ -176,54 +176,6 @@ jobs:
             --record "$RUNNER_TEMP/install-$ROUTE.txt"
           cat "$RUNNER_TEMP/install-$ROUTE.txt"
 
-      # ⛔ THE INSTALL'S OWN LOGS GO UP WHETHER OR NOT THE INSTALL WORKED, and
-      # this step exists because two dispatches lost their diagnosis. The
-      # evidence upload below runs only after a capture, so a job that never got
-      # past the install uploaded nothing at all - and when the job's own
-      # timeout killed the runner, the log went with it. ⚠ if-no-files-found is
-      # `warn` here rather than `error`: a job that failed before the workdir
-      # existed has nothing to upload, and failing this step would replace one
-      # missing diagnosis with another.
-      #
-      # ⛔ THE ROUTE IS IN THE NAME, AND IT HAS TO BE. Two legs of this matrix now
-      # share an adapter and differ only in the route, so a name built from the
-      # adapter alone would be two uploads under one name in one run - which the
-      # upload action refuses, turning a green capture into a failed upload for a
-      # reason nothing in the step says.
-      #
-      # ⛔ LOGS AND RECORDS, NAMED, RATHER THAN THE WHOLE WORKDIR. A source-build
-      # route unpacks a tarball and compiles it *in* that workdir, so uploading
-      # the directory uploads a build tree: measured on capture client run 5,
-      # 42.6 megabytes for a step called *Upload the install logs*. ⚠ The package
-      # route's workdir happens to hold two log files, which is why the directory
-      # form looked right for four dispatches.
-      #
-      # ⛔ AND IT IS BOUNDED AND NON-FATAL, WHICH IS A FIX THAT NEEDS NO
-      # DIAGNOSIS. This step has hung on every aria2 job since run 3 - after
-      # completing its upload: run 5's artifact was written at 03:17:23Z and the
-      # step had still not returned twelve minutes later. Whatever holds it open,
-      # the artifact is already on the server, so a bound loses nothing and the
-      # capture that follows stops being thrown away. ⚠ `continue-on-error` is
-      # deliberate here and nowhere else: this upload is a diagnostic aid and
-      # already declares `warn`, while the evidence bundle below stays fatal.
-      # `CI-08` owns the cause.
-      - name: Upload the install logs
-        if: always()
-        continue-on-error: true
-        timeout-minutes: 5
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: install-${{ matrix.adapter }}-${{ matrix.route }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            ${{ runner.temp }}/install-${{ matrix.route }}/*.log
-            ${{ runner.temp }}/install-${{ matrix.route }}/*.err
-            ${{ runner.temp }}/install-${{ matrix.route }}.txt
-            ${{ runner.temp }}/release/*.txt
-            ${{ runner.temp }}/release/*.json
-            ${{ runner.temp }}/release/*.err
-          if-no-files-found: warn
-          retention-days: 30
-
       # ⛔ BOTH ADDRESS FAMILIES. A host with IPv4 unplugged and IPv6 up still
       # reaches the internet.
       - name: Cut the route off this host
@@ -309,6 +261,58 @@ jobs:
             ${{ runner.temp }}/install-${{ matrix.route }}.txt
           if-no-files-found: error
           retention-days: 90
+
+      # ⛔ THE INSTALL'S OWN LOGS GO UP WHETHER OR NOT ANYTHING BEFORE THIS
+      # WORKED, and `if: always()` is what makes that true from here rather than
+      # from before the capture. It sat between the install and the route cut for
+      # four dispatches, on the reasoning that a job which never reached the
+      # capture would otherwise upload nothing - and an `always()` step at the end
+      # of the job runs after a failed step too, so the early position bought
+      # nothing that this one does not.
+      #
+      # ⛔ WHAT IT COST WAS EVERY aria2 CAPTURE. That step has hung on every aria2
+      # job since run 3, *after* completing its upload: on run 6 the package
+      # lane's artifact was written one second in and the step had not returned
+      # seventeen minutes later. From here a hang costs the job's tail rather than
+      # the measurement, because the capture and the evidence upload have already
+      # happened.
+      #
+      # ⚠ A BOUND WAS TRIED AND IT DOES NOT FIRE. `timeout-minutes: 5` on this
+      # step was measured on run 6 against a step that ran seventeen minutes, so
+      # it is not kept: a bound that has been seen not to bound the one failure it
+      # was added for is decoration. `CI-08` owns the cause.
+      #
+      # ⛔ AND IT MUST COME AFTER *Restore the route*, like every other upload:
+      # between the cut and the restore this host has no way off itself, so an
+      # upload there could not reach GitHub at all.
+      #
+      # ⚠ if-no-files-found is `warn` rather than `error`: a job that failed
+      # before the workdir existed has nothing to upload, and failing this step
+      # would replace one missing diagnosis with another. ⛔ `continue-on-error`
+      # is deliberate here and nowhere else - this upload is a diagnostic aid and
+      # the evidence bundle above stays fatal.
+      #
+      # ⛔ LOGS AND RECORDS, NAMED, RATHER THAN THE WHOLE WORKDIR. A source-build
+      # route unpacks a tarball and compiles it *in* that workdir, so uploading
+      # the directory uploads a build tree: measured on run 5, 42.6 megabytes and
+      # 1867 entries for a step called *Upload the install logs*. ⚠ The package
+      # route's workdir happens to hold two log files, which is why the directory
+      # form looked right for four dispatches.
+      - name: Upload the install logs
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: install-${{ matrix.adapter }}-${{ matrix.route }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/install-${{ matrix.route }}/*.log
+            ${{ runner.temp }}/install-${{ matrix.route }}/*.err
+            ${{ runner.temp }}/install-${{ matrix.route }}.txt
+            ${{ runner.temp }}/release/*.txt
+            ${{ runner.temp }}/release/*.json
+            ${{ runner.temp }}/release/*.err
+          if-no-files-found: warn
+          retention-days: 30
 
       # ⚠ A FINGERPRINT IS COMPARABLE ONLY AGAINST ONE THE SAME HALF PRODUCED,
       # and on Linux a repeat really does mean a survived host.
