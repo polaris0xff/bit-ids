@@ -734,6 +734,42 @@ without reading an expression. ⭐ The four aria2 install logs already collected
 say what that route does; what run 7 bought instead is where the hang actually
 sits.
 
+### ⛔ Run 8 refuted the reading it was dispatched to test
+
+**Dispatched 2026-09-09 as `["aria2"] × ["package","release"]` on `5911c0d`**, the
+first run in which the install step's output went to a file rather than to the
+step's own pipe.
+
+| lane | *Install the client* |
+| --- | --- |
+| `aria2` `package` | ⛔ began 09:13:18Z and had not returned at 09:35:17Z - **22 minutes** |
+| `aria2` `release` | ⛔ began 09:13:18Z and had not returned at 09:35:17Z |
+
+⛔ **So the step's own output pipe being held is not the mechanism.** Nothing the
+route spawned could inherit that pipe on this run, and the step hung exactly as
+before.
+
+⭐ **And the same run says where it is NOT.** `install-client` bounds the install
+call at 420 seconds with a `-k 20` kill, so the latest moment that call could
+have ended is 440 seconds in. Twenty-two minutes is three times that. ⛔ **Whatever
+is slow or stopped is therefore not inside the bounded install call**, which is a
+narrower statement than any of the previous eight runs could make and it is a
+measurement rather than a reading.
+
+⛔ **And it left nothing behind, which is the argument for the next design.** The
+run ended `cancelled` at 09:42:49Z, roughly thirty minutes in; both jobs' logs
+answer 404 through rule 8's route and the run carries **zero artifacts**. ⭐ So a
+step that does not end is a job that teaches nothing, and the only fix is a step
+that ends.
+
+⚠ **And this dispatch carries a confound, which is on the record rather than
+argued away.** It changed two things at once: the redirection, and a holder
+report added to the same step. The report walks every process's descriptors, so
+it is itself a candidate for a slow step - it runs only after `install-client`
+returns, but that is precisely the branch a 22-minute step cannot distinguish.
+⛔ Both are bounded now: the diagnostic is wrapped in `timeout 60`, and the step
+watches its own install rather than waiting on it.
+
 ### ⛔ What the eighth dispatch is for, and what it changes first
 
 **Prepared 2026-09-09.** Nothing about aria2's adapter or its routes changed.

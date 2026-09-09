@@ -52,6 +52,13 @@
 #   pwsh -NoProfile -File scripts/common/check-gate.ps1 -Fast
 #   pwsh -NoProfile -File scripts/common/check-gate.ps1 -Strict
 #   pwsh -NoProfile -File scripts/common/check-gate.ps1 -Json
+#   pwsh -NoProfile -File scripts/common/check-gate.ps1 -Rows
+#
+# ⭐ -Rows PRINTS THE ROW NAMES AND RUNS NOTHING. Nothing compared the two
+# runners' row lists: this half declares each row by hand and the sh half derives
+# most of its provers from a list, so one added to that list and forgotten here is
+# simply absent from this lane, which stays green because it never hears of it.
+# check-gate-rows.sh is what compares them, and it needs no gate run at all.
 #
 # Exit codes: 0 nothing failed, 1 something failed, 2 could not run.
 #
@@ -64,7 +71,8 @@
 param(
     [switch]$Json,
     [switch]$Fast,
-    [switch]$Strict
+    [switch]$Strict,
+    [switch]$Rows
 )
 
 Set-StrictMode -Version Latest
@@ -85,14 +93,23 @@ $pass = 0
 $fail = 0
 $skip = 0
 $na = 0
-$rows = New-Object System.Collections.ArrayList
-function Add-Row([string]$T) { [void]$rows.Add('  ' + $T) }
+# ⛔ NOT $rows, AND THE NAME IS THE WHOLE REASON. PowerShell variable names are
+# case-insensitive, so a `[switch]$Rows` parameter and a local called `$rows` are
+# ONE variable: the accumulator was assigned to the switch and every invocation
+# failed to bind with "Cannot convert System.Collections.ArrayList to
+# SwitchParameter". Measured on 2026-09-09 by adding -Rows, which is the third
+# time this class has been found here - `$args` in
+# docs/conventions/shell.md section 8, and `[switch]$Marker` against `$marker` in
+# assert-disposable.ps1, which failed to bind in every mode.
+$rowText = New-Object System.Collections.ArrayList
+function Add-Row([string]$T) { [void]$rowText.Add('  ' + $T) }
 
 # ⛔ DECLARED HERE, WITH A REASON, OR IT IS NOT DECLARED. The reason is the
 # whole difference between this row and an observed skip: one is a fact about
 # the platform that somebody wrote down and can be argued with, and the other
 # is a check that stopped working.
 function Add-Unavailable([string]$Name, [string]$Reason) {
+    if ($Rows) { Write-Output $Name; return }
     Add-Row ('n/a   ' + $Name + '  (' + $Reason + ')')
     $script:na++
 }
@@ -119,6 +136,10 @@ if ($gitPresent) {
 }
 
 function Invoke-Check([string]$Name, [string]$Script, [string[]]$ExtraArgs = @()) {
+    # ⛔ THE NAME COMES OUT OF THE CALL THAT WOULD HAVE RUN THE CHECK, so a row
+    # this mode does not name is a row this runner does not run. A separate list
+    # would be the value in two places the comparison exists to catch.
+    if ($Rows) { Write-Output $Name; return }
     $path = Join-Path $here $Script
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         Add-Row ("SKIP  " + $Name + "  (not present)")
@@ -168,7 +189,7 @@ foreach ($c in 'check-docs', 'check-markers', 'check-one-home', 'check-placehold
 # ⚠ -Public is a DIFFERENT question from the default run, not a stricter one.
 # Emails, absolute home paths and long hex are legitimate content in a private
 # project, so this is a second call rather than a flag on the first.
-Invoke-Check 'check-no-secrets -Public' 'check-no-secrets.ps1' @('-Public')
+Invoke-Check 'check-no-secrets (public)' 'check-no-secrets.ps1' @('-Public')
 
 # ⚠ NEEDS gh AND THE NETWORK, so it exits 2 on a machine without them and that
 # reads as a skip rather than a pass. Correct: nothing was verified.
@@ -181,7 +202,8 @@ Invoke-Check 'check-remote-items' 'check-remote-items.ps1'
 # logic is provable on any host; that Get-NetRoute's real output matches them is
 # established by a Windows job rather than here.
 $runner = Join-Path $here '..' 'acquisition' 'check-runner.ps1'
-if (Test-Path -LiteralPath $runner -PathType Leaf) {
+if ($Rows) { Write-Output 'check-runner' }
+elseif (Test-Path -LiteralPath $runner -PathType Leaf) {
     & pwsh -NoProfile -File $runner *> $logFile
     $rc = $LASTEXITCODE
     switch ($rc) {
@@ -227,6 +249,14 @@ Add-Unavailable 'check-examples' 'an sh harness with no PowerShell half'
 Add-Unavailable 'check-handbook' 'an sh harness with no PowerShell half'
 Add-Unavailable 'check-staleness' 'an sh harness with no PowerShell half'
 
+# ⛔ AND THIS ONE IS THE ROW THAT WATCHES THIS LIST. check-gate-rows compares the
+# names this runner declares against the ones the sh runner queues, so a prover
+# added there and forgotten here stops being invisible. ⚠ It is declared for the
+# ordinary reason - it is an sh harness - and a PowerShell half would have to run
+# the sh runner anyway to ask the question, so what it would add is a second
+# implementation of a comparison rather than a second platform's answer.
+Add-Unavailable 'check-gate-rows' 'an sh harness with no PowerShell half; it runs both runners; CI-07'
+
 # ⛔ AND THIS ONE'S REASON IS THE MOST SPECIFIC ON THE LANE, because a
 # PowerShell half of it would not be the same check. check-step-bodies runs a
 # workflow step's body through a POSIX PIPE and asks whether that pipe reached
@@ -270,7 +300,10 @@ Add-Unavailable 'check-release-route' 'an sh harness whose subject has no PowerS
 # the same shape as a missing gh, so it is an observed skip and -Strict refuses
 # it: nothing compared the two halves, and no flag was passed saying that was
 # intended.
-if ($Fast) {
+if ($Rows) {
+    Write-Output 'check-twins'
+}
+elseif ($Fast) {
     Add-Unavailable 'check-twins' '-Fast'
 }
 elseif (-not (Get-Command sh -ErrorAction SilentlyContinue)) {
@@ -289,6 +322,14 @@ else {
 }
 
 Remove-Item -LiteralPath $logFile -ErrorAction SilentlyContinue
+
+# ⛔ AND THE ROW THIS RUNNER DECIDES FOR ITSELF IS NAMED IN -Rows TOO.
+# tree-unchanged is not a check it invokes, so a rows mode that listed only the
+# invocations would be short by exactly the row nothing else names.
+if ($Rows) {
+    Write-Output 'tree-unchanged'
+    exit 0
+}
 
 # ⛔ AND THE TREE IS COMPARED AGAINST WHAT IT WAS, the same row the sh half
 # carries. A harness whose scratch file lands in the working tree is one whose
@@ -328,7 +369,7 @@ if ($Json) {
 }
 
 Write-Output ''
-$rows | ForEach-Object { Write-Output $_ }
+$rowText | ForEach-Object { Write-Output $_ }
 Write-Output ''
 Write-Output ("{0} checks: {1} passed, {2} failed, {3} skipped, {4} unavailable" -f $total, $pass, $fail, $skip, $na)
 

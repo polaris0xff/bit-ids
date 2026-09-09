@@ -1245,6 +1245,56 @@ needs no gate run at all, so it can live in `check-project` rather than in
 `check-workflow`. Acceptance: with a prover added to the `sh` list alone the
 comparison refuses, and with the pair in step it passes.
 
+### ⭐ That half is done, 2026-09-09, and it is its own row rather than a rule in `check-project`
+
+`--rows` and `-Rows` print the names each runner's own queue would have used and
+run nothing, and
+[`../scripts/common/check-gate-rows.sh`](../scripts/common/check-gate-rows.sh)
+compares the two lists. ⛔ **The names come out of the calls that would have run
+the checks**, so a row the mode does not print is a row that runner does not run;
+a separate list would be the value in two places this comparison exists to catch.
+
+⚠ **It is a gate row rather than a `check-project` rule because it RUNS both
+runners**, which is a different kind of thing from reading the tree - and it can,
+because a rows mode executes no check and therefore cannot re-enter the gate.
+That is the same contract that keeps `check-twins` from pairing the two runners.
+
+⚠ **It compares sets rather than sequences.** The `sh` half runs its checks
+concurrently and the PowerShell half is serial, so the order a row appears in is
+not a fact about what either lane runs; a duplicate still shows up, as a count
+that does not match.
+
+⛔ **The comparison refuses two short lists**, because a runner that printed
+nothing agrees perfectly with another that printed nothing - which is the shape
+`check-one-home` records about its own first run.
+
+⭐ **Six cases, four of them plants:** a prover added to the `sh` list alone, one
+dropped from it, a row declared on the PowerShell lane alone, a control either
+side, and a probe that the rows output carries no verdict text of any kind, which
+is what says the mode ran nothing.
+
+### ⛔ Writing it found a live instance of this repository's own PowerShell hazard
+
+**Measured 2026-09-09, on the first invocation.** `[switch]$Rows` collided with
+the runner's own `$rows` accumulator: PowerShell variable names are
+case-insensitive, so the parameter and the local are ONE variable, the ArrayList
+was assigned to a `SwitchParameter`, and **every** invocation of that runner
+failed to bind with `Cannot convert value "System.Collections.ArrayList"`.
+
+⛔ **That is the third instance of one class here.** `docs/conventions/shell.md`
+section 8 records `$args` inside a function, and `CI-03` records `[switch]$Marker`
+against a local called `$marker` in `assert-disposable.ps1` - which failed to bind
+in every mode, and was also found by running the guard once rather than by reading
+it. ⚠ The rule that document already states is *name locals so they cannot
+collide*, and the local is renamed rather than the parameter, because the flag has
+to match the `sh` half's.
+
+⚠ **And the two runners' row LABELS had to be made to agree on one row.** Each
+half spelled its own flag - `check-no-secrets --public` against
+`check-no-secrets -Public` - so a label built from the flag made the lists differ
+on a row both lanes have, which is a false difference in the one comparison that
+exists to find real ones. Both name the question now.
+
 ## CI-08: Runner-default drift, swept rather than waited for
 
 Source: `$PSNativeCommandUseErrorActionPreference`, found by CI going red
@@ -1526,6 +1576,16 @@ does **not** end over one that leaves a single process on the step's output.
 a body that ends there. What it proves is the shape, and that no check in this
 tree could previously tell the two apart.
 
+⚠ **THE WRAPPER PASSES `-NoProfile` AND GITHUB'S DOES NOT, and that departure is
+stated rather than silent.** A `shell: pwsh` step really does inherit whatever
+profile its host has, so the faithful invocation would omit the flag; a gate row
+that loaded a contributor's profile is a row that goes red for something outside
+this repository, and every other `pwsh` invocation here passes the flag for
+exactly that reason. ⛔ **So what this harness proves about a `pwsh` body is
+proved with no profile loaded**, and a defect a profile would cause is outside
+what it can see. Decided by the operator on 2026-09-09, after the flag was
+briefly removed on the fidelity argument alone.
+
 #### Guard mutation over the instrument, 2026-09-09
 
 Seven plants into a scratch copy of the whole tree, one at a time, each verified
@@ -1607,6 +1667,52 @@ anyway, this reading is refuted by something that separates it rather than by
 another guess. ⚠ Either way the lane leaves `holders.log` behind, which is the
 first positive evidence this project will have about what that route leaves
 running.
+
+### ⛔ Run 8 answered it, and the answer is no
+
+**Measured 2026-09-09.** Both aria2 lanes sat in *Install the client* from
+09:13:18Z and had not returned at 09:35:17Z, twenty-two minutes later, on a run
+where nothing the route spawned could inherit the step's output pipe. ⛔ **So
+that class is refuted**, the way the three before it were.
+
+⭐ **What the same run establishes is where the step is NOT.** `install-client`
+bounds the install call at 420 seconds and kills 20 seconds after that, so the
+last moment that call could have ended is 440 seconds in; the step ran three
+times as long. ⛔ Whatever is slow or stopped is outside the bounded call, which
+leaves the unbounded parts of that script - its command substitutions and its
+digests - and the step itself.
+
+⚠ **The dispatch changed two things at once and that is a defect in the
+experiment, not only in the record.** A holder report was added to the same step,
+it walks every process's descriptors, and it runs on the branch a 22-minute step
+cannot distinguish from a slow install. ⛔ It is bounded by `timeout 60` now, and
+the step no longer waits on the install at all.
+
+### ⭐ So the next step bounds itself and records a timeline from inside the window
+
+**Written 2026-09-09.** The install runs in the background and the step's own
+shell watches it, because that shell is outside every bound that has failed:
+`timeout` ends its own child and cannot end a shell blocked in a substitution
+around it, and `timeout-minutes` is the runner's and was measured on run 6 not to
+end the step at all.
+
+⭐ **Every tick leaves a process snapshot** - `pid,ppid,pgid,stat,etimes,comm,args`
+every five seconds into `watchdog.log` in the uploaded workdir. ⚠ `etimes` beside
+`stat` is what separates a command that is SLOW from one that is stopped, which
+is the question this entry cannot answer from timings alone.
+
+⛔ **And the deadline is what makes any of it reach a reader.** A job whose runner
+is killed leaves no log and no artifact; a step that ends leaves both. Measured
+again on run 8: rule 8's route answers **302** for a running job's log and
+redirects to a blob that answers `BlobNotFound`, while a general-purpose GitHub
+tool answers a bare **404** for the same job - so the log is not written until
+the job finishes, and only an uploaded artifact survives.
+
+⭐ **The bound is seen to fire rather than assumed to.** Two cases in
+`check-step-bodies`: a product made slower than the deadline is killed and the
+step still ENDS, with `wait` reporting 137; and a product slower than one tick but
+inside the deadline is not killed. ⚠ Without the second, the first passes equally
+over a block that kills every install it is given.
 
 ### Acceptance for the harness, run on 2026-09-09
 

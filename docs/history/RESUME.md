@@ -12,8 +12,8 @@ settle it.
 the branch, the remote, the clone depth, `git status` and `HEAD..origin/main`
 before editing anything.
 
-⚠ **The container may start on a `claude/*` branch with `user.name` set to an
-agent and a shallow clone.** All three were true at the start of the last five
+**The container may start on a `claude/*` branch with `user.name` set to an
+agent and a shallow clone.** All three were true at the start of the last six
 sessions. Correct them before any edit: the branch to `main` per rule 7, the
 identity to the operator's own per rule 11, and the clone with
 `git fetch --unshallow`. ⛔ Read the identity out of the history with
@@ -30,101 +30,102 @@ this step could read that failure as a defect in the tree.
 
 ## Where the work is
 
-**In flight:** `CLIENT-05` and `CI-09`, and they are now the same blocker.
+**In flight:** `CLIENT-05` and `CI-09`, and they are still the same blocker.
 
 ⛔ **THE RECORD THE WORK ORDER WAITS ON CANNOT BE WRITTEN FROM ANY CAPTURE THIS
-PROJECT HAS RUN.** Measured on 2026-09-09 by stripping the golden fixture twice:
+PROJECT HAS RUN.** One connector **validates** and `E-PUB-02` refuses to publish
+it; one route is refused at the **validity** gate by `E-ACQ-01`. Every capture so
+far is one route, so `Profile::to_json` will not write it and the store cannot
+hold it. ⭐ `E-ACQ-01` is right: the product IS the two-route claim.
 
-| the capture that exists | what the library does | where it bites |
-| --- | --- | --- |
-| one connector | **validates**, then `E-PUB-02` refuses to publish it | publishability |
-| one route | `E-ACQ-01` refuses it | ⛔ **validity** |
-
-⭐ **`E-ACQ-01` is right and the sentence this file used to carry was wrong.**
-This page said "a single-route, single-connector capture VALIDATES and refuses to
-publish"; only the connector half is true. So `Profile::to_json` will not write a
-single-route record and the store cannot hold one, and every capture so far -
-transmission three times, qBittorrent once - is one route.
-
-⭐ **What unblocks it is a two-route capture, and the machinery for one now
-exists.** `capture-client.yml` takes the route as a matrix dimension beside the
-adapter, and `resolve-release.sh` chooses the artifact a `release` route fetches.
-⚠ aria2 is still the only target whose two routes resolve the same version.
+**What unblocks it is a two-route capture**, and aria2 is the only target whose
+two routes resolve the same version. `capture-client.yml` takes the route as a
+matrix dimension and `resolve-release.sh` chooses the artifact.
 
 **Next, in order:**
 
-1. ⛔ **Get an aria2 job past *Install the client*.** That step now hangs on both
-   aria2 routes and nothing else; the next section is what five runs establish
-   about it. Everything below waits on it, because aria2 is the only two-route
-   pair available.
+1. ⛔ **Get an aria2 job past *Install the client*.** Read the next section
+   first: run 8 refuted a fourth reading and narrowed where the step is not.
 2. **A record in the store**, once a two-route capture exists. `not_corroborated`
    is a recordable state; one route is not.
-3. **`CI-07`**, the PowerShell halves for the fourteen declared rows.
-4. ⚠ **Shard `check-workflow` across runners.** It is now the entire CI wall
-   clock, 21 of 21.3 minutes. `CI-01`'s residual says why it is its own unit.
+3. **`CI-07`**, the PowerShell halves for the declared rows. ⭐ Its cheap half is
+   done: `check-gate-rows` compares the two runners' row lists.
+4. **Shard `check-workflow` across runners.** It is still the whole CI wall
+   clock. `CI-01`'s residual says why it is its own unit.
 
 ---
 
-## The aria2 hang, as far as seven runs can answer it
+## The aria2 hang, as far as eight runs can answer it
 
-⛔ **Three readings have been named and all three were wrong.**
+⛔ **FOUR READINGS HAVE BEEN NAMED AND ALL FOUR WERE WRONG.**
 
 | the reading | what refuted it |
 | --- | --- |
 | the letter in `NEEDRESTART_MODE` | both hung runs installed nothing, so `needrestart` never ran |
-| the aria2 **package** rather than the route | the `release` route runs no package operation at all and hung identically |
-| the **upload step** | two transmission lanes ran that same step in one second, in the same run as two aria2 lanes that hung |
+| the aria2 **package** rather than the route | the `release` route runs no package operation and hung identically |
+| the **upload step** | two transmission lanes ran that step in one second, in the same run as two aria2 lanes that hung |
+| a process holding **the step's own output pipe** | ⛔ run 8, where the route's output went to a FILE and both lanes hung for twenty-two minutes anyway |
 
-⭐ **What run 7 establishes is where it sits.** With *Upload the install logs*
-moved to the end of the job, the hang appeared in the step it used to follow: run
-6's aria2 package install took **six seconds** and run 7's ran **ten minutes**
-without completing. So what hangs is whatever step is adjacent to the aria2
-install, whether that is a `uses:` upload or a `run:` block.
+⭐ **What run 8 does establish is where the step is NOT.** `install-client` bounds
+the install call at 420 seconds and kills 20 seconds after that, so the last
+moment that call could have ended is 440 seconds in. Both lanes ran three times
+that. ⛔ **Whatever is slow or stopped is outside the bounded install call**,
+which leaves that script's unbounded parts - its command substitutions and its
+digests - and the step itself.
 
-⚠ **Two local reproductions came back negative and neither settles it.** The
-package route run directly on this host left 82 processes before and after, and
-`aria2c --version` under the same bound left 78 before and after. ⛔ This host is
-not the runner image and proved it in the same run: `aria2` was **absent** here,
-so the install actually installed, where on `ubuntu-24.04` it is a no-op.
+**Run 8 also carries a confound, stated rather than argued away.** It changed
+two things at once: the redirection and a holder report added to the same step.
+Both are bounded now.
 
-⛔ **A job whose runner was killed or cancelled has no log to fetch** - an
-authenticated read answers **404** - which is why the install logs go up as an
-artifact at all. ⭐ An artifact zip needs no `gh`; a dispatch and a job log do.
+⭐ **THE NEXT DISPATCH IS INSTRUMENTED AND THIS IS THE POINT OF IT.** The install
+runs in the background and the step's own shell watches it, because that shell is
+outside every bound that has failed: `timeout` ends its own child and cannot end
+a shell blocked in a substitution around it, and `timeout-minutes` is the
+runner's and was measured on run 6 not to end the step at all. Every five seconds
+it appends `pid,ppid,pgid,stat,etimes,comm,args` to `watchdog.log` in the
+uploaded workdir, and a deadline kills the install so the step ENDS and the
+artifact uploads.
 
-⚠ **`timeout-minutes` on the step does not bound it**, measured on run 6: a
-five-minute bound over a step that ran seventeen. `CI-08` owns the cause.
+⚠ **`etimes` beside `stat` is the question this answers**: a process whose
+elapsed time grows while its state is `R` is slow, and one sitting in `D` or `S`
+is stopped. Timings alone cannot tell those apart and eight runs of timings have
+not.
+
+⛔ **A job whose runner is killed has no log and no artifact**, which is why the
+step ending is the whole design. ⚠ Measured again on run 8: rule 8's route
+answers **302** for a running job's log and redirects to a blob that answers
+`BlobNotFound`, while a general-purpose GitHub tool answers a bare **404** and
+hides the difference between *not written yet* and *not found*.
+
+**Two local reproductions came back negative and neither settles it.** This
+host is not the runner image and proved it in the same run: `aria2` is absent
+here, so the install actually installs, where on `ubuntu-24.04` it is a no-op.
 
 ---
 
 ## How this project is checked
 
 ⛔ **Run the gate with one command, `sh scripts/common/check-gate.sh`, after the
-last edit.** The last edit is the one made while writing the record, not the one
-that felt like the end of the work.
+last edit.** ⭐ It is **31 checks** and about **150 seconds** on this host.
 
-⭐ **It is about 120 seconds now rather than 198**, because its checks run
-concurrently. ⚠ Two of them do not join that batch and the reason is in the file:
-`check-capture` and `check-capture-client` drive real sockets against a deadline,
-and under the full batch one of them reported a refusal that arrived for a reason
-its case had not planted.
-
-⚠ **The gate is not the whole of part (a).** `cargo clippy`, `cargo fmt --check`,
+**The gate is not the whole of part (a).** `cargo clippy`, `cargo fmt --check`,
 the test suite and `sh scripts/ci/check-workflow.sh` are separate.
 
-⛔ **TWO CHECKS JOINED BY `&&` ARE ONE CHECK.** `shellcheck f && shfmt -d f
->/dev/null && echo OK` runs shfmt only when shellcheck says nothing, so an
-info-level finding means shfmt never ran - and the absent "OK" reads exactly like
-an empty diff. Measured on 2026-09-09; `check-workflow` caught the formatting
-defect eleven minutes later. Run each and read each status.
+⭐ **A capture workflow's step bodies now RUN**, which nothing here did before.
+`scripts/ci/check-step-bodies.sh` lifts a block out of `capture.yml` or
+`capture-client.yml` and executes it the way the runner does, with the output on
+a **pipe**. ⛔ A step is over when its command has exited AND that pipe has
+reached end of file, so a process the body leaves behind holding the step's
+stdout keeps the runner waiting on work that finished - and no exit code says so.
 
-⛔ **And a subset of the gate chosen by hand is not the gate.** `check-no-secrets`
-is TWO rows: the second carries the public rules. A digest or a peer ID written
-into prose without its algorithm or the words `peer ID` beside it turns that row
-red, and it did twice this session.
+⛔ **TWO CHECKS JOINED BY `&&` ARE ONE CHECK.** Run each and read each status.
+
+**And a subset of the gate chosen by hand is not the gate.**
 
 ⛔ **`check-workflow.sh` is not in the gate and cannot be**, because two of its
 cases run the gate. It is about 20 minutes and the CI lane runs it in a job of
-its own.
+its own. ⚠ Killing and restarting it costs the whole 20 minutes: make every edit
+first, then run it once.
 
 ⛔ **Read exit codes from the process that produced them, unpiped.**
 
@@ -132,129 +133,81 @@ its own.
 
 ## What a review has to know before it starts
 
-These are the defect classes this project has shipped and caught. Each cost a
-pass to find.
+These are the defect classes this project has shipped and caught.
 
-⛔ **A count in prose is a value in two places with nothing comparing them.**
-Found again on 2026-09-09 by a claim audit over this session's own writing: "nine
-checks call `cargo build --example`" was wrong - it is fourteen - while "nine gate
-runs inside `check-workflow`" was right. Prefer "every" or "most" to a number.
+⛔ **A step does not end when its command exits.** Every harness here redirected
+step output to a file, and a file has no reader to wait on, so the whole class
+was invisible until something ran a body through a real pipe.
 
-⛔ **An in-place `sed` edits every line that matches, not the one you meant.**
-`sed -i 's/^SECS=[0-9]*/SECS=6/'` changed two lines, because `[0-9]*` matches
-zero digits and a line inside an embedded stub read `SECS="$2"`. The edit lands,
-the command exits 0, and nothing says the file has a second change in it.
+⛔ **A shell applies redirections left to right.** `>log 2>&1 3>&1` points fd 3
+at the LOG, not at the step's pipe - so a plant written that way applies
+somewhere the case did not name and reports the defect not happening.
 
-⛔ **A literal counted one way and replaced another plants somewhere nobody
-named.** `replace_once` counted with `grep -F` and edited with `sed`: over `axb
-then a.b` the literal occurs once, the count accepted, and sed replaced `axb`.
-⚠ A literal carrying a `/` could not plant at all, which turned a probe whose
-expected outcome is a FAILURE into a pass over a sed that never parsed.
+⛔ **`timeout 0` MEANS NO LIMIT.** A ceiling edited to zero is an infinite one.
 
-⛔ **A gate run must leave the working tree as it found it, and nothing compared
-the two until 2026-09-09.** Two probe cases wrote scratch files beside the file
-they were handed and two callers hand that function a tracked path.
-`tree-unchanged` is a row in both halves now. ⚠ It sees the run that makes the
-mess and not the one after.
+⛔ **A PowerShell `[switch]` collides with a local differing only in case**, and
+they are then one variable: `[switch]$Rows` against `$rows` made every invocation
+of that runner fail to bind. Third instance here, after `$args` and
+`[switch]$Marker` against `$marker`. All three were found by running something
+once rather than by reading it.
 
-⛔ **A row name is a name.** `check-gate` labels a row with a check's basename, so
-two harnesses in different directories collide into two rows a reader cannot tell
-apart. It refuses a duplicate with exit 2 now.
+**A count in prose is a value in two places with nothing comparing them.**
+`scripts/README.md` called `check-workflow` "a thirteenth mutation prover" and it
+was wrong the moment another landed. Prefer "every" or "most" to a number.
 
-⛔ **A faster check that is red for no defect is worse than a slow one.** The
-all-concurrent gate reached 73 seconds and changed what a deadline-bounded
-harness answered. ⚠ And the obvious fix was measured and rejected: raising that
-deadline costs eight to eleven seconds of gate per second, paid nine times over
-by `check-workflow`.
+**An in-place `sed` edits every line that matches, not the one you meant.**
 
-⛔ **A summary of a source is not the source.** `CLIENT-01` recorded that
-qBittorrent's release "offers a Linux AppImage, a Windows `x64_setup.exe` and a
-source `tar.xz`". It carries fourteen assets and **two** Linux AppImages - one
-build short, in exactly the place a route has to choose.
-
-⛔ **A blocker nobody tested is not a blocker.** Nineteen entries were recorded as
-waiting on a capture host across several sessions; one command settled it and no
-session ran that command.
-
-**Two guards answering one code mask each other.** Deleting either leaves every
-case green, because the survivor produces the code the cases assert.
+**A gate run must leave the working tree as it found it.** `tree-unchanged` is
+a row in both halves.
 
 ⛔ **A green local gate does not mean a green lane, because a DEFAULT can change
-under you.** `$PSNativeCommandUseErrorActionPreference` is `$false` in pwsh 7.4
-and `$true` from 7.5. Every `.ps1` states the behaviour it needs now.
-
-⛔ **A step's exit status is whatever the block LEFT BEHIND, unless it is a
-decision.** GitHub's `pwsh` wrapper reads the residual `$LASTEXITCODE`, so an
-INVERTED guard - one whose refusal is the proof - fails the step it was proving.
-
-**A rule over `.ps1` files is not a rule over the same language in a
-workflow**, and a rule over one workflow is not a rule over its sibling.
-
-**Not knowing is not agreement, and a comparison has to say so in its type.**
-
-**A refusal the deriving path cannot reach is a refusal nothing tests.**
-
-**A collision test is not an encoding test.** It proves injectivity for the one
-pair it names.
+under you**, and **a step's exit status is whatever the block LEFT BEHIND**
+unless it is a decision.
 
 ⚠ **A surviving plant is a question, not a verdict**, a harness exit of 2 is
-*could not run*, and a plant that did not **apply** is a third status.
+*could not run*, and a plant that did not **apply** is a third status. All three
+happened this session.
 
-⚠ **A plant whose expected outcome is a PASS proves nothing.** Make the plant fail
-and read *which* failure it is.
-
-**A sweep's needle list is what rots.**
+**A plant whose expected outcome is a PASS proves nothing.**
 
 ⛔ **A rule a document says this repository has is not a rule it has.** Grep for
 the check before believing it runs.
 
-⭐ **The strongest control available is a reader this project did not write.**
-`sha256sum -c` verifies a release, `torf` and `libtorrent` read a generated
-torrent, `curl` is a complete HTTP client, python's `sqlite3` is stdlib, a bare
-repository is a real remote, and a product compiled from its own source tarball
-is a second acquisition route that needs no runner.
+**The strongest control available is a reader this project did not write.**
 
 ---
 
 ## Facts a session must not restate wrongly
 
-⛔ **The publisher cannot run at all.** It downloads an artifact named `bundle`;
-the uploads in this tree are `install-*`, `capture-client-*`, `capture-linux-*`
-and `capture-windows-*`. `check-project` refuses an undeclared download with no
-producer and refuses a declaration once a producer appears.
+⛔ **The publisher cannot run at all.** It downloads an artifact named `bundle`
+and nothing in this tree produces that name.
 
-⛔ **Nothing has been published and no measured record exists.** Everything in the
-store is synthetic and says so. ⭐ **Builds HAVE been measured**: Transmission
-4.0.5 three times and qBittorrent 4.6.3 once, each attesting `kind=client`,
-`stock_client=true`. ⚠ Those are evidence bundles and attestations, not
-`Profile`s, and the reason is now `E-ACQ-01` rather than an unwritten step.
+⛔ **Nothing has been published and no measured record exists.** ⭐ Builds HAVE
+been measured: Transmission 4.0.5 three times and qBittorrent 4.6.3 once, each
+attesting `kind=client`, `stock_client=true`. ⚠ Those are evidence bundles and
+attestations, not `Profile`s.
 
-⭐ **A `release` route has acquired a build on a capture host**, on 2026-09-09:
-aria2 compiled from the vendor's tarball in 144 seconds. Two builds, one version,
-measured on the host - different features, different TLS library, different
-compiler.
+⭐ **A `release` route has acquired a build on a capture host**: aria2 compiled
+from the vendor's tarball in 144 seconds, two builds at one version with
+different features, TLS libraries and compilers.
 
-⭐ **Three captures of Transmission 4.0.5 reported three different peer IDs.**
-That is what a per-session identity looks like; three samples is not a lifetime
-measurement.
+**Three captures of Transmission 4.0.5 reported three different peer IDs.**
 
 ⛔ **A hosted Windows runner's fingerprint is not a freshness signal.** The claim
 marker is what detects a survived host.
 
 ⛔ **The nine commit stamps before 2026-09-06T07:56Z are fabricated.** They are
-not retro-corrected. Read the machine clock with `date -u +%Y-%m-%dT%H:%M:%SZ`,
-and do not type a stamp ahead of it - one was amended this session for exactly
-that.
+not retro-corrected. Read the machine clock with `date -u +%Y-%m-%dT%H:%M:%SZ`.
 
-⛔ **No repository owner or name is hardcoded anywhere in this tree.** The
-adapters name third-party upstreams, which is a different fact, and
-`check-release-route` compares each against the catalogue.
+**No repository owner or name is hardcoded anywhere in this tree.**
 
-⛔ `check-remote-items` cannot run on a session host and installing `gh` does not
+`check-remote-items` cannot run on a session host and installing `gh` does not
 fix it. It is the one observed skip.
 
-⭐ This session's record is
-[`SESSION-2026-09-09-SECONDROUTE.md`](SESSION-2026-09-09-SECONDROUTE.md).
+⚠ **The step-body harness passes `-NoProfile` and GitHub's wrapper does not.**
+That departure is deliberate and stated: a gate row that loaded a contributor's
+profile would go red for something outside this repository. So a defect a profile
+would cause is outside what that harness can see.
 
-⭐ Every session record is listed in [`README.md`](README.md), and `check-docs`
+Every session record is listed in [`README.md`](README.md), and `check-docs`
 refuses one that page does not link.

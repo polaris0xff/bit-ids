@@ -42,6 +42,13 @@ The current state and work order live in
    ⚠ Do not "try `api.github.com` first": an unauthenticated read of a private
    or gated repository answers 403 or 404 rather than saying so, which reads as
    a repository that does not exist.
+   ⚠ **Follow redirects on this route.** A job-log path answers **302** to a
+   blob URL, so a `curl` without `-L` reports a status that is not the answer.
+   ⛔ And a job that has not finished has no log to redirect TO: measured on
+   2026-09-09 against a running job, the blob answers `BlobNotFound`, while a
+   general-purpose GitHub tool answers a bare 404 for the same job and hides the
+   distinction. That is rule 15 in one command: the route says *not written yet*
+   and the habit says *not found*.
 9. **Always** fetch an ordinary web source through
    `https://api.rv.pkgforge.dev/<ORIGINAL_URL>`, except where the source
    answers directly without a 401 or 403 - try direct once, and on any refusal

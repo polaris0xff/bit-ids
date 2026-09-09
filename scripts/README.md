@@ -184,6 +184,16 @@ from any working directory.
   block that reads `$LASTEXITCODE` ends in an explicit `exit`, because GitHub's
   wrapper reads whatever the block left behind as the step's verdict, so an
   inverted guard fails the step by refusing exactly as it was designed to.
+- [`common/check-gate-rows.sh`](common/check-gate-rows.sh) compares the two gate
+  runners' row lists. ⛔ Nothing did: the `sh` runner derives most of its provers
+  from a list and the PowerShell one declares each by hand, so a prover added to
+  the first and forgotten in the second is absent from that lane, which stays
+  green because it never hears of it - and `--strict` cannot help, since a row
+  that was never named cannot be counted as a skip. ⭐ `--rows` and `-Rows` print
+  the names each runner's own queue would have used and run nothing, so the
+  comparison costs two process starts and cannot re-enter the gate. ⚠ It compares
+  SETS: the two halves schedule differently on purpose, so the order a row
+  appears in is not a fact about what either lane runs.
 - `common/check-licences.sh` and `common/check-licences.ps1` check the register
   in `catalogue/licences.toml` against the catalogue and the lockfile in both
   directions, refuse a row with no disposition, and refuse an installer-shaped

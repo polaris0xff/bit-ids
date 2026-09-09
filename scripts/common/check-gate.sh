@@ -61,6 +61,7 @@
 #   sh scripts/common/check-gate.sh
 #   sh scripts/common/check-gate.sh --fast     # skips check-twins
 #   sh scripts/common/check-gate.sh --strict   # a skip is a failure
+#   sh scripts/common/check-gate.sh --rows     # the row names, running nothing
 #   sh scripts/common/check-gate.sh --json
 #
 # Exit codes: 0 nothing failed, 1 something failed, 2 could not run.
@@ -72,12 +73,26 @@ set -u
 JSON=0
 FAST=0
 STRICT=0
+# ⭐ --rows PRINTS THE ROW NAMES AND RUNS NOTHING, and it exists because nothing
+# compared the two runners' row lists. The `sh` half derives its provers from a
+# `for` list and the PowerShell half declares each one by hand, so a prover added
+# to one and forgotten in the other is simply absent from that lane - which stays
+# green because it never hears of it. ⚠ It bit immediately when it was written:
+# `check-capture-client` went into the `sh` list and the Windows lane would have
+# run one row fewer with nothing anywhere naming the missing one.
+#
+# ⛔ THE LIST IS THE ONE THE RUNNER QUEUES FROM, not a second copy of it. `queue`
+# and `queue_row` print the name and return here, so a row this mode does not
+# name is a row the runner does not run. A separate list would be the value in
+# two places this mode exists to compare.
+ROWS_ONLY=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --json) JSON=1 ;;
     --fast) FAST=1 ;;
     --strict) STRICT=1 ;;
+    --rows) ROWS_ONLY=1 ;;
     -h | --help)
       awk 'NR>1 { if (/^#/) { sub(/^# ?/, ""); print } else exit }' "$0"
       exit 0
@@ -177,6 +192,10 @@ fi
 JOBS=0
 
 queue() { # name command...
+  if [ "$ROWS_ONLY" = 1 ]; then
+    printf '%s\n' "$1"
+    return 0
+  fi
   JOBS=$((JOBS + 1))
   printf '%s\n' "$1" >"$OUT/name.$JOBS"
   rm -f "$OUT/miss.$JOBS"
@@ -195,6 +214,10 @@ queue() { # name command...
 # check that stopped working. A declared row without a reason turns `--strict`
 # back into the flag that could not be used.
 queue_row() { # name row-text kind
+  if [ "$ROWS_ONLY" = 1 ]; then
+    printf '%s\n' "$1"
+    return 0
+  fi
   JOBS=$((JOBS + 1))
   printf '%s\n' "$1" >"$OUT/name.$JOBS"
   printf '%s\n%s\n' "$3" "$2" >"$OUT/miss.$JOBS"
@@ -279,7 +302,12 @@ done
 # ⚠ --public is a DIFFERENT question from the default run, not a stricter one.
 # Emails, absolute home paths and long hex are legitimate content in a private
 # project, so this row is a second call rather than a flag on the first.
-[ -f "$HERE/check-no-secrets.sh" ] && queue "check-no-secrets --public" sh "$HERE/check-no-secrets.sh" --public
+# ⚠ THE ROW LABEL NAMES THE QUESTION RATHER THAN THE FLAG, and it is the same
+# label on both lanes. Each half spells its own flag differently - `--public`
+# here and `-Public` there - so a label built from the flag made the two runners'
+# row lists differ on a row they both have, which is a false difference in the
+# one comparison that exists to find real ones.
+[ -f "$HERE/check-no-secrets.sh" ] && queue "check-no-secrets (public)" sh "$HERE/check-no-secrets.sh" --public
 
 # ⚠ NEEDS gh AND THE NETWORK, so it exits 2 on a machine without them and that
 # reads as a skip rather than a pass. That is correct: nothing was verified.
@@ -360,7 +388,7 @@ for spec in acquisition/check-cache acquisition/check-release-route \
   publishing/check-formats publishing/check-publish publishing/check-access \
   publishing/check-catalogue ci/check-staleness ci/check-step-bodies \
   common/check-examples \
-  common/check-handbook; do
+  common/check-handbook common/check-gate-rows; do
   PROVER="$HERE/../$spec.sh"
   NAME=${spec#*/}
   # ⛔ A ROW NAME IS A NAME AND TWO CHECKS MUST NOT SHARE ONE. The label is the
@@ -437,6 +465,16 @@ for spec in capture/check-capture capture/check-capture-client; do
   fi
 done
 harvest
+
+# ⛔ AND THE ROW THIS RUNNER DECIDES FOR ITSELF IS NAMED HERE TOO. `tree-unchanged`
+# is not queued - it is answered after every check has run - so a rows mode that
+# listed the queue alone would be short by exactly the row nothing else names,
+# and the comparison would then report two lanes in step over a row one of them
+# does not have.
+if [ "$ROWS_ONLY" = 1 ]; then
+  printf 'tree-unchanged\n'
+  exit 0
+fi
 
 # ⚠ THE POWERSHELL HALVES ARE NOT RE-RUN HERE. check-twins already runs both
 # halves of every pair and compares them, so running them again would double

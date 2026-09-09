@@ -390,6 +390,12 @@ rather than warns, over every tracked text file.
 - ⛔ **`$args` inside a function is an automatic variable** and silently
   swallows a parameter of that name. Variable names are case-insensitive, so
   `$Args` collides too. Name locals so they cannot.
+
+  ⚠ **The collision does not need an automatic variable to bite**, and it has
+  twice here: a `[switch]` parameter against an ordinary local differing only in
+  case is one variable, so the local's value is assigned to the switch and the
+  script fails to bind in **every** mode. Both instances were found by running the
+  script once rather than by reading it, and `TODO/ci.md` carries them.
 - ⛔ **`$PSNativeCommandUseErrorActionPreference` is set explicitly in every
   `.ps1` here, and the reason is that its default CHANGED.** It is `$false` in
   pwsh 7.4 and `$true` from 7.5, where a native command exiting non-zero becomes

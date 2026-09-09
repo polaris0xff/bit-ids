@@ -5,6 +5,71 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-09T09:39:11Z
+
+- ⛔ **Client capture run 8 refuted the reading it was dispatched to test.** Both
+  aria2 lanes sat in *Install the client* from 09:13:18Z and had not returned
+  twenty-two minutes later, on the first run where nothing the route spawned
+  could inherit the step's output pipe. Record:
+  [`TODO/clients.md`](TODO/clients.md), `CLIENT-05`.
+- ⭐ The same run says where the step is **not**: `install-client` bounds the
+  install call at 420 seconds and kills 20 seconds later, so twenty-two minutes
+  is three times past the last moment that call could have ended. Whatever is
+  slow or stopped is outside the bounded call.
+- ⚠ That dispatch changed two things at once, and the confound is recorded rather
+  than argued away: a holder report was added to the same step and it walks every
+  process's descriptors. It is bounded by `timeout 60` now.
+- ⭐ *Install the client* bounds itself now. The install runs in the background
+  and the step's own shell watches it, because that shell is outside every bound
+  that has failed here - `timeout` ends its own child, and `timeout-minutes` was
+  measured on run 6 not to end the step at all. Every tick leaves a process
+  snapshot with `stat` and `etimes`, which is what separates a command that is
+  slow from one that is stopped.
+- ⛔ And the deadline is what makes any of it reach a reader: a job whose runner
+  is killed leaves no log and no artifact, and a step that ends leaves both.
+- ⭐ Two cases make that bound fire rather than assume it: a product slower than
+  the deadline is killed and the step still ends, and one slower than a tick but
+  inside the deadline is not.
+- ⚠ **`AGENTS.md` rule 8 gained what run 8 measured about job logs.** The route
+  answers **302** and redirects to a blob that answers `BlobNotFound` while the
+  job is still running, so a `curl` without `-L` reads a status that is not the
+  answer - and a general-purpose GitHub tool answers a bare 404 for the same job,
+  hiding the distinction between *not written yet* and *not found*.
+- ⚠ The step-body harness passes `-NoProfile` where GitHub's wrapper does not,
+  and that departure is stated rather than silent: a gate row that loaded a
+  contributor's profile would go red for something outside this repository.
+  Decided by the operator.
+- Deployment: nothing deployed.
+
+
+### 2026-09-09T09:19:46Z
+
+- ⭐ The two gate runners' row lists are compared.
+  [`scripts/common/check-gate-rows.sh`](scripts/common/check-gate-rows.sh) is the
+  row that does it, and `--rows` / `-Rows` are what make it cheap: each prints
+  the names its own queue would have used and runs nothing. Record:
+  [`TODO/ci.md`](TODO/ci.md), `CI-07`.
+- ⛔ Nothing compared them before, and the gap is structural: the `sh` runner
+  derives most of its provers from a list and the PowerShell one declares each by
+  hand, so a prover added to the first and forgotten in the second is absent from
+  that lane. `--strict` cannot help, because a row that was never named cannot be
+  counted as a skip.
+- ⚠ It compares sets rather than sequences, because the two halves schedule
+  differently on purpose, and it refuses two short lists: a runner that printed
+  nothing agrees perfectly with another that printed nothing.
+- ⛔ Writing it found a live instance of this repository's own PowerShell hazard.
+  `[switch]$Rows` collided with the runner's `$rows` accumulator - names are
+  case-insensitive, so they are one variable - and **every** invocation of that
+  runner then failed to bind. It is the third instance of the class, after
+  `$args` and `[switch]$Marker` against `$marker`, and all three were found by
+  running something once rather than by reading it. Record:
+  [`docs/conventions/shell.md`](docs/conventions/shell.md) section 8.
+- ⚠ One row's label differed between the halves - each spelled its own flag - so
+  a comparison built on labels reported a false difference on a row both lanes
+  have. Both name the question now.
+- Deployment: nothing deployed.
+
+
 ### 2026-09-09T08:42:57Z
 
 - ⭐ *Install the client* sends the route's output to a **file** and prints it

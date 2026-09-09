@@ -168,6 +168,15 @@ run_body() { # bodyfile shell cwd
         # shellcheck disable=SC2016
         printf '%s\n' 'if ((Test-Path -LiteralPath variable:/LASTEXITCODE)) { exit $LASTEXITCODE }'
       } >"$WORK/wrapped.ps1"
+      # ⛔ -NoProfile, AND IT IS THE ONE PLACE THIS HARNESS DEPARTS FROM THE
+      # RUNNER ON PURPOSE. GitHub's wrapper carries no such flag, so a profile is
+      # host state a `shell: pwsh` step really does inherit; but a gate row that
+      # loads whatever profile a contributor's machine has is a row that goes red
+      # for something that is not in this repository, and every other `pwsh`
+      # invocation here passes the flag for that reason. ⚠ The departure is
+      # stated rather than silent: what this harness proves about a `pwsh` body
+      # is proved with no profile loaded, and a defect a profile would cause is
+      # outside what it can see. Decided by the operator on 2026-09-09.
       (cd "$3" && exec pwsh -NoProfile -command ". '$WORK/wrapped.ps1'") \
         >"$WORK/pipe" 2>&1 </dev/null &
       ;;
@@ -444,7 +453,11 @@ STUB
 if lift "$CLIENT_WF" linux "Install the client" "$WORK/install.sh"; then
   ADAPTER=scripts/capture/adapters/stub.sh
   ROUTE=package
-  export ADAPTER ROUTE
+  # ⚠ A ONE-SECOND TICK RATHER THAN THE SHIPPED FIVE, so a case that is over in
+  # milliseconds does not pay a whole tick for it. The DEADLINE stays the
+  # shipped one except where a case is about the deadline.
+  BIT_IDS_INSTALL_INTERVAL=1
+  export ADAPTER ROUTE BIT_IDS_INSTALL_INTERVAL
 
   stub_adapter ':'
   rm -rf "$TREE/temp/install-package" "$TREE/temp/install-package.txt"
@@ -479,14 +492,37 @@ if lift "$CLIENT_WF" linux "Install the client" "$WORK/install.sh"; then
   # line the block does not contain and the plant would not apply.
   # shellcheck disable=SC2016
   if replace_once "$WORK/install-leaky.sh" \
-    '>"$RUNNER_TEMP/install-$ROUTE/step.log" 2>&1 || rc=$?' \
-    '3>&1 >"$RUNNER_TEMP/install-$ROUTE/step.log" 2>&1 || rc=$?'; then
+    '>"$WORKDIR/step.log" 2>&1 &' \
+    '3>&1 >"$WORKDIR/step.log" 2>&1 &'; then
     rm -rf "$TREE/temp/install-package" "$TREE/temp/install-package.txt"
     run_body "$WORK/install-leaky.sh" default "$TREE"
     hangs "sh       one leaked descriptor onto the step's output brings it back" 0
   else
     fail "sh       the leaked-descriptor plant did not apply"
   fi
+
+  # ⛔ AND THE STEP'S OWN BOUND IS SEEN TO FIRE, because a bound nobody has
+  # watched fire is a bound nobody knows works - and this repository has shipped
+  # two that did not. The product is made to take longer than the deadline, and
+  # what the case asserts is the whole point of the bound: the step ENDS, with a
+  # status saying it was killed, so the job goes on to upload the evidence.
+  # ⚠ 137 is `wait` reporting a child killed by signal 9, which is what the
+  # block does when its deadline passes.
+  stub_adapter 'sleep 20'
+  rm -rf "$TREE/temp/install-package" "$TREE/temp/install-package.txt"
+  BIT_IDS_INSTALL_DEADLINE=1
+  export BIT_IDS_INSTALL_DEADLINE
+  run_body "$WORK/install.sh" default "$TREE"
+  ended "sh       the step's own deadline fires and the step ends anyway" 137
+  unset BIT_IDS_INSTALL_DEADLINE
+
+  # ⛔ AND THE CONTROL: THE SAME SLOW PRODUCT UNDER THE SHIPPED DEADLINE IS NOT
+  # KILLED. Without it the case above passes equally over a block that kills
+  # every install it is given, which would be a bound that refuses correct work.
+  rm -rf "$TREE/temp/install-package" "$TREE/temp/install-package.txt"
+  stub_adapter 'sleep 2'
+  run_body "$WORK/install.sh" default "$TREE"
+  ended "sh       a product slower than one tick and inside the deadline survives" 0
 else
   fail "sh       capture-client.yml has no linux step named Install the client (exit $?)"
 fi

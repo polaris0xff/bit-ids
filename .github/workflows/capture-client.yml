@@ -186,27 +186,72 @@ jobs:
           # ⛔ THE DIRECTORY IS MADE BEFORE THE REDIRECTION, NOT BY THE SCRIPT,
           # for the reason *Resolve the release artifact* gives above: a shell
           # opens `>` targets before it execs.
-          mkdir -p "$RUNNER_TEMP/install-$ROUTE"
-          rc=0
+          WORKDIR="$RUNNER_TEMP/install-$ROUTE"
+          mkdir -p "$WORKDIR"
+          # ⛔ THE INSTALL RUNS IN THE BACKGROUND SO THIS SHELL CAN WATCH IT, and
+          # this is the only bound that can end this step from wherever the work
+          # actually stops. `timeout` ends its own child, so it cannot end a
+          # shell blocked in a command substitution AROUND that child;
+          # `timeout-minutes` is the runner's and was measured on run 6 not to
+          # end the step at all. ⚠ Run 8 is why it is here: both aria2 lanes sat
+          # in this step for fifteen minutes, which is past the moment
+          # install-client's own 420-second bound would have ended the install
+          # call - so whatever is slow or stopped is not inside that call.
           sudo -E sh scripts/acquisition/install-client.sh \
             --adapter "$ADAPTER" \
             --route "$ROUTE" \
-            --workdir "$RUNNER_TEMP/install-$ROUTE" \
+            --workdir "$WORKDIR" \
             --record "$RUNNER_TEMP/install-$ROUTE.txt" \
-            >"$RUNNER_TEMP/install-$ROUTE/step.log" 2>&1 || rc=$?
-          cat "$RUNNER_TEMP/install-$ROUTE/step.log"
-          # ⭐ AND WHATEVER IS STILL HOLDING THAT FILE IS NAMED, which is the
-          # first positive evidence this project will have about what the route
-          # leaves behind. ⚠ Under sudo, because the install ran as root and an
-          # unprivileged reader of /proc reports "nobody holds it" over a file
-          # root processes are holding. ⚠ Its own status is read and printed
-          # rather than discarded: a diagnostic that failed silently would be
-          # replacing a missing answer with a wrong one, and one that failed the
-          # STEP would throw away an install that worked.
+            >"$WORKDIR/step.log" 2>&1 &
+          INSTALL_PID=$!
+          # ⚠ OVERRIDABLE SO A HARNESS CAN MAKE THE BOUND FIRE. A bound nobody
+          # has seen fire is a bound nobody knows works, and two of them have
+          # already been shipped here that did not.
+          DEADLINE=${BIT_IDS_INSTALL_DEADLINE:-480}
+          INTERVAL=${BIT_IDS_INSTALL_INTERVAL:-5}
+          WAITED=0
+          # ⭐ AND EVERY TICK LEAVES A PROCESS SNAPSHOT, which is the evidence
+          # five dispatches could not produce. A job whose runner is killed has
+          # no log to fetch - measured again on run 8, where rule 8's route
+          # answers 302 to a blob that does not exist yet while the job is still
+          # running - so what the job uploads afterwards is the only thing that
+          # survives, and that needs the step to END.
+          # ⚠ `etimes` is what separates a command that is SLOW from one that is
+          # stopped: a process whose elapsed time grows while its state stays R
+          # is working, and one sitting in D or S is not.
+          while kill -0 "$INSTALL_PID" 2>/dev/null; do
+            if [ "$WAITED" -ge "$DEADLINE" ]; then
+              printf 'the install did not answer within %ss\n' "$DEADLINE" >&2
+              # ⛔ THE DIAGNOSTIC IS BOUNDED TOO. It walks every process's
+              # descriptors, so it is the one thing added to this step that
+              # could itself be slow - and a diagnostic that held the step open
+              # would be the failure it exists to explain, wearing its own name.
+              timeout 60 sudo sh scripts/ci/report-holders.sh "$WORKDIR/step.log" \
+                >"$WORKDIR/holders.log" 2>&1 ||
+                printf 'the holder report could not run\n' >&2
+              sudo kill -9 "$INSTALL_PID" 2>/dev/null || :
+              break
+            fi
+            sleep "$INTERVAL"
+            WAITED=$((WAITED + INTERVAL))
+            {
+              printf '## +%ss %s\n' "$WAITED" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+              ps -eo pid,ppid,pgid,stat,etimes,comm,args 2>&1 || :
+            } >>"$WORKDIR/watchdog.log"
+          done
+          wait "$INSTALL_PID" && rc=0 || rc=$?
+          cat "$WORKDIR/step.log"
+          # ⭐ AND WHATEVER IS STILL HOLDING THAT FILE IS NAMED, on the path that
+          # worked as well as on the one that did not. ⚠ Under sudo, because the
+          # install ran as root and an unprivileged reader of /proc reports
+          # "nobody holds it" over a file root processes are holding. ⚠ Its own
+          # status is read and printed rather than discarded: a diagnostic that
+          # failed silently would be replacing a missing answer with a wrong one,
+          # and one that failed the STEP would throw away an install that worked.
           held=0
-          sudo sh scripts/ci/report-holders.sh \
-            "$RUNNER_TEMP/install-$ROUTE/step.log" \
-            >"$RUNNER_TEMP/install-$ROUTE/holders.log" 2>&1 || held=$?
+          timeout 60 sudo sh scripts/ci/report-holders.sh \
+            "$WORKDIR/step.log" \
+            >>"$WORKDIR/holders.log" 2>&1 || held=$?
           printf 'the holder report exited %s\n' "$held"
           [ "$rc" = 0 ] || exit "$rc"
           cat "$RUNNER_TEMP/install-$ROUTE.txt"
