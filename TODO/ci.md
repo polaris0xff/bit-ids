@@ -2090,6 +2090,36 @@ lines. It went into a row, and `store_report` counted fourteen rows against eigh
 cases and refused. ⭐ That self-check is why this was a red line on the first run
 rather than a miscounted report nobody read.
 
+### ⛔ THE GATE WAS SMALLER THAN THE LANE AND NOTHING SAID SO. 2026-09-10
+
+⛔ **CI run 113 failed on *Shell syntax and style* over one `SC2016`, on a commit
+whose local gate had reported 34 of 35 passing minutes earlier.** The gate ran
+neither `shellcheck` nor `shfmt` over the scripts. That is this entry's own
+subject arriving from the other side: not a default inherited from the host, but
+a STEP the lane runs and the local gate did not.
+
+⚠ **And the workflow already claimed otherwise.** `.github/workflows/ci.yml`
+installs the pinned `shfmt` on the Windows lane with the comment *"several of the
+cases below run the gate, and the gate runs shell checks"*. No row did. ⛔ That is
+the fourth instance this repository has recorded of a rule a document says it has
+and does not, and the comment is corrected rather than deleted, because the
+sentence is true now.
+
+⭐ **[`../scripts/common/check-shell.sh`](../scripts/common/check-shell.sh) is the
+row**, running CI's own command over every tracked script found rather than
+listed. ⛔ Two rows and not one, because `&&` between two checks is one check and
+a reader of a red row has to know which tool refused. ⭐ And a third that counts
+what was swept: two clean tools over a `find` that stopped matching answer
+exactly as they do over a clean tree.
+
+⚠ **`provision.sh` had been installing both tools all along**, with a header
+saying a host without them "runs a gate that is quietly smaller than CI's". The
+tools were there; the row was not.
+
+Guard mutation, one plant per tool, each verified to apply: a removed
+`shellcheck` directive and an added indent. Both refused, and each row named
+itself rather than the other.
+
 ### ⚠ Residual, filed 2026-09-09: `check-step-bodies` is a load-sensitive row
 
 ⛔ **A gate row that fails under load and passes alone is the same class this
