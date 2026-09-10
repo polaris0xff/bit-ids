@@ -532,6 +532,113 @@ restore_changelog
 agree "changelog clean tree again" check-changelog common/check-changelog 0
 
 # ============================================================================
+# check-licences
+# ============================================================================
+
+agree "licences clean tree" check-licences common/check-licences 0
+
+REG="$TREE/catalogue/licences.toml"
+CAT="$TREE/catalogue/clients.toml"
+cp "$REG" "$WORK/licences.orig" || exit 2
+cp "$CAT" "$WORK/clients.orig" || exit 2
+restore_licences() {
+  cp "$WORK/licences.orig" "$REG"
+  cp "$WORK/clients.orig" "$CAT"
+}
+
+# ⛔ A CATALOGUE TARGET WITH NO REGISTER ROW. The comparison runs in both
+# directions and this is the direction that matters: a target added and its
+# licence forgotten is a build nobody decided the disposition of.
+{
+  cat "$WORK/clients.orig"
+  printf '\n[[targets]]\nid = "zz-plant"\nopen_source = true\n'
+} >"$CAT"
+agree "licences a catalogue target with no register row is refused" check-licences common/check-licences 1
+restore_licences
+
+# ⚠ AND THE OTHER DIRECTION, which is a different branch and would survive a
+# check that only walked the catalogue.
+{
+  cat "$WORK/licences.orig"
+  printf '\n[[targets]]\nid = "zz-plant"\nlicence = "MIT"\nlicence_source = "x"\nredistribute = "refused"\n'
+} >"$REG"
+agree "licences a register row naming no catalogue target is refused" check-licences common/check-licences 1
+restore_licences
+
+# ⛔ PERMITTED IS THE EXPENSIVE VALUE AND IT HAS TO BE EARNED. `unverified` plus
+# `permitted` is the combination that would publish somebody's bytes on nobody's
+# authority, and it is a separate rule from "has a disposition at all".
+sed 's/^redistribute = "refused"$/redistribute = "permitted"/' "$WORK/licences.orig" >"$REG"
+agree "licences permitted without a verified licence and a notice is refused" check-licences common/check-licences 1
+restore_licences
+
+# ⛔ A REGISTER OF NOTHING SATISFIES EVERY RULE ABOVE, because two empty lists
+# agree perfectly. That is what a broken parser reports success as, so it is its
+# own case rather than an assumption.
+printf 'schema = "bit-ids/licences/1"\n' >"$REG"
+agree "licences a register that parses to no rows is refused" check-licences common/check-licences 1
+restore_licences
+
+agree "licences clean tree again" check-licences common/check-licences 0
+
+# ============================================================================
+# check-placeholders
+# ============================================================================
+
+# ⛔ EVERY NEEDLE BELOW IS ASSEMBLED RATHER THAN WRITTEN, and that is not style.
+# A harness that spelled a stand-in value or a double brace as a literal would BE
+# the finding: check-placeholders reads every tracked file, this file is one, and
+# its first version turned the clean tree red for exactly that reason. ⚠ The three
+# implementations of the check are exempt from themselves; a harness is not, and
+# exempting one more file is a worse answer than not planting the literal.
+# ⭐ It is the same rule check-markers.sh already followed by building its marker
+# bytes with printf instead of typing them.
+BR=$(printf '%s%s' '{' '{')
+BRC=$(printf '%s%s' '}' '}')
+
+agree "placeholders clean tree" check-placeholders common/check-placeholders 0
+
+# ⛔ THE FOUR CATEGORIES ARE FOUR RULES and each is planted on its own, because a
+# harness that planted them together could not tell which one fired.
+printf 'a survived %sPLACEHOLDER%s here\n' "$BR" "$BRC" >"$TREE/tools/check/plant.md"
+agree "placeholders a double-brace placeholder is refused" check-placeholders common/check-placeholders 1
+unplant tools/check/plant.md
+
+printf 'text\n<!-- %s: fill this in -->\n' 'TEMPLATE' >"$TREE/tools/check/plant.md"
+agree "placeholders a template guidance comment is refused" check-placeholders common/check-placeholders 1
+unplant tools/check/plant.md
+
+printf 'contact %s%s for details\n' 'CHANGE' 'ME' >"$TREE/tools/check/plant.md"
+agree "placeholders a stand-in value is refused" check-placeholders common/check-placeholders 1
+unplant tools/check/plant.md
+
+# ⚠ THE OWNER-SLASH-REPO GENERIC IS RECOMMENDED IN A PUBLIC DOCUMENT, so it is a
+# defect only where it is configuration rather than prose. Both are planted,
+# because they are different branches and a rule that fired on both would fire on
+# correct writing.
+printf 'clone %s/%s to begin\n' 'OWNER' 'REPO' >"$TREE/tools/check/plant.md"
+agree "placeholders the generic in a .md is accepted" check-placeholders common/check-placeholders 0
+unplant tools/check/plant.md
+
+printf 'repo: %s/%s\n' 'OWNER' 'REPO' >"$TREE/tools/check/plant.yml"
+agree "placeholders the generic in a config file is refused" check-placeholders common/check-placeholders 1
+unplant tools/check/plant.yml
+
+# ⭐ THE TWO SHAPES THAT MUST NOT FIRE, and they are why the brace rule is narrow
+# rather than absent. GitHub Actions expression syntax and a Go template both
+# carry a double brace, and a rule that refused either would refuse every correct
+# workflow file and every container format string in the tree.
+printf 'run: echo $%s github.sha %s\n' "$BR" "$BRC" >"$TREE/tools/check/plant.yml"
+agree "placeholders an Actions expression is accepted" check-placeholders common/check-placeholders 0
+unplant tools/check/plant.yml
+
+printf 'info --format %sjson .Host.Arch%s\n' "$BR" "$BRC" >"$TREE/tools/check/plant.yml"
+agree "placeholders a Go template is accepted" check-placeholders common/check-placeholders 0
+unplant tools/check/plant.yml
+
+agree "placeholders clean tree again" check-placeholders common/check-placeholders 0
+
+# ============================================================================
 
 store_report check-bitcheck/1 cases \
   "$([ "$JSON" = "1" ] && printf 1 || printf 0)"

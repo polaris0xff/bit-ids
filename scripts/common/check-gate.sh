@@ -304,7 +304,8 @@ if command -v go >/dev/null 2>&1; then
   (cd "$HERE/../../tools/check" && go build -o "$GOBIN" .) >/dev/null 2>&1 || :
 fi
 
-for c in check-changelog check-control-bytes check-markers check-one-home; do
+for c in check-changelog check-control-bytes check-licences check-markers \
+  check-one-home check-placeholders; do
   if [ -x "$GOBIN" ]; then
     queue "$c" "$GOBIN" "$c"
   else
@@ -313,9 +314,7 @@ for c in check-changelog check-control-bytes check-markers check-one-home; do
 done
 
 # The sh halves that are not ported yet. Each is the authority on its own subject.
-for c in check-docs check-placeholders \
-  check-no-secrets check-project \
-  check-licences; do
+for c in check-docs check-no-secrets check-project; do
   if [ -f "$HERE/$c.sh" ]; then
     queue "$c" sh "$HERE/$c.sh"
   else

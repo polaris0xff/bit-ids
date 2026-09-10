@@ -266,7 +266,7 @@ if [ -x "$WORK/bit-check" ] || (cd "$ROOT/tools/check" && go build -o "$WORK/bit
 else
   fail "markers     tools/check did not build, so the ported subject could not be run"
 fi
-run_subject "licences  " sh "$ROOT/scripts/common/check-licences.sh" --json
+run_subject "licences  " "$WORK/bit-check" check-licences --json
 run_subject "secrets   " sh "$ROOT/scripts/common/check-no-secrets.sh" --public --json
 run_subject "project   " sh "$ROOT/scripts/common/check-project.sh" --json
 run_subject "cache     " sh "$ROOT/scripts/acquisition/check-cache.sh" --json

@@ -2936,6 +2936,45 @@ plant run twice and none dropped. ⚠ That is a check on the RUN, where
 `check-shards` is a check on the SELECTOR, and neither is the other: a selector
 can partition perfectly while a unit dies silently.
 
+### ⭐ Step 3 proved on a runner, and the whole arc in three numbers
+
+⭐ **Run 124 is green on every job with the matrix**, so the shard selector, the
+partition check and the four-way split are measured on real runners rather than
+argued for:
+
+| run | what changed | *Workflow acceptance* |
+| --- | --- | ---: |
+| 122 | the layer as it stood | **32.6 min** |
+| 123 | four twin pairs deleted | **22.2 min** |
+| 124 | sharded across four runners | **11.8 min** (longest shard; 9.6, 11.2, 11.7, 11.8) |
+
+⭐ **32.6 to 11.8 is 2.8x, and the whole run's wall clock is now that shard**: the
+Linux gate is 4.4 minutes and the Windows gate 2.5. ⛔ **And the bound came DOWN
+to 20 from the 45 it had been raised to**, which is the entry's Prove: *a bound
+that was not raised to accommodate it.*
+
+### ⭐ Two more pairs ported and deleted, 2026-09-10
+
+`check-licences` and `check-placeholders` bring the binary to **six** checks and
+`check-twins` to **eight** pairs. ⚠ Proved first: `--compare` over 50 cases, all
+three implementations agreeing on the exit code and byte for byte on `--json`.
+
+⛔ **`check-licences` had two CALLERS and both moved with it.** `check-cache`
+asks `--permitted` which targets may be redistributed, and it asked it of an
+`.sh` half here and a `.ps1` half there; both now ask the one binary, so the tie
+between the cache and the register is a call rather than two readings.
+⚠ **That comparison is weak and says so**: this register permits no target, so
+old and new `--permitted` agree on an EMPTY list. Two empty sets agree perfectly.
+What holds the mode up is `check-cache`'s own 13 cases, which pass on both
+halves against the ported reader.
+
+⛔ **AND A HARNESS THAT PLANTS A PATTERN CANNOT SPELL IT.** `check-bitcheck`
+gained placeholder plants and turned the clean tree red: `check-placeholders`
+reads every tracked file, this harness is one, and its literals were findings.
+⭐ The needles are assembled with `printf` now, the way `check-markers`' harness
+already built its marker bytes - and the check's own Go file is exempt from
+itself, exactly as both shell halves already were.
+
 ### Residuals of step 3
 
 - ⚠ **The CI matrix is four shards and the bound came DOWN to 20 from 45.** That

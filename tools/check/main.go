@@ -22,9 +22,9 @@
 //	2  the check could not run
 //
 // ⚠ A port that changed one verdict while getting faster would be trading the
-// thing being measured for the measurement. `scripts/common/check-ported.sh` is
-// what compares each ported check against the halves it replaces, case for case
-// over the same plants, and it runs BEFORE any half is deleted.
+// thing being measured for the measurement. `scripts/common/check-bitcheck.sh`
+// is what compares each ported check against the halves it replaces, case for
+// case over the same plants, and it runs BEFORE any half is deleted.
 //
 // -- ⭐ NO DEPENDENCIES, WHICH IS A SUPPLY-CHAIN PROPERTY AND NOT A PREFERENCE -
 //
@@ -57,8 +57,13 @@ func (e cannotRun) Error() string { return e.msg }
 
 func errCannotRun(msg string) error { return cannotRun{msg} }
 
+// optPermitted is check-licences' listing mode. ⚠ It is reported BEFORE any
+// rule runs, because a caller asking what is permitted is asking about the
+// file as written rather than about whether it is coherent.
+var optPermitted bool
+
 // verdict is what a check answers: the exit code plus the one JSON line that
-// `check-ported.sh` compares against the shell half's.
+// `check-bitcheck.sh` compares against the shell half's.
 type verdict struct {
 	code int
 	json string
@@ -79,8 +84,10 @@ type check func(r *repo) (verdict, error)
 var checks = map[string]check{
 	"check-changelog":     checkChangelog,
 	"check-control-bytes": checkControlBytes,
+	"check-licences":      checkLicences,
 	"check-markers":       checkMarkers,
 	"check-one-home":      checkOneHome,
+	"check-placeholders":  checkPlaceholders,
 }
 
 func names() []string {
@@ -116,6 +123,13 @@ func main() {
 		switch a {
 		case "--json":
 			jsonOut = true
+		case "--permitted":
+			// ⚠ ONE CHECK'S MODE RATHER THAN A GLOBAL ONE, and it is parsed here
+			// because the dispatcher owns the argument list. check-cache asks
+			// check-licences which targets may be redistributed; a second
+			// derivation of that answer in the caller would be the value in two
+			// places this repository refuses everywhere else.
+			optPermitted = true
 		default:
 			fmt.Fprintf(os.Stderr, "bit-check: unknown argument: %s\n", a)
 			os.Exit(2)

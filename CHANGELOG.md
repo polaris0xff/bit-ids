@@ -5,6 +5,27 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-10T09:01:53Z
+
+- ⭐ **The matrix is proved on runners: run 124 is green on every job**, and the
+  longest shard is **11.8 minutes** where run 122 was 32.6 and run 123 22.2. The
+  whole run's wall clock is that shard; the Linux gate is 4.4 and Windows 2.5.
+- ⛔ The acceptance bound came **down** to 20 from 45, which is the entry's Prove:
+  a bound that was not raised to accommodate the work.
+- ⭐ **Two more pairs ported and deleted**, `check-licences` and
+  `check-placeholders`, taking the binary to six checks and `check-twins` to
+  eight pairs. Proved first over 50 cases, all three implementations agreeing.
+- ⛔ **`check-licences` had two callers and both moved with it.** `check-cache`
+  asked an `.sh` half here and a `.ps1` half there which targets may be
+  redistributed; both ask the one binary now. ⚠ That comparison is weak and says
+  so: this register permits no target, so the two agree on an empty list. What
+  holds it up is `check-cache`'s own 13 cases, green on both halves.
+- ⛔ **A harness that plants a pattern cannot spell it.** Adding placeholder
+  plants turned the clean tree red, because `check-placeholders` reads every
+  tracked file and the harness is one. The needles are assembled with `printf`
+  now, as the marker harness already did.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-10`. No version bump and no deploy.
+
 ### 2026-09-10T08:41:18Z
 
 - ⛔ **The previous entry's headline claim was measured on the wrong machine and

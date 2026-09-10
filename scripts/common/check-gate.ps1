@@ -222,13 +222,12 @@ function Invoke-Ported([string]$Name) {
     }
 }
 
-foreach ($c in 'check-changelog', 'check-control-bytes', 'check-markers', 'check-one-home') {
+foreach ($c in 'check-changelog', 'check-control-bytes', 'check-licences',
+                'check-markers', 'check-one-home', 'check-placeholders') {
     Invoke-Ported $c
 }
 
-foreach ($c in 'check-docs', 'check-placeholders',
-                'check-no-secrets', 'check-project',
-                'check-licences') {
+foreach ($c in 'check-docs', 'check-no-secrets', 'check-project') {
     Invoke-Check $c ($c + '.ps1')
 }
 

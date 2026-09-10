@@ -281,10 +281,11 @@ from any working directory.
   comparison costs two process starts and cannot re-enter the gate. ⚠ It compares
   SETS: the two halves schedule differently on purpose, so the order a row
   appears in is not a fact about what either lane runs.
-- `common/check-licences.sh` and `common/check-licences.ps1` check the register
-  in `catalogue/licences.toml` against the catalogue and the lockfile in both
-  directions, refuse a row with no disposition, and refuse an installer-shaped
-  file in the tree.
+- `tools/check/licences.go` checks the register in `catalogue/licences.toml`
+  against the catalogue and the lockfile in both directions, refuses a row with no
+  disposition, and refuses an installer-shaped file in the tree. ⭐ Ported from a
+  pair on 2026-09-10, `CI-10`; `--permitted` lists the redistributable target ids
+  and is what `check-cache` asks, on both platforms, of one implementation.
 - [`common/check-bitcheck.sh`](common/check-bitcheck.sh) plants a defect per rule
   against the Go checking binary in [`../tools/check/`](../tools/check/) and
   refuses one it does not catch. ⭐ **`--compare` additionally runs the `.sh` and

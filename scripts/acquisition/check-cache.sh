@@ -63,21 +63,27 @@ ME=check-cache
 # shellcheck source=scripts/corpus/store-lib.sh
 . "$ROOT/scripts/corpus/store-lib.sh"
 
-store_require cargo
+store_require cargo go
 SCENARIO=$(store_build "$ROOT" cache-scenario) || exit 2
 
 WORK=$(store_workdir checkcache) || exit 2
 trap 'rm -rf "$WORK"' EXIT INT TERM
 
-LICENCES="$ROOT/scripts/common/check-licences.sh"
-[ -f "$LICENCES" ] || {
-  printf 'check-cache: %s is missing\n' "$LICENCES" >&2
+# ⭐ THE LICENCE ANSWER COMES FROM THE GO BINARY NOW, `CI-10`. The register's
+# reader was an `.sh` half and a hand-written `.ps1` twin; it is one program, so
+# this caller and its own PowerShell twin ask the same implementation rather than
+# two. ⛔ A missing binary is `could not run` and never an empty permitted list:
+# an empty answer here would report every target as redistribution-refused, which
+# is the safe-looking direction and still a verdict nobody measured.
+LICENCES="$WORK/bit-check"
+if ! (cd "$ROOT/tools/check" && go build -o "$LICENCES" .) >"$WORK/build.err" 2>&1; then
+  printf 'check-cache: tools/check did not build\n' >&2
   exit 2
-}
+fi
 
 # ⛔ Unpiped, and the answer kept in a file rather than a variable, so an empty
 # answer and a failed call are distinguishable.
-sh "$LICENCES" --permitted >"$WORK/permitted" 2>"$WORK/permitted.err"
+"$LICENCES" check-licences --permitted >"$WORK/permitted" 2>"$WORK/permitted.err"
 PERMITTED_RC=$?
 if [ "$PERMITTED_RC" != "0" ]; then
   printf 'check-cache: check-licences --permitted exited %s\n' "$PERMITTED_RC" >&2

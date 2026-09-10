@@ -43,14 +43,24 @@ $root = Split-Path -Parent (Split-Path -Parent $here)
 $ME = 'check-cache'
 . (Join-Path $root (Join-Path 'scripts' (Join-Path 'corpus' 'store-lib.ps1')))
 
-Assert-StoreTools cargo
+Assert-StoreTools cargo go
 $scenario = Build-StoreExample -Root $root -Example 'cache-scenario'
 
 $work = New-StoreWorkdir -Tag 'checkcache'
 try {
-    $licences = Join-Path $root (Join-Path 'scripts' (Join-Path 'common' 'check-licences.ps1'))
-    if (-not (Test-Path -LiteralPath $licences -PathType Leaf)) {
-        [Console]::Error.WriteLine("check-cache: $licences is missing")
+    # ⭐ THE LICENCE ANSWER COMES FROM THE GO BINARY NOW, CI-10. The register's
+    # reader was an .sh half and a hand-written .ps1 twin; it is one program, so
+    # this caller and its sh twin ask the same implementation rather than two.
+    # ⛔ A missing binary is 'could not run' and never an empty permitted list.
+    $licences = Join-Path $work 'bit-check'
+    if ($IsWindows) { $licences = $licences + '.exe' }
+    $toolDir = Join-Path $root (Join-Path 'tools' 'check')
+    Push-Location $toolDir
+    & go build -o $licences .
+    $buildRc = $LASTEXITCODE
+    Pop-Location
+    if ($buildRc -ne 0) {
+        [Console]::Error.WriteLine('check-cache: tools/check did not build')
         exit 2
     }
 
@@ -58,7 +68,7 @@ try {
     # and a failed call are distinguishable - which is the sh half's reason and
     # is not weaker here.
     $permittedPath = Join-Path $work 'permitted'
-    & pwsh -NoProfile -File $licences -Permitted > $permittedPath 2> (Join-Path $work 'permitted.err')
+    & $licences check-licences --permitted > $permittedPath 2> (Join-Path $work 'permitted.err')
     if ($LASTEXITCODE -ne 0) {
         [Console]::Error.WriteLine("check-cache: check-licences -Permitted exited $LASTEXITCODE")
         exit 2

@@ -404,11 +404,9 @@ harvest_pairs() {
 # is one decoder now, and `check-bitcheck` plants the character rather than hoping
 # the tree contains one - which is what that note asked for.
 compare_pair "check-docs" common/check-docs.sh "--json" common/check-docs.ps1 "-Json"
-compare_pair "check-placeholders" common/check-placeholders.sh "--json" common/check-placeholders.ps1 "-Json"
 compare_pair "check-no-secrets" common/check-no-secrets.sh "--json" common/check-no-secrets.ps1 "-Json"
 compare_pair "check-no-secrets pub" common/check-no-secrets.sh "--public --json" common/check-no-secrets.ps1 "-Public -Json"
 compare_pair "check-project" common/check-project.sh "--json" common/check-project.ps1 "-Json"
-compare_pair "check-licences" common/check-licences.sh "--json" common/check-licences.ps1 "-Json"
 
 # ⭐ THE FIRST PAIR OUTSIDE common/, AND WHY THE PATHS ABOVE GAINED A DIRECTORY.
 # Every twin this file compared lived in `common/`, so the base was spelled once
