@@ -145,6 +145,13 @@ case "$COMMAND" in
   install)
     [ "${BIT_IDS_STUB_INSTALL_RC:-0}" = 0 ] || exit "$BIT_IDS_STUB_INSTALL_RC"
     mkdir -p "$2" || exit 2
+    # ⛔ WHAT A ROUTE LEAVES IN THE INSTALL WORKDIR, WHICH IS ALSO UPLOADED.
+    # A door sweep found `capture-client.yml` uploads this directory's logs as a
+    # second artifact, with nothing scanning them - the capture bundle's guard
+    # was a gate on one of two paths into the same rule.
+    [ -z "${BIT_IDS_STUB_INSTALL_DROP:-}" ] ||
+      od -An -tx1 -N16 /dev/urandom 2>/dev/null | tr -d ' \n' \
+        >"$2/$BIT_IDS_STUB_INSTALL_DROP"
     printf 'route=%s\n' "$1" >"$2/installed"
     printf 'a route that hung would leave this\n' >"$2/install.log"
     # ⭐ A SOURCE ROUTE NAMES THE COMMIT IT BUILT, beside its log, because the
@@ -305,6 +312,53 @@ command -v python3 >/dev/null 2>&1 || {
   exit 2
 }
 
+# -- ⛔ THE STUB CONNECTOR, AND WHY THERE HAS TO BE ONE ------------------------
+#
+# ⛔ SIX REFUSALS IN THE RUNNER'S CONNECTOR BLOCK HAD NEVER BEEN SEEN TO FIRE.
+# Found by a guard-mutation pass on 2026-09-10: the real connector answers
+# correctly, so every case that drove it exercised the ACCEPTING path, and a
+# guard that has never refused is a guard nobody knows works. ⚠ Two of the eight
+# were already covered - a missing `--connector` and a path resolving to nothing
+# - because those refuse before anything is run.
+#
+# ⭐ THE SHAPE IS THE STUB ADAPTER'S, for the same reason: every term of the
+# contract is an environment variable, so one file provides every connector
+# defect and the day the contract grows a key only one file gains it.
+STUBC="$WORK/stub-connector.py"
+cat >"$STUBC" <<'STUBC'
+import os
+import sys
+
+# A stand-in for the second connector, so the runner's refusals can be seen to
+# refuse. It is never a measurement: nothing it writes is evidence.
+name = os.environ.get('BIT_IDS_STUBC_ID', 'stub-connector')
+if '--describe' in sys.argv:
+    if name:
+        sys.stdout.write('id=%s\nversion=0.0.0\n' % name)
+    sys.exit(0)
+
+rc = int(os.environ.get('BIT_IDS_STUBC_RC', '0'))
+if rc:
+    sys.stderr.write('stub-connector: refusing with %d as asked\n' % rc)
+    sys.exit(rc)
+
+bundle = sys.argv[sys.argv.index('--bundle') + 1] if '--bundle' in sys.argv else None
+write = os.environ.get('BIT_IDS_STUBC_WRITE', 'full')
+if write == 'none':
+    sys.exit(0)
+target = os.path.join(bundle, 'connector', '%s.txt' % name)
+os.makedirs(os.path.dirname(target), exist_ok=True)
+with open(target, 'w') as handle:
+    if write == 'empty':
+        handle.write('')
+    elif write == 'nopeer':
+        handle.write('peer_wire/peer_id=absent\n')
+    else:
+        handle.write('tracker_http/peer_id=00\ntracker_http/user_agent=absent\n')
+        handle.write('peer_wire/peer_id=absent\npeer_wire/reserved=absent\n')
+sys.exit(0)
+STUBC
+
 # -- running one case ---------------------------------------------------------
 #
 # ⛔ UNPIPED, AND $? READ ON THE NEXT LINE. Piping the runner into anything
@@ -366,6 +420,7 @@ export BIT_IDS_STUB_ANNOUNCE=yes
 export BIT_IDS_STUB_PEER_ID=stub-adapter-00000001
 export BIT_IDS_STUB_DROP_NAMED=""
 export BIT_IDS_STUB_DROP_VALUED=""
+export BIT_IDS_STUB_INSTALL_DROP=""
 
 run_case 0 "" "a claimed, contained host captures a stub client and verifies"
 CONTROL_OUT="$WORK/out-$OUTS"
@@ -467,6 +522,65 @@ BIT_IDS_STUB_DROP_VALUED=""
 BIT_IDS_STUB_DROP_NAMED=tokenizer.log
 run_case 0 "" "a file whose name merely contains the word is not refused"
 BIT_IDS_STUB_DROP_NAMED=""
+
+# -- ⛔ THE CONNECTOR REFUSALS, DRIVEN THROUGH A STUB -------------------------
+#
+# ⛔ EVERY ONE OF THESE HAD NEVER FIRED. The real connector answers correctly, so
+# the cases above exercise only the accepting path, and a guard that has never
+# been seen to refuse is a guard nobody knows works.
+# ⚠ EXPORTED, because the runner invokes the stub through `python3` in a child
+# process; a variable set without `export` would run the stub in its default
+# configuration and the case would pass by testing nothing.
+export BIT_IDS_STUBC_ID=stub-connector
+export BIT_IDS_STUBC_RC=0
+export BIT_IDS_STUBC_WRITE=full
+
+# ⭐ THE CONTROL FIRST. Every refusal below passes equally over a runner that
+# refuses every stub, so this establishes the stub itself is acceptable.
+run_case 0 "" "a capture driven by an acceptable stub connector is accepted" \
+  --connector "$STUBC"
+
+BIT_IDS_STUBC_ID=""
+run_case 2 "did not describe its own identifier" \
+  "a connector that names no identifier is could-not-run" --connector "$STUBC"
+
+# ⚠ AN UNDERSCORE, which is the shape a slug refuses and a filename accepts, so
+# the report would be written where `assemble-capture` never looks.
+BIT_IDS_STUBC_ID=stub_connector
+run_case 2 "which is not a slug" \
+  "a connector naming itself something that is not a slug is could-not-run" \
+  --connector "$STUBC"
+BIT_IDS_STUBC_ID=stub-connector
+
+BIT_IDS_STUBC_RC=3
+run_case 2 "could not run (exit 3)" \
+  "a connector that could not run is could-not-run" --connector "$STUBC"
+BIT_IDS_STUBC_RC=0
+
+# ⛔ EXIT 1 IS THE CONNECTOR REFUSING THE EVIDENCE, WHICH IS A DIFFERENT FACT
+# from a connector that could not run, and the two reach this runner through one
+# channel. A case reading the code alone would pass when the other fired.
+BIT_IDS_STUBC_RC=1
+run_case 1 "could not read what the observer recorded" \
+  "a connector that refuses the evidence refuses the capture" --connector "$STUBC"
+BIT_IDS_STUBC_RC=0
+
+BIT_IDS_STUBC_WRITE=none
+run_case 1 "exited 0 and wrote no report" \
+  "a connector that exits 0 and writes nothing is refused" --connector "$STUBC"
+
+BIT_IDS_STUBC_WRITE=empty
+run_case 1 "exited 0 and wrote no report" \
+  "a connector whose report is empty is refused" --connector "$STUBC"
+
+# ⛔ AND A REPORT THAT IS PRESENT, NON-EMPTY AND SILENT ABOUT THE ONE FIELD THAT
+# IDENTIFIES THE BUILD. `assemble-capture` refuses a declared connector silent on
+# a field a dispatch later; this refuses it while the host still exists.
+BIT_IDS_STUBC_WRITE=nopeer
+run_case 1 "says nothing about tracker_http/peer_id" \
+  "a report silent on the field that identifies the build is refused" \
+  --connector "$STUBC"
+BIT_IDS_STUBC_WRITE=full
 
 # ⛔ AND A CAPTURE WITHOUT ONE DOES NOT RUN AT ALL. `run_case` always passes
 # `--connector`, so the two refusals below are invoked directly. ⚠ They are
@@ -768,6 +882,25 @@ else
 
   install_case 0 "" "a claimed host installs through the package route" \
     --adapter "$STUB" --route package --workdir "$WORK/inst-ok" --record "$WORK/inst-ok.txt"
+
+  # ⛔ RULE 12 ON THIS PATH TOO, WHICH A DOOR SWEEP FOUND ON 2026-09-10.
+  # `capture-client.yml` uploads this workdir's logs as a second artifact, and
+  # the credential scan added to the capture runner earlier the same day covered
+  # only the bundle - a gate on one of two paths into the same rule.
+  BIT_IDS_STUB_INSTALL_DROP=registry-token
+  install_case 1 "name says it holds a credential" \
+    "an install that would ship a file named like a credential is refused" \
+    --adapter "$STUB" --route package --workdir "$WORK/inst-secret" \
+    --record "$WORK/inst-secret.txt"
+
+  # ⚠ AND THE NEAR MISS, because a rule that refused everything would pass the
+  # case above. `tokenizer.log` contains the word and is not one.
+  BIT_IDS_STUB_INSTALL_DROP=tokenizer.log
+  install_case 0 "" \
+    "an install whose file merely contains the word is not refused" \
+    --adapter "$STUB" --route package --workdir "$WORK/inst-nearmiss" \
+    --record "$WORK/inst-nearmiss.txt"
+  BIT_IDS_STUB_INSTALL_DROP=""
 
   # ⛔ THE RECORD IS A CLAIM AND IT IS READ BACK. A step that installed and
   # wrote nothing would pass every exit-code case above.

@@ -1322,6 +1322,24 @@ rule disabled, the value rule disabled, and the name rule widened to a substring
 This guard lives in the capture path because that is where the subject is; the
 tree scanner's scope is the tree.
 
+#### ⛔ AND A DOOR SWEEP THE SAME DAY FOUND THE SECOND PATH
+
+⛔ **`capture-client.yml` UPLOADS TWO ARTIFACTS PER LANE, AND THE GUARD ABOVE
+COVERED ONE.** The second is the INSTALL workdir's logs - `install-<route>/*.log`
+and `*.err` - written by an adapter's `install`, which clones, configures and
+builds, all of which log. ⚠ So the fix for a gate on one of several paths had
+itself been put on one of two paths, which is the shape
+`docs/methodology/reviews.md` calls the most recurring hole there is.
+
+⭐ **`install-client` carries the same two rules now, deliberately identical.**
+Two spellings of "what a credential looks like" would drift, and the day they did
+the one a reader trusts would be whichever they saw first. Two cases, a refusal
+and a near miss, because a rule that refused everything would pass the first.
+
+⚠ **No route needs a credential today**, which is exactly the condition that
+document names as the easiest place to get a scope wrong: every reading agrees on
+every file. The guard is written for the shape rather than for an instance.
+
 ### ⭐ ADDED AFTER CLOSURE on 2026-09-09: the second route exists
 
 ⛔ **The closure evidence above is a dated measurement and is not rewritten.**

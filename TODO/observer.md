@@ -1457,7 +1457,7 @@ unusual. Both spellings are cases and both decode to `0x2b`.
 | what | measured |
 | --- | --- |
 | `sh scripts/capture/check-connector.sh` | 44 cases, 44 passed, 0 failed |
-| `sh scripts/capture/check-capture-client.sh` | 98 cases, 98 passed, 0 failed, five of them new here |
+| `sh scripts/capture/check-capture-client.sh` | 98 cases, 98 passed, 0 failed, six of them new here |
 | `sh scripts/capture/check-assemble.sh` | 22 cases, 22 passed, 0 failed, three of them new here |
 | guard mutation | 9 defects planted in the connector one at a time, each verified to have applied; 9 refused |
 | driven pass | the connector ran inside `capture-client` over a bundle the real observer wrote, and read the same peer ID out of the transcript that the observer put in the attestation |
@@ -1537,6 +1537,35 @@ idiom the neighbouring rule already used.
 | the entry stops mentioning the file | ⛔ refused |
 | the clean tree | ⭐ accepted |
 | the marker names `CI-09`, whose section does cite the connector | ⭐ accepted |
+
+### ⛔ What the guard-mutation pass found AFTER this entry closed
+
+⛔ **SIX OF THE EIGHT REFUSALS IN THE RUNNER'S CONNECTOR BLOCK HAD NEVER FIRED.**
+The real connector answers correctly, so every case that drove it exercised the
+ACCEPTING path - and a guard that has never been seen to refuse is a guard nobody
+knows works. ⚠ Two were already covered, because they refuse before anything
+runs: a missing `--connector` and a path resolving to nothing.
+
+⭐ **A stub connector fixes it, in the stub adapter's shape**: every term of the
+contract is an environment variable, so one file provides every connector defect
+and the day the contract grows a key only one file gains it. Eight cases, the
+first of which is the control that the stub itself is acceptable:
+
+| what the stub does | the runner |
+| --- | --- |
+| an acceptable report | ⭐ accepted - the control every refusal below needs |
+| names no identifier | ⛔ could not run |
+| names `stub_connector`, which a filename accepts and a slug refuses | ⛔ could not run |
+| exits 3 | ⛔ could not run |
+| exits 1, refusing the evidence | ⛔ refused - a DIFFERENT fact reaching this runner through one channel |
+| exits 0 and writes nothing | ⛔ refused |
+| writes an empty report | ⛔ refused |
+| writes a report silent on `tracker_http/peer_id` | ⛔ refused |
+
+⚠ **Two refusals are still unfired and named rather than left implied**: the
+`timeout` branch, which needs a connector that hangs past the adapter deadline,
+and the re-verification after the report joins `SHA256SUMS`, which needs the
+bundle to be corrupted between two `sha256sum -c` runs of the same process.
 
 ### Residuals
 

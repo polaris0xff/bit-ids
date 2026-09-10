@@ -353,6 +353,44 @@ if [ "$ROUTE" = source ]; then
   esac
 fi
 
+# -- rule 12, on the OTHER path that ships an artifact -------------------------
+#
+# ⛔ THE INSTALL WORKDIR IS UPLOADED TOO, AND THAT WAS A GATE ON ONE PATH.
+# `capture-client` gained a credential scan on 2026-09-10, after a per-run RPC
+# token shipped inside a capture bundle; a door sweep the same day found that
+# `capture-client.yml` uploads THIS directory's logs as a second artifact and
+# nothing scanned them. ⚠ The route runs an adapter's `install`, which clones,
+# configures and builds - all of which log - and a route that ever needs a
+# credential for a private index would put it here rather than in the bundle.
+#
+# ⚠ NO SUCH ROUTE EXISTS TODAY, which is exactly the condition
+# `docs/methodology/reviews.md` names as the easiest place to get a scope wrong:
+# every reading agrees on every file. The guard is written for the shape.
+#
+# ⛔ THE RULES ARE `capture-client`'s, DELIBERATELY IDENTICAL. Two spellings of
+# "what a credential looks like" would drift, and the day they did, the one a
+# reader trusts would be whichever they saw first.
+SECRET_NAMED=$(find "$WORKDIR" -type f 2>/dev/null | awk -F/ '
+  {
+    name = tolower($NF)
+    if (name ~ /(^|[^a-z])(token|secret|passwd|password|credential)([^a-z]|$)/ ||
+        name ~ /\.(pem|key|p12|pfx|jks|keystore)$/ ||
+        name ~ /^id_(rsa|ed25519|ecdsa)/ ||
+        name ~ /^\.env/) print
+  }')
+[ -z "$SECRET_NAMED" ] || {
+  printf '%s\n' "$SECRET_NAMED" | sed 's/^/          /' >&2
+  refuse "the install would ship a file whose name says it holds a credential; rule 12"
+}
+
+SECRET_VALUED=$(grep -rIlE \
+  '"[A-Za-z0-9_-]*(secret|token|password)[A-Za-z0-9_-]*"[[:space:]]*:[[:space:]]*"[^"]{8,}"|--[A-Za-z0-9-]*(secret|token|password)[A-Za-z0-9-]*=[^[:space:]"]{8,}' \
+  "$WORKDIR" 2>/dev/null)
+[ -z "$SECRET_VALUED" ] || {
+  printf '%s\n' "$SECRET_VALUED" | sed 's/^/          /' >&2
+  refuse "the install would ship a document carrying a secret-shaped value; rule 12"
+}
+
 # ⚠ Key=value, the shape every other document in this directory uses. ⛔ It
 # records the route and the version SEPARATELY per call, because `ACQ-03`
 # compares two of these and a single file holding one merged answer would have

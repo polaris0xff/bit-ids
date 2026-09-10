@@ -5,6 +5,23 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-10T03:05:58Z
+
+- ⛔ **Six of the eight refusals in the capture runner's connector block had
+  never fired.** The real connector answers correctly, so every case that drove
+  it exercised the accepting path. A stub connector, in the stub adapter's shape,
+  makes each one refuse - with a control first that the stub itself is
+  acceptable.
+- ⛔ **The credential scan added earlier today was itself on one of two paths.**
+  `capture-client.yml` uploads the install workdir's logs as a second artifact,
+  written by an adapter that clones, configures and builds. `install-client`
+  carries the same two rules now, with a refusal and a near miss.
+- ⛔ **A closure-evidence count said five where six cases were added.** Measured
+  against the commit that added them.
+- Record: [`TODO/observer.md`](TODO/observer.md), `OBS-07`, and
+  [`TODO/clients.md`](TODO/clients.md), `CLIENT-14`. No version bump and no
+  deploy.
+
 ### 2026-09-10T02:28:31Z
 
 - ⭐ **`check-catalogue` is a real row on the PowerShell lane**, the second
