@@ -188,6 +188,17 @@ from any working directory.
   catch, and runs the offending workflow step against it. Every command it runs
   is read out of `.github/workflows/ci.yml` by job and step name, so a harness
   that has drifted from CI reports a missing step rather than a pass.
+  ⭐ **It shards.** `--shard i/N` selects units by `index mod N` and `--units`
+  lists the names and runs nothing. ⛔ **The controls are NOT sharded**: a shard
+  carrying only plants goes green over a tree where every step is broken, so
+  every shard runs all three and that is a floor on what one costs.
+- [`ci/check-shards.sh`](ci/check-shards.sh) asserts that the N shards together
+  run every unit exactly once, for every N from 1 to 6, that each names every
+  control, that no variable is assigned in one unit and read in another, and that
+  a malformed selector is refused rather than clamped. ⚠ It costs seconds, because
+  it asks `--units` rather than running anything. ⛔ It found three real defects
+  the moment it existed, all of them in the sharding: a `--units` mode that
+  ignored `--shard`, and two variables that crossed a unit boundary.
 - [`ci/workflow-step.sh`](ci/workflow-step.sh) is the one reader that lifts a
   step out of a workflow: its job's ordered step names, its `run:` body, or the
   shell it declares. ⛔ Two harnesses execute step bodies now, and a copy of the

@@ -2808,6 +2808,30 @@ halves**: 35 cases, 35 passed, agreeing on the exit code and byte for byte on
 ⭐ **`check-twins` went from 69 seconds to 15.9.** Four pairs removed, and one of
 them carried 67.9 seconds by itself.
 
+### ⛔ THE SECTION BELOW IS MEASURED ON THE WRONG MACHINE, AND CI REFUTED IT
+
+⚠ **It said the deletion bought nothing. On a runner it bought ten and a half
+minutes.** Both numbers are real and they are measurements of different hosts:
+
+| | run 122, twins present | run 123, twins deleted |
+| --- | ---: | ---: |
+| *Workflow acceptance* | **32.6 min** | **22.2 min** |
+| Linux gate | 5.8 min | 4.7 min |
+| Windows gate | 2.9 min | 2.8 min |
+
+⛔ **This session host has FOUR processors and a hosted `ubuntu-24.04` runner has
+two.** The gate runs its checks concurrently, so on four processors the batch
+finishes well before the two socket harnesses that run after it and removing 96
+seconds of PowerShell from the batch changes nothing at all; on two processors
+the batch is CPU-bound, so the same 96 seconds come off the gate directly - nine
+times over inside `check-workflow`, which is the 10.4 minutes.
+
+⭐ **`docs/methodology/gate.md` already names this: *local is not production*.**
+⚠ The failure here was not the measurement, which was correct, but the SCOPE
+claimed for it: a wall clock read on one host was written up as a property of the
+change. The section below is kept exactly as it was written, because a corrected
+claim with the wrong reasoning deleted teaches nothing.
+
 ### ⛔ AND THE GATE DID NOT GET FASTER, WHICH REFUTES THIS ENTRY'S OWN PREMISE
 
 ⚠ **Measured immediately after the deletion: the whole gate is 129.7 seconds,
@@ -2846,6 +2870,87 @@ here is worth more than the 53 seconds.
 `check-workflow` runs the whole gate about nine times, and a 130-second gate is
 about twenty minutes of that job whatever language its rows are written in.
 Dividing that across runners is the only thing that touches it.
+
+### ⭐ Step 3 of 3: `check-workflow` shards, and the partition is checked
+
+`--shard i/N` selects units by `index mod N`. The harness names **21 units**: 18
+shardable and **3 controls that every shard runs**.
+
+⛔ **The controls are not sharded and that is the whole design.** A shard carrying
+only plants goes GREEN over a tree where every step is broken, because a plant
+that is refused proves nothing unless the clean tree is accepted. ⚠ That is a
+FLOOR on what a shard costs, paid on purpose, and it is why the numbers below are
+not the unsharded time divided by four.
+
+`scripts/ci/check-shards.sh` is the guard the entry's own residual asked for, and
+it costs a few seconds because it uses `--units`, which lists and runs nothing:
+
+| what it asserts | why it is not one of the others |
+| --- | --- |
+| coverage, for every N in 1..6 | a unit no shard claims is a rule that stops running while every lane stays green |
+| disjointness | duplication is a wall-clock defect and hides in a green run exactly as well as a gap |
+| every shard names every control | a control appearing once in the union satisfies coverage while running in one shard of six |
+| no variable crosses a unit | a perfect partition still dies when two units land on different runners |
+| six malformed selectors are refused | `--shard 0/4` and `--shard 5/4` each select nothing, which looks exactly like a fast green shard |
+
+⛔ **Three real defects were found by driving it rather than by reading it**, and
+each was in the sharding itself:
+
+| defect | how it surfaced |
+| --- | --- |
+| `--units` ignored `--shard`, so every shard listed every unit | `check-shards` on its first run: 18 units "claimed by more than one shard" for N=2..6 |
+| `PUBWF` assigned in `publisher-trigger`, read in `static-readers` | the first real shard exited 2 on `parameter not set` |
+| `CAPWF`, a `for`-loop variable in `capture-fork`, read in `static-readers` | the second real shard, after the first was fixed |
+
+⚠ **The coupling guard written for the second missed the third**, because its
+regex matched `NAME=` at the start of a line and saw neither a `for` variable nor
+an assignment inside a `case` branch. ⭐ A guard that sees one spelling of the
+thing it forbids reports clean over the other two; it reads three now.
+⛔ **And it was only ever LOUD because of `set -u`.** Without it an unset path is
+an empty string, `[ -f "" ]` is false, and the case reports the workflow missing -
+a plausible failure naming the wrong thing.
+
+⭐ **Four shards driven end to end on this host, 2026-09-10, every one green:**
+
+| shard | seconds | cases |
+| --- | ---: | ---: |
+| 1/4 | 592 | 36 |
+| 2/4 | 606 | 33 |
+| 3/4 | 476 | 18 |
+| 4/4 | 605 | 49 |
+
+⚠ **The spread is the control floor showing.** Shard 3 draws the cheap static
+readers and still costs 476 seconds, which is very nearly what the other three
+cost: almost all of a shard is the controls every shard pays.
+
+⭐ **Against the unsharded run on the same host and tree, measured rather than
+divided: 1282 seconds and 97 cases.** The longest shard is 606, so this is
+**2.1x** and not 4x, and the control floor is the whole of the difference.
+
+⛔ **AND THE CASE ARITHMETIC IS AN INDEPENDENT CHECK ON THE PARTITION.** The four
+shards ran 36+33+18+49 = **136** cases where the unsharded run ran **97**. The
+difference is **39**, which is exactly three extra copies of the **13** control
+cases - the three shards beyond the first each re-running them. ⭐ So
+`97 = 84 plants + 13 controls` and `136 = 84 plants + 4 x 13 controls`, with no
+plant run twice and none dropped. ⚠ That is a check on the RUN, where
+`check-shards` is a check on the SELECTOR, and neither is the other: a selector
+can partition perfectly while a unit dies silently.
+
+### Residuals of step 3
+
+- ⚠ **The CI matrix is four shards and the bound came DOWN to 20 from 45.** That
+  is the point rather than a detail: the bound was raised to fit growth on
+  2026-09-10, which this repository calls masking everywhere else. ⛔ Unproved on
+  a runner at the time of writing - the shards are driven here, the matrix is not.
+- ⚠ **The floor, not the divisor, is what limits this.** Almost all of a shard is
+  the controls, so N=8 would not be twice as fast as N=4. Cutting the floor means
+  either fewer control gate runs per shard or a faster gate, and the first trades
+  away the thing that keeps a shard honest.
+- ⚠ **`check-shards` is a static read and says so.** It matches upper-case names
+  by text, so a variable name built at runtime is outside what it can see.
+- ⛔ **`--units` still copies the working tree**, which it does not need: it lists
+  and runs nothing. That is why `check-shards` costs seconds rather than
+  milliseconds. Left as it is because the cost is paid once per shard in parallel.
 
 ### Residuals of step 2
 

@@ -40,9 +40,41 @@
 # broken for an unrelated reason refuses everything, and reads here as a guard
 # working perfectly.
 #
+# -- ⭐ IT SHARDS, BECAUSE IT IS THE CI WALL CLOCK --------------------------
+#
+# `CI-10`. Measured on run 122, 2026-09-10, on a real runner: *Workflow
+# acceptance* is **32.6 minutes** where the Linux gate is 5.8 and the Windows
+# gate 2.9. It runs the whole repository gate NINE times, and a 130-second gate
+# is about twenty minutes of that whatever language its rows are written in. ⛔ So
+# the only thing that touches this number is running the units on more than one
+# machine.
+#
+# ⛔ THE PARTITION IS `index mod N` AND IT IS PROVABLE BY CONSTRUCTION. A shard
+# selector that silently claimed no case would report a faster green run over
+# less work, which is this repository's oldest defect class and the one a
+# wall-clock target makes most tempting. Every unit is named, the runner prints
+# what it ran and what it skipped, `--units` lists the names and runs nothing,
+# and `scripts/ci/check-shards.sh` is what asserts the N shards together cover
+# every unit exactly once.
+#
+# -- ⛔ AND THE CONTROLS ARE NOT SHARDED. THIS IS THE WHOLE DESIGN ------------
+#
+# A plant that is refused proves nothing unless the clean tree is accepted: a
+# step broken for an unrelated reason refuses everything, and reads here as a
+# guard working perfectly. ⚠ So a shard carrying only plants would go GREEN over
+# a tree where every single step was broken - which is the exact failure mode
+# sharding is most likely to introduce, dressed as a speedup.
+#
+# ⭐ Every shard therefore runs the whole control block and the final clean-tree
+# control, and shards only the plants. ⚠ That is a FLOOR on what a shard costs -
+# the controls include two of the nine gate runs - and it is paid on purpose.
+# `TODO/ci.md` carries the measured floor beside the measured total.
+#
 # Usage:
 #   sh scripts/ci/check-workflow.sh
 #   sh scripts/ci/check-workflow.sh --json
+#   sh scripts/ci/check-workflow.sh --shard 2/4
+#   sh scripts/ci/check-workflow.sh --units     # the unit names, running nothing
 #
 # Exit codes: 0 every case held, 1 one did not, 2 could not run.
 #
@@ -51,9 +83,26 @@
 set -u
 
 JSON=0
+SHARD_I=1
+SHARD_N=1
+UNITS_ONLY=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --json) JSON=1 ;;
+    --units) UNITS_ONLY=1 ;;
+    --shard)
+      shift
+      case "${1:-}" in
+        [0-9]*/[0-9]*)
+          SHARD_I=${1%%/*}
+          SHARD_N=${1##*/}
+          ;;
+        *)
+          printf 'check-workflow: --shard wants i/N, got: %s\n' "${1:-}" >&2
+          exit 2
+          ;;
+      esac
+      ;;
     -h | --help)
       awk 'NR>1 { if (/^#/) { sub(/^# ?/, ""); print } else exit }' "$0"
       exit 0
@@ -65,6 +114,31 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
+
+# ⛔ THE SELECTOR IS VALIDATED BEFORE ANYTHING RUNS, because every wrong value
+# fails SILENTLY in the direction of running less. `--shard 0/4` and `--shard
+# 5/4` each select no unit at all, and a run of nothing but controls is exactly
+# what a green shard covering no work looks like.
+case "$SHARD_N" in
+  '' | *[!0-9]*)
+    printf 'check-workflow: --shard N is not a number: %s\n' "$SHARD_N" >&2
+    exit 2
+    ;;
+esac
+case "$SHARD_I" in
+  '' | *[!0-9]*)
+    printf 'check-workflow: --shard i is not a number: %s\n' "$SHARD_I" >&2
+    exit 2
+    ;;
+esac
+if [ "$SHARD_N" -lt 1 ]; then
+  printf 'check-workflow: --shard N must be at least 1\n' >&2
+  exit 2
+fi
+if [ "$SHARD_I" -lt 1 ] || [ "$SHARD_I" -gt "$SHARD_N" ]; then
+  printf 'check-workflow: --shard i must be between 1 and %s, got %s\n' "$SHARD_N" "$SHARD_I" >&2
+  exit 2
+fi
 
 # ⛔ Resolved from this script's own location, never from the working directory.
 HERE=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
@@ -396,6 +470,49 @@ gate_refuses() { # label pattern
   refuses linux "Repository gate" "$1$GATE_NOTE" "$2"
 }
 
+# -- ⭐ the shard selector -----------------------------------------------------
+#
+# ⛔ ONE DERIVATION, AND THE NAMES ARE THE LIST. `--units` prints from this same
+# function and returns false, so a unit this mode does not name is a unit no
+# shard runs - a separate list would be the value in two places the partition
+# check exists to compare. It is the same argument `check-gate.sh --rows` makes
+# about its own queue.
+UNIT_INDEX=0
+UNITS_RAN=""
+UNITS_SKIPPED=""
+
+# ⛔ THE SELECTOR IS APPLIED BEFORE THE MODE, and that ordering is the whole
+# correctness of `--units`. Written the other way round - print the name, then
+# decide - every shard LISTS every unit while running only its own, so the
+# partition check compares six identical lists and reports every unit claimed six
+# times. ⚠ That is exactly what it did on its first run, which is the argument for
+# `check-shards.sh` existing rather than for trusting `index mod N` to be obvious.
+unit() { # name -> true when this shard owns it
+  UNIT_INDEX=$((UNIT_INDEX + 1))
+  if [ "$(((UNIT_INDEX - 1) % SHARD_N))" -ne "$((SHARD_I - 1))" ]; then
+    [ "$UNITS_ONLY" = 1 ] || UNITS_SKIPPED="$UNITS_SKIPPED $1"
+    return 1
+  fi
+  if [ "$UNITS_ONLY" = 1 ]; then
+    printf '%s\n' "$1"
+    return 1
+  fi
+  UNITS_RAN="$UNITS_RAN $1"
+  return 0
+}
+
+# ⛔ A CONTROL IS NAMED TOO, AND IT IS NAMED AS A CONTROL. `--units` prints it
+# with the marker below, so the partition check can tell the two apart and assert
+# that no control is ever sharded. ⚠ A control silently missing from that output
+# is how "every shard runs the controls" becomes a sentence nobody checks.
+always() { # name -> true unless this run is only listing
+  if [ "$UNITS_ONLY" = 1 ]; then
+    printf '%s\tcontrol\n' "$1"
+    return 1
+  fi
+  return 0
+}
+
 # -- planting -----------------------------------------------------------------
 
 keep() { # relative path
@@ -417,8 +534,10 @@ append_once() { # file text
 }
 
 # -- the probe's own guards ---------------------------------------------------
-store_probe_guards "$TREE/README.md" \
-  "A dated, provenance-carrying catalogue" "bit-ids"
+if always probe-guards; then
+  store_probe_guards "$TREE/README.md" \
+    "A dated, provenance-carrying catalogue" "bit-ids"
+fi
 
 # -- 0. the flag the whole first half of the Prove rests on -------------------
 #
@@ -428,16 +547,18 @@ store_probe_guards "$TREE/README.md" \
 # there, and on a host with an observed skip of its own the exit code cannot
 # tell the two apart. This case is what closes that, and it is why the two are
 # written as separate rows rather than one.
-if gate_asks_strictly "$WORKFLOW" linux '--strict'; then
-  pass "workflow  the Linux gate step asks strictly"
-else
-  fail "workflow  the Linux gate step does not pass --strict"
-fi
+if unit strict-flags; then
+  if gate_asks_strictly "$WORKFLOW" linux '--strict'; then
+    pass "workflow  the Linux gate step asks strictly"
+  else
+    fail "workflow  the Linux gate step does not pass --strict"
+  fi
 
-if gate_asks_strictly "$WORKFLOW" windows '-Strict'; then
-  pass "workflow  the Windows gate step asks strictly"
-else
-  fail "workflow  the Windows gate step does not pass -Strict"
+  if gate_asks_strictly "$WORKFLOW" windows '-Strict'; then
+    pass "workflow  the Windows gate step asks strictly"
+  else
+    fail "workflow  the Windows gate step does not pass -Strict"
+  fi
 fi
 
 # -- 0b. the job-scoped properties the entry's Approach names -----------------
@@ -453,36 +574,38 @@ fi
 # and a second workflow did land: the publisher is the one job in this
 # repository that may write, so it is exactly the file a permissions rule must
 # not skip. check-project.sh's action-pin rule generalises the same way.
-for wf in "$ROOT"/.github/workflows/*.yml; do
-  [ -f "$wf" ] || continue
-  wfname=${wf##*/}
-  for key in permissions timeout-minutes; do
-    if declares_key "$wf" "$key"; then
-      pass "workflow  $wfname: every job declares $key"
+if unit job-properties; then
+  for wf in "$ROOT"/.github/workflows/*.yml; do
+    [ -f "$wf" ] || continue
+    wfname=${wf##*/}
+    for key in permissions timeout-minutes; do
+      if declares_key "$wf" "$key"; then
+        pass "workflow  $wfname: every job declares $key"
+      else
+        fail "workflow  $wfname: jobs with no $key: $(jobs_missing "$wf" "$key" | tr '\n' ' ')"
+      fi
+    done
+    if grep -q '^concurrency:' "$wf" && grep -q 'cancel-in-progress:' "$wf"; then
+      pass "workflow  $wfname declares a concurrency group"
     else
-      fail "workflow  $wfname: jobs with no $key: $(jobs_missing "$wf" "$key" | tr '\n' ' ')"
+      fail "workflow  $wfname declares no concurrency group"
+    fi
+
+    # ⛔ EVERY SCRIPT IT NAMES IS ON DISK. See scripts_named above for why this is
+    # the rule a dispatch-only workflow most needs: nothing else in the pipeline
+    # ever executes one.
+    MISSING=""
+    for s in $(scripts_named "$wf"); do
+      [ -f "$ROOT/$s" ] || MISSING="$MISSING $s"
+    done
+    if [ -z "$MISSING" ]; then
+      NAMED=$(scripts_named "$wf" | grep -c . || true)
+      pass "workflow  $wfname: all $NAMED script(s) it names are in the tree"
+    else
+      fail "workflow  $wfname names scripts that do not exist:$MISSING"
     fi
   done
-  if grep -q '^concurrency:' "$wf" && grep -q 'cancel-in-progress:' "$wf"; then
-    pass "workflow  $wfname declares a concurrency group"
-  else
-    fail "workflow  $wfname declares no concurrency group"
-  fi
-
-  # ⛔ EVERY SCRIPT IT NAMES IS ON DISK. See scripts_named above for why this is
-  # the rule a dispatch-only workflow most needs: nothing else in the pipeline
-  # ever executes one.
-  MISSING=""
-  for s in $(scripts_named "$wf"); do
-    [ -f "$ROOT/$s" ] || MISSING="$MISSING $s"
-  done
-  if [ -z "$MISSING" ]; then
-    NAMED=$(scripts_named "$wf" | grep -c . || true)
-    pass "workflow  $wfname: all $NAMED script(s) it names are in the tree"
-  else
-    fail "workflow  $wfname names scripts that do not exist:$MISSING"
-  fi
-done
+fi
 
 # -- 0c. the publisher cannot fire on its own ---------------------------------
 #
@@ -491,23 +614,31 @@ done
 # is therefore dispatch-only, and its dry run is the default so that dispatching
 # it by accident still pushes nothing. ⚠ Both are properties a reader can check,
 # which is why they are cases here rather than a sentence in the file.
+# ⛔ HOISTED OUT OF THE UNIT BELOW, because `static-readers` reads it too. A path
+# assigned inside one unit and read inside another is a coupling sharding turns
+# into an unbound variable the moment the two land on different runners - and
+# `set -u` makes that a hard exit rather than an empty string, which is the only
+# reason it was loud. `check-shards.sh` refuses the shape now.
 PUBWF="$ROOT/.github/workflows/publish-data.yml"
-if [ -f "$PUBWF" ]; then
-  PUBTRIG=$(triggers "$PUBWF" | tr '\n' ' ' | sed 's/ *$//')
-  if [ "$PUBTRIG" = "workflow_dispatch" ]; then
-    pass "workflow  the publisher can only be dispatched by hand"
-  else
-    fail "workflow  the publisher has other triggers: $PUBTRIG"
-  fi
 
-  PUBDRY=$(input_default "$PUBWF" dry_run)
-  if [ "$PUBDRY" = "true" ]; then
-    pass "workflow  the publisher dry-runs unless told otherwise"
+if unit publisher-trigger; then
+  if [ -f "$PUBWF" ]; then
+    PUBTRIG=$(triggers "$PUBWF" | tr '\n' ' ' | sed 's/ *$//')
+    if [ "$PUBTRIG" = "workflow_dispatch" ]; then
+      pass "workflow  the publisher can only be dispatched by hand"
+    else
+      fail "workflow  the publisher has other triggers: $PUBTRIG"
+    fi
+
+    PUBDRY=$(input_default "$PUBWF" dry_run)
+    if [ "$PUBDRY" = "true" ]; then
+      pass "workflow  the publisher dry-runs unless told otherwise"
+    else
+      fail "workflow  the publisher's dry_run default is [$PUBDRY], not true"
+    fi
   else
-    fail "workflow  the publisher's dry_run default is [$PUBDRY], not true"
+    fail "workflow  there is no publisher workflow to check"
   fi
-else
-  fail "workflow  there is no publisher workflow to check"
 fi
 
 # -- 0c-bis. the capture workflow cannot be started by a fork -----------------
@@ -529,28 +660,38 @@ fi
 # none of it. ⚠ The list is derived from the directory rather than typed, so a
 # third capture workflow is covered the day it lands and not the day somebody
 # remembers this line.
+# ⛔ HOISTED OUT OF THE UNIT BELOW, AND SO IS THE ONE PATH `static-readers` USES.
+# The reader-refutation unit mutates a capture workflow, and it used to reach for
+# whatever `$CAPWF` the loop below happened to leave behind - a dependency on a
+# LOOP VARIABLE from another unit, which is the same coupling as a hoisted path
+# and considerably harder to see. `CAPONE` is derived here instead, so each unit
+# names what it reads.
 CAPTURE_WORKFLOWS=""
 for one in "$ROOT"/.github/workflows/capture*.yml "$ROOT"/.github/workflows/capture*.yaml; do
   [ -f "$one" ] || continue
   CAPTURE_WORKFLOWS="$CAPTURE_WORKFLOWS $one"
 done
-if [ -z "$CAPTURE_WORKFLOWS" ]; then
-  fail "workflow  there is no capture workflow to check"
-fi
+CAPONE=""
+for one in $CAPTURE_WORKFLOWS; do CAPONE="$one"; done
 
-for CAPWF in $CAPTURE_WORKFLOWS; do
-  CAPNAME=$(basename "$CAPWF")
-  # ⚠ The runner a capture step must call differs per workflow, and it is
-  # derived from the file's own name rather than assumed: `capture.yml` runs
-  # `capture-run` and `capture-client.yml` runs `capture-client`. A single
-  # needle would pass on both by matching the shorter one inside the longer.
-  case "$CAPNAME" in
-    capture-client.*) CAPRUNNER=capture-client ;;
-    *) CAPRUNNER=capture-run ;;
-  esac
-  # ⚠ Every job key the file declares, so a workflow that grew a platform is
-  # checked on it. `job_steps` is keyed on these.
-  CAPJOBS=$(awk '
+if unit capture-fork; then
+  if [ -z "$CAPTURE_WORKFLOWS" ]; then
+    fail "workflow  there is no capture workflow to check"
+  fi
+
+  for CAPWF in $CAPTURE_WORKFLOWS; do
+    CAPNAME=$(basename "$CAPWF")
+    # ⚠ The runner a capture step must call differs per workflow, and it is
+    # derived from the file's own name rather than assumed: `capture.yml` runs
+    # `capture-run` and `capture-client.yml` runs `capture-client`. A single
+    # needle would pass on both by matching the shorter one inside the longer.
+    case "$CAPNAME" in
+      capture-client.*) CAPRUNNER=capture-client ;;
+      *) CAPRUNNER=capture-run ;;
+    esac
+    # ⚠ Every job key the file declares, so a workflow that grew a platform is
+    # checked on it. `job_steps` is keyed on these.
+    CAPJOBS=$(awk '
     function indent(s,   i) { i = match(s, /[^ ]/); return i ? i - 1 : -1 }
     /^jobs:[ \t]*$/ { injobs = 1; next }
     !injobs { next }
@@ -563,109 +704,110 @@ for CAPWF in $CAPTURE_WORKFLOWS; do
       }
     }' "$CAPWF")
 
-  CAPTRIG=$(triggers "$CAPWF" | tr '\n' ' ' | sed 's/ *$//')
-  if [ "$CAPTRIG" = "workflow_dispatch" ]; then
-    pass "workflow  $CAPNAME can only be dispatched by hand"
-  else
-    fail "workflow  $CAPNAME has other triggers: $CAPTRIG"
-  fi
-
-  # ⛔ THE STEP ORDER IS THE CONTAINMENT, AND NOTHING ELSE ENFORCES IT. Building
-  # after the route is deleted cannot work: there is no network left to fetch a
-  # crate from, and the only way to repair it under containment is to restore
-  # the route, on the host that exists to have none. Capturing before the guard
-  # would measure a host nobody established was contained. Uploading before the
-  # restore is a step that cannot reach GitHub. ⚠ Each of those reads as a
-  # plausible ordering in a diff, and none of them is visible to any other check
-  # in this repository.
-  order_case() { # job earlier later
-    _a=$(step_index "$CAPWF" "$1" "$2")
-    _b=$(step_index "$CAPWF" "$1" "$3")
-    if [ -z "$_a" ]; then
-      fail "workflow  $CAPNAME $1 has no step named [$2]"
-    elif [ -z "$_b" ]; then
-      fail "workflow  $CAPNAME $1 has no step named [$3]"
-    elif [ "$_a" -lt "$_b" ]; then
-      pass "workflow  $CAPNAME $1: [$2] precedes [$3]"
+    CAPTRIG=$(triggers "$CAPWF" | tr '\n' ' ' | sed 's/ *$//')
+    if [ "$CAPTRIG" = "workflow_dispatch" ]; then
+      pass "workflow  $CAPNAME can only be dispatched by hand"
     else
-      fail "workflow  $CAPNAME $1: [$2] comes AFTER [$3]"
-    fi
-  }
-
-  for job in $CAPJOBS; do
-    order_case "$job" "Claim the host" "Build the observer"
-    order_case "$job" "Build the observer" "Cut the route off this host"
-    order_case "$job" "Cut the route off this host" "Assert containment"
-    order_case "$job" "Assert containment" "Capture"
-    order_case "$job" "Capture" "Restore the route"
-    order_case "$job" "Restore the route" "Upload the evidence bundle"
-
-    # ⛔ AN INSTALL IS TWO MORE ORDERING CONSTRAINTS AND BOTH ARE NEW. It must
-    # come AFTER the claim, because a product installed on a host nothing
-    # established was disposable is state on a machine that may be kept; and it
-    # must come BEFORE the route is cut, because a package index is not
-    # reachable from a host with no default route and capture-client refuses to
-    # install anything itself. ⚠ A workflow with no such step is not failed
-    # here: capture.yml installs nothing and its own Prove says so.
-    if [ -n "$(step_index "$CAPWF" "$job" "Install the client")" ]; then
-      order_case "$job" "Claim the host" "Install the client"
-      order_case "$job" "Install the client" "Cut the route off this host"
+      fail "workflow  $CAPNAME has other triggers: $CAPTRIG"
     fi
 
-    # ⛔ AND CHOOSING THE ARTIFACT IS A THIRD. A `release` route refuses without
-    # a URL, so a resolve step after the install would leave the route with
-    # nothing to fetch. ⚠ Only this one constraint is asserted: resolve-before-cut
-    # follows from it and the install rule above, and a rule that cannot fail
-    # independently of another is a rule nobody can ever see refuse.
-    if [ -n "$(step_index "$CAPWF" "$job" "Resolve the release artifact")" ]; then
-      order_case "$job" "Resolve the release artifact" "Install the client"
-    fi
-
-    # ⛔ AND EVERY UPLOAD IS AFTER THE RESTORE, NOT ONLY THE EVIDENCE ONE.
-    # Between *Cut the route* and *Restore the route* this host has no way off
-    # itself, so an upload placed there cannot reach GitHub at all. ⚠ The install
-    # logs sat BEFORE the cut for four dispatches, which worked because that is
-    # also before the cut - and the rule a reader would infer from it, that the
-    # step may go anywhere, is the one that breaks the day it moves.
-    if [ -n "$(step_index "$CAPWF" "$job" "Upload the install logs")" ]; then
-      order_case "$job" "Restore the route" "Upload the install logs"
-    fi
-
-    # ⚠ And the capture step must call the runner this workflow is for. Every
-    # rule above holds over a workflow whose Capture step runs `true`.
-    case "$(step_command "$CAPWF" "$job" Capture)" in
-      *"$CAPRUNNER"*) pass "workflow  $CAPNAME $job runs $CAPRUNNER" ;;
-      *) fail "workflow  $CAPNAME $job: the Capture step does not run $CAPRUNNER" ;;
-    esac
-
-    # ⛔ THE EVIDENCE UPLOAD IS FATAL AND STAYS FATAL. A capture that measured a
-    # build and uploaded nothing must be red; `if-no-files-found: error` says so
-    # and `continue-on-error: true` would silently undo it, leaving a green run
-    # with no evidence anywhere - the worst outcome this workflow has, and one a
-    # reader would have to notice two keys apart to see.
-    #
-    # ⚠ THE ASYMMETRY IS THE RULE. The install-logs upload IS non-fatal on
-    # purpose: it is a diagnostic aid that already declares `warn`, and bounding
-    # it is what stops a hang in that step throwing away a finished capture.
-    # Enforcing "no step is continue-on-error" would refuse that, so the rule
-    # names the step whose failure means there is no measurement.
-    _bundle=$(step_block "$CAPWF" "$job" "Upload the evidence bundle")
-    if [ -z "$_bundle" ]; then
-      fail "workflow  $CAPNAME $job has no step named [Upload the evidence bundle]"
-    else
-      if printf '%s\n' "$_bundle" | grep -q 'if-no-files-found:[ ]*error'; then
-        pass "workflow  $CAPNAME $job: the evidence upload is red when it finds nothing"
+    # ⛔ THE STEP ORDER IS THE CONTAINMENT, AND NOTHING ELSE ENFORCES IT. Building
+    # after the route is deleted cannot work: there is no network left to fetch a
+    # crate from, and the only way to repair it under containment is to restore
+    # the route, on the host that exists to have none. Capturing before the guard
+    # would measure a host nobody established was contained. Uploading before the
+    # restore is a step that cannot reach GitHub. ⚠ Each of those reads as a
+    # plausible ordering in a diff, and none of them is visible to any other check
+    # in this repository.
+    order_case() { # job earlier later
+      _a=$(step_index "$CAPWF" "$1" "$2")
+      _b=$(step_index "$CAPWF" "$1" "$3")
+      if [ -z "$_a" ]; then
+        fail "workflow  $CAPNAME $1 has no step named [$2]"
+      elif [ -z "$_b" ]; then
+        fail "workflow  $CAPNAME $1 has no step named [$3]"
+      elif [ "$_a" -lt "$_b" ]; then
+        pass "workflow  $CAPNAME $1: [$2] precedes [$3]"
       else
-        fail "workflow  $CAPNAME $job: the evidence upload does not declare if-no-files-found: error"
+        fail "workflow  $CAPNAME $1: [$2] comes AFTER [$3]"
       fi
-      if printf '%s\n' "$_bundle" | grep -q 'continue-on-error'; then
-        fail "workflow  $CAPNAME $job: the evidence upload is continue-on-error, so a run with no evidence would be green"
+    }
+
+    for job in $CAPJOBS; do
+      order_case "$job" "Claim the host" "Build the observer"
+      order_case "$job" "Build the observer" "Cut the route off this host"
+      order_case "$job" "Cut the route off this host" "Assert containment"
+      order_case "$job" "Assert containment" "Capture"
+      order_case "$job" "Capture" "Restore the route"
+      order_case "$job" "Restore the route" "Upload the evidence bundle"
+
+      # ⛔ AN INSTALL IS TWO MORE ORDERING CONSTRAINTS AND BOTH ARE NEW. It must
+      # come AFTER the claim, because a product installed on a host nothing
+      # established was disposable is state on a machine that may be kept; and it
+      # must come BEFORE the route is cut, because a package index is not
+      # reachable from a host with no default route and capture-client refuses to
+      # install anything itself. ⚠ A workflow with no such step is not failed
+      # here: capture.yml installs nothing and its own Prove says so.
+      if [ -n "$(step_index "$CAPWF" "$job" "Install the client")" ]; then
+        order_case "$job" "Claim the host" "Install the client"
+        order_case "$job" "Install the client" "Cut the route off this host"
+      fi
+
+      # ⛔ AND CHOOSING THE ARTIFACT IS A THIRD. A `release` route refuses without
+      # a URL, so a resolve step after the install would leave the route with
+      # nothing to fetch. ⚠ Only this one constraint is asserted: resolve-before-cut
+      # follows from it and the install rule above, and a rule that cannot fail
+      # independently of another is a rule nobody can ever see refuse.
+      if [ -n "$(step_index "$CAPWF" "$job" "Resolve the release artifact")" ]; then
+        order_case "$job" "Resolve the release artifact" "Install the client"
+      fi
+
+      # ⛔ AND EVERY UPLOAD IS AFTER THE RESTORE, NOT ONLY THE EVIDENCE ONE.
+      # Between *Cut the route* and *Restore the route* this host has no way off
+      # itself, so an upload placed there cannot reach GitHub at all. ⚠ The install
+      # logs sat BEFORE the cut for four dispatches, which worked because that is
+      # also before the cut - and the rule a reader would infer from it, that the
+      # step may go anywhere, is the one that breaks the day it moves.
+      if [ -n "$(step_index "$CAPWF" "$job" "Upload the install logs")" ]; then
+        order_case "$job" "Restore the route" "Upload the install logs"
+      fi
+
+      # ⚠ And the capture step must call the runner this workflow is for. Every
+      # rule above holds over a workflow whose Capture step runs `true`.
+      case "$(step_command "$CAPWF" "$job" Capture)" in
+        *"$CAPRUNNER"*) pass "workflow  $CAPNAME $job runs $CAPRUNNER" ;;
+        *) fail "workflow  $CAPNAME $job: the Capture step does not run $CAPRUNNER" ;;
+      esac
+
+      # ⛔ THE EVIDENCE UPLOAD IS FATAL AND STAYS FATAL. A capture that measured a
+      # build and uploaded nothing must be red; `if-no-files-found: error` says so
+      # and `continue-on-error: true` would silently undo it, leaving a green run
+      # with no evidence anywhere - the worst outcome this workflow has, and one a
+      # reader would have to notice two keys apart to see.
+      #
+      # ⚠ THE ASYMMETRY IS THE RULE. The install-logs upload IS non-fatal on
+      # purpose: it is a diagnostic aid that already declares `warn`, and bounding
+      # it is what stops a hang in that step throwing away a finished capture.
+      # Enforcing "no step is continue-on-error" would refuse that, so the rule
+      # names the step whose failure means there is no measurement.
+      _bundle=$(step_block "$CAPWF" "$job" "Upload the evidence bundle")
+      if [ -z "$_bundle" ]; then
+        fail "workflow  $CAPNAME $job has no step named [Upload the evidence bundle]"
       else
-        pass "workflow  $CAPNAME $job: the evidence upload cannot be skipped over"
+        if printf '%s\n' "$_bundle" | grep -q 'if-no-files-found:[ ]*error'; then
+          pass "workflow  $CAPNAME $job: the evidence upload is red when it finds nothing"
+        else
+          fail "workflow  $CAPNAME $job: the evidence upload does not declare if-no-files-found: error"
+        fi
+        if printf '%s\n' "$_bundle" | grep -q 'continue-on-error'; then
+          fail "workflow  $CAPNAME $job: the evidence upload is continue-on-error, so a run with no evidence would be green"
+        else
+          pass "workflow  $CAPNAME $job: the evidence upload cannot be skipped over"
+        fi
       fi
-    fi
+    done
   done
-done
+fi
 
 # -- 0d. the static readers, refuted ------------------------------------------
 #
@@ -673,270 +815,285 @@ done
 # Each is checked against a copy of the workflow with the property removed,
 # because a reader that answers "present" over a file that does not have it
 # would pass all four cases above on any workflow at all.
-MUTWF="$WORK/workflow-without.yml"
+if unit static-readers; then
+  MUTWF="$WORK/workflow-without.yml"
 
-sed 's/ --strict//' "$WORKFLOW" >"$MUTWF"
-if gate_asks_strictly "$MUTWF" linux '--strict'; then
-  fail "probe    the strict-flag reader passed a workflow with no --strict"
-else
-  pass "probe    the strict-flag reader refuses a workflow with no --strict"
-fi
-
-awk '!/^    permissions:$/ || n++' "$WORKFLOW" >"$MUTWF"
-if declares_key "$MUTWF" permissions; then
-  fail "probe    the job-key reader passed a job with no permissions"
-else
-  pass "probe    the job-key reader refuses a job with no permissions"
-fi
-
-awk '!/^    timeout-minutes:/ || n++' "$WORKFLOW" >"$MUTWF"
-if declares_key "$MUTWF" timeout-minutes; then
-  fail "probe    the job-key reader passed a job with no timeout"
-else
-  pass "probe    the job-key reader refuses a job with no timeout"
-fi
-
-# ⚠ The trigger reader is checked against a workflow that HAS an automatic
-# trigger rather than against one with none, because the direction that matters
-# is the one where the publisher gains a way to fire by itself.
-if [ -f "$PUBWF" ]; then
-  awk '/^on:$/ { print; print "  push:"; next } { print }' "$PUBWF" >"$MUTWF"
-  case "$(triggers "$MUTWF" | tr '\n' ' ')" in
-    *push*) pass "probe    the trigger reader sees an added push trigger" ;;
-    *) fail "probe    the trigger reader missed an added push trigger" ;;
-  esac
-
-  sed 's/        default: true/        default: false/' "$PUBWF" >"$MUTWF"
-  if [ "$(input_default "$MUTWF" dry_run)" = "true" ]; then
-    fail "probe    the input-default reader still reports true after the flip"
+  sed 's/ --strict//' "$WORKFLOW" >"$MUTWF"
+  if gate_asks_strictly "$MUTWF" linux '--strict'; then
+    fail "probe    the strict-flag reader passed a workflow with no --strict"
   else
-    pass "probe    the input-default reader follows the declared default"
+    pass "probe    the strict-flag reader refuses a workflow with no --strict"
   fi
-fi
 
-# ⚠ The script-name reader is checked against a workflow naming a script that is
-# NOT in the tree, because a reader that reported every path present would pass
-# the case above on any workflow at all. That is the exact failure the deleted
-# draft of the capture workflow would have needed catching.
-sed 's|scripts/capture/capture-run.sh|scripts/capture/no-such-script.sh|' "$WORKFLOW" >"$MUTWF"
-printf '        run: sh scripts/capture/no-such-script.sh\n' >>"$MUTWF"
-MISSING=""
-for s in $(scripts_named "$MUTWF"); do
-  [ -f "$ROOT/$s" ] || MISSING="$MISSING $s"
-done
-if [ -n "$MISSING" ]; then
-  pass "probe    the script-name reader sees a script that is not in the tree"
-else
-  fail "probe    the script-name reader missed a script that is not in the tree"
-fi
-
-# ⚠ AND THE ORDER READER IS REFUTED BY SWAPPING TWO STEP NAMES rather than by
-# reading a workflow that is already correct. A reader that answered "in order"
-# over any input would pass all twelve ordering cases above.
-if [ -f "$CAPWF" ]; then
-  sed -e 's/- name: Build the observer/- name: BIT-IDS-PROBE-SWAP/' \
-    -e 's/- name: Cut the route off this host/- name: Build the observer/' \
-    -e 's/- name: BIT-IDS-PROBE-SWAP/- name: Cut the route off this host/' \
-    "$CAPWF" >"$MUTWF"
-  if cmp -s "$CAPWF" "$MUTWF"; then
-    fail "probe    the ordering mutation did not change the workflow"
+  awk '!/^    permissions:$/ || n++' "$WORKFLOW" >"$MUTWF"
+  if declares_key "$MUTWF" permissions; then
+    fail "probe    the job-key reader passed a job with no permissions"
   else
-    _a=$(step_index "$MUTWF" linux "Build the observer")
-    _b=$(step_index "$MUTWF" linux "Cut the route off this host")
-    if [ -n "$_a" ] && [ -n "$_b" ] && [ "$_a" -gt "$_b" ]; then
-      pass "probe    the order reader sees a build moved after the route is cut"
+    pass "probe    the job-key reader refuses a job with no permissions"
+  fi
+
+  awk '!/^    timeout-minutes:/ || n++' "$WORKFLOW" >"$MUTWF"
+  if declares_key "$MUTWF" timeout-minutes; then
+    fail "probe    the job-key reader passed a job with no timeout"
+  else
+    pass "probe    the job-key reader refuses a job with no timeout"
+  fi
+
+  # ⚠ The trigger reader is checked against a workflow that HAS an automatic
+  # trigger rather than against one with none, because the direction that matters
+  # is the one where the publisher gains a way to fire by itself.
+  if [ -f "$PUBWF" ]; then
+    awk '/^on:$/ { print; print "  push:"; next } { print }' "$PUBWF" >"$MUTWF"
+    case "$(triggers "$MUTWF" | tr '\n' ' ')" in
+      *push*) pass "probe    the trigger reader sees an added push trigger" ;;
+      *) fail "probe    the trigger reader missed an added push trigger" ;;
+    esac
+
+    sed 's/        default: true/        default: false/' "$PUBWF" >"$MUTWF"
+    if [ "$(input_default "$MUTWF" dry_run)" = "true" ]; then
+      fail "probe    the input-default reader still reports true after the flip"
     else
-      fail "probe    the order reader missed a build moved after the route is cut"
+      pass "probe    the input-default reader follows the declared default"
     fi
   fi
 
-  # ⚠ And a workflow that gained a pull_request trigger, which is the direction
-  # that matters: the fork guard is the absence, so the reader has to be able to
-  # see the absence end.
-  awk '/^on:$/ { print; print "  pull_request:"; next } { print }' "$CAPWF" >"$MUTWF"
-  case "$(triggers "$MUTWF" | tr '\n' ' ')" in
-    *pull_request*) pass "probe    the trigger reader sees an added pull_request trigger" ;;
-    *) fail "probe    the trigger reader missed an added pull_request trigger" ;;
-  esac
-fi
-
-# ⛔ THE TWO INSTALL-ORDER RULES ARE REFUTED SEPARATELY, BECAUSE THEY ARE TWO
-# RULES. An install after the route is cut cannot reach a package index; an
-# install before the claim puts a stranger's binary on a host nothing
-# established was disposable. A single probe would leave whichever one it did
-# not move as a reader nobody has seen refuse anything.
-#
-# ⚠ NAMED EXPLICITLY RATHER THAN INHERITED FROM THE LOOP ABOVE. `$CAPWF` after a
-# `for` holds whatever the glob happened to end on, which is a probe whose
-# subject depends on a file name.
-CLIENTWF="$ROOT/.github/workflows/capture-client.yml"
-if [ -f "$CLIENTWF" ]; then
-  swap_steps() { # file a b out
-    sed -e "s/- name: $1/- name: BIT-IDS-PROBE-SWAP/" \
-      -e "s/- name: $2/- name: $1/" \
-      -e "s/- name: BIT-IDS-PROBE-SWAP/- name: $2/" \
-      "$CLIENTWF" >"$3"
-  }
-
-  swap_steps "Install the client" "Assert containment" "$MUTWF"
-  _a=$(step_index "$MUTWF" linux "Install the client")
-  _b=$(step_index "$MUTWF" linux "Cut the route off this host")
-  if [ -n "$_a" ] && [ -n "$_b" ] && [ "$_a" -gt "$_b" ]; then
-    pass "probe    the order reader sees an install moved after the route is cut"
+  # ⚠ The script-name reader is checked against a workflow naming a script that is
+  # NOT in the tree, because a reader that reported every path present would pass
+  # the case above on any workflow at all. That is the exact failure the deleted
+  # draft of the capture workflow would have needed catching.
+  sed 's|scripts/capture/capture-run.sh|scripts/capture/no-such-script.sh|' "$WORKFLOW" >"$MUTWF"
+  printf '        run: sh scripts/capture/no-such-script.sh\n' >>"$MUTWF"
+  MISSING=""
+  for s in $(scripts_named "$MUTWF"); do
+    [ -f "$ROOT/$s" ] || MISSING="$MISSING $s"
+  done
+  if [ -n "$MISSING" ]; then
+    pass "probe    the script-name reader sees a script that is not in the tree"
   else
-    fail "probe    the order reader missed an install moved after the route is cut"
+    fail "probe    the script-name reader missed a script that is not in the tree"
   fi
 
-  swap_steps "Claim the host" "Install the client" "$MUTWF"
-  _a=$(step_index "$MUTWF" linux "Claim the host")
-  _b=$(step_index "$MUTWF" linux "Install the client")
-  if [ -n "$_a" ] && [ -n "$_b" ] && [ "$_a" -gt "$_b" ]; then
-    pass "probe    the order reader sees an install moved before the claim"
-  else
-    fail "probe    the order reader missed an install moved before the claim"
+  # ⚠ AND THE ORDER READER IS REFUTED BY SWAPPING TWO STEP NAMES rather than by
+  # reading a workflow that is already correct. A reader that answered "in order"
+  # over any input would pass all twelve ordering cases above.
+  if [ -f "$CAPONE" ]; then
+    sed -e 's/- name: Build the observer/- name: BIT-IDS-PROBE-SWAP/' \
+      -e 's/- name: Cut the route off this host/- name: Build the observer/' \
+      -e 's/- name: BIT-IDS-PROBE-SWAP/- name: Cut the route off this host/' \
+      "$CAPONE" >"$MUTWF"
+    if cmp -s "$CAPONE" "$MUTWF"; then
+      fail "probe    the ordering mutation did not change the workflow"
+    else
+      _a=$(step_index "$MUTWF" linux "Build the observer")
+      _b=$(step_index "$MUTWF" linux "Cut the route off this host")
+      if [ -n "$_a" ] && [ -n "$_b" ] && [ "$_a" -gt "$_b" ]; then
+        pass "probe    the order reader sees a build moved after the route is cut"
+      else
+        fail "probe    the order reader missed a build moved after the route is cut"
+      fi
+    fi
+
+    # ⚠ And a workflow that gained a pull_request trigger, which is the direction
+    # that matters: the fork guard is the absence, so the reader has to be able to
+    # see the absence end.
+    awk '/^on:$/ { print; print "  pull_request:"; next } { print }' "$CAPONE" >"$MUTWF"
+    case "$(triggers "$MUTWF" | tr '\n' ' ')" in
+      *pull_request*) pass "probe    the trigger reader sees an added pull_request trigger" ;;
+      *) fail "probe    the trigger reader missed an added pull_request trigger" ;;
+    esac
   fi
 
-  # ⚠ AND THE RESOLVE RULE IS REFUTED ON ITS OWN, because it is conditional on a
-  # step the sibling workflow does not have: a probe that only moved the install
-  # would leave it a reader nobody has seen refuse anything.
-  swap_steps "Resolve the release artifact" "Install the client" "$MUTWF"
-  _a=$(step_index "$MUTWF" linux "Resolve the release artifact")
-  _b=$(step_index "$MUTWF" linux "Install the client")
-  if [ -n "$_a" ] && [ -n "$_b" ] && [ "$_a" -gt "$_b" ]; then
-    pass "probe    the order reader sees a resolve moved after the install"
-  else
-    fail "probe    the order reader missed a resolve moved after the install"
-  fi
+  # ⛔ THE TWO INSTALL-ORDER RULES ARE REFUTED SEPARATELY, BECAUSE THEY ARE TWO
+  # RULES. An install after the route is cut cannot reach a package index; an
+  # install before the claim puts a stranger's binary on a host nothing
+  # established was disposable. A single probe would leave whichever one it did
+  # not move as a reader nobody has seen refuse anything.
+  #
+  # ⚠ NAMED EXPLICITLY RATHER THAN INHERITED FROM THE LOOP ABOVE. `$CAPWF` after a
+  # `for` holds whatever the glob happened to end on, which is a probe whose
+  # subject depends on a file name.
+  CLIENTWF="$ROOT/.github/workflows/capture-client.yml"
+  if [ -f "$CLIENTWF" ]; then
+    swap_steps() { # file a b out
+      sed -e "s/- name: $1/- name: BIT-IDS-PROBE-SWAP/" \
+        -e "s/- name: $2/- name: $1/" \
+        -e "s/- name: BIT-IDS-PROBE-SWAP/- name: $2/" \
+        "$CLIENTWF" >"$3"
+    }
 
-  # ⛔ AND THE RULE MUST BE SILENT ON A WORKFLOW WITH NO SUCH STEP, for the same
-  # reason the install rule is: `capture.yml` resolves nothing.
-  if [ -n "$(step_index "$ROOT/.github/workflows/capture.yml" linux "Resolve the release artifact")" ]; then
-    fail "probe    the resolve-order rule found a resolve step in the fixture workflow"
-  else
-    pass "probe    the resolve-order rule is silent on a workflow that resolves nothing"
-  fi
+    swap_steps "Install the client" "Assert containment" "$MUTWF"
+    _a=$(step_index "$MUTWF" linux "Install the client")
+    _b=$(step_index "$MUTWF" linux "Cut the route off this host")
+    if [ -n "$_a" ] && [ -n "$_b" ] && [ "$_a" -gt "$_b" ]; then
+      pass "probe    the order reader sees an install moved after the route is cut"
+    else
+      fail "probe    the order reader missed an install moved after the route is cut"
+    fi
 
-  # ⚠ AND THE UPLOAD-AFTER-RESTORE RULE IS REFUTED ON ITS OWN. It was added
-  # because that step MOVED - it sat before the route was cut for four dispatches
-  # - so a reader that could not see it move is a rule that would not have caught
-  # the position it was written for.
-  swap_steps "Restore the route" "Upload the install logs" "$MUTWF"
-  _a=$(step_index "$MUTWF" linux "Restore the route")
-  _b=$(step_index "$MUTWF" linux "Upload the install logs")
-  if [ -n "$_a" ] && [ -n "$_b" ] && [ "$_a" -gt "$_b" ]; then
-    pass "probe    the order reader sees an install-logs upload moved before the restore"
-  else
-    fail "probe    the order reader missed an install-logs upload moved before the restore"
-  fi
+    swap_steps "Claim the host" "Install the client" "$MUTWF"
+    _a=$(step_index "$MUTWF" linux "Claim the host")
+    _b=$(step_index "$MUTWF" linux "Install the client")
+    if [ -n "$_a" ] && [ -n "$_b" ] && [ "$_a" -gt "$_b" ]; then
+      pass "probe    the order reader sees an install moved before the claim"
+    else
+      fail "probe    the order reader missed an install moved before the claim"
+    fi
 
-  if [ -n "$(step_index "$ROOT/.github/workflows/capture.yml" linux "Upload the install logs")" ]; then
-    fail "probe    the upload-order rule found an install-logs step in the fixture workflow"
-  else
-    pass "probe    the upload-order rule is silent on a workflow that uploads no install logs"
-  fi
+    # ⚠ AND THE RESOLVE RULE IS REFUTED ON ITS OWN, because it is conditional on a
+    # step the sibling workflow does not have: a probe that only moved the install
+    # would leave it a reader nobody has seen refuse anything.
+    swap_steps "Resolve the release artifact" "Install the client" "$MUTWF"
+    _a=$(step_index "$MUTWF" linux "Resolve the release artifact")
+    _b=$(step_index "$MUTWF" linux "Install the client")
+    if [ -n "$_a" ] && [ -n "$_b" ] && [ "$_a" -gt "$_b" ]; then
+      pass "probe    the order reader sees a resolve moved after the install"
+    else
+      fail "probe    the order reader missed a resolve moved after the install"
+    fi
 
-  # ⛔ AND THE RULE MUST NOT FIRE ON A WORKFLOW THAT INSTALLS NOTHING. It is
-  # conditional on the step existing, and a condition that was always true would
-  # have failed capture.yml, whose own Prove says it installs nothing.
-  if [ -n "$(step_index "$ROOT/.github/workflows/capture.yml" linux "Install the client")" ]; then
-    fail "probe    the install-order rule found an install step in the fixture workflow"
-  else
-    pass "probe    the install-order rule is silent on a workflow that installs nothing"
-  fi
+    # ⛔ AND THE RULE MUST BE SILENT ON A WORKFLOW WITH NO SUCH STEP, for the same
+    # reason the install rule is: `capture.yml` resolves nothing.
+    if [ -n "$(step_index "$ROOT/.github/workflows/capture.yml" linux "Resolve the release artifact")" ]; then
+      fail "probe    the resolve-order rule found a resolve step in the fixture workflow"
+    else
+      pass "probe    the resolve-order rule is silent on a workflow that resolves nothing"
+    fi
 
-  # ⛔ THE STEP READER IS REFUTED BEFORE THE TWO RULES BUILT ON IT. A reader that
-  # returned the whole job would satisfy both of them from a neighbouring step's
-  # keys: the install-logs upload immediately after carries exactly the
-  # `continue-on-error` the evidence rule forbids, so an over-wide block would
-  # report the evidence upload as non-fatal and the rule would look like it
-  # works. ⚠ That is the scope defect this repository has shipped twice.
-  PROBE_BLOCK="$WORK/step-block"
-  step_block "$CLIENTWF" linux "Upload the evidence bundle" >"$PROBE_BLOCK"
-  if grep -q -F -e 'Upload the evidence bundle' "$PROBE_BLOCK" &&
-    ! grep -q -F -e 'Upload the install logs' "$PROBE_BLOCK"; then
-    pass "probe    the step reader returns one step and not its neighbours"
-  else
-    fail "probe    the step reader returned $(grep -c 'name:' "$PROBE_BLOCK") name line(s)"
-  fi
+    # ⚠ AND THE UPLOAD-AFTER-RESTORE RULE IS REFUTED ON ITS OWN. It was added
+    # because that step MOVED - it sat before the route was cut for four dispatches
+    # - so a reader that could not see it move is a rule that would not have caught
+    # the position it was written for.
+    swap_steps "Restore the route" "Upload the install logs" "$MUTWF"
+    _a=$(step_index "$MUTWF" linux "Restore the route")
+    _b=$(step_index "$MUTWF" linux "Upload the install logs")
+    if [ -n "$_a" ] && [ -n "$_b" ] && [ "$_a" -gt "$_b" ]; then
+      pass "probe    the order reader sees an install-logs upload moved before the restore"
+    else
+      fail "probe    the order reader missed an install-logs upload moved before the restore"
+    fi
 
-  # ⚠ And each rule is refuted by planting what it forbids, separately, because
-  # they are two rules over one step and a single plant would leave whichever it
-  # did not move a reader nobody has seen refuse anything.
-  sed 's/if-no-files-found: error/if-no-files-found: warn/' "$CLIENTWF" >"$MUTWF"
-  step_block "$MUTWF" linux "Upload the evidence bundle" >"$PROBE_BLOCK"
-  if cmp -s "$CLIENTWF" "$MUTWF"; then
-    fail "probe    the if-no-files-found mutation did not change the workflow"
-  elif grep -q 'if-no-files-found:[ ]*error' "$PROBE_BLOCK"; then
-    fail "probe    the evidence-upload reader still sees error after the flip"
-  else
-    pass "probe    the evidence-upload reader sees if-no-files-found weakened"
-  fi
+    if [ -n "$(step_index "$ROOT/.github/workflows/capture.yml" linux "Upload the install logs")" ]; then
+      fail "probe    the upload-order rule found an install-logs step in the fixture workflow"
+    else
+      pass "probe    the upload-order rule is silent on a workflow that uploads no install logs"
+    fi
 
-  awk '/- name: Upload the evidence bundle/ { print; print "        continue-on-error: true"; next } { print }' \
-    "$CLIENTWF" >"$MUTWF"
-  step_block "$MUTWF" linux "Upload the evidence bundle" >"$PROBE_BLOCK"
-  if cmp -s "$CLIENTWF" "$MUTWF"; then
-    fail "probe    the continue-on-error mutation did not change the workflow"
-  elif grep -q 'continue-on-error' "$PROBE_BLOCK"; then
-    pass "probe    the evidence-upload reader sees an added continue-on-error"
-  else
-    fail "probe    the evidence-upload reader missed an added continue-on-error"
+    # ⛔ AND THE RULE MUST NOT FIRE ON A WORKFLOW THAT INSTALLS NOTHING. It is
+    # conditional on the step existing, and a condition that was always true would
+    # have failed capture.yml, whose own Prove says it installs nothing.
+    if [ -n "$(step_index "$ROOT/.github/workflows/capture.yml" linux "Install the client")" ]; then
+      fail "probe    the install-order rule found an install step in the fixture workflow"
+    else
+      pass "probe    the install-order rule is silent on a workflow that installs nothing"
+    fi
+
+    # ⛔ THE STEP READER IS REFUTED BEFORE THE TWO RULES BUILT ON IT. A reader that
+    # returned the whole job would satisfy both of them from a neighbouring step's
+    # keys: the install-logs upload immediately after carries exactly the
+    # `continue-on-error` the evidence rule forbids, so an over-wide block would
+    # report the evidence upload as non-fatal and the rule would look like it
+    # works. ⚠ That is the scope defect this repository has shipped twice.
+    PROBE_BLOCK="$WORK/step-block"
+    step_block "$CLIENTWF" linux "Upload the evidence bundle" >"$PROBE_BLOCK"
+    if grep -q -F -e 'Upload the evidence bundle' "$PROBE_BLOCK" &&
+      ! grep -q -F -e 'Upload the install logs' "$PROBE_BLOCK"; then
+      pass "probe    the step reader returns one step and not its neighbours"
+    else
+      fail "probe    the step reader returned $(grep -c 'name:' "$PROBE_BLOCK") name line(s)"
+    fi
+
+    # ⚠ And each rule is refuted by planting what it forbids, separately, because
+    # they are two rules over one step and a single plant would leave whichever it
+    # did not move a reader nobody has seen refuse anything.
+    sed 's/if-no-files-found: error/if-no-files-found: warn/' "$CLIENTWF" >"$MUTWF"
+    step_block "$MUTWF" linux "Upload the evidence bundle" >"$PROBE_BLOCK"
+    if cmp -s "$CLIENTWF" "$MUTWF"; then
+      fail "probe    the if-no-files-found mutation did not change the workflow"
+    elif grep -q 'if-no-files-found:[ ]*error' "$PROBE_BLOCK"; then
+      fail "probe    the evidence-upload reader still sees error after the flip"
+    else
+      pass "probe    the evidence-upload reader sees if-no-files-found weakened"
+    fi
+
+    awk '/- name: Upload the evidence bundle/ { print; print "        continue-on-error: true"; next } { print }' \
+      "$CLIENTWF" >"$MUTWF"
+    step_block "$MUTWF" linux "Upload the evidence bundle" >"$PROBE_BLOCK"
+    if cmp -s "$CLIENTWF" "$MUTWF"; then
+      fail "probe    the continue-on-error mutation did not change the workflow"
+    elif grep -q 'continue-on-error' "$PROBE_BLOCK"; then
+      pass "probe    the evidence-upload reader sees an added continue-on-error"
+    else
+      fail "probe    the evidence-upload reader missed an added continue-on-error"
+    fi
   fi
-fi
 
 # -- the controls -------------------------------------------------------------
 #
 # ⚠ Run first and in this order, because the first cargo command warms the
 # shared target directory that every later case reuses.
-control linux "Rust check" "cargo check"
-control linux "Rust formatting" "cargo fmt"
-control linux "Rust tests" "cargo test"
-control linux "Rust lints" "cargo clippy"
-control linux "Shell syntax and style" "shellcheck and shfmt"
-gate_control "the repository gate"
+fi
+if always clean-tree-controls; then
+  control linux "Rust check" "cargo check"
+  control linux "Rust formatting" "cargo fmt"
+  control linux "Rust tests" "cargo test"
+  control linux "Rust lints" "cargo clippy"
+  control linux "Shell syntax and style" "shellcheck and shfmt"
+  gate_control "the repository gate"
+fi
 
 # -- 1. a Rust defect that does not compile -----------------------------------
+# ⛔ HOISTED FOR THE SAME REASON: `rust-clippy` and `rust-fmt` plant into this
+# same file, and each is its own shard unit.
 LIB="crates/bit-ids/src/lib.rs"
-if keep "$LIB" && append_once "$TREE/$LIB" "fn workflow_plant() -> u8 { \"not a u8\" }"; then
-  refuses linux "Rust check" "an uncompilable Rust defect" "error"
-else
-  fail "plant    could not plant the Rust compile defect"
+
+if unit rust-nocompile; then
+  if keep "$LIB" && append_once "$TREE/$LIB" "fn workflow_plant() -> u8 { \"not a u8\" }"; then
+    refuses linux "Rust check" "an uncompilable Rust defect" "error"
+  else
+    fail "plant    could not plant the Rust compile defect"
+  fi
+  restore "$LIB" || exit 2
 fi
-restore "$LIB" || exit 2
 
 # -- 2. a Rust defect clippy refuses ------------------------------------------
 #
 # ⚠ It compiles and it is correctly formatted on purpose. A plant that also
 # broke the build or the formatting would be refused by an earlier step, and the
 # case would report the lint step working when it had never been reached.
-if keep "$LIB" && append_once "$TREE/$LIB" "pub fn workflow_plant() -> u8 { return 1; }"; then
-  refuses linux "Rust lints" "a lint the workspace denies" "needless_return"
-else
-  fail "plant    could not plant the clippy defect"
+if unit rust-clippy; then
+  if keep "$LIB" && append_once "$TREE/$LIB" "pub fn workflow_plant() -> u8 { return 1; }"; then
+    refuses linux "Rust lints" "a lint the workspace denies" "needless_return"
+  else
+    fail "plant    could not plant the clippy defect"
+  fi
+  restore "$LIB" || exit 2
 fi
-restore "$LIB" || exit 2
 
 # -- 3. a Rust file that is not formatted -------------------------------------
-if keep "$LIB" && append_once "$TREE/$LIB" "pub  fn   workflow_plant ( )  ->  u8  {  1  }"; then
-  refuses linux "Rust formatting" "an unformatted Rust file" "Diff in"
-else
-  fail "plant    could not plant the formatting defect"
+if unit rust-fmt; then
+  if keep "$LIB" && append_once "$TREE/$LIB" "pub  fn   workflow_plant ( )  ->  u8  {  1  }"; then
+    refuses linux "Rust formatting" "an unformatted Rust file" "Diff in"
+  else
+    fail "plant    could not plant the formatting defect"
+  fi
+  restore "$LIB" || exit 2
 fi
-restore "$LIB" || exit 2
 
 # -- 4. a schema fixture whose identity no longer derives ----------------------
 #
 # ⭐ The platform is in the tuple the record identifier digests, so changing it
 # makes the declared id disagree with the record's own contents. That is the
 # rule docs/architecture.md section 4 states, planted rather than read.
-PROFILE="crates/bit-ids/tests/fixtures/valid-profile.json"
-if keep "$PROFILE" &&
-  replace_once "$TREE/$PROFILE" '"platform": "linux"' '"platform": "windows"'; then
-  refuses linux "Rust tests" "a schema fixture that no longer validates" "FAILED"
-else
-  fail "plant    could not plant the schema defect"
+if unit schema-fixture; then
+  PROFILE="crates/bit-ids/tests/fixtures/valid-profile.json"
+  if keep "$PROFILE" &&
+    replace_once "$TREE/$PROFILE" '"platform": "linux"' '"platform": "windows"'; then
+    refuses linux "Rust tests" "a schema fixture that no longer validates" "FAILED"
+  else
+    fail "plant    could not plant the schema defect"
+  fi
+  restore "$PROFILE" || exit 2
 fi
-restore "$PROFILE" || exit 2
 
 # -- 5. a wire fixture whose bytes moved --------------------------------------
 #
@@ -944,41 +1101,47 @@ restore "$PROFILE" || exit 2
 # to one is what the corpus digest is there to catch, and the summary is a field
 # no decoder reads: a plant in the frame bytes could be refused by a codec
 # instead, which is a different guard than the one this case names.
-FIXTURE="crates/bit-ids-wire/tests/fixtures/tracker-http-announce-started.json"
-if keep "$FIXTURE" &&
-  replace_once "$TREE/$FIXTURE" 'An ordinary started announce' 'An ordinary drifted announce'; then
-  refuses linux "Rust tests" "a wire fixture whose digest moved" "FAILED"
-else
-  fail "plant    could not plant the fixture defect"
+if unit wire-fixture; then
+  FIXTURE="crates/bit-ids-wire/tests/fixtures/tracker-http-announce-started.json"
+  if keep "$FIXTURE" &&
+    replace_once "$TREE/$FIXTURE" 'An ordinary started announce' 'An ordinary drifted announce'; then
+    refuses linux "Rust tests" "a wire fixture whose digest moved" "FAILED"
+  else
+    fail "plant    could not plant the fixture defect"
+  fi
+  restore "$FIXTURE" || exit 2
 fi
-restore "$FIXTURE" || exit 2
 
 # -- 6. a shell script that does not parse ------------------------------------
 # ⚠ The pattern is shellcheck's own parse-error code rather than nothing at all.
 # This case accepted any non-zero status at first, which `shfmt` would also have
 # produced for a reformatting difference, so the case would have passed while
 # the syntax checker said nothing.
-SCRIPT="scripts/doctor/doctor.sh"
-if keep "$SCRIPT" && append_once "$TREE/$SCRIPT" "if [ 1 = 1 ; then :"; then
-  refuses linux "Shell syntax and style" "a shell script that does not parse" "SC1073"
-else
-  fail "plant    could not plant the shell defect"
+if unit shell-parse; then
+  SCRIPT="scripts/doctor/doctor.sh"
+  if keep "$SCRIPT" && append_once "$TREE/$SCRIPT" "if [ 1 = 1 ; then :"; then
+    refuses linux "Shell syntax and style" "a shell script that does not parse" "SC1073"
+  else
+    fail "plant    could not plant the shell defect"
+  fi
+  restore "$SCRIPT" || exit 2
 fi
-restore "$SCRIPT" || exit 2
 
 # -- 7. a document whose link resolves to nothing -----------------------------
 #
 # ⚠ The pattern is the runner's FAILURE row and not the check's name. The name
 # alone also matches the row that reads `ok    check-docs`, so a plant that was
 # never refused would have matched the control's own output.
-README="README.md"
-if keep "$README" &&
-  append_once "$TREE/$README" "A link to [nothing](docs/this-file-does-not-exist.md)."; then
-  gate_refuses "a document with a dead link" "FAIL  check-docs"
-else
-  fail "plant    could not plant the docs defect"
+if unit docs-deadlink; then
+  README="README.md"
+  if keep "$README" &&
+    append_once "$TREE/$README" "A link to [nothing](docs/this-file-does-not-exist.md)."; then
+    gate_refuses "a document with a dead link" "FAIL  check-docs"
+  else
+    fail "plant    could not plant the docs defect"
+  fi
+  restore "$README" || exit 2
 fi
-restore "$README" || exit 2
 
 # -- 8. a check that stopped running ------------------------------------------
 #
@@ -989,13 +1152,15 @@ restore "$README" || exit 2
 # observed counts are separate now, so --strict permits the six and refuses
 # this. ⚠ Case 0 above is the other half: this shows the runner reports the
 # skip, and that one shows CI is asking with the flag that makes it fatal.
-BROKEN="scripts/common/check-project.sh"
-if keep "$BROKEN" && printf 'exit 2\n' >"$TREE/$BROKEN"; then
-  gate_refuses "a check that can no longer run" "SKIP  check-project"
-else
-  fail "plant    could not plant the unrunnable check"
+if unit check-stopped; then
+  BROKEN="scripts/common/check-project.sh"
+  if keep "$BROKEN" && printf 'exit 2\n' >"$TREE/$BROKEN"; then
+    gate_refuses "a check that can no longer run" "SKIP  check-project"
+  else
+    fail "plant    could not plant the unrunnable check"
+  fi
+  restore "$BROKEN" || exit 2
 fi
-restore "$BROKEN" || exit 2
 
 # -- 8b. the three rules over a workflow's own pwsh blocks --------------------
 #
@@ -1045,30 +1210,34 @@ YAML
 }
 
 # 8b-i. a pwsh block that stops on errors and says nothing about a native exit.
-{
-  plant_head "Stop with no native preference"
-  cat <<'YAML'
+if unit pwsh-native-preference; then
+  {
+    plant_head "Stop with no native preference"
+    cat <<'YAML'
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           Write-Output 'nothing here says what a native exit code means'
 YAML
-} >"$PLANT"
-gate_refuses "a workflow pwsh block that stops without saying what a native exit means" \
-  "FAIL  check-project"
-rm -f "$PLANT"
+  } >"$PLANT"
+  gate_refuses "a workflow pwsh block that stops without saying what a native exit means" \
+    "FAIL  check-project"
+  rm -f "$PLANT"
+fi
 
 # 8b-ii. a pwsh block reporting through a display layer.
-{
-  plant_head "Report through Write-Error"
-  cat <<'YAML'
+if unit pwsh-write-error; then
+  {
+    plant_head "Report through Write-Error"
+    cat <<'YAML'
         shell: pwsh
         run: |
           Write-Error 'a refusal a harness would match on, wrapped by host width'
 YAML
-} >"$PLANT"
-gate_refuses "a workflow pwsh block reporting through Write-Error" "FAIL  check-project"
-rm -f "$PLANT"
+  } >"$PLANT"
+  gate_refuses "a workflow pwsh block reporting through Write-Error" "FAIL  check-project"
+  rm -f "$PLANT"
+fi
 
 # ⛔ 8b-iii. THE DEFECT VERBATIM, and the only case here that reproduces a
 # measured failure rather than constructing one. This is capture.yml's Windows
@@ -1077,9 +1246,10 @@ rm -f "$PLANT"
 # that refusal's exit code. GitHub's pwsh wrapper reads it as the step's verdict,
 # so a restored route failed the step and the evidence upload was skipped.
 # ⚠ No reading caught it. A dispatch did.
-{
-  plant_head "Leave the guard's refusal in LASTEXITCODE"
-  cat <<'YAML'
+if unit pwsh-lastexitcode; then
+  {
+    plant_head "Leave the guard's refusal in LASTEXITCODE"
+    cat <<'YAML'
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -1090,19 +1260,21 @@ rm -f "$PLANT"
             exit 1
           }
 YAML
-} >"$PLANT"
-gate_refuses "a workflow pwsh block leaving \$LASTEXITCODE as the step's verdict" \
-  "FAIL  check-project"
-rm -f "$PLANT"
+  } >"$PLANT"
+  gate_refuses "a workflow pwsh block leaving \$LASTEXITCODE as the step's verdict" \
+    "FAIL  check-project"
+  rm -f "$PLANT"
+fi
 
 # ⛔ 8b-iv AND 8b-v ARE THE CASES THAT WOULD MAKE THESE RULES FIRE ON CORRECT
 # USAGE, and a rule that refused either is a rule somebody switches off. The
 # first has every needle in comment position and ends its status deliberately;
 # the second has them in command position in a step whose shell is not pwsh at
 # all, which is the scope half rather than the comment half.
-{
-  plant_head "The needles in comments, and an exit that is a decision"
-  cat <<'YAML'
+if unit pwsh-needles-in-comments; then
+  {
+    plant_head "The needles in comments, and an exit that is a decision"
+    cat <<'YAML'
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -1112,20 +1284,23 @@ rm -f "$PLANT"
           if ($LASTEXITCODE -ne 0) { exit 1 }
           exit 0
 YAML
-} >"$PLANT"
-gate_control "the repository gate" "a pwsh block whose needles are comments"
-rm -f "$PLANT"
+  } >"$PLANT"
+  gate_control "the repository gate" "a pwsh block whose needles are comments"
+  rm -f "$PLANT"
+fi
 
-{
-  plant_head "The needles in a step whose shell is not pwsh"
-  cat <<'YAML'
+if unit pwsh-non-pwsh-step; then
+  {
+    plant_head "The needles in a step whose shell is not pwsh"
+    cat <<'YAML'
         shell: bash
         run: |
           echo 'Write-Error is a word here and $LASTEXITCODE is another'
 YAML
-} >"$PLANT"
-gate_control "the repository gate" "a non-pwsh step carrying both needles"
-rm -f "$PLANT"
+  } >"$PLANT"
+  gate_control "the repository gate" "a non-pwsh step carrying both needles"
+  rm -f "$PLANT"
+fi
 
 # -- 9. the clean tree again --------------------------------------------------
 #
@@ -1133,6 +1308,27 @@ rm -f "$PLANT"
 # file it touched, and nothing so far has checked that any of them did. A
 # restore that silently failed would leave every later case running against a
 # defective tree, and the run would still report every guard refusing.
-gate_control "the repository gate, after every restore"
+if always clean-tree-after-restores; then
+  gate_control "the repository gate, after every restore"
+fi
+
+# ⛔ A LISTING IS NOT A RUN, so it does not go through the report. store_report
+# refuses a run in which nothing passed - correctly, since that is what a broken
+# harness looks like - and --units is a mode in which nothing is supposed to pass.
+if [ "$UNITS_ONLY" = 1 ]; then
+  exit 0
+fi
+
+# ⭐ WHAT THIS SHARD RAN AND WHAT IT DID NOT, PRINTED RATHER THAN IMPLIED. A shard
+# that silently claimed no unit is the defect this whole mechanism is most likely
+# to introduce, and the only thing that makes it visible is the runner saying
+# which names it took. ⚠ It prints on every run, including an unsharded one, so
+# the line means the same thing in both and a reader never has to know which mode
+# produced the log they are holding.
+if [ "$JSON" = "0" ] && [ "$SHARD_N" -gt 1 ]; then
+  printf 'shard %s of %s\n' "$SHARD_I" "$SHARD_N"
+  printf '  ran:     %s\n' "${UNITS_RAN# }"
+  printf '  skipped: %s\n' "${UNITS_SKIPPED# }"
+fi
 
 store_report "check-workflow/1" cases "$JSON"

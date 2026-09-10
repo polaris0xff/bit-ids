@@ -5,6 +5,38 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-10T08:41:18Z
+
+- ⛔ **The previous entry's headline claim was measured on the wrong machine and
+  CI refuted it.** It said deleting the twin layer bought nothing. On a runner it
+  bought **10.4 minutes**: *Workflow acceptance* was 32.6 on run 122 and **22.2**
+  on run 123, and the Linux gate 5.8 against 4.7.
+- ⚠ Both numbers are real and describe different hosts. This session host has
+  **four** processors and a hosted `ubuntu-24.04` runner has **two**, so a gate
+  that runs its checks concurrently is CPU-bound there and not here.
+  `docs/methodology/gate.md` already names it: local is not production. The
+  original wording is kept in the entry rather than deleted.
+- ⭐ **`check-workflow` shards.** `--shard i/N` selects by `index mod N`, `--units`
+  lists and runs nothing, and the CI matrix is four runners.
+- ⛔ **The controls are not sharded**, because a shard of plants alone goes green
+  over a tree where every step is broken. Every shard runs all three.
+- ⭐ **`scripts/ci/check-shards.sh`** asserts coverage and disjointness for every
+  N from 1 to 6, that each shard names every control, that no variable crosses a
+  unit boundary, and that six malformed selectors are refused.
+- ⛔ **It found three real defects the moment it existed**, all in the sharding: a
+  `--units` mode that ignored `--shard`, and two variables assigned in one unit
+  and read in another. ⚠ The guard written for the second missed the third,
+  because it saw one spelling of an assignment; it reads three now.
+- ⭐ **Measured on this host: unsharded 1282 seconds and 97 cases; the longest of
+  four shards 606.** That is 2.1x rather than 4x, and the control floor is the
+  whole difference.
+- ⭐ The four shards ran 136 cases against the unsharded 97; the difference of 39
+  is exactly three extra copies of the 13 control cases, so no plant ran twice
+  and none was dropped.
+- ⚠ The acceptance job's bound comes **down** to 20 minutes from the 45 it was
+  raised to. Raising a bound to fit growth is the masking this project refuses.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-10`. No version bump and no deploy.
+
 ### 2026-09-10T07:18:57Z
 
 - ⭐ **Four twin pairs are DELETED rather than translated.** `check-changelog`,
