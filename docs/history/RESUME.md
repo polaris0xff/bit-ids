@@ -159,7 +159,11 @@ subjects are not.
    `CI-07`'s remaining class-A backlog stops being work.
    ⛔ **A ported check refuses exactly what its shell half refused**, over the
    same plants, with the same 0/1/2 vocabulary - and is compared against those
-   halves BEFORE they are deleted. ⛔ Take it before anything below.
+   halves BEFORE they are deleted.
+   ⛔ **TAKE IT BEFORE ANYTHING BELOW, THEN KEEP GOING.** First is not only. Every
+   item below is still this session's work, and they are all cheaper once the
+   harness is fast - which is the whole reason this one goes first. ⚠ Rule 16 is
+   the bound on when a session ends, not the closure of this entry.
 
 1. ⭐ **DONE, 2026-09-10. `OBS-07`'s second connector exists and the capture
    path refuses to run without it.**

@@ -264,8 +264,14 @@ nothing is. The clone question under *Settled decisions* is spent too.
    *Workflow acceptance* job was cancelled at its bound three times in one
    session, two fixes were tried on the wrong cause, the bound was then raised,
    and a fourth run was cancelled by this project's own push before it could
-   prove even that. ⛔ **Nothing else in this order starts until it is done**,
-   because every other entry pays this harness's wall clock on every push.
+   prove even that. ⛔ **It is FIRST, which is not the same as ONLY.** Nothing
+   else starts before it because every other entry pays this harness's wall clock
+   on every push - and the moment it is done the session CARRIES ON DOWN THIS
+   LIST. ⚠ Rule 16 in `../docs/AGENTS.md` is the bound: a session ends when at
+   least five L-sized entries, or equivalent effort, have been completed or
+   driven to measured external blockers. ⛔ Closing `CI-10` and stopping is
+   ending early, and the entry that just made every later entry cheaper is the
+   worst possible place to stop.
    ⭐ It deletes the twin layer rather than translating it, so `CI-07`'s
    remaining backlog stops being work at all.
 0a. ⭐ **`CLIENT-14` IS CLOSED.** It was first by operator direction on 2026-09-09,
