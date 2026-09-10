@@ -29,6 +29,12 @@
 # default - so a case setting it would report a guard proved by a value the child
 # never saw. It is listed as unavailable rather than quietly dropped.
 #
+# ⛔ NOT A GATE ROW, AND `CI-08` CARRIES THE MEASUREMENT. Every subject runs once
+# per environment, so this is 28 seconds - free beside a concurrent gate and NOT
+# free inside `check-workflow`, which runs the whole gate about ten times. As a
+# row it pushed that CI job past its 30-minute bound. It is its own CI step, the
+# way `check-workflow` itself is.
+#
 # Usage:
 #   sh scripts/ci/check-defaults.sh
 #   sh scripts/ci/check-defaults.sh --json

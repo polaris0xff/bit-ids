@@ -75,6 +75,15 @@ jobs:
         run: |
           find scripts -name '*.sh' -print0 | xargs -0 shellcheck
           find scripts -name '*.sh' -print0 | xargs -0 shfmt -d -i 2 -ci
+      # ⛔ ITS OWN STEP RATHER THAN A GATE ROW, AND THE REASON IS MEASURED.
+      # `check-defaults` runs five checks under six environments, which is 28
+      # seconds - free beside a concurrent gate and NOT free inside
+      # `check-workflow`, which runs the whole gate about ten times. As a gate
+      # row it pushed that job from about 20 minutes to past its 30-minute bound
+      # and the job was cancelled at 30m15s. `check-workflow` is kept out of the
+      # gate for a related reason and this is the second member of that class.
+      - name: Runner-default sweep
+        run: sh scripts/ci/check-defaults.sh
       - name: Rust formatting
         run: cargo fmt --all -- --check
       - name: Rust check

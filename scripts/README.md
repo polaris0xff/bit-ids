@@ -175,7 +175,10 @@ from any working directory.
 - [`ci/check-defaults.sh`](ci/check-defaults.sh) runs several checks under a
   perturbed environment and compares their machine-readable answers, so a value a
   script takes from its host without saying so is named by the variable that
-  produced it. ⛔ Two controls come first, because "no difference" and "no
+  produced it. ⛔ It is a CI step rather than a gate row, for the reason
+  `check-workflow` is: a row worth 28 seconds locally is worth nearly five
+  minutes of the CI wall clock, because `check-workflow` runs the whole gate
+  about ten times. ⛔ Two controls come first, because "no difference" and "no
   experiment" look identical: a probe that reads the variable must answer
   differently, or the run exits 2. ⚠ One row is blind on a host that has built
   before, and it says which state it is in rather than reporting a pass that

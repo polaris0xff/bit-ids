@@ -385,7 +385,7 @@ fi
 for spec in acquisition/check-cache acquisition/check-release-route \
   acquisition/check-source-route \
   corpus/check-store \
-  common/check-shell ci/check-defaults \
+  common/check-shell \
   corpus/check-corpus corpus/check-indexes publishing/check-release \
   publishing/check-formats publishing/check-publish publishing/check-access \
   publishing/check-catalogue ci/check-staleness ci/check-step-bodies \

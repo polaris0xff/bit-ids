@@ -2074,10 +2074,22 @@ mode, and nothing here does.
 
 #### ⚠ What it costs, and the subject that was dropped for it
 
-**28 seconds**, because every subject runs once per environment. ⛔ That is
-concurrent with the rest of the gate and free in local wall-clock terms, and it
-is **not** free inside `check-workflow`, which runs the whole gate about ten
-times and is already the CI wall clock. `check-docs` is the one subject left out:
+**28 seconds**, because every subject runs once per environment.
+
+⛔ **AND IT IS NOT A GATE ROW, BECAUSE IT WAS ONE AND THE LANE MEASURED THE
+COST.** The paragraph here said the 28 seconds are "concurrent with the rest of
+the gate and free in local wall-clock terms, and NOT free inside `check-workflow`,
+which runs the whole gate about ten times and is already the CI wall clock" - and
+then put it in the gate anyway. ⚠ CI run 116's *Workflow acceptance* job ran
+**30m15s** and was cancelled at its 30-minute bound, having been about 20 minutes
+before. ⭐ It is its own CI step now, which is exactly how `check-workflow` itself
+is handled and for a related reason.
+
+⚠ **The cost of a gate row is multiplied by ten, and that number belongs beside
+any future one.** A row worth 28 seconds locally is worth nearly five minutes of
+the CI wall clock.
+
+`check-docs` is the one subject left out:
 it resolves links and parses fenced blocks, which is the least plausible thing
 for a locale or a scratch directory to reach. ⚠ `check-markers` stays because it
 decodes UTF-8 **by hand**, which is the most plausible.

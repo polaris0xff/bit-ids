@@ -5,6 +5,19 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-10T03:53:49Z
+
+- ⛔ **A 28-second gate row cost the CI lane five minutes and its job was
+  cancelled.** `check-workflow` runs the whole gate about ten times, so run 116's
+  *Workflow acceptance* went from about 20 minutes to 30m15s and hit its bound.
+  `check-defaults` is its own CI step now, the way `check-workflow` itself is.
+- ⚠ **The file that predicted the cost put the row in the gate anyway.** Its own
+  header said the 28 seconds are not free inside `check-workflow`; the number
+  that was missing is the multiplier, and it is written down beside it now.
+- ⭐ `check-shell` stays in the gate: it is two seconds and it is the row that
+  stops a green local gate over a red lane.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-08`. No version bump and no deploy.
+
 ### 2026-09-10T03:15:22Z
 
 - ⛔ **The gate ran neither `shellcheck` nor `shfmt`, and the CI workflow's own
