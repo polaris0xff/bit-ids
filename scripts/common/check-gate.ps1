@@ -289,6 +289,15 @@ Add-Unavailable 'check-gate-rows' 'it runs the sh runner itself, so there is no 
 # form, which is why this row is declared and not a gap in what is proved.
 Add-Unavailable 'check-step-bodies' 'it lifts a Linux-only workflow bodies and already runs the pwsh ones; CI-07 class D'
 
+# ⛔ ITS SUBJECTS ARE THE `sh` CHECKS, so a twin here would not be a translation:
+# it would perturb the environment of the `pwsh` checks, which is a DIFFERENT
+# experiment and a valuable one - `$PSNativeCommandUseErrorActionPreference`,
+# `$OutputEncoding` and `$PSStyle` are exactly this class and none of them is an
+# environment variable `env` can set. ⚠ Recorded as its own work rather than as
+# a missing half, because a row whose reason names the wrong event closes on the
+# wrong day.
+Add-Unavailable 'check-defaults' 'its subjects are the sh checks; the pwsh experiment is its own work; CI-08'
+
 # ⚠ AND THIS ONE IS DECLARED WHILE ITS SUBJECT IS EXERCISED ANYWAY, which is the
 # third kind of reason on this lane. check-capture is an sh harness, so it cannot
 # run here; what it drives includes capture-run.ps1, which the Windows job of the

@@ -5,6 +5,22 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-10T02:52:00Z
+
+- ⭐ **`CI-08`'s sweep is an instrument rather than a reading.**
+  `scripts/ci/check-defaults.sh` runs five checks under six environments and
+  compares their machine-readable answers, so a default a check inherits is
+  named by the variable that produced it whether or not anybody thought of it.
+- ⛔ **Two controls, because "no difference" and "no experiment" look
+  identical.** A probe that reads the variable must answer differently or the run
+  exits 2, and a planted environment-sensitive answer is caught and named.
+- ⛔ **One row is blind on this host and says so.** Replanting the historical
+  `CARGO_TARGET_DIR` defect did NOT catch it: the tree already held a built
+  example, so the defective path resolved to a stale binary.
+- ⚠ **`IFS` and `umask` cannot be perturbed this way**, and are stated rather
+  than dropped.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-08`. No version bump and no deploy.
+
 ### 2026-09-10T02:28:00Z
 
 - ⭐ **`store-lib.ps1` exists**, which `CI-07`'s sweep named as the first step:

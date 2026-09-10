@@ -165,6 +165,14 @@ from any working directory.
   tracker holding the first run's request opens nothing. ⭐ It re-derives the
   request identifier with `python3`'s SHA-256, which is an implementation this
   project did not write.
+- [`ci/check-defaults.sh`](ci/check-defaults.sh) runs several checks under a
+  perturbed environment and compares their machine-readable answers, so a value a
+  script takes from its host without saying so is named by the variable that
+  produced it. ⛔ Two controls come first, because "no difference" and "no
+  experiment" look identical: a probe that reads the variable must answer
+  differently, or the run exits 2. ⚠ One row is blind on a host that has built
+  before, and it says which state it is in rather than reporting a pass that
+  sounds stronger than it is.
 - [`ci/check-workflow.sh`](ci/check-workflow.sh) copies the working tree into a
   scratch repository, plants a defect of each class the pipeline exists to
   catch, and runs the offending workflow step against it. Every command it runs

@@ -1976,6 +1976,83 @@ a second question this entry owns: the Linux lane pins `shfmt` and takes
 `shellcheck` and `pwsh` from the runner image, so a session host runs a MORE
 pinned set of tools than the lane it exists to match.
 
+### ⭐ THE SWEEP IS AN INSTRUMENT NOW, NOT A READING. 2026-09-10
+
+⛔ **This entry's Approach asks for an enumeration of what the scripts inherit
+rather than state, and an enumeration written by READING is a list of the
+defaults somebody thought of.**
+[`../scripts/ci/check-defaults.sh`](../scripts/ci/check-defaults.sh) runs five
+checks under six environments and compares their machine-readable answer against
+the baseline: a difference is a default that check inherits, named by the
+variable that produced it, whether or not anybody had thought of it.
+
+| the environment | what it would change if a check read it |
+| --- | --- |
+| `LC_ALL=C` | byte collation and byte character classes |
+| `LC_ALL=C.utf8` | multibyte collation and classes |
+| `TMPDIR` | where a harness puts the tree it plants in |
+| `CARGO_TARGET_DIR` | where a built example lands - the one that has already bitten |
+| `POSIXLY_CORRECT` | GNU tool behaviour in several places |
+| `SOURCE_DATE_EPOCH` | read by build tooling that wants a fixed clock |
+
+⭐ **The result is that all five answer identically under all six**, and that
+sentence is worth exactly as much as the controls behind it.
+
+#### ⛔ Two controls, because "no difference" and "no experiment" look identical
+
+⭐ **A probe that READS the variable is run first and must answer differently.**
+An instrument whose environment never reached the child would report perfect
+agreement over every subject; this exits **2**, not 0, if that probe agrees -
+`could not run` rather than a subject that passed.
+
+⭐ **And a planted environment-sensitive answer is caught.** `check-licences` was
+made to print `SOURCE_DATE_EPOCH` in its own JSON, and the run named the subject,
+the variable and both answers - and did **not** fire on the other five.
+
+#### ⛔ AND ONE ROW IS BLIND ON THIS HOST, MEASURED BY REPLANTING THE REAL DEFECT
+
+⛔ **The historical `CARGO_TARGET_DIR` defect was replanted - `store_build`
+reverted to composing `$ROOT/target` and ignoring the variable - AND THIS FILE
+DID NOT CATCH IT.** `$ROOT/target` already held the example from an earlier
+build, so the defective path resolved to a **stale binary** and the check
+answered normally.
+
+⚠ **So that row fires on a clean checkout and is blind on any host that has built
+before**, which is every host a contributor runs it on twice. ⭐ The condition is
+reported as its own row rather than hidden: a reader told "the same answer under
+all 6" without being told that one of the six could not have answered otherwise
+has been told something weaker than it sounds.
+
+#### ⚠ Two things this instrument cannot perturb, stated rather than dropped
+
+⛔ **`IFS` does not survive into a child.** Measured here:
+`env IFS=: sh -c 'printf %s "$IFS"'` prints the default, because a shell resets
+it at startup. A case setting it would report a guard proved by a value the child
+never saw, so it is a control row saying so.
+
+⚠ **`umask` is a shell attribute rather than an environment variable**, so `env`
+cannot pass it, and setting it in this harness would change the modes of
+everything the harness itself writes. It belongs to whatever check reads a file
+mode, and nothing here does.
+
+#### ⚠ What it costs, and the subject that was dropped for it
+
+**28 seconds**, because every subject runs once per environment. ⛔ That is
+concurrent with the rest of the gate and free in local wall-clock terms, and it
+is **not** free inside `check-workflow`, which runs the whole gate about ten
+times and is already the CI wall clock. `check-docs` is the one subject left out:
+it resolves links and parses fenced blocks, which is the least plausible thing
+for a locale or a scratch directory to reach. ⚠ `check-markers` stays because it
+decodes UTF-8 **by hand**, which is the most plausible.
+
+#### ⛔ And a defect in this file, found by running it rather than by reading it
+
+**`grep -c` over a file with no matches PRINTS `0` and EXITS 1**, so
+`$(grep -c ... || printf 0)` ran the fallback as well and the value became two
+lines. It went into a row, and `store_report` counted fourteen rows against eight
+cases and refused. ⭐ That self-check is why this was a red line on the first run
+rather than a miscounted report nobody read.
+
 ### ⚠ Residual, filed 2026-09-09: `check-step-bodies` is a load-sensitive row
 
 ⛔ **A gate row that fails under load and passes alone is the same class this
