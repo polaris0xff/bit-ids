@@ -422,6 +422,20 @@ marker is what detects a survived host.
 ⛔ **The nine commit stamps before 2026-09-06T07:56Z are fabricated.** They are
 not retro-corrected. Read the machine clock with `date -u +%Y-%m-%dT%H:%M:%SZ`.
 
+⛔ **AND FIVE MORE ON 2026-09-10, WHICH IS THE SAME MISTAKE MADE AGAIN BY A
+SESSION THAT HAD READ THE RULE.** The subjects of `62e1a68`, `d64c51c`,
+`facf9a9`, `e2d1891` and `aba7142` carry stamps that were COMPUTED from the first
+one this session read rather than re-read per commit; each runs 10 to 43 minutes
+ahead of the commit git actually recorded, and the last two were in the future at
+the moment they were written. ⚠ Found by reading the clock for the next commit
+and noticing it was BEHIND the one already on disk.
+⭐ **What was corrected is the record that can be**: the `CHANGELOG.md` headings
+for those five now carry `git log --pretty=%cd`'s own values. ⛔ The commit
+subjects are not rewritten - that is history on `main` - so they stay wrong and
+this paragraph is how a reader knows which.
+⚠ **The lesson is narrower than "read the clock" and that is why it recurred:**
+one read at the start of a session is not a stamp for the commits that follow it.
+
 **No repository owner or name is hardcoded anywhere in this tree.**
 
 `check-remote-items` cannot run on a session host and installing `gh` does not

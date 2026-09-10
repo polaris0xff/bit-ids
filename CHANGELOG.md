@@ -5,7 +5,25 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
-### 2026-09-10T02:52:00Z
+### 2026-09-10T02:16:47Z
+
+- ⭐ **`docs/architecture.md` and `docs/capture-methodology.md` describe the
+  connector that EXISTS**, not only the ones that are planned. The three in
+  section 6's list put their own bytes on the wire and none of them is written;
+  the one that is reads the bytes the lab already recorded.
+- ⭐ **The acquisition section says what refuses a route that acquired nothing**,
+  and that it closes the hole rather than the residual.
+- ⛔ **Five commit subjects earlier today carry stamps that were computed rather
+  than read**, each 10 to 43 minutes ahead of the commit git recorded, two of
+  them in the future when written. The headings above are corrected to
+  `git log`'s own values; the subjects are history on `main` and stay wrong.
+  `docs/history/RESUME.md` names which.
+- ⛔ **`check-project` refused this session's new sweep for composing a cargo
+  output path**, on the one line that exists to talk about that very defect.
+- Record: [`TODO/observer.md`](TODO/observer.md), `OBS-07`. No version bump and
+  no deploy.
+
+### 2026-09-10T02:09:37Z
 
 - ⭐ **`CI-08`'s sweep is an instrument rather than a reading.**
   `scripts/ci/check-defaults.sh` runs five checks under six environments and
@@ -21,7 +39,7 @@ Nothing is released yet. Entries accumulate here until the first
   than dropped.
 - Record: [`TODO/ci.md`](TODO/ci.md), `CI-08`. No version bump and no deploy.
 
-### 2026-09-10T02:28:00Z
+### 2026-09-10T01:56:39Z
 
 - ⭐ **`store-lib.ps1` exists**, which `CI-07`'s sweep named as the first step:
   every declared row whose subject is portable waits on ONE library rather than
@@ -40,7 +58,7 @@ Nothing is released yet. Entries accumulate here until the first
   nothing calls is a function nobody knows works.
 - Record: [`TODO/ci.md`](TODO/ci.md), `CI-07`. No version bump and no deploy.
 
-### 2026-09-10T02:06:00Z
+### 2026-09-10T01:46:05Z
 
 - ⛔ **Keeping a secret out of a capture artifact depended on each adapter
   remembering.** `capture-client` run 11 shipped `client/rpc-token`; the adapter
@@ -56,7 +74,7 @@ Nothing is released yet. Entries accumulate here until the first
 - Record: [`TODO/clients.md`](TODO/clients.md), `CLIENT-14`. No version bump and
   no deploy.
 
-### 2026-09-10T01:47:00Z
+### 2026-09-10T01:28:06Z
 
 - ⛔ **A route that ran and installed nothing reached the strongest verdict this
   project has.** `aria2` ships on `ubuntu-24.04`, so two routes on such a host
@@ -69,7 +87,7 @@ Nothing is released yet. Entries accumulate here until the first
 - Record: [`TODO/acquisition.md`](TODO/acquisition.md), `ACQ-03`. No version bump
   and no deploy.
 
-### 2026-09-10T01:34:00Z
+### 2026-09-10T01:24:17Z
 
 - ⛔ **The client matrix was not pinned to the catalogue in both directions**,
   though it said it was. `check-project` carried a hardcoded list of seventeen

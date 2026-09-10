@@ -152,10 +152,18 @@ pass "control   a probe that READS the variable answers differently under it"
 # reported rather than hidden: a reader who is told "the same answer under all 6"
 # without being told one of the six could not have answered otherwise has been
 # told something weaker than it sounds.
-if [ -d "$ROOT/target/debug/examples" ]; then
-  pass "control   CARGO_TARGET_DIR is MASKED here: $ROOT/target already holds built examples"
+# ⛔ AND THE PATH IS ASKED FOR RATHER THAN COMPOSED, which is the rule `CI-01`
+# wrote after that very defect - and this file's first draft broke it, on the one
+# line that exists to talk about it. ⚠ The masking condition is strictly about
+# where a DEFECTIVE `store_build` would look, so honouring the variable can
+# report MASKED on a host that exports it while the row could in fact have fired.
+# That error is in the safe direction: it understates this instrument's reach and
+# never overstates it.
+TARGET_EXAMPLES="${CARGO_TARGET_DIR:-$ROOT/target}/debug/examples"
+if [ -d "$TARGET_EXAMPLES" ]; then
+  pass "control   CARGO_TARGET_DIR is MASKED here: $TARGET_EXAMPLES already holds built examples"
 else
-  pass "control   CARGO_TARGET_DIR can fire here: $ROOT/target holds no built example"
+  pass "control   CARGO_TARGET_DIR can fire here: $TARGET_EXAMPLES holds no built example"
 fi
 
 # ⚠ AND THE ONE THAT IS NOT AVAILABLE, STATED RATHER THAN DROPPED. A shell

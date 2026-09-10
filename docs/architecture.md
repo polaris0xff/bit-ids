@@ -758,7 +758,20 @@ The primary connector is the project-owned Rust active observer. It terminates
 or initiates the local protocol interactions needed to make the target expose
 its behavior and writes byte-exact evidence.
 
-The independent connector is selected per surface:
+⭐ **The independent connector that EXISTS is a second reading of the raw
+transcripts**, [`../scripts/capture/connectors/cpython-stdlib.py`](../scripts/capture/connectors/cpython-stdlib.py),
+and `capture-client` refuses to run without one. It decodes the announce with
+`urllib.parse`, its headers with `http.client` and the transcript document with
+`json` - implementations this project did not write - and reports one
+`field_path=value` line per field into `connector/<id>.txt` inside the bundle.
+
+⛔ **It is two READINGS of one capture's bytes, not two observations of the
+wire.** `OBS-07` states what that costs. It identifies each surface by CONTENT
+rather than by position, so the two readers share no selection decision either.
+
+⚠ **The connectors below are the plan and none of them exists.** Each puts its
+own bytes on the wire, which is what would close the gap above, and each needs a
+disposable host:
 
 - `aria2c` JSON-RPC or another stock CLI peer for peer identity and live peer
   behavior;
@@ -766,7 +779,10 @@ The independent connector is selected per surface:
 - `tshark`/`dumpcap`, or a platform packet oracle with equivalent raw output,
   for wire-byte corroboration.
 
-At least two connectors participate in every capture. Each overlapping field
+At least two connectors participate in every capture of a build, and `E-CAP-01`
+refuses a record declaring fewer at the **validity** gate rather than at
+publication. ⚠ A `kind=fixture` run has one, deliberately: it measures no build,
+so a second reading of it would corroborate nothing. Each overlapping field
 is `exact`, `normalized`, `disagrees` or `not_corroborated`. Only the first two
 are publishable. A normalization is named and tested; it cannot discard order
 or unknown bytes merely to obtain agreement.
@@ -801,10 +817,17 @@ asks the adapter for a version before the route runs and after, and records
 present is an install; a changed version is an upgrade and also an install; the
 same version over a target that was already there is neither.
 
-⚠ **It records rather than refuses, and the split is the usual one.** The build
-on such a host is real and worth measuring; the claim that a route acquired it is
-not. Validity keeps the evidence and publishability is where it bites, which is
-the same separation this document draws for every other disagreement.
+⚠ **The install step records rather than refuses, and the split is the usual
+one.** The build on such a host is real and worth measuring; the claim that a
+route acquired it is not.
+
+⭐ **What refuses it is the step that turns install records into ROUTES.**
+`assemble-capture` reads `acquired` and will not write a record over a lane whose
+route acquired nothing, because such a route is not a second route - so the pair
+never reaches `classify` at all. ⛔ **That closes the hole and not the residual**:
+`classify` still cannot see the field, since `AcquisitionRoute` has nowhere to
+put it, so a record hand-written past the assembler would still arrive at
+`byte_identical`. `ACQ-03` carries what putting it on the route type would cost.
 
 A route also names the **immutable identity** of what it asked for, typed to the
 kind: a release asset is a repository, a tag and a file name; a package is an

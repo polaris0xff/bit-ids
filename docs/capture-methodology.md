@@ -22,6 +22,13 @@ The two parsers must not share the code that interprets the field. Sharing the
 same packet bytes is acceptable for a packet-capture connector; sharing the
 same parser is not independent corroboration.
 
+⭐ **The connector that exists is exactly the first of those, and this paragraph
+is what permits it.** `scripts/capture/connectors/cpython-stdlib.py` reads the
+bytes the lab already recorded and interprets them with implementations this
+project did not write. ⛔ **So it corroborates the READING and not the
+recording**: a lab that wrote down the wrong bytes would be agreed with, which is
+the class only a connector putting its own bytes on the wire can catch.
+
 If connector two cannot observe a field, that field stays provisional until a
 second route exists. A profile is not made complete by copying a source-code
 constant into the gap.
