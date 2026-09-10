@@ -311,18 +311,24 @@ nothing is. The clone question under *Settled decisions* is spent too.
 5. **`OBS-10`**, which needs a second platform, so it follows the captures.
 6. **`CI-07` and `CI-08`**, which harden the gate rather than extend it: the
    declared PowerShell rows, and the host defaults the scripts inherit rather
-   than state. ⭐ **`CI-07`'s sweep is done**: the declared rows are four kinds
-   and only one of them is this entry's work, which is what makes `store-lib.ps1`
-   the first step; each row's own reason names its class now. ⭐ **`FOUND-05` is closed**: `sh scripts/doctor/provision.sh`
-   installs the three tools a session used to install by hand, verifying each
-   download against a pinned digest first.
-   ⭐ **`CI-08` has written the harness `CI-06` needed**: a capture workflow's
-   step bodies now run as a gate row, under GitHub's own wrapper form, and the
-   Windows restore block is refused in the shape that failed capture run 1.
-   ⛔ What is left of that entry is the sweep it was opened for. ⛔ And a second
-   question: CI pins `shfmt` and takes `shellcheck` and `pwsh` from the runner
-   image, so a session host now runs a MORE pinned set of tools than the lane it
-   is meant to match.
+   than state. ⭐ **`CI-07`'s sweep is done** - the declared rows are four kinds
+   and only one of them is this entry's work - ⭐ **and its first step is built**:
+   `store-lib.ps1` exists and TWO class-A rows have stopped being declared,
+   `check-cache` and `check-catalogue`, the second needing no new library
+   function. ⚠ What is left is the rest of class A, three of which need library
+   functions `store-lib.ps1` deliberately does not carry yet.
+   ⭐ **`CI-08`'s sweep is an instrument now rather than a reading**:
+   `check-defaults` runs five checks under six environments and names any value a
+   script takes from its host without saying so. ⛔ One of its rows is blind on a
+   host that has built before, and it says which state it is in.
+   ⛔ **The second question is still open**: CI pins `shfmt` and takes
+   `shellcheck` and `pwsh` from the runner image, so a session host runs a MORE
+   pinned set of tools than the lane it is meant to match.
+   ⭐ **`FOUND-05` is closed**: `sh scripts/doctor/provision.sh` installs the
+   three tools a session used to install by hand, verifying each download against
+   a pinned digest first.
+   ⭐ **`CI-08` also wrote the harness `CI-06` needed**: a capture workflow's
+   step bodies run as a gate row, under GitHub's own wrapper form.
 7. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
    bind attestations to.
 8. The remaining client and engine breadth, then refinements.

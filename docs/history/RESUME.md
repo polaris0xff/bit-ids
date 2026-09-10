@@ -30,10 +30,10 @@ this step could read that failure as a defect in the tree.
 
 ## Where the work is
 
-**In flight:** `OBS-07`, the second connector, which is the validity
-prerequisite everything below waits on. `CI-09` sits behind it. `CLIENT-14`
-closed on 2026-09-09 and its target gained a second acquisition route after
-closure. `CLIENT-05` is open on the aria2 hang.
+**In flight:** nothing. `OBS-07` closed on 2026-09-10 and every refusal that
+stopped `capture-client` run 14 is now repaired in the tree, so what `CI-09`
+waits on is a DISPATCH rather than a repair. `CLIENT-05` is open on the aria2
+hang, which run 11 did not diagnose.
 
 ⭐ **Measured at the start of the 2026-09-10 session, rather than carried:** the
 container started on `claude/zen-lovelace-kxmgvb` with `user.name=Claude` and a
@@ -62,7 +62,7 @@ and stored and would merely fail to publish for want of a second connector.
 | what the artifacts say | what refuses it |
 | --- | --- |
 | both lanes' `release/resolution.txt` differed **only in their timestamps** - one `source_url`, one `listing_sha256`, one `asset_url` | ⛔ `E-ACQ-07` - ⭐ **repaired**: the source route reads git refs, `ACQ-02` |
-| every attestation declares **one** connector | ⛔ `E-CAP-01`, at the **validity** gate |
+| every attestation declares **one** connector | ⛔ `E-CAP-01`, at the **validity** gate - ⭐ **repaired**: `capture-client` runs a second connector and will not start without one |
 | nothing recorded how the artifact was **packaged**, and `package` is in `StoreKey` | ⛔ a guessed one files two packagings of a version at one path - ⭐ **repaired**: every adapter declares it per route |
 | nothing the capture path writes carries the source route's commit | ⛔ `E-ACQ-06` - ⭐ **repaired**: the adapter now records `rev-parse HEAD` and `install-client` refuses a `source` route without one |
 
@@ -128,6 +128,23 @@ so it is per-connection.
 ⛔ **Still not a record**, and `E-ACQ-01` is no longer the reason: run 14 gave
 that target a second lane, and the table above is what refuses the pair.
 
+### ⭐ What the 2026-09-10 session changed, in one place
+
+| what | where it is recorded |
+| --- | --- |
+| a SECOND CONNECTOR exists and `capture-client` refuses to run without one | `OBS-07`, closed |
+| `assemble-capture` says whether a written record is PUBLISHABLE | `CI-09` |
+| a route recording `acquired=no` cannot become a second route | `ACQ-03` |
+| rule 12 is enforced at the capture choke point, not per adapter | `CLIENT-14` |
+| the client matrix is pinned to the catalogue in BOTH directions | `CI-01` |
+| `.py` needs a declared, entry-backed exception rather than being refused outright | `OBS-07` |
+| `store-lib.ps1`, and two class-A rows now real on the PowerShell lane | `CI-07` |
+| the runner-default sweep is an instrument | `CI-08` |
+
+⛔ **Five commit subjects from that session carry fabricated stamps.** See the
+last section of this file; the `CHANGELOG.md` headings are corrected and the
+subjects are not.
+
 **Next, in order:**
 
 1. ⭐ **DONE, 2026-09-10. `OBS-07`'s second connector exists and the capture
@@ -144,7 +161,14 @@ that target a second lane, and the table above is what refuses the pair.
    with `git ls-remote --tags --refs`; `ACQ-02` carries the reader. ⚠ No
    dispatch has taken the new step, so what is proved is the resolver and the
    harness, not a lane.
-3. **`CI-09`**, which now sits behind the connector alone. ⭐ `assemble-capture` and
+2a. ⛔ **THE ONE THING STILL BETWEEN A CAPTURE AND A RECORD IS A DISPATCH.** Every
+   refusal that stopped run 14 is repaired in the tree and NOT ONE of them is
+   proved on a runner: the source route's own resolution, the recorded package
+   format, the source commit, and now the second connector. ⭐ A dispatch of
+   `capture-client` on `aria2-next` is what turns four repairs into a measured
+   record, and `assemble-capture` over its artifacts is the acceptance.
+   ⚠ Nothing in this tree can do it; it needs the operator to press the button.
+3. **`CI-09`**, which now sits behind that dispatch. ⭐ `assemble-capture` and
    `check-assemble` are written and green; what is missing is a capture whose
    artifacts it accepts. ⚠ It writes a `Profile` and not the `RunManifest` that
    has to sit beside one; the entry's residuals say why.
