@@ -257,23 +257,24 @@ written and the dependency question under *Settled decisions* is spent.
 every answer it gives about a real client today is *not measured*, because
 nothing is. The clone question under *Settled decisions* is spent too.
 
-0. ⛔ **`CI-10` IS FIRST, BY OPERATOR DIRECTION ON 2026-09-10, AND IT IS NOT
-   CONDITIONAL.** Port **all** the checking scripts to Go, port the slow CI parts
-   to Go, and parallelise CI across **multiple runners**. ⚠ The direction is
-   recorded as given rather than as a measurement to be taken first: the
-   *Workflow acceptance* job was cancelled at its bound three times in one
-   session, two fixes were tried on the wrong cause, the bound was then raised,
-   and a fourth run was cancelled by this project's own push before it could
-   prove even that. ⛔ **It is FIRST, which is not the same as ONLY.** Nothing
-   else starts before it because every other entry pays this harness's wall clock
-   on every push - and the moment it is done the session CARRIES ON DOWN THIS
-   LIST. ⚠ Rule 16 in `../docs/AGENTS.md` is the bound: a session ends when at
-   least five L-sized entries, or equivalent effort, have been completed or
-   driven to measured external blockers. ⛔ Closing `CI-10` and stopping is
-   ending early, and the entry that just made every later entry cheaper is the
-   worst possible place to stop.
-   ⭐ It deletes the twin layer rather than translating it, so `CI-07`'s
-   remaining backlog stops being work at all.
+0. ⭐ **`CI-10` IS IN FLIGHT AND ITS THREE NAMED DELIVERABLES ARE ALL LANDED,
+   2026-09-10.** The operator's direction was to port the checking scripts to Go,
+   port the slow CI parts to Go, and parallelise CI across multiple runners.
+   ⭐ **All three are measured on real runners**: *Workflow acceptance* was
+   **32.6 minutes** on run 122, **22.2** on run 123 after four twin pairs were
+   deleted, and the longest of four shards is **11.8** on run 124, which is
+   green on every job. The acceptance bound came DOWN to 20 from the 45 a
+   previous session had raised it to.
+   ⛔ **WHAT IS NOT DONE IS THE REST OF THE PORT.** Six checks are in
+   `../tools/check/` and **eight twin pairs remain**, together about 12 seconds
+   of PowerShell against the 96 the layer started at. ⚠ So the remaining
+   wall-clock value is small and the DRIFT value is unchanged, which is the
+   ordering argument for taking them when they are cheapest rather than first.
+   ⛔ `check-project` is the big one at 997 lines and is best taken as its own
+   unit.
+   ⭐ Every pair deleted so far went through `check-bitcheck --compare` first:
+   50 cases, all three implementations agreeing on the exit code and byte for
+   byte on `--json`. ⛔ **A pair may not leave the list any other way.**
 0a. ⭐ **`CLIENT-14` IS CLOSED.** It was first by operator direction on 2026-09-09,
    after ten dispatches produced no aria2 capture: every lane stopped inside
    *Install the client*, four independent bounds were measured not to fire on
@@ -378,6 +379,14 @@ invocation carries the public rules, so re-running "the checks this edit
 touched" after writing a record passed while the lane went red on a forty-digit
 info hash. ⚠ Run `sh scripts/common/check-gate.sh`, which is the list; a subset
 chosen by hand is not the same gate twice.
+
+⭐ **THE CHECKING LAYER IS MOVING TO GO AND `go` IS NOW A GATE DEPENDENCY.**
+`CI-10`. Six rules live in [`../tools/check/`](../tools/check/) and are run by one
+binary on both lanes; `check-bitcheck`, `check-cache` and `check-defaults` build
+it themselves. ⛔ Without `go` those rows are a SKIP rather than a pass, and the
+CI lanes run `--strict`, so an absent toolchain turns a lane red rather than
+quietly shrinking it. ⚠ Both hosted runner images carry Go - the workflow already
+`go install`s `shfmt` - and run 124 is the measurement.
 
 ⭐ **`pwsh`, `shellcheck` and `shfmt` are absent on a fresh container, and one
 command installs all three:**

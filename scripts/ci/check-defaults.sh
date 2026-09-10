@@ -260,13 +260,23 @@ run_subject() { # label command...
 # asking the same question of a subject with its own answers, which is the reason
 # to keep asking it rather than a reason to drop it.
 # ⛔ Its absence is `could not run` and never a pass: without the binary the
-# subject cannot be started, and `store_require` refuses the whole harness.
-if [ -x "$WORK/bit-check" ] || (cd "$ROOT/tools/check" && go build -o "$WORK/bit-check" .) >/dev/null 2>&1; then
+# subject cannot be started.
+#
+# ⛔ AND THE BUILD IS GATED ONCE, IN FRONT OF EVERY SUBJECT THAT NEEDS IT. A first
+# version put the condition around the `markers` row alone and left `licences`
+# outside it, so a host where the build failed ran one row as a named failure and
+# the other against a binary that is not there - which `run_subject` would report
+# as a subject answering identically under every environment, because a missing
+# command answers 127 under all six. ⚠ That is the one-gated-door shape
+# docs/methodology/reviews.md calls the most recurring hole there is, found by a
+# door sweep over this entry's own change.
+if (cd "$ROOT/tools/check" && go build -o "$WORK/bit-check" .) >/dev/null 2>&1; then
   run_subject "markers   " "$WORK/bit-check" check-markers --json
+  run_subject "licences  " "$WORK/bit-check" check-licences --json
 else
   fail "markers     tools/check did not build, so the ported subject could not be run"
+  fail "licences    tools/check did not build, so the ported subject could not be run"
 fi
-run_subject "licences  " "$WORK/bit-check" check-licences --json
 run_subject "secrets   " sh "$ROOT/scripts/common/check-no-secrets.sh" --public --json
 run_subject "project   " sh "$ROOT/scripts/common/check-project.sh" --json
 run_subject "cache     " sh "$ROOT/scripts/acquisition/check-cache.sh" --json

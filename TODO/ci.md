@@ -2975,6 +2975,46 @@ reads every tracked file, this harness is one, and its literals were findings.
 already built its marker bytes - and the check's own Go file is exempt from
 itself, exactly as both shell halves already were.
 
+### The three deep reviews, 2026-09-10
+
+⛔ **The door sweep found the one-gated-door defect, in this entry's own change.**
+`check-defaults` builds the Go binary for its `markers` subject and the condition
+was around that row alone; `licences` sat outside it and would have run a binary
+that is not there. ⚠ A missing command answers 127 under every environment, so
+`run_subject` would have reported *the same answer under all 6* - a green row over
+a subject that never started. ⭐ The build is gated once, in front of both rows,
+and the else branch names both.
+
+⛔ **The guard mutation pass found a guard nothing can refute.** Four plants into
+the two new checks, each verified to have changed the file before it was judged:
+
+| plant | verdict |
+| --- | --- |
+| the "permitted must be earned" rule removed | ⭐ refused, exit 1 |
+| the markdown exemption on the owner generic dropped | ⭐ refused, exit 1 |
+| the Go-template exclusion dropped | ⭐ refused, exit 1 |
+| **the empty-register refusal removed** | ⛔ **SURVIVED, exit 0** |
+
+⚠ **The survivor is not a gap and it is not a pass either.** The plant is still
+refused - a register with no rows has no row for any catalogue target, so rule 1
+fires - which makes that case *a check that passes because a different code path
+happens to satisfy it*, one of the two shapes
+[`../docs/methodology/reviews.md`](../docs/methodology/reviews.md) names. ⭐ The
+guard is kept and the CASE LABEL is corrected to say which rule refuses it,
+rather than claiming a proof it does not carry.
+
+⚠ **And one plant did not compile**, which is a third status and is counted as
+neither: dropping the markdown test left a variable unused, the build failed, and
+the harness answered 2. ⭐ Re-aimed in a form that compiles, it is the second row
+above. A harness exit of 2 is *could not run*, never *refused*.
+
+⭐ **The claim audit re-read every number here against the tree**, and each one
+holds: six ported checks (`--rows`), eight remaining pairs (`check-twins`),
+eighteen shardable units and three controls (`--units`), no `go.sum`, none of the
+twelve deleted files on disk, and every `.ps1` at `w/crlf`. ⚠ What would have made
+it fire is exactly what it found earlier in the session - the run-122 comparison
+written up as a property of the change rather than of the host.
+
 ### Residuals of step 3
 
 - ⚠ **The CI matrix is four shards and the bound came DOWN to 20 from 45.** That

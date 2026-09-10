@@ -572,11 +572,21 @@ sed 's/^redistribute = "refused"$/redistribute = "permitted"/' "$WORK/licences.o
 agree "licences permitted without a verified licence and a notice is refused" check-licences common/check-licences 1
 restore_licences
 
-# ⛔ A REGISTER OF NOTHING SATISFIES EVERY RULE ABOVE, because two empty lists
-# agree perfectly. That is what a broken parser reports success as, so it is its
-# own case rather than an assumption.
+# ⛔ A REGISTER OF NOTHING IS REFUSED - AND THIS CASE DOES NOT ESTABLISH BY WHICH
+# RULE, WHICH IS A FINDING RATHER THAN A DETAIL. Measured on 2026-09-10 by
+# planting: with the empty-register refusal removed outright, every case here
+# still passed. The plant is still refused, because a register with no rows also
+# has no row for any catalogue target and rule 1 fires on that.
+#
+# ⚠ SO THE EMPTY-REGISTER GUARD IS DEFENCE IN DEPTH AND ITS REFUSAL IS NEVER
+# ALONE. It is unreachable as a sole cause over a real catalogue: any register
+# empty enough to trigger it has already failed the two comparisons. It is kept
+# and recorded rather than removed, the way CI-03 keeps a marker's exclusive
+# create - a guard nothing can refute is still the guard that matters if a parser
+# ever stops matching. ⛔ What this case is NOT is proof that it works, and the
+# label says so instead of claiming it.
 printf 'schema = "bit-ids/licences/1"\n' >"$REG"
-agree "licences a register that parses to no rows is refused" check-licences common/check-licences 1
+agree "licences an empty register is refused, by rule 1 rather than by the empty guard" check-licences common/check-licences 1
 restore_licences
 
 agree "licences clean tree again" check-licences common/check-licences 0
