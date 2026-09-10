@@ -206,6 +206,18 @@ from any working directory.
   across directories rather than growing a second copy. It holds what a mutation
   harness needs: build an example, make a scratch tree, digest a directory,
   verify a plant landed, count a row.
+- [`corpus/store-lib.ps1`](corpus/store-lib.ps1) is its twin, dot-sourced rather
+  than sourced, and it is `CI-07`'s first step: every declared row whose subject
+  is portable waited on ONE library rather than on fifteen translations.
+  ⛔ Three of the sh half's functions have no twin here yet - `place`,
+  `tree_digest` and `tree_files` - because nothing on this lane calls them, and a
+  function nothing calls is a function nobody knows works. They land with the
+  first twin that exercises them.
+- [`acquisition/check-cache.ps1`](acquisition/check-cache.ps1) is the first
+  harness twin that library made possible. ⚠ It cannot hold a second opinion
+  about the cache, because both halves drive the same Rust example; what the pair
+  compares is the machinery underneath, and a clean tree proves nothing about
+  that - three defects planted in the library made the two halves disagree.
 - [`common/check-gate.sh`](common/check-gate.sh) and
   [`common/check-gate.ps1`](common/check-gate.ps1) run the local gate. ⭐ The
   `sh` half runs its checks **concurrently** and reads their verdicts in list

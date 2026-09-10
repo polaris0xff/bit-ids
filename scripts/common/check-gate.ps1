@@ -230,7 +230,27 @@ else {
 # says so. ⚠ A documented gap whose reason is wrong is worse than an undocumented
 # one, because --strict permits it forever on the strength of a sentence nobody
 # re-read. Found by a claim audit while CI-03 was being closed.
-Add-Unavailable 'check-cache' 'a portable Rust subject; it needs store-lib.ps1; CI-07 class A'
+# ⭐ A REAL ROW SINCE 2026-09-10, AND IT IS THE FIRST OF `CI-07` CLASS A TO STOP
+# BEING DECLARED. It was `a portable Rust subject; it needs store-lib.ps1`, and
+# `store-lib.ps1` now exists: the sweep's finding was that every class-A row
+# waits on ONE library rather than on fifteen translations, and this row is what
+# turns that finding into a measurement.
+$cachePs = Join-Path $here '..' 'acquisition' 'check-cache.ps1'
+if ($Rows) { Write-Output 'check-cache' }
+elseif (Test-Path -LiteralPath $cachePs -PathType Leaf) {
+    & pwsh -NoProfile -File $cachePs *> $logFile
+    $rc = $LASTEXITCODE
+    switch ($rc) {
+        0 { Add-Row '✅ ok    check-cache'; $pass++ }
+        2 { Add-Row 'SKIP  check-cache  (could not run)'; $skip++ }
+        default { Add-Row ('❌ FAIL  check-cache  (exit ' + $rc + ')'); $fail++ }
+    }
+}
+else {
+    Add-Row 'SKIP  check-cache  (not present)'
+    $skip++
+}
+
 Add-Unavailable 'check-store' 'its plants are a symlink and a named pipe; reconsider them, do not translate; CI-07 class B'
 Add-Unavailable 'check-corpus' 'a portable Rust subject; it needs store-lib.ps1; CI-07 class A'
 Add-Unavailable 'check-indexes' 'a portable Rust subject; it needs store-lib.ps1; CI-07 class A'

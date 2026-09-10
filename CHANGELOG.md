@@ -5,6 +5,25 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-10T02:28:00Z
+
+- ⭐ **`store-lib.ps1` exists**, which `CI-07`'s sweep named as the first step:
+  every declared row whose subject is portable waits on ONE library rather than
+  on fifteen translations.
+- ⭐ **`check-cache` is a real row on the PowerShell lane**, the first class-A
+  row to stop being declared. That lane went from 13 passed and 20 unavailable to
+  14 and 19, over 34 rows both runners agree on.
+- ⛔ **`check-twins` could only reach `common/`.** The first harness twin is in
+  `acquisition/`, so a comparison scoped to one directory would have left it
+  uncompared - the shape that file exists to refuse, in its own plumbing. Pair
+  paths are relative to `scripts/` now.
+- ⚠ **A clean tree proves nothing about a pair**, so three defects were planted
+  in the new library one at a time and the halves compared on each: all three
+  made them disagree.
+- ⛔ **Three functions are deliberately absent from the library.** A function
+  nothing calls is a function nobody knows works.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-07`. No version bump and no deploy.
+
 ### 2026-09-10T02:06:00Z
 
 - ⛔ **Keeping a secret out of a capture artifact depended on each adapter

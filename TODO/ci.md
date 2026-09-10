@@ -1341,6 +1341,49 @@ instead**: `check-workflow.sh` proves the same three rules by running the whole
 gate per plant, which cost the Linux lane eleven minutes. A permanent per-plant
 twin harness would let that shrink back to one gate-level case.
 
+### ⭐ THE LIBRARY EXISTS AND THE FIRST CLASS-A ROW IS REAL. 2026-09-10
+
+⭐ **[`../scripts/corpus/store-lib.ps1`](../scripts/corpus/store-lib.ps1) is the
+first step this entry named**, and
+[`../scripts/acquisition/check-cache.ps1`](../scripts/acquisition/check-cache.ps1)
+is the first harness twin that proves it. `check-gate.ps1` runs `check-cache` as
+a row rather than declaring it: measured on 2026-09-10, that lane went from 13
+passed and 20 unavailable to **14 passed and 19 unavailable**, over 34 rows both
+runners agree on.
+
+⛔ **THE TWO HALVES CANNOT DISAGREE ABOUT THE CACHE AND THAT IS NOT THE POINT.**
+Both drive the same Rust example, so the subject is identical by construction;
+what they can differ on is the machinery underneath - the plant probes, the row
+accounting and the verdict - which is exactly what the library supplies.
+⚠ Their `--json` answers are byte-identical on a clean tree, and a clean tree
+proves nothing about a pair, so three defects were planted in the PowerShell
+library one at a time and the two halves compared on each:
+
+| plant in `store-lib.ps1` | the halves |
+| --- | --- |
+| a multi-line literal accepted rather than refused | ⛔ disagree, caught |
+| an ambiguous literal accepted rather than refused | ⛔ disagree, caught |
+| a no-op edit reported as planted | ⛔ disagree, caught |
+
+⛔ **AND `check-twins` COULD ONLY REACH `common/`.** Every pair it compared lived
+there, so the directory was spelled once in `compare_pair` and each call site
+named a bare file - and the first class-A twin is in `acquisition/`. A comparison
+that could reach one directory would have left it uncompared, which is the shape
+that whole file exists to refuse, arriving in its own plumbing. The paths are
+relative to `scripts/` now and all twelve call sites carry their directory.
+
+⛔ **THREE FUNCTIONS ARE DELIBERATELY ABSENT FROM THE LIBRARY.** `place`,
+`tree_digest` and `tree_files` are used only by `check-store`, `check-corpus` and
+`check-indexes`, and `check-store` is class B. ⚠ A function nothing calls is a
+function nobody knows works, and shipping three of those would make the library
+look more complete than it is measured to be; they land with the first twin that
+exercises them.
+
+⚠ **WHAT IS LEFT IS THE REST OF CLASS A**, which the table above this section
+lists: `check-corpus`, `check-indexes`, `check-release`, `check-formats`,
+`check-catalogue`, `check-staleness` and `check-assemble`. ⛔ No count of them is
+written here, for the reason this entry already records twice.
+
 ### ⛔ What the door sweep found on 2026-09-08: the two runners' row lists
 
 **Nothing compares the set of rows `check-gate.sh` runs against the set

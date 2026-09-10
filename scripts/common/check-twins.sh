@@ -339,10 +339,10 @@ compare_pair() {
     # timestamped progress reported a disagreement while agreeing exactly, because
     # two runs a second apart are never byte-identical. Comparing the JSON
     # compares the ANSWER; comparing the transcript compares the clock.
-    (cd "$REPO_ROOT" && sh "$REPO_ROOT/scripts/common/$_p_sh" $_p_shargs 2>/dev/null) >"$_q.a" &
+    (cd "$REPO_ROOT" && sh "$REPO_ROOT/scripts/$_p_sh" $_p_shargs 2>/dev/null) >"$_q.a" &
     _sh_pid=$!
     # shellcheck disable=SC2086
-    (cd "$REPO_ROOT" && "$PWSH" -NoProfile -File "$REPO_ROOT/scripts/common/$_p_ps" $_p_psargs 2>/dev/null) >"$_q.b" &
+    (cd "$REPO_ROOT" && "$PWSH" -NoProfile -File "$REPO_ROOT/scripts/$_p_ps" $_p_psargs 2>/dev/null) >"$_q.b" &
     _ps_pid=$!
     wait "$_sh_pid"
     ra=$?
@@ -386,9 +386,9 @@ harvest_pairs() {
   done
 }
 
-compare_pair "check-docs" check-docs.sh "--json" check-docs.ps1 "-Json"
-compare_pair "check-placeholders" check-placeholders.sh "--json" check-placeholders.ps1 "-Json"
-compare_pair "check-control-bytes" check-control-bytes.sh "--json" check-control-bytes.ps1 "-Json"
+compare_pair "check-docs" common/check-docs.sh "--json" common/check-docs.ps1 "-Json"
+compare_pair "check-placeholders" common/check-placeholders.sh "--json" common/check-placeholders.ps1 "-Json"
+compare_pair "check-control-bytes" common/check-control-bytes.sh "--json" common/check-control-bytes.ps1 "-Json"
 # ⚠ THIS PAIR IS THE ONE MOST WORTH COMPARING AND THE ONE LEAST PROVED BY THE
 # COMPARISON. Both halves decode UTF-8 by hand, from opposite directions: the
 # sh half walks bytes with an ordinal table and the PowerShell half walks .NET
@@ -396,13 +396,27 @@ compare_pair "check-control-bytes" check-control-bytes.sh "--json" check-control
 # that contains no character outside the five is two decoders agreeing about
 # nothing. ⭐ Prove this one with a planted character, in both halves, the way
 # scripts/README.md says to. It was, on U+2014 and on U+1F600.
-compare_pair "check-markers" check-markers.sh "--json" check-markers.ps1 "-Json"
-compare_pair "check-one-home" check-one-home.sh "--json" check-one-home.ps1 "-Json"
-compare_pair "check-changelog" check-changelog.sh "--json" check-changelog.ps1 "-Json"
-compare_pair "check-no-secrets" check-no-secrets.sh "--json" check-no-secrets.ps1 "-Json"
-compare_pair "check-no-secrets pub" check-no-secrets.sh "--public --json" check-no-secrets.ps1 "-Public -Json"
-compare_pair "check-project" check-project.sh "--json" check-project.ps1 "-Json"
-compare_pair "check-licences" check-licences.sh "--json" check-licences.ps1 "-Json"
+compare_pair "check-markers" common/check-markers.sh "--json" common/check-markers.ps1 "-Json"
+compare_pair "check-one-home" common/check-one-home.sh "--json" common/check-one-home.ps1 "-Json"
+compare_pair "check-changelog" common/check-changelog.sh "--json" common/check-changelog.ps1 "-Json"
+compare_pair "check-no-secrets" common/check-no-secrets.sh "--json" common/check-no-secrets.ps1 "-Json"
+compare_pair "check-no-secrets pub" common/check-no-secrets.sh "--public --json" common/check-no-secrets.ps1 "-Public -Json"
+compare_pair "check-project" common/check-project.sh "--json" common/check-project.ps1 "-Json"
+compare_pair "check-licences" common/check-licences.sh "--json" common/check-licences.ps1 "-Json"
+
+# ⭐ THE FIRST PAIR OUTSIDE common/, AND WHY THE PATHS ABOVE GAINED A DIRECTORY.
+# Every twin this file compared lived in `common/`, so the base was spelled once
+# and the call sites named a bare file. `CI-07`'s class-A rows do not: the first
+# harness twin is `acquisition/check-cache.ps1`, and a comparison that could only
+# reach one directory would have left it uncompared - which is the shape this
+# whole file exists to refuse, arriving in its own plumbing.
+#
+# ⚠ WHAT THIS PAIR CAN AND CANNOT DISAGREE ABOUT. Both halves drive the SAME
+# Rust example, so they cannot hold two opinions about the cache; what they can
+# differ on is the machinery underneath - the plant probes, the row accounting
+# and the verdict - which is `store-lib.ps1`, new on 2026-09-10 and used by
+# nothing else yet.
+compare_pair "check-cache" acquisition/check-cache.sh "--json" acquisition/check-cache.ps1 "-Json"
 
 # ⭐ mine-repo IS COMPARED THROUGH --selftest, AND THAT IS THE WHOLE POINT.
 # This pair used to be excluded, on the reasoning that comparing two miners
@@ -415,13 +429,13 @@ compare_pair "check-licences" check-licences.sh "--json" check-licences.ps1 "-Js
 # ⚠ --selftest touches no network and no credential. There was never a reason
 # to leave the joiner uncompared, and the exclusion note that covered the fetch
 # had been read as covering the whole script.
-compare_pair "mine-repo --selftest" mine-repo.sh "--selftest --json" mine-repo.ps1 "-SelfTest -Json"
+compare_pair "mine-repo --selftest" common/mine-repo.sh "--selftest --json" common/mine-repo.ps1 "-SelfTest -Json"
 
 # ⚠ THIS PAIR NEEDS THE NETWORK AND AN AUTHENTICATED gh, and both twins exit 2
 # when they do not have them. Two 2s is agreement: it says the pair could not
 # run, not that it passed. ⛔ Do not drop the row on a machine with no gh; a
 # comparison skipped for convenience is a comparison that stops happening.
-compare_pair "check-remote-items" check-remote-items.sh "--json" check-remote-items.ps1 "-Json"
+compare_pair "check-remote-items" common/check-remote-items.sh "--json" common/check-remote-items.ps1 "-Json"
 
 harvest_pairs
 
