@@ -5,18 +5,22 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
-### 2026-09-10T05:01:27Z
+### 2026-09-10T05:08:52Z
 
-- ⛔ **`CI-10` is filed and it is the FIRST entry in the work order**, by operator
-  direction. The CI wall clock is one job running the whole gate about ten times
-  in sequence; it was cancelled at its bound three times in one session while two
-  fixes were tried on the wrong cause, and the bound was then raised.
-- ⭐ **Two stages with a measurement between them**: parallelise everything, and
-  only if it is still slow, rewrite the harness layer causing it in Go rather
-  than porting the problem around - then parallelise again.
-- ⚠ **The second stage is XL and gets its own entry when it is reached**, because
-  a language change against this repository's stated defaults has to be argued
-  from a number rather than a preference, and stage 1 is what produces it.
+- ⛔ **`CI-10` is filed, it is FIRST in the work order, and it is not
+  conditional.** Operator direction on 2026-09-10, recorded as given: port all
+  the checking scripts to Go, port the slow CI parts to Go, and parallelise CI
+  across multiple runners.
+- ⚠ **The argument for it is this session.** *Workflow acceptance* was cancelled
+  at its bound three times, two fixes were tried on the wrong cause, the bound
+  was then raised to 45, and a fourth run was cancelled by this project's own
+  push before it could prove even that.
+- ⭐ **It deletes the twin layer rather than translating it.** One binary that
+  runs on both platforms removes the drift `check-twins` exists to detect, and
+  `CI-07`'s remaining class-A backlog stops being work at all.
+- ⛔ **A ported check refuses exactly what its shell half refused**, over the same
+  plants and with the same 0/1/2 vocabulary, and is compared against those halves
+  before they are deleted.
 - Record: [`TODO/ci.md`](TODO/ci.md), `CI-10`. No version bump and no deploy.
 
 ### 2026-09-10T04:31:42Z

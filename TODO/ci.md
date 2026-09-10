@@ -2620,65 +2620,75 @@ package with no library tests. `docs/conventions/forbidden-patterns.md` carries
 the class. ⚠ Two open entries still carry it in their `Prove`, `OBS-10` and
 `CORPUS-02`, and both are corrected when they close, as `OBS-09`'s was.
 
-## CI-10: The CI wall clock, parallelised and then rewritten if that is not enough
+## CI-10: Every checking script in Go, and CI across multiple runners
 
 Source: operator direction on 2026-09-10, after a job was cancelled at its bound
 three times in one session
 Priority: P1 | Effort: XL | Status: OPEN
 
-Problem: `check-workflow.sh` is ONE job that runs the whole gate about ten times
-in sequence. It is the CI wall clock and it has been for several sessions:
-`CI-01`'s residual named sharding as the next win, `docs/history/RESUME.md`
-listed it as a step, and every session since has deferred it and paid for the
-deferral instead.
+Problem: The checking layer is shell and PowerShell, and it is slow in a way no
+single row explains. `check-workflow.sh` is ONE job that runs the whole gate
+about ten times in sequence; the gate itself forks a process per assertion,
+copies a tree per case, and keeps a `.ps1` twin of every `.sh` so the same work
+is written and run twice. ⛔ It is the CI wall clock and has been for several
+sessions.
 
-⛔ **What the deferral cost, measured on 2026-09-10.** The *Workflow acceptance*
-job was cancelled at its 30-minute bound **three times**, at 30m15s each. Two
-different fixes were tried on the wrong cause - `check-defaults` was moved out of
-the gate, which saved about five minutes and did not bring the job back under the
+⛔ **What deferring it cost, measured on 2026-09-10.** The *Workflow acceptance*
+job was cancelled at its 30-minute bound **three times**, at about 30m15s each.
+Two fixes were tried on the wrong cause - `check-defaults` was moved out of the
+gate, which saved roughly five minutes and did not bring the job back under the
 bound - and the session then RAISED THE BOUND to 45, which is the masking move
-this repository refuses everywhere else. ⚠ That is the whole argument for this
-entry: the harness is not slow because of any one row, and buying it minutes is
-not a fix.
+this repository refuses everywhere else. ⚠ A fourth run was cancelled by this
+project's own next push before it could prove the raised bound, so even that is
+unmeasured.
+
+⛔ **AND THE DIRECTION IS NOT "MEASURE, THEN MAYBE PORT".** This entry's first
+draft made the port conditional on a measurement. The operator's direction is
+unconditional and is recorded as given: **port all the checking scripts to Go,
+port the slow CI parts to Go, and parallelise CI across multiple runners.**
 
 Premise: The cases are independent. Each copies the working tree into a scratch
-repository, plants one defect, runs one workflow step against it and restores -
-so nothing in the design requires them to run on one machine, and the sequence is
-an accident of how the harness grew rather than a property of what it proves.
+repository, plants one defect, runs one step against it and restores - so nothing
+in the design requires them to share a machine, and the sequence is an accident
+of how the harness grew rather than a property of what it proves.
 
-Approach, in two stages with a MEASUREMENT between them:
+Approach:
 
-1. ⭐ **Parallelise everything.** Give the harness a shard selector, run the
-   shards as a GitHub matrix, and let the concurrency come from runners rather
-   than from one machine's cores. The gate itself is already concurrent; this
-   is the layer above it that is not. ⚠ Shard the LOCAL run too, or a
-   contributor keeps paying the full sequence for a harness CI no longer runs
-   that way.
-2. ⛔ **If it is still slow, stop porting the problem around and rewrite the
-   layer that causes it.** The candidate is the shell and PowerShell harness
-   layer: it forks a process per assertion, copies a tree per case, and has a
-   twin per file that doubles the work. ⭐ A single Go binary would run the
-   cases as goroutines over one tree snapshot, with no fork per row and no twin
-   to keep in step. ⚠ Then parallelise again, because a faster serial harness
-   is still serial.
+1. ⭐ **Port the checking scripts to Go.** One binary, cases as goroutines over
+   one tree snapshot: no fork per assertion, no tree copy per case, and no twin
+   to keep in step. ⛔ **The twin layer is not translated, it is DELETED.**
+   `check-twins` exists because two hand-written halves drift; one binary that
+   runs on both platforms removes the class rather than checking for it, and
+   `CI-07`'s remaining class-A backlog stops being work at all.
+2. ⭐ **Port the slow CI parts to Go**, which is `check-workflow` above all - the
+   harness that runs the whole gate about ten times.
+3. ⭐ **Parallelise CI across multiple runners.** A shard selector on the harness
+   and a GitHub matrix, so the concurrency comes from runners rather than from
+   one machine's cores. ⚠ Shard the LOCAL run too, or a contributor keeps paying
+   a sequence CI no longer runs.
 
-⚠ **The second stage is XL on its own and gets its own entry when it is
-reached.** `docs/AGENTS.md` section 5 makes shell the default orchestration
-language and Rust the language of every core component; a Go harness is neither,
-so the argument for it has to be made against a measurement rather than against
-a preference - which is exactly what stage 1 produces.
+⚠ **`docs/AGENTS.md` section 5 changes with this entry, in the same change as
+the work.** It currently makes shell the default orchestration language and Rust
+the language of every core component, and names Python only under a documented
+constraint. A Go checking layer is a fourth language and the router has to say so
+rather than leave the next session to discover it from a file extension.
 
-⛔ **A stage that does not measure has not finished.** Stage 1 records the wall
-clock before and after, per shard and in total, and stage 2 is opened only if the
-number after stage 1 is still unacceptable. Reversing that order is how this
-entry's own Problem happened.
+⛔ **What must NOT change while porting.** Every guard's *verdict* is the
+contract, not its implementation: a ported check refuses exactly what its shell
+half refused, over the same planted defect, with the same exit-code vocabulary -
+0 held, 1 refused, 2 could not run. ⚠ A port that changed one verdict while
+getting faster would be trading the thing being measured for the measurement.
 
-Prove: `sh scripts/ci/check-workflow.sh --shard 1/N` runs a strict subset of the
-cases, the N shards together run every case exactly once with none dropped and
-none duplicated, a case moved between shards changes no verdict, and the CI job
-completes inside a bound that was not raised to accommodate it.
+Prove: the Go harness refuses every defect its shell predecessor refused, case
+for case, over the same plants; `--shard 1/N` runs a strict subset and the N
+shards together run every case exactly once with none dropped and none
+duplicated; and the CI matrix completes inside a bound that was not raised to
+accommodate it.
 
 Residual, before the work starts: the shard split must be checked rather than
 assumed. A harness that silently dropped a case would report a faster green run
 over less work, which is this repository's oldest defect class and the one a
-wall-clock target makes most tempting.
+wall-clock target makes most tempting. ⛔ And the port needs a case-for-case
+comparison against the shell halves BEFORE they are deleted, because a Go
+harness compared only against itself is the self-consistency `OBS-07` was
+opened for, arriving in the checking layer.

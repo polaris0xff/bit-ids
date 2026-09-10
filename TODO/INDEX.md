@@ -77,7 +77,7 @@ Done: 43
 | CI-07 | P1 | L | OPEN | PowerShell halves for the declared gate rows |
 | CI-08 | P1 | L | OPEN | Runner-default drift, swept rather than waited for |
 | CI-09 | P1 | L | OPEN | The capture-to-publisher path, end to end |
-| CI-10 | P1 | XL | OPEN | The CI wall clock, parallelised and then rewritten if that is not enough |
+| CI-10 | P1 | XL | OPEN | Every checking script in Go, and CI across multiple runners |
 | DOC-01 | P1 | M | DONE | Public data and library documentation |
 | DOC-02 | P2 | M | DONE | Contributor capture-run handbook |
 

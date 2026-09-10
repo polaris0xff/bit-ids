@@ -257,15 +257,17 @@ written and the dependency question under *Settled decisions* is spent.
 every answer it gives about a real client today is *not measured*, because
 nothing is. The clone question under *Settled decisions* is spent too.
 
-0. ⛔ **`CI-10` IS FIRST, BY OPERATOR DIRECTION ON 2026-09-10.** The CI wall
-   clock is one job that runs the whole gate about ten times in sequence, and it
-   was cancelled at its bound **three times in one session** while two fixes were
-   tried on the wrong cause and the bound was then raised. ⚠ The direction is to
-   stop paying for the deferral: parallelise everything, and if it is still slow,
-   rewrite the layer causing it in Go rather than porting the problem around -
-   then parallelise again. ⛔ **Nothing else in this order starts until that one
-   has been measured**, because every other entry pays this harness's wall clock
-   on every push.
+0. ⛔ **`CI-10` IS FIRST, BY OPERATOR DIRECTION ON 2026-09-10, AND IT IS NOT
+   CONDITIONAL.** Port **all** the checking scripts to Go, port the slow CI parts
+   to Go, and parallelise CI across **multiple runners**. ⚠ The direction is
+   recorded as given rather than as a measurement to be taken first: the
+   *Workflow acceptance* job was cancelled at its bound three times in one
+   session, two fixes were tried on the wrong cause, the bound was then raised,
+   and a fourth run was cancelled by this project's own push before it could
+   prove even that. ⛔ **Nothing else in this order starts until it is done**,
+   because every other entry pays this harness's wall clock on every push.
+   ⭐ It deletes the twin layer rather than translating it, so `CI-07`'s
+   remaining backlog stops being work at all.
 0a. ⭐ **`CLIENT-14` IS CLOSED.** It was first by operator direction on 2026-09-09,
    after ten dispatches produced no aria2 capture: every lane stopped inside
    *Install the client*, four independent bounds were measured not to fire on
