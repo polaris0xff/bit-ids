@@ -171,7 +171,7 @@ write_lane() { # tag route resolver-url commit binary-digest version peer-id [co
     printf 'preexisting_binary=\npreexisting_binary_sha256=\n'
     printf 'installed_binary=/usr/local/bin/fixture-client\n'
     printf 'installed_binary_sha256=%s\n' "$5"
-    printf 'acquired=yes\nsource_commit=%s\npackage=elf-binary\n' "$4"
+    printf 'acquired=%s\nsource_commit=%s\npackage=elf-binary\n' "${ACQUIRED:-yes}" "$4"
     printf 'adapter=scripts/capture/adapters/fixture.sh\n'
     printf 'started_at=2026-09-09T15:08:17Z\nfinished_at=2026-09-09T15:08:18Z\n'
   } >"$_cap/install-$2.txt"
@@ -358,6 +358,32 @@ else
   fail "the conflict is on the two altered fields and not on the two agreed ones ($CONFLICTED rows)"
   [ "$JSON" = "1" ] || grep -F -e 'E-PUB-01' "$WORK/conflict.out" | sed 's/^/          /'
 fi
+
+# -- ⛔ A ROUTE THAT ACQUIRED NOTHING IS NOT A SECOND ROUTE --------------------
+#
+# ⛔ `ACQ-03`'s SHARPEST RESIDUAL, AND IT IS MEASURED RATHER THAN IMAGINED.
+# `aria2` ships on `ubuntu-24.04`, so client capture runs 3 and 4 recorded
+# `route=package` over an `apt-get install` that installed nothing. A route like
+# that exits 0, declares its own resolver, satisfies `E-ACQ-07` and `E-ACQ-08`,
+# agrees on the version BECAUSE IT IS ONE BINARY, and reaches `classify` as
+# `byte_identical` - the strongest verdict there is, reached by acquiring
+# nothing.
+# ⚠ THE THIRD VALUE IS ITS OWN CASE. `acquired` is written by shell, so a record
+# carrying anything but `yes` or `no` is a field nothing derived; reading an
+# unknown value as `no` would refuse it for a reason that is not true.
+ACQUIRED=no
+write_lane idle-source source "$REFS" "$COMMIT" "$DIGEST_B" 1.2.3 "$PEER_A" "$PEER_A" || exit 2
+ACQUIRED=yes
+case_is 1 "acquired=no" \
+  "a route that ran and installed nothing is refused as a second route" \
+  idle good-release idle-source
+
+ACQUIRED=maybe
+write_lane odd-source source "$REFS" "$COMMIT" "$DIGEST_B" 1.2.3 "$PEER_A" "$PEER_A" || exit 2
+ACQUIRED=yes
+case_is 1 "neither yes nor no" \
+  "an install record whose acquired field is not yes or no is refused" \
+  odd good-release odd-source
 
 # ⛔ ONE LISTING, TWO LANES. This is run 14's shape: `capture-client.yml` resolves
 # once and hands the release lane an asset URL and the source lane a tag, and

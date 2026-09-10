@@ -488,11 +488,31 @@ binary, and every existing check satisfied.
 ⭐ **The half that is fixed is the evidence.** `install-client` asks the host for
 a version before the route runs and records `preexisting_version` and `acquired`,
 so a route that installed nothing says so in its own record; the three shapes and
-a planted derivation are cases in `check-capture-client`. ⛔ **The half that is
-not is the refusal**: nothing yet reads `acquired` when comparing two routes, and
-`classify_across` cannot see it because the field is not on the record type. Both
-belong with the residual above, in whatever first assembles a publication from
-two real captures.
+a planted derivation are cases in `check-capture-client`.
+
+### ⭐ And the refusal exists now, 2026-09-10, at the layer this residual named
+
+⛔ **`assemble-capture` refuses a lane whose install record says `acquired=no`.**
+That is where this residual pointed - "whatever first assembles a publication
+from two real captures" - and it is the right layer for a reason stronger than
+convenience: what is wrong is *upstream of the comparison*. A route that acquired
+nothing is not a second route, so the record is never written and `classify`
+never sees the pair.
+
+⚠ **Proved by removing the probe rather than by reading the code.** With it
+deleted, the `acquired=no` lane assembles into a record and the tool exits 0 -
+which is the hole, demonstrated rather than argued. Two cases in
+`check-assemble`, and the third value is its own case: `acquired` is written by
+shell, so a record carrying anything but `yes` or `no` is a field nothing
+derived, and reading an unknown value as `no` would refuse it for a reason that
+is not true.
+
+⛔ **THIS CLOSES THE HOLE AND NOT THE RESIDUAL.** `classify` still cannot see the
+field, because `AcquisitionRoute` has nowhere to put it, so a record
+hand-written past the assembler still reaches `ByteIdentical` by acquiring
+nothing. ⚠ Putting it on the route type is a schema change across every fixture,
+every rendering and every validator, and it is worth doing when a record exists
+to migrate rather than while every record in the tree is synthetic.
 
 ## ACQ-04: Disposable-host execution boundary
 

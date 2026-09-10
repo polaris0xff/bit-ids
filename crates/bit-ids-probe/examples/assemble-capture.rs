@@ -260,6 +260,45 @@ impl Lane {
     fn evidence_id(&self, suffix: &str) -> Slug {
         slug(&format!("ev-{}-{suffix}", self.route))
     }
+
+    /// Whether this route actually acquired the build, off the install record.
+    ///
+    /// ⛔ **`ACQ-03`'s sharpest residual, and this is the layer its own entry
+    /// names.** A route that installs nothing exits 0, so two routes on a host
+    /// that already ships the product declare two independent resolvers, satisfy
+    /// `E-ACQ-07` and `E-ACQ-08`, agree on the version *because it is one
+    /// binary*, and reach `classify` as `ByteIdentical` - the strongest verdict
+    /// that function has, arrived at by acquiring nothing.
+    ///
+    /// ⚠ **Measured, in runs this repository already dispatched**: `aria2` ships
+    /// on `ubuntu-24.04`, so client capture runs 3 and 4 recorded
+    /// `route=package` over an `apt-get install` that installed nothing.
+    ///
+    /// ⛔ **The refusal belongs here rather than in `classify`.** That function
+    /// compares route records and the field is not on the record type; adding it
+    /// there is a schema change across every fixture, every rendering and every
+    /// validator. What is wrong is upstream of the comparison: a route that
+    /// acquired nothing is not a second route, so the record is never written.
+    /// ⚠ So this closes the hole and does not close the residual - `classify`
+    /// still cannot see the field, and a record hand-written past this assembler
+    /// would still reach it.
+    fn acquired(&self) -> Result<(), String> {
+        let install = Path::new("install-<route>.txt");
+        match need(&self.install, "acquired", install)? {
+            "yes" => Ok(()),
+            "no" => Err(format!(
+                "the {} route records `acquired=no`: it ran, exited 0 and installed nothing, \
+                 because the host already carried the build. Two such routes agree on a version \
+                 because it is ONE binary, and a record over them would call that agreement \
+                 evidence. `ACQ-03`",
+                self.route
+            )),
+            other => Err(format!(
+                "the {} route records `acquired={other}`, which is neither yes nor no",
+                self.route
+            )),
+        }
+    }
 }
 
 fn slug(text: &str) -> Slug {
@@ -837,6 +876,9 @@ fn lane_gaps(lane: &Lane) -> Vec<String> {
         out.push(error);
     }
     if let Err(error) = lane.resolver() {
+        out.push(error);
+    }
+    if let Err(error) = lane.acquired() {
         out.push(error);
     }
     out

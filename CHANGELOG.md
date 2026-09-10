@@ -5,6 +5,19 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-10T01:47:00Z
+
+- ⛔ **A route that ran and installed nothing reached the strongest verdict this
+  project has.** `aria2` ships on `ubuntu-24.04`, so two routes on such a host
+  declare two independent resolvers, agree on a version because it is ONE
+  binary, and arrive at `byte_identical`. `assemble-capture` refuses a lane
+  whose install record says `acquired=no` now, which is upstream of the
+  comparison: such a route is not a second route, so no record is written.
+- ⚠ **It closes the hole and not the residual.** `classify` still cannot see the
+  field, because the route type has nowhere to put it.
+- Record: [`TODO/acquisition.md`](TODO/acquisition.md), `ACQ-03`. No version bump
+  and no deploy.
+
 ### 2026-09-10T01:34:00Z
 
 - ⛔ **The client matrix was not pinned to the catalogue in both directions**,
