@@ -1290,6 +1290,38 @@ Driven after the fix: the file is mode `600` while the build runs, absent after
 the tree that `check-no-secrets` scans. It was found by downloading the artifact
 a real dispatch produced and listing what was in it.
 
+#### ⭐ ADDED 2026-09-10: the fix was a gate on ONE path, and now it is not
+
+⛔ **Unlinking the token in `stop` needs every adapter to remember, `stop` to be
+reached, and `stop` to SUCCEED** - and `capture-client` records a non-zero
+`adapter_stop_status` rather than refusing on it. That is the single most
+recurring hole `docs/methodology/reviews.md` names: a gate on one of several
+paths into the same action, with the other paths silent.
+
+⭐ **`capture-client` now refuses at the choke point every capture passes
+through**, on two rules, because the two failures look nothing alike:
+
+| what it catches | why a filename rule alone is not enough |
+| --- | --- |
+| a file whose NAME says it holds a credential - `*token*`, `*secret*`, `*.pem`, `id_rsa*`, `.env*` | this is the run's own state, and `rpc-token` is exactly it |
+| a secret-shaped MEMBER inside any text document under the output directory | ⛔ this is the product handing one BACK: an options dump names its own `rpc-secret` and lands in a file called nothing in particular |
+
+⚠ **Whether THIS product's options dump carries its secret is a question the next
+dispatch answers**, not one this entry settles. The rule is written for the shape
+rather than for the one instance, and `-l` is used so the guard names the file
+and never prints the value it found.
+
+⛔ **A WORD BOUNDARY, NOT A SUBSTRING, and that is a case rather than a comment.**
+`tokenizer.log` contains `token` and is not one; a near-miss control runs beside
+the two refusals, because a rule that refused everything would pass both of them.
+Three plants, each verified to apply and to leave the script parseable: the name
+rule disabled, the value rule disabled, and the name rule widened to a substring
+- refused, refused, and the near-miss control fired.
+
+⚠ **`check-no-secrets` still cannot reach an artifact**, and that is unchanged.
+This guard lives in the capture path because that is where the subject is; the
+tree scanner's scope is the tree.
+
 ### ⭐ ADDED AFTER CLOSURE on 2026-09-09: the second route exists
 
 ⛔ **The closure evidence above is a dated measurement and is not rewritten.**

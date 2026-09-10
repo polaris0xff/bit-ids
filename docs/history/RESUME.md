@@ -375,6 +375,11 @@ could read it, and `capture-client` packed that directory, so the token shipped
 inside the artifact as `client/rpc-token`. ⚠ Neither step was wrong alone, no
 reading found it, and the gate structurally cannot - the bundle is not in the
 tree `check-no-secrets` scans. ⭐ Look in the artifact a real dispatch produced.
+⭐ **Since 2026-09-10 `capture-client` refuses at the choke point**, on a
+credential-shaped NAME and on a secret-shaped MEMBER inside any text document it
+would ship - the second being the one no filename rule reaches. ⚠ The tree
+scanner still cannot see an artifact; that is unchanged and is why the guard
+lives in the capture path.
 
 ---
 

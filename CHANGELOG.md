@@ -5,6 +5,22 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-10T02:06:00Z
+
+- ⛔ **Keeping a secret out of a capture artifact depended on each adapter
+  remembering.** `capture-client` run 11 shipped `client/rpc-token`; the adapter
+  was fixed to unlink it, and that fix needs `stop` to be reached and to succeed
+  - while a non-zero `stop` is recorded rather than refused.
+- ⭐ **The runner refuses at the choke point now**, on two rules: a file whose
+  name says it holds a credential, and a secret-shaped member inside any text
+  document it would ship. The second is the one no filename rule reaches, because
+  an options dump the product answered with lands in a file called nothing in
+  particular.
+- ⚠ **A word boundary, not a substring**, with a near-miss control beside the two
+  refusals: a rule that refused everything would pass both of them.
+- Record: [`TODO/clients.md`](TODO/clients.md), `CLIENT-14`. No version bump and
+  no deploy.
+
 ### 2026-09-10T01:47:00Z
 
 - ⛔ **A route that ran and installed nothing reached the strongest verdict this

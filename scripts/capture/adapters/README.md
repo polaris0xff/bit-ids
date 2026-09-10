@@ -135,6 +135,16 @@ weak secret and rule 12 does not grade them.
 anything packs the directory** - and writes it under `umask 077` in the
 meantime. An adapter that needs no secret should not invent one.
 
+⛔ **AND `capture-client` REFUSES THE RUN IF ONE IS STILL THERE, since
+2026-09-10.** The paragraph above is a rule an adapter has to remember, which
+needs `stop` to be reached and to succeed - and a non-zero `stop` is recorded in
+the attestation rather than refused. The runner scans what it is about to ship
+for a credential-shaped **name** and for a secret-shaped **member** inside any
+text document, and refuses either. ⚠ The second is the one an adapter is least
+likely to think about: it is not a file the adapter chose to write, it is the
+product's own answer - an options dump naming its own `rpc-secret` - landing in a
+file called nothing in particular.
+
 ## What an adapter must switch off
 
 ⛔ **Public peer discovery, on every route into it.** A capture host has no

@@ -211,6 +211,23 @@ case "$COMMAND" in
   start)
     [ "${BIT_IDS_STUB_START_RC:-0}" = 0 ] || exit "$BIT_IDS_STUB_START_RC"
     TORRENT="$1"
+    # ⛔ WHAT A PRODUCT LEAVES IN THE WORKDIR, WHICH IS THE EVIDENCE BUNDLE.
+    # `aria2-next` really did write a per-run RPC token there, and the workdir is
+    # packed, so these three shapes stand for the class: a file NAMED like a
+    # credential, a document ANSWERING with one, and a near-miss name that must
+    # not be refused.
+    # ⛔ THE VALUE IS GENERATED, NEVER TYPED. A typed run of hex in a tracked
+    # file is the shape `check-no-secrets --public` refuses, and it is right to:
+    # this harness's first draft went red on exactly that. ⭐ Generating it also
+    # makes the stub do what the real product does rather than what a fixture
+    # does.
+    [ -z "${BIT_IDS_STUB_DROP_NAMED:-}" ] ||
+      od -An -tx1 -N16 /dev/urandom 2>/dev/null | tr -d ' \n' \
+        >"$2/$BIT_IDS_STUB_DROP_NAMED"
+    [ -z "${BIT_IDS_STUB_DROP_VALUED:-}" ] ||
+      printf '{"rpc-secret":"%s"}\n' \
+        "$(od -An -tx1 -N12 /dev/urandom 2>/dev/null | tr -d ' \n')" \
+        >"$2/$BIT_IDS_STUB_DROP_VALUED"
     [ "${BIT_IDS_STUB_ANNOUNCE:-yes}" = no ] && exit 0
     HEAD=$(dd if="$TORRENT" bs=1 count=200 2>/dev/null | tr -d '\000')
     REST=${HEAD#d8:announce}
@@ -347,6 +364,8 @@ export BIT_IDS_STUB_START_RC=0
 export BIT_IDS_STUB_STOP_RC=0
 export BIT_IDS_STUB_ANNOUNCE=yes
 export BIT_IDS_STUB_PEER_ID=stub-adapter-00000001
+export BIT_IDS_STUB_DROP_NAMED=""
+export BIT_IDS_STUB_DROP_VALUED=""
 
 run_case 0 "" "a claimed, contained host captures a stub client and verifies"
 CONTROL_OUT="$WORK/out-$OUTS"
@@ -417,6 +436,37 @@ if grep -q -F -e "bundle/connector/$CONNECTOR_ID.txt" "$CONTROL_OUT/SHA256SUMS" 
 else
   fail "the connector's report is covered by SHA256SUMS and the bundle still verifies"
 fi
+
+# -- ⛔ RULE 12, AT THE CHOKE POINT ------------------------------------------
+#
+# ⛔ MEASURED ON A REAL DISPATCH, NOT IMAGINED. `capture-client` run 11 shipped
+# `client/rpc-token` inside its uploaded artifact: `aria2-next` generated a
+# per-run RPC token, wrote it where `stop` could read it, and this runner packed
+# the directory it was in. Neither step was wrong alone, no reading found it, and
+# `check-no-secrets` cannot see it - the bundle is not in the tree it scans.
+# ⚠ The adapter's own unlink is a gate on ONE path: it needs every adapter to
+# remember, `stop` to be reached, and `stop` to succeed - and a non-zero `stop`
+# is recorded here rather than refused.
+BIT_IDS_STUB_DROP_NAMED=rpc-token
+run_case 1 "name says it holds a credential" \
+  "a capture that would ship a file named like a credential is refused"
+BIT_IDS_STUB_DROP_NAMED=""
+
+# ⛔ AND THE ONE NO FILENAME RULE REACHES. An options dump the product ANSWERED
+# with names its own `rpc-secret`, and the file it lands in is called nothing in
+# particular.
+BIT_IDS_STUB_DROP_VALUED=rpc-options.json
+run_case 1 "carrying a secret-shaped value" \
+  "a capture that would ship a document carrying a secret is refused"
+BIT_IDS_STUB_DROP_VALUED=""
+
+# ⛔ AND THE CONTROL BOTH REFUSALS NEED, which is a NEAR MISS rather than a clean
+# run. `tokenizer` contains `token` and is not one; a rule that refused it would
+# be a rule somebody switches off, and a rule that refused everything would pass
+# both cases above.
+BIT_IDS_STUB_DROP_NAMED=tokenizer.log
+run_case 0 "" "a file whose name merely contains the word is not refused"
+BIT_IDS_STUB_DROP_NAMED=""
 
 # ⛔ AND A CAPTURE WITHOUT ONE DOES NOT RUN AT ALL. `run_case` always passes
 # `--connector`, so the two refusals below are invoked directly. ⚠ They are
