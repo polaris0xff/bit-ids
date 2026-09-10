@@ -169,6 +169,12 @@ fi
 # ⚠ AND THE ONE THAT IS NOT AVAILABLE, STATED RATHER THAN DROPPED. A shell
 # resets IFS at startup, so an exported one never reaches a script; a case
 # setting it would report a guard proved by a value the child never saw.
+# ⚠ SINGLE-QUOTED ON PURPOSE, and shellcheck is right to ask. `$IFS` has to be
+# expanded by the CHILD shell, because the whole question is what the child sees;
+# expanding it here would print this shell's own value and the case would pass
+# over any child at all. `check-project.sh` disables the same rule for the same
+# shape.
+# shellcheck disable=SC2016
 IFS_SEEN=$(env "IFS=:" sh -c 'printf "%s" "$IFS"' | od -An -c | tr -d ' \n')
 if [ "$IFS_SEEN" = "\\t\\n" ]; then
   pass "control   IFS does not survive into a child, so it is not perturbable here"

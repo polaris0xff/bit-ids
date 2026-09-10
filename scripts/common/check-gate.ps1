@@ -315,6 +315,14 @@ Add-Unavailable 'check-step-bodies' 'it lifts a Linux-only workflow bodies and a
 # wrong day.
 Add-Unavailable 'check-defaults' 'its subjects are the sh checks; the pwsh experiment is its own work; CI-08'
 
+# ⛔ ITS SUBJECT IS EVERY `.sh` IN THE TREE, and the tools that read them are
+# `shellcheck` and `shfmt`. Both run on this platform, so this is not a platform
+# fact - it is that the equivalent question for THIS lane is a PowerShell linter
+# over the `.ps1` files, which is a different tool and its own work. ⚠ Declared
+# with its own reason rather than a neighbour's: a row whose reason names the
+# wrong event closes on the wrong day.
+Add-Unavailable 'check-shell' 'its subject is the sh scripts; a ps1 linter is its own work; CI-08'
+
 # ⚠ AND THIS ONE IS DECLARED WHILE ITS SUBJECT IS EXERCISED ANYWAY, which is the
 # third kind of reason on this lane. check-capture is an sh harness, so it cannot
 # run here; what it drives includes capture-run.ps1, which the Windows job of the

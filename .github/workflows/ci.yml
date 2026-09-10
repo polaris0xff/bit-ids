@@ -130,6 +130,10 @@ jobs:
       # ⛔ THE SAME PINNED shfmt THE OTHER LANE INSTALLS. Several of the cases
       # below run the gate, and the gate runs shell checks; a lane without it
       # would report a skip where the Linux lane reports a pass.
+      # ⚠ THAT SENTENCE WAS NOT TRUE WHEN IT WAS WRITTEN. The gate ran neither
+      # `shellcheck` nor `shfmt` over the scripts until `check-shell` landed on
+      # 2026-09-10, which is what let this workflow go red on a tree whose local
+      # gate was green. It is true now, and the row is what makes it so.
       - name: Install pinned shfmt
         run: |
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"

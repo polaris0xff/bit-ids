@@ -5,6 +5,20 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-10T03:15:22Z
+
+- ⛔ **The gate ran neither `shellcheck` nor `shfmt`, and the CI workflow's own
+  comment said it did.** Run 113 failed on *Shell syntax and style* over one
+  `SC2016`, on a commit whose local gate had reported 34 of 35 passing minutes
+  earlier. That is a green local gate over a red lane, from a step nothing local
+  covered.
+- ⭐ **`check-shell` is a gate row now**, running the two tools exactly as CI
+  does, as two rows because a red row has to say which refused - and a third
+  that counts what was swept, since two clean tools over a `find` that stopped
+  matching answer the same as over a clean tree.
+- ⚠ `provision.sh` had installed both tools all along, for precisely this.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-08`. No version bump and no deploy.
+
 ### 2026-09-10T03:05:58Z
 
 - ⛔ **Six of the eight refusals in the capture runner's connector block had

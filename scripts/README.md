@@ -165,6 +165,13 @@ from any working directory.
   tracker holding the first run's request opens nothing. ⭐ It re-derives the
   request identifier with `python3`'s SHA-256, which is an implementation this
   project did not write.
+- [`common/check-shell.sh`](common/check-shell.sh) runs `shellcheck` and `shfmt`
+  over every tracked shell script, as two rows rather than one, because a red row
+  has to say which tool refused. ⛔ The gate ran neither until 2026-09-10, which
+  is what let CI go red on a tree whose local gate was green minutes earlier -
+  and the CI workflow's own comment already claimed the gate ran them.
+  ⚠ A third row counts what was swept: two clean tools over a `find` that stopped
+  matching would report the same answer over a repository full of shell.
 - [`ci/check-defaults.sh`](ci/check-defaults.sh) runs several checks under a
   perturbed environment and compares their machine-readable answers, so a value a
   script takes from its host without saying so is named by the variable that

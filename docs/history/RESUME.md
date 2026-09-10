@@ -279,6 +279,13 @@ list, and `check-gate-rows` is what compares it against the other lane's.
 **The gate is not the whole of part (a).** `cargo clippy`, `cargo fmt --check`,
 the test suite and `sh scripts/ci/check-workflow.sh` are separate.
 
+⛔ **AND `shellcheck` AND `shfmt` WERE SEPARATE TOO, WHICH NOTHING SAID.**
+Measured on 2026-09-10: CI run 113 failed on *Shell syntax and style* over one
+`SC2016`, on a commit whose local gate had reported 34 of 35 passing minutes
+earlier. ⚠ The workflow's own comment already claimed *"the gate runs shell
+checks"* and no row did. ⭐ `check-shell` is that row now, so the local gate
+covers the step - and this paragraph stays as the reason it exists.
+
 ⭐ **A capture workflow's step bodies now RUN**, which nothing here did before.
 `scripts/ci/check-step-bodies.sh` lifts a block out of `capture.yml` or
 `capture-client.yml` and executes it the way the runner does, with the output on
