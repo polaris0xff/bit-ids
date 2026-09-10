@@ -28,6 +28,12 @@
 #     and the raw transcript on disk carries those exact bytes. Everything else
 #     here is satisfied by a bundle of empty artifacts that verify against their
 #     own empty digests, or by the observer announcing to itself.
+#  3. A SECOND CONNECTOR READ THE SAME BYTES AND SAID WHAT IT SAW. ⛔ Absolute 2
+#     asks for the Rust observer plus at least one independent connector, and
+#     `E-CAP-01` refuses a record declaring one as an INVALID DOCUMENT rather
+#     than as an unpublishable one - so a capture without this step produces
+#     evidence that cannot become a record however complete it looks. That is
+#     not a reading: it is what refused run 14's four artifacts.
 #
 # ⚠ The adapter DECLARES what it is, and the attestation copies that rather
 # than assuming. A stub adapter yields `stock_client=false`, because a run
@@ -37,6 +43,7 @@
 # Usage:
 #   sh scripts/capture/capture-client.sh --run-id <id> --out <dir>
 #                                        --observer <path> --adapter <path>
+#                                        --connector <path>
 #                                        [--seconds <n>] [--peer-port <n>]
 #                                        [--route-table <path>]
 #
@@ -51,6 +58,7 @@ RUN_ID=""
 OUT=""
 OBSERVER=""
 ADAPTER=""
+CONNECTOR=""
 SECONDS_TO_SERVE=25
 PEER_PORT=""
 ROUTE_TABLE=""
@@ -94,6 +102,11 @@ while [ $# -gt 0 ]; do
       ADAPTER="$2"
       shift
       ;;
+    --connector)
+      [ $# -ge 2 ] || cannot "--connector takes a value"
+      CONNECTOR="$2"
+      shift
+      ;;
     --seconds)
       [ $# -ge 2 ] || cannot "--seconds takes a value"
       SECONDS_TO_SERVE="$2"
@@ -125,6 +138,15 @@ done
 [ -n "$OUT" ] || cannot "--out is required"
 [ -n "$OBSERVER" ] || cannot "--observer is required"
 [ -n "$ADAPTER" ] || cannot "--adapter is required"
+# ⛔ REQUIRED, WITH NO DEFAULT AND NO FALLBACK. Absolute 2 asks for the observer
+# plus at least one independent connector, and `E-CAP-01` refuses a record
+# declaring one at the VALIDITY gate - so a capture that ran without a second
+# connector produces evidence that cannot become a record however good it is.
+# ⚠ THE REJECTED ALTERNATIVE IS THE EXPENSIVE ONE: a capture that warned and
+# carried on would look exactly like a green run, and this project has already
+# spent a dispatch cycle learning that a bundle's gaps are invisible until
+# something tries to assemble it.
+[ -n "$CONNECTOR" ] || cannot "--connector is required; a one-connector capture cannot become a record"
 
 # ⚠ The same slug rule the guard applies, restated here rather than delegated,
 # because this value is a key in a document before the guard is ever consulted.
@@ -152,6 +174,14 @@ for tool in sha256sum awk od grep timeout; do
   command -v "$tool" >/dev/null 2>&1 || cannot "$tool not found"
 done
 
+# ⚠ THE CONNECTOR IS RUN WITH ITS INTERPRETER, THE WAY THE ADAPTER IS. This tree
+# keeps its scripts unexecutable and invokes them as `sh <path>`, so a connector
+# that depended on an executable bit would stop working on a checkout that lost
+# one - and `git ls-files -s` says three of the seventy-seven scripts here carry
+# one, which makes it the exception rather than the convention.
+command -v python3 >/dev/null 2>&1 ||
+  cannot "python3 not found; the second connector is deliberately not this project's Rust"
+
 # ⛔ EVERY ADAPTER CALL IS BOUNDED HERE AS WELL AS IN install-client, and for the
 # same measured reason: an adapter shells out to a product this project did not
 # write, and a product that waits on a prompt waits forever. ⚠ Under containment
@@ -172,6 +202,9 @@ ADAPTER_KILL_AFTER=${BIT_IDS_KILL_AFTER:-20}
 
 [ -f "$ADAPTER" ] ||
   cannot "the adapter $ADAPTER is not present"
+
+[ -f "$CONNECTOR" ] ||
+  cannot "the connector $CONNECTOR is not present"
 
 # ⛔ A SECOND CAPTURE MUST NOT WRITE OVER THE FIRST ONE'S EVIDENCE.
 [ -e "$OUT" ] && refuse "$OUT already exists; a capture never writes into another run's evidence"
@@ -381,8 +414,89 @@ PEER_ID_HEX=$(awk '
 grep -q "$PEER_ID_HEX" "$BUNDLE/tracker-http.transcript.json" 2>/dev/null ||
   refuse "the transcript does not carry the peer ID the observer reported"
 
+# -- and a SECOND reading of those same bytes ---------------------------------
+#
+# ⛔ THIS IS WHAT MAKES THE BUNDLE A RECORD RATHER THAN AN ATTESTATION. Absolute
+# 2 asks for the Rust observer plus at least one independent connector, and
+# `E-CAP-01` refuses a record declaring one connector as an INVALID DOCUMENT -
+# not as an unpublishable one. Every capture this project ran before this step
+# existed declared one, which is why run 14's four artifacts could not become a
+# record however complete they looked.
+#
+# ⛔ IT RUNS AFTER `sha256sum -c`, DELIBERATELY. The connector reads the same
+# transcripts the observer wrote, so reading them before they had been verified
+# would be corroborating bytes nothing had yet established were the ones the
+# observer declared.
+#
+# ⚠ IT DOES NOT RE-DRIVE THE BUILD, and this is the limit to state rather than
+# to leave implied. Two connectors on one wire would be two products; what this
+# gives is two READINGS of one capture's raw bytes, which is what catches a
+# decoding defect and is not what catches a lab that recorded the wrong bytes.
+# `OBS-07` carries the distinction.
+CONNECTOR_ID=$(timeout -k "$ADAPTER_KILL_AFTER" "$ADAPTER_SECONDS" \
+  python3 "$CONNECTOR" --describe </dev/null 2>"$OUT/connector.err" |
+  awk -F= '$1 == "id" { sub(/^[^=]*=/, ""); print; exit }')
+[ -n "$CONNECTOR_ID" ] ||
+  cannot "the connector did not describe its own identifier"
+case "$CONNECTOR_ID" in
+  -* | *- | *--* | *[!a-z0-9-]*)
+    cannot "the connector named itself [$CONNECTOR_ID], which is not a slug"
+    ;;
+esac
+
+# ⛔ THE REPORT'S PATH IS THE CONNECTOR'S OWN DEFAULT, NEVER COMPOSED HERE. A
+# second spelling of `connector/<id>.txt` in this file would go on writing the
+# old place the day the connector's layout moves, and `assemble-capture` would
+# read a file nothing wrote.
+timeout -k "$ADAPTER_KILL_AFTER" "$ADAPTER_SECONDS" \
+  python3 "$CONNECTOR" --bundle "$BUNDLE" </dev/null \
+  >>"$OUT/connector.log" 2>>"$OUT/connector.err"
+CONNECTOR_RC=$?
+case "$CONNECTOR_RC" in
+  0) : ;;
+  1)
+    sed 's/^/          /' "$OUT/connector.err" >&2
+    refuse "the second connector could not read what the observer recorded"
+    ;;
+  124) cannot "the connector did not return within ${ADAPTER_SECONDS}s" ;;
+  *)
+    sed 's/^/          /' "$OUT/connector.err" >&2
+    cannot "the connector could not run (exit $CONNECTOR_RC)"
+    ;;
+esac
+
+REPORT="$BUNDLE/connector/$CONNECTOR_ID.txt"
+[ -s "$REPORT" ] ||
+  refuse "the connector exited 0 and wrote no report at $REPORT"
+
+# ⛔ AND THE CONNECTOR HAD BETTER HAVE READ THE SAME BUILD. The attestation's
+# `measured_peer_id` is what the observer decoded out of the announce; a
+# connector reporting different bytes for that field is a real finding and it is
+# recorded rather than refused - `E-PUB-01` is what holds such a record back,
+# and refusing here would lose the evidence of the disagreement.
+# ⚠ SO THIS IS A LINE IN THE ATTESTATION, NOT A GUARD. The one thing that IS
+# refused is a report that says nothing about the field at all, because silence
+# is not a disagreement and `assemble-capture` refuses it a dispatch later.
+CONNECTOR_PEER_ID=$(awk -F= '$1 == "tracker_http/peer_id" { sub(/^[^=]*=/, ""); print; exit }' "$REPORT")
+[ -n "$CONNECTOR_PEER_ID" ] ||
+  refuse "the connector's report says nothing about tracker_http/peer_id"
+
+# ⛔ THE REPORT JOINS THE DOCUMENT THAT COVERS THE BUNDLE. The rows above are the
+# observer's own claims tested by sha256sum; this row is the connector's, tested
+# the same way, and one document means a downloader verifies the whole bundle in
+# one command rather than learning that one file was covered by nothing.
+# ⚠ THE WHOLE FILE IS RE-VERIFIED, not just the row that was added: a second
+# `sha256sum -c` over everything is what says the append did not disturb what
+# was already there.
+printf '%s  bundle/connector/%s.txt\n' \
+  "$(sha256sum "$REPORT" | cut -d' ' -f1)" "$CONNECTOR_ID" >>"$SUMS"
+(cd "$OUT" && sha256sum -c SHA256SUMS) >"$OUT/verify.log" 2>&1 ||
+  refuse "the bundle no longer verifies once the connector's report is covered"
+EVIDENCE=$(grep -c . "$SUMS")
+
 FINISHED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 OBSERVER_DIGEST=$(sha256sum "$OBSERVER" | cut -d' ' -f1)
+CONNECTOR_DIGEST=$(sha256sum "$CONNECTOR" | cut -d' ' -f1)
 ADAPTER_DIGEST=$(sha256sum "$ADAPTER" | cut -d' ' -f1)
 INFO_HASH=$(awk '$1 == "info-hash" { print $2; exit }' "$LOG")
 FIXTURE=$(awk '$1 == "fixture-sha256" { print $2; exit }' "$LOG")
@@ -416,6 +530,15 @@ PEER_DIALLED=$(awk '$1 == "peer-dialled" { $1 = ""; sub(/^ /, ""); print; exit }
   printf 'egress_source=%s\n' "$EGRESS_SOURCE"
   printf 'observer=%s\n' "$OBSERVER"
   printf 'observer_sha256=%s\n' "$OBSERVER_DIGEST"
+  # ⛔ `connectors=` IS THE KEY `assemble-capture` READS, and it lists the ones
+  # BESIDE the observer: the observer is already named above and the assembler
+  # adds it, so a list naming it twice would declare two connectors where one
+  # ran. ⚠ Comma-separated, because a second independent connector is a thing
+  # this project expects to gain rather than a slot for exactly one.
+  printf 'connectors=%s\n' "$CONNECTOR_ID"
+  printf 'connector=%s\n' "$CONNECTOR"
+  printf 'connector_sha256=%s\n' "$CONNECTOR_DIGEST"
+  printf 'connector_peer_id=%s\n' "$CONNECTOR_PEER_ID"
   printf 'announce_url=%s\n' "$ANNOUNCE_URL"
   printf 'info_hash=%s\n' "$INFO_HASH"
   printf 'fixture=%s\n' "$FIXTURE"

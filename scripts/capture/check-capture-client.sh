@@ -274,6 +274,20 @@ chmod +x "$STUB_OBS"
 STATE="$WORK/state"
 OUTS=0
 
+# ⛔ THE REAL CONNECTOR, NOT A STUB. The adapter here stands in for a product
+# because running one needs a disposable host; the connector needs none - it
+# reads a file the observer just wrote - so substituting it would be throwing
+# away the only driven pass this project has over the second reading.
+CONNECTOR="$ROOT/scripts/capture/connectors/cpython-stdlib.py"
+[ -f "$CONNECTOR" ] || {
+  printf 'check-capture-client: %s is not present\n' "$CONNECTOR" >&2
+  exit 2
+}
+command -v python3 >/dev/null 2>&1 || {
+  printf 'check-capture-client: python3 not found\n' >&2
+  exit 2
+}
+
 # -- running one case ---------------------------------------------------------
 #
 # ⛔ UNPIPED, AND $? READ ON THE NEXT LINE. Piping the runner into anything
@@ -288,6 +302,7 @@ run_case() { # want-code  saying  name  [extra-args...]
   CASE_OUT="$WORK/out-$OUTS"
   BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" \
     --run-id "$RUN" --out "$CASE_OUT" --observer "$OBSERVER" --adapter "$STUB" \
+    --connector "$CONNECTOR" \
     --seconds "$SECS" --route-table "$WORK/route-loopback" "$@" \
     >"$WORK/out" 2>"$WORK/err"
   _got=$?
@@ -354,6 +369,84 @@ if grep -q -F -e "measured_peer_id=$STUB_HEX" "$CONTROL_OUT/attestation.txt"; th
   pass "the attestation carries the peer ID the driver sent"
 else
   fail "the attestation carries the peer ID the driver sent"
+fi
+
+# -- ⭐ THE SECOND CONNECTOR, DRIVEN OVER A BUNDLE THE LAB ACTUALLY WROTE -----
+#
+# ⛔ THIS IS THE PASS `check-connector` STRUCTURALLY CANNOT GIVE. That harness
+# writes its own transcripts, in the shape the writer emits; these are the ones
+# the writer emitted, from a run where a real socket carried real bytes. A
+# fixture that agreed with a reader written from the same understanding is the
+# self-consistency `OBS-07`'s Source names.
+CONNECTOR_ID=$(python3 "$CONNECTOR" --describe | awk -F= '$1 == "id" { print $2; exit }')
+REPORT="$CONTROL_OUT/bundle/connector/$CONNECTOR_ID.txt"
+if [ -s "$REPORT" ]; then
+  pass "the capture wrote the second connector's report into the bundle"
+else
+  fail "the capture wrote the second connector's report into the bundle"
+fi
+
+# ⛔ AND IT READ THE SAME BUILD THE OBSERVER DID. Two readings of one announce
+# that disagree are a real finding; two that agree are the corroboration a
+# record is allowed to carry. A connector reporting the OBSERVER's own fixture
+# identity, or nothing, would satisfy the row above.
+if [ "$(awk -F= '$1 == "tracker_http/peer_id" { print $2; exit }' "$REPORT" 2>/dev/null)" = "$STUB_HEX" ]; then
+  pass "the connector read the same peer ID out of the transcript as the observer"
+else
+  fail "the connector read the same peer ID out of the transcript as the observer"
+  [ "$JSON" = "1" ] || sed 's/^/          /' "$REPORT" 2>/dev/null | head -4
+fi
+
+# ⛔ THE ATTESTATION DECLARES IT, WHICH IS THE KEY `assemble-capture` READS.
+# A report in the bundle that no attestation names is a file the assembler never
+# opens, and the record it would write declares one connector and is refused at
+# the validity gate.
+if grep -q -F -e "connectors=$CONNECTOR_ID" "$CONTROL_OUT/attestation.txt"; then
+  pass "the attestation declares the second connector by the name it filed under"
+else
+  fail "the attestation declares the second connector by the name it filed under"
+fi
+
+# ⛔ AND THE REPORT IS COVERED BY THE DOCUMENT THAT COVERS THE BUNDLE. Exactly
+# one published file may be covered by neither of a publication's two documents;
+# a capture bundle carrying a second uncovered file is a downloader verifying
+# three artifacts and trusting a fourth.
+if grep -q -F -e "bundle/connector/$CONNECTOR_ID.txt" "$CONTROL_OUT/SHA256SUMS" &&
+  (cd "$CONTROL_OUT" && sha256sum -c SHA256SUMS >/dev/null 2>&1); then
+  pass "the connector's report is covered by SHA256SUMS and the bundle still verifies"
+else
+  fail "the connector's report is covered by SHA256SUMS and the bundle still verifies"
+fi
+
+# ⛔ AND A CAPTURE WITHOUT ONE DOES NOT RUN AT ALL. `run_case` always passes
+# `--connector`, so the two refusals below are invoked directly. ⚠ They are
+# `could not run` rather than refusals: nothing about the host or the build is
+# wrong, the caller asked for a capture that cannot become a record.
+BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" \
+  --run-id "$RUN" --out "$WORK/no-connector" --observer "$OBSERVER" \
+  --adapter "$STUB" --seconds "$SECS" --route-table "$WORK/route-loopback" \
+  >/dev/null 2>"$WORK/noconn.err"
+NOCONN_RC=$?
+if [ "$NOCONN_RC" = 2 ] &&
+  grep -q -F -e 'cannot become a record' "$WORK/noconn.err"; then
+  pass "a capture asked for with no connector is could-not-run"
+else
+  fail "a capture asked for with no connector is could-not-run (exit $NOCONN_RC)"
+  [ "$JSON" = "1" ] || sed 's/^/          /' "$WORK/noconn.err" | head -3
+fi
+
+BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" \
+  --run-id "$RUN" --out "$WORK/gone-connector" --observer "$OBSERVER" \
+  --adapter "$STUB" --connector "$WORK/there-is-no-connector-here.py" \
+  --seconds "$SECS" --route-table "$WORK/route-loopback" \
+  >/dev/null 2>"$WORK/goneconn.err"
+GONECONN_RC=$?
+if [ "$GONECONN_RC" = 2 ] &&
+  grep -q -F -e 'is not present' "$WORK/goneconn.err"; then
+  pass "a connector path that resolves to nothing is could-not-run"
+else
+  fail "a connector path that resolves to nothing is could-not-run (exit $GONECONN_RC)"
+  [ "$JSON" = "1" ] || sed 's/^/          /' "$WORK/goneconn.err" | head -3
 fi
 
 # -- 2. stock_client is copied from the adapter, not assumed ------------------
@@ -450,7 +543,7 @@ OUTS=$((OUTS + 1))
 BIT_IDS_STATE_DIR="$STATE" BIT_IDS_STUB_REAL="$OBSERVER" \
   BIT_IDS_STUB_FAKE_PEER_HEX="$FAKE_PEER_HEX" \
   sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" --observer "$STUB_OBS" \
-  --adapter "$STUB" --seconds "$SECS" --route-table "$WORK/route-loopback" \
+  --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" --route-table "$WORK/route-loopback" \
   >"$WORK/out" 2>"$WORK/err"
 _rc=$?
 if [ "$_rc" = 1 ] && grep -q -F -e "the transcript does not carry the peer ID" "$WORK/err"; then
@@ -466,7 +559,7 @@ fi
 # a route deletion would land on this runner just as readily.
 OUTS=$((OUTS + 1))
 BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" \
-  --observer "$OBSERVER" --adapter "$STUB" --seconds "$SECS" \
+  --observer "$OBSERVER" --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" \
   --route-table "$WORK/route-open" >"$WORK/out" 2>"$WORK/err"
 _rc=$?
 if [ "$_rc" = 1 ] && grep -q -F -e "egress is open" "$WORK/err"; then
@@ -477,7 +570,7 @@ fi
 
 OUTS=$((OUTS + 1))
 BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" \
-  --observer "$OBSERVER" --adapter "$STUB" --seconds "$SECS" \
+  --observer "$OBSERVER" --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" \
   --route-table "$WORK/no-such-table" >"$WORK/out" 2>"$WORK/err"
 _rc=$?
 if [ "$_rc" = 2 ] && grep -q -F -e "egress could not be established" "$WORK/err"; then
@@ -488,7 +581,7 @@ fi
 
 OUTS=$((OUTS + 1))
 BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" --run-id capture-0002 --out "$WORK/out-$OUTS" \
-  --observer "$OBSERVER" --adapter "$STUB" --seconds "$SECS" \
+  --observer "$OBSERVER" --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" \
   --route-table "$WORK/route-loopback" >"$WORK/out" 2>"$WORK/err"
 _rc=$?
 if [ "$_rc" = 1 ] && grep -q -F -e "is claimed by run [$RUN], not [capture-0002]" "$WORK/err"; then
@@ -502,7 +595,7 @@ fi
 # host nothing ever claimed.
 OUTS=$((OUTS + 1))
 BIT_IDS_STATE_DIR="$WORK/unclaimed" sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" \
-  --observer "$OBSERVER" --adapter "$STUB" --seconds "$SECS" \
+  --observer "$OBSERVER" --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" \
   --route-table "$WORK/route-loopback" >"$WORK/out" 2>"$WORK/err"
 _rc=$?
 if [ "$_rc" = 1 ] && grep -q -F -e "the host was never claimed" "$WORK/err"; then
@@ -514,7 +607,7 @@ fi
 # -- 6. the argument guards ---------------------------------------------------
 OUTS=$((OUTS + 1))
 BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" \
-  --observer "$WORK/no-such-binary" --adapter "$STUB" --seconds "$SECS" \
+  --observer "$WORK/no-such-binary" --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" \
   --route-table "$WORK/route-loopback" >"$WORK/out" 2>"$WORK/err"
 _rc=$?
 if [ "$_rc" = 2 ] && grep -q -F -e "is not executable" "$WORK/err"; then
@@ -525,7 +618,7 @@ fi
 
 OUTS=$((OUTS + 1))
 BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" \
-  --observer "$OBSERVER" --adapter "$WORK/no-such-adapter" --seconds "$SECS" \
+  --observer "$OBSERVER" --adapter "$WORK/no-such-adapter" --connector "$CONNECTOR" --seconds "$SECS" \
   --route-table "$WORK/route-loopback" >"$WORK/out" 2>"$WORK/err"
 _rc=$?
 if [ "$_rc" = 2 ] && grep -q -F -e "is not present" "$WORK/err"; then
@@ -536,7 +629,7 @@ fi
 
 # ⛔ A SECOND CAPTURE MUST NOT WRITE INTO THE FIRST ONE'S EVIDENCE.
 BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" --run-id "$RUN" --out "$CONTROL_OUT" \
-  --observer "$OBSERVER" --adapter "$STUB" --seconds "$SECS" \
+  --observer "$OBSERVER" --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" \
   --route-table "$WORK/route-loopback" >"$WORK/out" 2>"$WORK/err"
 _rc=$?
 if [ "$_rc" = 1 ] && grep -q -F -e "already exists" "$WORK/err"; then
@@ -547,7 +640,7 @@ fi
 
 OUTS=$((OUTS + 1))
 BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" --run-id "Capture-0001" --out "$WORK/out-$OUTS" \
-  --observer "$OBSERVER" --adapter "$STUB" --seconds "$SECS" \
+  --observer "$OBSERVER" --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" \
   --route-table "$WORK/route-loopback" >"$WORK/out" 2>"$WORK/err"
 _rc=$?
 if [ "$_rc" = 2 ] && grep -q -F -e "run id must be lowercase" "$WORK/err"; then
@@ -558,7 +651,7 @@ fi
 
 OUTS=$((OUTS + 1))
 BIT_IDS_STATE_DIR="$STATE" sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" \
-  --observer "$OBSERVER" --adapter "$STUB" --seconds "$SECS" --peer-port "six" \
+  --observer "$OBSERVER" --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" --peer-port "six" \
   --route-table "$WORK/route-loopback" >"$WORK/out" 2>"$WORK/err"
 _rc=$?
 if [ "$_rc" = 2 ] && grep -q -F -e "--peer-port must be a whole number" "$WORK/err"; then

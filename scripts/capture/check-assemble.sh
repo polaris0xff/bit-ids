@@ -325,6 +325,40 @@ case_is 1 "reports nothing about peer_wire/reserved" \
   "a declared connector silent on a field is refused" \
   partial good-release partial-source
 
+# -- ⭐ AND THE CASE `OBS-07`'s PROVE ASKS FOR --------------------------------
+#
+# ⛔ A DELIBERATELY ALTERED FIELD MUST PRODUCE A CONNECTOR CONFLICT, and until
+# there was a second connector nothing could produce one. This lane's connector
+# reports a peer ID the transcript does not carry, on both surfaces, and agrees
+# with the observer on the other two fields - so the record has to keep a
+# conflict on exactly the altered fields rather than drop an observation or
+# average the two.
+# ⚠ IT IS A VALID RECORD. Refusing it would lose the evidence of the
+# disagreement, which is the split this project holds everywhere: `publishable`
+# is what refuses it, and the assembler says so on its own line.
+write_lane conflict-source source "$REFS" "$COMMIT" "$DIGEST_B" 1.2.3 "$PEER_A" "$PEER_B" || exit 2
+case_is 0 "E-PUB-01" \
+  "a connector that read different bytes is recorded as a conflict" \
+  conflict good-release conflict-source
+if said conflict "provisional, not publishable"; then
+  pass "a record carrying a connector conflict is not publishable"
+else
+  fail "a record carrying a connector conflict is not publishable"
+  [ "$JSON" = "1" ] || sed 's/^/          /' "$WORK/conflict.out" | head -8
+fi
+
+# ⛔ AND IT FIRES ON THE ALTERED FIELDS AND ONLY ON THEM. `E-PUB-01` on every
+# field would pass the case above while saying the connector agreed about
+# nothing, which is a different defect wearing the same row. The lane's report
+# alters both peer IDs and leaves the User-Agent and the reserved bytes alone.
+CONFLICTED=$(grep -c -F -e 'E-PUB-01' "$WORK/conflict.out" 2>/dev/null || true)
+if [ "$CONFLICTED" = "2" ]; then
+  pass "the conflict is on the two altered fields and not on the two agreed ones"
+else
+  fail "the conflict is on the two altered fields and not on the two agreed ones ($CONFLICTED rows)"
+  [ "$JSON" = "1" ] || grep -F -e 'E-PUB-01' "$WORK/conflict.out" | sed 's/^/          /'
+fi
+
 # ⛔ ONE LISTING, TWO LANES. This is run 14's shape: `capture-client.yml` resolves
 # once and hands the release lane an asset URL and the source lane a tag, and
 # argues for it in a comment. `E-ACQ-07` calls that one route.

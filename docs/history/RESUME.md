@@ -30,9 +30,19 @@ this step could read that failure as a defect in the tree.
 
 ## Where the work is
 
-**In flight:** `CI-09`, assembling `capture-client` run 14's two lanes into two
-`Profile`s. `CLIENT-14` closed on 2026-09-09 and its target gained a second
-acquisition route after closure. `CLIENT-05` is open on the aria2 hang.
+**In flight:** `OBS-07`, the second connector, which is the validity
+prerequisite everything below waits on. `CI-09` sits behind it. `CLIENT-14`
+closed on 2026-09-09 and its target gained a second acquisition route after
+closure. `CLIENT-05` is open on the aria2 hang.
+
+⭐ **Measured at the start of the 2026-09-10 session, rather than carried:** the
+container started on `claude/zen-lovelace-kxmgvb` with `user.name=Claude` and a
+shallow clone - all three, for the seventh session running. Corrected to `main`,
+to the operator identity read out of `git log`, and unshallowed. The tree was
+clean and level with `origin/main` at `4fd4bc9`, and `sh scripts/doctor/provision.sh`
+installed `pwsh` 7.4.6, `shellcheck` 0.10.0 and `shfmt` 3.14.0 in one command.
+The baseline gate over that tree is **33 checks, 32 passed, 0 failed, 1 skipped**,
+the skip being `check-remote-items`.
 
 ⛔ **A CAPTURE BUNDLE ALONE CANNOT PRODUCE A VALID RECORD, measured 2026-09-09.**
 `E-ACQ-09` and `E-ACQ-10` require each route's `installed_evidence` to name a
@@ -120,13 +130,16 @@ that target a second lane, and the table above is what refuses the pair.
 
 **Next, in order:**
 
-1. ⛔ **`OBS-07`'s second connector, which is a VALIDITY requirement.** See the
-   table above; it is not the publishability nicety three handoffs called it.
-   ⭐ The contract it has to fill is already declared and proved:
-   `assemble-capture` reads `connector/<id>.txt` from the bundle, one
-   `field_path=value` line per field the observer measured, where the value is
-   lowercase hex, `absent` or `out_of_scope`, and refuses a declared connector
-   silent on a field. The attestation names it in `connectors=`.
+1. ⭐ **DONE, 2026-09-10. `OBS-07`'s second connector exists and the capture
+   path refuses to run without it.**
+   `scripts/capture/connectors/cpython-stdlib.py` fills the contract
+   `assemble-capture` declares: `connector/<id>.txt` in the bundle, one
+   `field_path=value` line per field, the value lowercase hex, `absent` or
+   `out_of_scope`, and the attestation naming it in `connectors=`.
+   ⚠ **It is two READINGS of one capture's bytes, not two observations of the
+   wire**, and it is unproved on a runner. The Approach's other half - a stock
+   libtorrent harness putting its own bytes on the wire - is a residual that
+   needs a disposable host.
 2. ⭐ **DONE, and unproved on a runner.** The source route resolves its own tag
    with `git ls-remote --tags --refs`; `ACQ-02` carries the reader. ⚠ No
    dispatch has taken the new step, so what is proved is the resolver and the
@@ -231,7 +244,13 @@ here, so the install actually installs, where on `ubuntu-24.04` it is a no-op.
 ## How this project is checked
 
 ⛔ **Run the gate with one command, `sh scripts/common/check-gate.sh`, after the
-last edit.** ⭐ It is **32 checks** and about **150 seconds** on this host.
+last edit.** ⭐ It is about **150 seconds** on this host.
+
+⚠ **A count of its rows is not written here.** This sentence said `32 checks`
+and the runner reported 33 on 2026-09-10, which is the fourth count of a row set
+to go stale in this repository's prose - `CI-01` and `CI-07` record two and
+`scripts/README.md` a third. `sh scripts/common/check-gate.sh --rows` prints the
+list, and `check-gate-rows` is what compares it against the other lane's.
 
 **The gate is not the whole of part (a).** `cargo clippy`, `cargo fmt --check`,
 the test suite and `sh scripts/ci/check-workflow.sh` are separate.
@@ -369,7 +388,9 @@ attestations, not `Profile`s.
 ⛔ **A capture declaring ONE connector is INVALID, not merely unpublishable.**
 `E-CAP-01` fires inside `validate`. The "validates, then `E-PUB-02` refuses"
 sentence three handoffs carried is true only of a record declaring two
-connectors where one observed each field, and no capture here has declared two.
+connectors where one observed each field. ⭐ **Since 2026-09-10 the capture path
+declares two and refuses to run otherwise**, so no future dispatch can produce
+the shape that refused run 14; every capture already in existence still has one.
 
 ⛔ **Two lanes of one dispatch are not two routes if one resolution fed both.**
 `E-ACQ-07` compares what DECIDED the version, and `capture-client.yml` resolves

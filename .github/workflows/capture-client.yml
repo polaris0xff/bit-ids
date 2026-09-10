@@ -337,6 +337,7 @@ jobs:
             --out "$RUNNER_TEMP/capture" \
             --observer "$GITHUB_WORKSPACE/target/debug/examples/client-capture" \
             --adapter "$ADAPTER" \
+            --connector scripts/capture/connectors/cpython-stdlib.py \
             --peer-port "$PEER_PORT" \
             --seconds "$SECONDS_TO_SERVE"
 

@@ -2133,15 +2133,26 @@ both ways in `check-assemble`: a pair whose observations agree reaches
   `bit-ids-probe`: it decodes transcripts with `bit-ids-wire`, and `bit-ids`
   cannot depend on that crate - the dependency runs the other way.
 
-### ⚠ What the assembler declares that nothing yet produces
+### ⭐ What the assembler declared, and what now produces it. 2026-09-10
 
 A connector other than the observer reports what it saw in
 `connector/<id>.txt` inside the bundle, one `field_path=value` line per field the
 observer measured, where the value is lowercase hex, `absent` or `out_of_scope`.
 ⛔ **A declared connector silent on a field is refused rather than recorded as
 silent**, which is `E-COR-07`'s rule applied where the record is written.
-⚠ That is a contract this entry declares and `OBS-07` implements; no capture has
-written one.
+
+⭐ **`OBS-07` closed on 2026-09-10 and the producer exists.**
+`scripts/capture/connectors/cpython-stdlib.py` writes that file and
+`capture-client` requires it, so the `E-CAP-01` row of this entry's own refusal
+table is repaired. ⚠ **Unproved on a runner**: no dispatch has taken the step.
+
+⭐ **And this entry's assembler gained the line it was missing.** It wrote a
+record and never said whether it could be PUBLISHED - found the moment a lane
+could carry a connector conflict, because the record kept the conflict, `to_json`
+accepted it and the report printed a star and a path. It prints
+`publishable` or `provisional, not publishable` with every blocker now, and
+`check-assemble` asserts that a lane whose connector read different bytes lands
+on `E-PUB-01` for exactly the altered fields.
 
 ### ⚠ Residuals
 

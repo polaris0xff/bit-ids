@@ -1,11 +1,11 @@
 # Current progress
 
-State instant: 2026-09-09
+State instant: 2026-09-10
 Total: 64
-Open: 22
+Open: 21
 In progress: 0
 Blocked: 0
-Done: 42
+Done: 43
 
 ⚠ Those five counts are compared against
 [`INDEX.md`](INDEX.md) by `check-project.sh` on every gate, so they cannot go
@@ -114,6 +114,13 @@ from the specification, which shares this project's reading of the protocol, and
 measured on 2026-09-09: `E-CAP-01` refuses a record declaring one connector as an
 *invalid document*. `CI-09` carries the two commands that separate it from the
 shape `E-PUB-02` catches.
+⭐ **THERE IS A SECOND CONNECTOR NOW, and the capture path refuses to run
+without it.** `scripts/capture/connectors/cpython-stdlib.py` reads the bundle's
+raw transcripts and decodes them with implementations this project did not write
+- `json` over a document the lab serialises and parses by hand, `urllib.parse`
+over the announce's percent-encoding, `http.client` over its headers. ⚠ **It is
+two READINGS of one capture's bytes, not two observations of the wire**, and
+`OBS-07` states that limit rather than leaving it to the word "connector".
 
 ⛔ **The publisher has never run against this repository's own remote** and must
 not until a measured record exists. Its acceptance runs against a bare
@@ -136,13 +143,16 @@ four artifacts and refuses. Four reasons, none of them in an attestation:
 | what the artifacts say | what refuses it |
 | --- | --- |
 | both lanes' `resolution.txt` differed **only in their timestamps** | ⛔ `E-ACQ-07` - ⭐ **repaired**: the source route resolves its own tag from git refs |
-| every attestation declares **one** connector | ⛔ `E-CAP-01`, at the **validity** gate |
+| every attestation declares **one** connector | ⛔ `E-CAP-01`, at the **validity** gate - ⭐ **repaired**: `capture-client` runs a second connector and declares it in `connectors=` |
 | nothing recorded how the artifact was **packaged**, and `package` is in `StoreKey` | ⛔ a guessed one files two packagings of a version at one path - ⭐ **repaired**: every adapter declares it per route |
 | nothing the capture path writes carries the source route's commit | ⛔ `E-ACQ-06`: a source identity needs a full object name |
 
-⭐ **The last is repaired**: the adapter records `rev-parse HEAD` and
-`install-client` refuses a `source` route without a full object name.
-⛔ **The other three are prerequisites for a record existing at all**, and
+⭐ **Three of the four are repaired now**: the adapter records `rev-parse HEAD`
+and `install-client` refuses a `source` route without a full object name, every
+adapter declares its package format per route, and a second connector reads the
+bundle and is declared in the attestation. ⛔ **The remaining one is the shared
+resolution**, and it is repaired in the tree and unproved on a runner.
+⚠ **Every one of the four is a prerequisite for a record existing at all**, and
 `CI-09` carries each with the command that measured it.
 ⚠ **`BuildEquivalent` is unreachable for a real client through this path**, and
 `CI-09` carries why and what was measured instead.
@@ -276,15 +286,16 @@ nothing is. The clone question under *Settled decisions* is spent too.
    dispatch and what it teaches: no adapter has ever installed a build, and the
    Windows half of each Prove is untouched because the adapters are `sh`.
    `TODO/clients.md` carries the routes and what each adapter assumes.
-2. ⛔ **`OBS-07`, AND IT MOVED UP BECAUSE IT IS A VALIDITY REQUIREMENT.** This
-   order used to place it third, after `CI-09`, on the reading that a
-   single-connector record *validates* and is merely held back from publication
-   by `E-PUB-02`. ⚠ **Measured on 2026-09-09 by stripping the golden fixture two
-   ways and reading each exit code unpiped**, that is true of a record declaring
-   two connectors where only one observed each field, and false of one declaring
-   one connector: `E-CAP-01` refuses it as an **invalid document**. Every capture
-   this project has run declares one. So a second connector is a prerequisite for
-   a record existing, exactly as a second route is.
+2. ⭐ **`OBS-07` IS CLOSED, 2026-09-10.** It moved to the front of this order
+   because a single-connector record is refused by `E-CAP-01` as an **invalid
+   document** rather than held back by `E-PUB-02`, which made a second connector
+   a prerequisite for a record existing exactly as a second route is.
+   ⭐ **`scripts/capture/connectors/cpython-stdlib.py` is that connector**, and
+   `capture-client` will not run without one: `--connector` is required, with no
+   default and no fallback, because a capture that warned and carried on would
+   look exactly like a green run. ⚠ **Unproved on a runner** - no dispatch has
+   taken the new step - and the Approach's other half, a stock libtorrent
+   harness on the wire, is a residual that needs a disposable host.
 3. ⭐ **DONE, 2026-09-09.** The source route resolves its own tag from the
    repository's refs, so the two lanes read two indexes. `ACQ-02` carries the
    reader and what a refs source cannot do. ⚠ Unproved on a runner: no dispatch

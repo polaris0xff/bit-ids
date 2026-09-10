@@ -1385,7 +1385,7 @@ Status: DONE on 2026-09-06.
 ## OBS-07: Known-client positive controls
 
 Source: reference sweep finding that self-consistency can hide observer bugs
-Priority: P1 | Effort: M | Status: OPEN
+Priority: P1 | Effort: M | Status: DONE
 
 Problem: The first-party observer and normalizer could agree with themselves
 while decoding the protocol incorrectly.
@@ -1398,3 +1398,161 @@ compare their known emitted bytes to first-party observations.
 
 Prove: mutation tests cause every deliberately altered field to produce a
 connector conflict or failed fixture assertion.
+
+Decision: the second connector is
+[`../scripts/capture/connectors/cpython-stdlib.py`](../scripts/capture/connectors/cpython-stdlib.py),
+and its own file says why, with the
+three rejected alternatives. The short form: the thing being corroborated is
+this project's Rust reading of these formats, so a second reader written in this
+workspace corroborates nothing; a third-party Rust crate would put a parser in
+the publisher's own dependency tree in order to check the publisher; and shell
+has neither an HTTP header parser nor a percent-decoder, so writing either in
+`awk` reproduces the shared reading exactly. `docs/AGENTS.md` section 5 permits
+Python where a documented constraint makes both unsuitable, and this is that
+constraint rather than a preference.
+
+Decision: it reads the bundle's raw transcripts rather than re-driving the
+build. ⚠ **That is a real limit and it is stated rather than implied**: two
+connectors on one wire would be two products, and what this gives is two
+READINGS of one capture's bytes. It catches a decoding defect and it does not
+catch a lab that recorded the wrong bytes.
+
+Decision: the surface is identified by its CONTENT, not by its position. The
+observer takes the first `from_target` segment of each transcript; this scans
+every one and asks whether it parses as an announce carrying a `peer_id` or
+begins with the protocol string. ⛔ Selecting by position would have made the two
+readers share a decision, and the record's corroboration would then rest on both
+of them having guessed the same segment.
+
+Decision: two segments that both parse and disagree are refused rather than
+resolved. A connector that took one of two conflicting announces would be
+manufacturing the constant the record is about to declare.
+
+### ⛔ Where the independence actually is, measured rather than claimed
+
+| what is decoded | by what | how independent |
+| --- | --- | --- |
+| the transcript document | `json` | ⭐ strong. The lab serialises it BY HAND, because the field order and the hex case are what a digest names, and parses it back by hand for the same reason. No conformant JSON reader had ever seen either. |
+| the announce target and its percent-encoding | `urllib.parse.urlsplit`, `unquote_to_bytes` | ⭐ strong, and this is where a peer ID lives |
+| the request's headers | `http.client.parse_headers`, which is `email.parser` | ⭐ strong |
+| the peer-wire handshake | a fixed layout, read by slicing | ⚠ **weak, and written down rather than left for a reader to assume from the word "connector"**. A length byte, that many protocol bytes, eight reserved, twenty info hash, twenty peer ID: two readings can differ only in their bounds checking. |
+
+⭐ **`+` is the case that separates two correct-looking readings, and it is a
+case rather than an argument.** A query-string parser decodes `+` as a space,
+because that is what an HTML form means by it; a peer ID is an escaped byte
+string and `+` in one is the byte `0x2b`. A connector built on `parse_qsl`
+reports a peer ID one byte wrong, agrees with the observer on nineteen of
+twenty, and the record calls that a conflict over a build that did nothing
+unusual. Both spellings are cases and both decode to `0x2b`.
+
+### Acceptance, all run on 2026-09-10
+
+- `sh scripts/capture/check-connector.sh`
+- `sh scripts/capture/check-assemble.sh`
+- `sh scripts/capture/check-capture-client.sh`
+- `sh scripts/common/check-gate.sh`
+
+### Closure evidence, 2026-09-10
+
+| what | measured |
+| --- | --- |
+| `sh scripts/capture/check-connector.sh` | 44 cases, 44 passed, 0 failed |
+| `sh scripts/capture/check-capture-client.sh` | 98 cases, 98 passed, 0 failed, five of them new here |
+| `sh scripts/capture/check-assemble.sh` | 22 cases, 22 passed, 0 failed, three of them new here |
+| guard mutation | 9 defects planted in the connector one at a time, each verified to have applied; 9 refused |
+| driven pass | the connector ran inside `capture-client` over a bundle the real observer wrote, and read the same peer ID out of the transcript that the observer put in the attestation |
+
+### ⭐ The Prove's own case, which nothing could produce before
+
+⛔ **"Every deliberately altered field produces a connector conflict" was
+unaskable while this project had one connector.** `check-assemble` now writes a
+lane whose connector reports a peer ID the transcript does not carry, on both
+surfaces, and agrees on the other two fields. The record keeps `E-PUB-01` on
+exactly the two altered fields, it is a VALID record, and `publishable` refuses
+it. ⚠ The count is asserted: `E-PUB-01` on every field would pass a case looking
+for one and would mean the connector agreed about nothing.
+
+### ⛔ Two defects found by planting, neither of them visible to a reading
+
+1. ⛔ **This entry's own harness had a case whose name claimed more than it
+   checked.** The uppercase-hex plant inserted a digit, so the transcript became
+   an ODD number of hex characters and the length branch refused it - and a
+   connector planted to accept uppercase passed that case. Found by planting
+   against it, which is the only thing that finds it. The plant preserves the
+   length now, and the connector's one refusal was split into two messages so
+   each case asserts its own.
+2. ⛔ **`assemble-capture` wrote a record and never said whether it could be
+   published.** Found the moment a lane could carry a conflict: the record kept
+   it, `to_json` accepted it - correctly, because refusing would lose the
+   evidence of the disagreement - and the report printed a star and a path. A
+   session reading that would have taken a record carrying a connector conflict
+   for a finished one. It prints the verdict and every blocker now.
+
+### ⛔ And one the driven pass found that no fixture could
+
+**A capture whose target never accepted a peer connection writes NO peer
+transcript at all**, which is what the stub capture produces, and the first
+version of this connector refused a perfectly good bundle over it. ⚠ The fix is
+the vocabulary rather than a tolerance: a surface the bundle does not carry is
+`out_of_scope` - not a value, not an absence, and the reason this connector's
+silence proves nothing - while a transcript that is PRESENT and will not read is
+still refused. ⛔ `absent` would have been the wrong answer and it is the
+tempting one: it claims the condition was created and the build produced
+nothing, which two connectors can corroborate, and this connector is in no
+position to assert it about a surface it never saw a record of.
+
+### ⛔ And a rule that could not be complied with, found by landing the file
+
+**`check-project` refused every `.py` in the tree while its own message said
+"Python exists without an approved exception".** No mechanism for approving one
+existed, so the rule was unsatisfiable - which is the shape this repository calls
+a preference stated as a rule, arriving in a check rather than in a document.
+⚠ `docs/AGENTS.md` section 5 never forbade Python: it permits it "where a
+documented constraint makes both unsuitable", and the check was stricter than the
+rule it was enforcing.
+
+⭐ **Both halves now ask for the declaration the message already named**, in the
+same idiom as the `bit-ids:no-producer=` marker the artifact rule uses:
+`bit-ids:python-exception=<ENTRY>` in the file, an entry `TODO/INDEX.md` really
+carries, and **that entry's own section** mentioning the file.
+
+⛔ **Narrowing it took two rounds and a plant found each.** The first form asked
+only that some file under `TODO/` mention the path, and a marker naming `CI-04`
+survived because the argument sat in `observer.md`. Narrowing it to the owning
+entry's FILE was not enough either: `ci.md` mentions the connector under
+`CI-09`, so the same plant survived again. A section is the smallest unit that
+can be said to have made the argument.
+
+⚠ **And the two halves disagreed on the first run.** The `sh` half counted the
+marker prefix's length by hand and was one character short, so it read `=OBS-07`
+and reported an entry no index row could match, while the PowerShell half used a
+capture group and passed. The prefix is stripped with `sub` now, which is the
+idiom the neighbouring rule already used.
+
+| plant | both halves |
+| --- | --- |
+| the file declares no marker | ⛔ refused |
+| the marker names an entry the index does not carry | ⛔ refused |
+| the marker names a real entry whose section never mentions the file | ⛔ refused |
+| the entry stops mentioning the file | ⛔ refused |
+| the clean tree | ⭐ accepted |
+| the marker names `CI-09`, whose section does cite the connector | ⭐ accepted |
+
+### Residuals
+
+- ⛔ **The Approach's other half is not done.** "Run aria2 and a stock libtorrent
+  harness" would be a second implementation on the WIRE; what closed here is
+  "raw packet decoding". A libtorrent-backed connector would catch a class this
+  one structurally cannot - a lab that recorded the wrong bytes - and it needs a
+  disposable host, so it belongs with the client entries rather than here.
+- ⚠ **Unproved on a runner.** No dispatch has taken the new step. What is
+  established is the connector, the report it writes, the runner that requires
+  it, and the assembler's use of it - not a lane. ⭐ The capture path refuses to
+  run without it now, so the next dispatch cannot quietly produce another
+  one-connector bundle.
+- ⚠ **`capture-run.sh` gains no connector**, and deliberately: it writes
+  `kind=fixture`, `measured_build=none`, so corroborating it would be a second
+  reading of a run that measured no build.
+- ⚠ **The connector's own version is `0.0.0` in the record**, because
+  `assemble-capture` gives every connector that placeholder. It describes a real
+  one - `version=3.11.15` here - and nothing reads it yet.

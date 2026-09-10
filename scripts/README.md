@@ -97,6 +97,22 @@ from any working directory.
   the five-subcommand contract. ⛔ `kind` is a declaration the attestation
   copies rather than assumes, so a run driven by a stand-in writes
   `stock_client=false`.
+- [`capture/connectors/`](capture/connectors/) holds the SECOND connector, which
+  is what absolute 2 asks for and what nothing in this project had. ⛔ Its whole
+  value is being a reading this project did not write, so it is `python3` rather
+  than shell or Rust and its own header carries the three rejected alternatives.
+  It reads the bundle's transcripts, decodes the announce with `urllib.parse`
+  and the headers with `http.client`, and writes `connector/<id>.txt` - the
+  contract `assemble-capture` already refuses a capture for not carrying.
+  ⚠ It names itself with `--describe`; a caller never composes the identifier.
+- [`capture/check-connector.sh`](capture/check-connector.sh) proves it, and the
+  load-bearing case is not a refusal. ⛔ A connector that echoed the observer
+  would agree on every field of every capture forever, so what this asserts is
+  that MOVING A BYTE IN THE TRANSCRIPT MOVES THE REPORT. ⭐ Nine defects were
+  planted in the connector and the last one to be caught was found by planting
+  rather than by reading: the uppercase-hex case had also changed the length, so
+  the odd-length branch refused first and a connector planted to accept
+  uppercase passed it.
 - [`acquisition/install-client.sh`](acquisition/install-client.sh) is the one
   step that runs with the network still up. ⛔ It asserts the claim and
   deliberately not egress, because being able to reach a package index is the

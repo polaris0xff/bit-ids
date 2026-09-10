@@ -298,6 +298,15 @@ Add-Unavailable 'check-release-route' 'an sh harness whose subject has no PowerS
 # rather than anything about the assembler, which is platform-independent.
 Add-Unavailable 'check-assemble' 'a portable Rust subject; it needs store-lib.ps1; CI-07 class A'
 
+# ⛔ AND A FIFTH REASON, WHICH IS NEW WITH THE SECOND CONNECTOR. check-connector's
+# subject is `python3` and a file of stdlib Python: it runs here exactly as it
+# runs on the Linux lane, and a Windows runner carries a Python too. So this is
+# class A rather than class C - what has no PowerShell half is the harness that
+# writes the synthetic bundles and plants in them, and that is `store-lib.ps1`
+# again. ⚠ Recorded with its own reason rather than a neighbour's, because a row
+# whose reason names the wrong event closes on the wrong day.
+Add-Unavailable 'check-connector' 'a portable python3 subject; it needs store-lib.ps1; CI-07 class A'
+
 # ⚠ Its reason is `check-release-route`'s exactly: the decision it proves is in
 # Rust and the Rust suite exercises it on both lanes; what this lane does not
 # exercise is the shell that composes the fetch and the resolution.

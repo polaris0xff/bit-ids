@@ -5,6 +5,39 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-10T01:08:02Z
+
+- ⭐ **THERE IS A SECOND CONNECTOR, which is what absolute 2 asks for and what
+  this project had never had.** `scripts/capture/connectors/cpython-stdlib.py`
+  reads a capture bundle's raw transcripts and decodes them with implementations
+  this project did not write: `json` over a document the lab serialises and
+  parses by hand, `urllib.parse` over the announce's percent-encoding, and
+  `http.client` over its headers.
+- ⛔ **A one-connector capture cannot become a record**, so `capture-client` now
+  requires `--connector` with no default and no fallback. A capture that warned
+  and carried on would look exactly like a green run, which is how run 14's four
+  artifacts came to be unusable without anything saying so.
+- ⛔ **`+` is where two correct-looking readings differ.** A query-string parser
+  decodes it as a space; an escaped peer ID's `+` is the byte `0x2b`. Both
+  spellings are cases.
+- ⭐ **A surface the bundle does not carry is `out_of_scope`, not `absent`.**
+  Found by the driven pass: a capture whose target never accepted a peer
+  connection writes no peer transcript at all, and the first version refused a
+  perfectly good bundle over it.
+- ⛔ **`assemble-capture` reported a written record without a publishability
+  verdict.** It prints one, with every blocker, now; the entry has the finding.
+- ⛔ **And a case in the new harness claimed more than it checked.** The
+  uppercase-hex plant also changed the length, so the odd-length branch refused
+  first and a connector planted to accept uppercase passed it. The plant
+  preserves the length now and the refusal is two messages.
+- ⛔ **`check-project` refused every `.py` while its message said "without an
+  approved exception", and no way to approve one existed.** A rule nobody can
+  comply with is the shape this repository calls a preference stated as a rule.
+  Both halves now ask for the declaration instead, and four planted defects are
+  refused with the twins agreeing character for character on each.
+- Record: [`TODO/observer.md`](TODO/observer.md), `OBS-07`. No version bump and
+  no deploy.
+
 ### 2026-09-09T19:57:55Z
 
 - ⭐ **`CI-07`'s backlog is four kinds of row, not one**, measured by reading

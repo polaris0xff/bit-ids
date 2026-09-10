@@ -130,7 +130,11 @@ line count and last heading as the receipt described in
   metadata and digests only.
 - Shell is the default orchestration language. Core parsers, validators,
   capture tooling, publishing logic and the consumer library are Rust. Python
-  is used only where a documented constraint makes both unsuitable.
+  is used only where a documented constraint makes both unsuitable. ⛔ That
+  permission is now a declaration rather than a judgement: a `.py` file carries
+  `bit-ids:python-exception=<ENTRY>`, the entry has to be one `TODO/INDEX.md`
+  really carries, and **that entry's own section** has to mention the file.
+  `check-project` refuses all three ways.
 - Main docs describe current truth. Amend stale text in place. Put superseded
   reasoning, corrections, reviews and narrative history under `docs/history/`.
   Never append diary or changelog material to reference pages.

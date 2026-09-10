@@ -9,7 +9,7 @@ mapping of its own and the two twins cannot hold different ones.
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
 | Foundation | `FOUND` | 0 | 0 | 0 | 5 | 5 |
 | Schema | `SCHEMA` | 0 | 0 | 0 | 4 | 4 |
-| Observer | `OBS` | 2 | 0 | 0 | 9 | 11 |
+| Observer | `OBS` | 1 | 0 | 0 | 10 | 11 |
 | Acquisition | `ACQ` | 0 | 0 | 0 | 5 | 5 |
 | Clients | `CLIENT` | 13 | 0 | 0 | 1 | 14 |
 | Engines | `ENGINE` | 3 | 0 | 0 | 0 | 3 |
@@ -18,7 +18,7 @@ mapping of its own and the two twins cannot hold different ones.
 | Publishing | `PUB` | 0 | 0 | 0 | 5 | 5 |
 | CI | `CI` | 4 | 0 | 0 | 5 | 9 |
 | Documentation | `DOC` | 0 | 0 | 0 | 2 | 2 |
-| Total | | 22 | 0 | 0 | 42 | 64 |
+| Total | | 21 | 0 | 0 | 43 | 64 |
 
 Effort inventory: 1 S, 13 M, 49 L, 0 XL. The observer-lab entry was the XL one and
 was split on 2026-09-04, because its acceptance named a client fixture and a

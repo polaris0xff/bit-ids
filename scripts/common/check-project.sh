@@ -209,11 +209,72 @@ PRIORITY_BAD=$(awk -F '|' '
 [ -z "$PRIORITY_BAD" ] ||
   say_fail "TODO priority table disagrees for: $PRIORITY_BAD"
 
-PY=$({
+# ⛔ THE EXCEPTION THIS RULE'S OWN MESSAGE NAMED DID NOT EXIST. It said "Python
+# exists without an approved exception" and then refused every `.py`
+# unconditionally, so there was no way to approve one - which is a rule that
+# cannot be complied with, and `docs/AGENTS.md` section 5 does not forbid Python:
+# it permits it "where a documented constraint makes both unsuitable".
+#
+# ⛔ SO THE RULE ASKS FOR THE DOCUMENTATION, WHICH IS THE PART THAT MATTERS.
+# Three conditions, each planted against:
+#
+#   1. the file declares `bit-ids:python-exception=<ENTRY>`;
+#   2. `<ENTRY>` is a row `TODO/INDEX.md` really carries, which is the same
+#      condition the no-producer declaration above is held to;
+#   3. the file that carries THAT ENTRY mentions the `.py` file's own path, so
+#      the ARGUMENT lives in the record rather than only in the file that
+#      benefits from it.
+#
+# ⚠ CONDITION 3 IS WHAT STOPS THE MARKER ROTTING. The no-producer declaration
+# cannot outlive its reason because the day a producer lands the gate says so;
+# there is no comparable event here - "shell and this project's Rust are both
+# unsuitable" does not stop being true on a date - so what is checked instead is
+# that the reasoning is still written down. Delete the paragraph and this goes
+# red.
+#
+# ⛔ AND IT IS THE OWNING ENTRY'S FILE, NOT `TODO/` ANYWHERE. The first version
+# asked only that some file under `TODO/` mention the path, and a plant naming a
+# real but unrelated entry SURVIVED it: the argument sat in `observer.md` while
+# the marker pointed at `CI-04`. A declaration that names the wrong owner sends
+# the next reader to an entry that never discussed the file.
+PY_OUT=""
+PY_FILES=$({
   git ls-files --others --exclude-standard '*.py'
   git ls-files '*.py'
 } | sort -u)
-[ -z "$PY" ] || say_fail "Python exists without an approved exception: $PY"
+for _py in $PY_FILES; do
+  # ⚠ THE PREFIX IS STRIPPED WITH `sub`, NOT WITH AN OFFSET, which is the idiom
+  # the no-producer rule above already uses. The first version counted the
+  # prefix's length by hand, was one short, and reported a marker of `=OBS-07`
+  # that no index row could match - while the PowerShell half, which uses a
+  # capture group, read it correctly and passed. A rule whose two halves
+  # disagree is what `check-twins` exists to catch, and it caught this.
+  _marker=$(awk 'match($0, /bit-ids:python-exception=[A-Z]+-[0-9]+/) {
+                   found = substr($0, RSTART, RLENGTH)
+                   sub(/^bit-ids:python-exception=/, "", found)
+                   print found
+                   exit }' "$_py")
+  _owner=$(grep -l "^## $_marker:" TODO/*.md 2>/dev/null | head -1)
+  if [ -z "$_marker" ]; then
+    PY_OUT="$PY_OUT $_py declares no bit-ids:python-exception=<ENTRY>;"
+  elif ! grep -q "^| $_marker |" TODO/INDEX.md 2>/dev/null; then
+    PY_OUT="$PY_OUT $_py declares python-exception=$_marker, which is not an entry in TODO/INDEX.md;"
+  elif [ -z "$_owner" ]; then
+    PY_OUT="$PY_OUT $_py declares python-exception=$_marker, which no file under TODO/ carries an entry for;"
+  # ⛔ THE ENTRY'S OWN SECTION, NOT ITS WHOLE FILE. Asking only that the file
+  # mention the path let a plant naming a real but unrelated entry survive TWICE:
+  # first because the argument sat in `observer.md` and the marker pointed at
+  # `CI-04`, and then, after the rule was narrowed to the owning entry's file,
+  # because `ci.md` mentions the connector under a DIFFERENT entry. A section is
+  # the smallest unit that can be said to have made the argument.
+  elif ! awk -v want="## $_marker:" '
+         index($0, want) == 1 { inside = 1; next }
+         /^## / { inside = 0 }
+         inside' "$_owner" | grep -q -F -e "$_py"; then
+    PY_OUT="$PY_OUT $_py is approved by $_marker and that entry never mentions it;"
+  fi
+done
+[ -z "$PY_OUT" ] || say_fail "Python exists without an approved exception:$PY_OUT"
 
 # ⛔ AN ALLOWLIST OF IMMUTABLE FORMS, NOT A DENYLIST OF FLOATING ONES.
 # This used to name the floating refs it knew: main, master and vN.N.N. A

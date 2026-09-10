@@ -218,9 +218,55 @@ try {
         }
     }
 
-    $python = @(& git ls-files '*.py'; & git ls-files --others --exclude-standard '*.py')
-    if ($python.Count -gt 0) {
-        $failures.Add('Python exists without an approved exception: ' + ($python -join ', '))
+    # ⛔ THE EXCEPTION THIS RULE'S OWN MESSAGE NAMED DID NOT EXIST, and the sh
+    # half carries the full argument. Three conditions: the file declares
+    # `bit-ids:python-exception=<ENTRY>`, the entry is one TODO/INDEX.md really
+    # carries, and the file under TODO/ that carries THAT ENTRY mentions the
+    # `.py` file's own path, so the reasoning lives in the record rather than
+    # only in the file that benefits from it.
+    $python = @(& git ls-files '*.py'; & git ls-files --others --exclude-standard '*.py') |
+        Sort-Object -Unique
+    $pythonNotes = [System.Collections.Generic.List[string]]::new()
+    $indexRows = if (Test-Path 'TODO/INDEX.md') { Get-Content -LiteralPath 'TODO/INDEX.md' } else { @() }
+    $todoFiles = @(Get-ChildItem -LiteralPath 'TODO' -Filter '*.md' -File -ErrorAction SilentlyContinue)
+    foreach ($py in $python) {
+        if (-not $py) { continue }
+        $marker = ''
+        foreach ($line in (Get-Content -LiteralPath $py)) {
+            $found = [regex]::Match($line, 'bit-ids:python-exception=([A-Z]+-[0-9]+)')
+            if ($found.Success) { $marker = $found.Groups[1].Value; break }
+        }
+        $owner = $null
+        if ($marker) {
+            $owner = $todoFiles | Where-Object {
+                (Get-Content -LiteralPath $_.FullName) |
+                    Where-Object { $_.StartsWith("## ${marker}:") }
+            } | Select-Object -First 1
+        }
+        if (-not $marker) {
+            $pythonNotes.Add("$py declares no bit-ids:python-exception=<ENTRY>;")
+        } elseif (-not ($indexRows | Where-Object { $_.StartsWith("| $marker |") })) {
+            $pythonNotes.Add("$py declares python-exception=$marker, which is not an entry in TODO/INDEX.md;")
+        } elseif (-not $owner) {
+            $pythonNotes.Add("$py declares python-exception=$marker, which no file under TODO/ carries an entry for;")
+        } else {
+            # ⛔ THE ENTRY'S OWN SECTION, NOT ITS WHOLE FILE. The sh half carries
+            # why: a plant naming a real but unrelated entry survived the looser
+            # form twice.
+            $inside = $false
+            $section = [System.Collections.Generic.List[string]]::new()
+            foreach ($line in (Get-Content -LiteralPath $owner.FullName)) {
+                if ($line.StartsWith("## ${marker}:")) { $inside = $true; continue }
+                if ($line.StartsWith('## ')) { $inside = $false }
+                if ($inside) { $section.Add($line) }
+            }
+            if (-not (($section -join "`n").Contains($py))) {
+                $pythonNotes.Add("$py is approved by $marker and that entry never mentions it;")
+            }
+        }
+    }
+    if ($pythonNotes.Count -gt 0) {
+        $failures.Add('Python exists without an approved exception: ' + ($pythonNotes -join ' '))
     }
 
     # ⛔ AN ALLOWLIST OF IMMUTABLE FORMS, NOT A DENYLIST OF FLOATING ONES.
