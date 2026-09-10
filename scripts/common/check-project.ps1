@@ -34,18 +34,33 @@ try {
     $catalogue = if (Test-Path -LiteralPath 'catalogue/clients.toml') {
         Get-Content -Raw -LiteralPath 'catalogue/clients.toml'
     } else { '' }
-    $ids = @(
-        'qbittorrent', 'qbittorrent-enhanced', 'utorrent', 'bitcomet', 'aria2',
-        'aria2-next', 'transmission', 'deluge', 'bittorrent', 'biglybt', 'tixati',
-        'ktorrent', 'fdm', 'zona', 'libtorrent', 'anacrolix-torrent', 'rqbit'
-    )
-    foreach ($id in $ids) {
-        if ($catalogue -notmatch ('(?m)^id = "' + [regex]::Escape($id) + '"$')) {
-            $failures.Add("missing target $id")
+    # ⛔ THE TARGET SET IS DERIVED FROM THE CATALOGUE, IN BOTH DIRECTIONS. The sh
+    # half carries the argument: this was a hardcoded list of seventeen ids and
+    # `docs/client-matrix.md` claimed a bidirectional pin it did not have.
+    $catalogueIds = @([regex]::Matches($catalogue, '(?m)^id = "([a-z0-9-]+)"$') |
+        ForEach-Object { $_.Groups[1].Value }) | Sort-Object -Unique
+    $matrixLines = if (Test-Path -LiteralPath 'docs/client-matrix.md') {
+        Get-Content -LiteralPath 'docs/client-matrix.md'
+    } else { @() }
+    $backtick = [char]96
+    $matrixIds = @($matrixLines |
+        ForEach-Object { [regex]::Match($_, ('^\| ' + $backtick + '([a-z0-9-]+)' + $backtick + ' \|')) } |
+        Where-Object { $_.Success } |
+        ForEach-Object { $_.Groups[1].Value }) | Sort-Object -Unique
+
+    # ⛔ A RESULT TOO SMALL TO BE REAL IS REFUSED. Two empty sets agree perfectly.
+    if ($catalogueIds.Count -lt 10 -or $matrixIds.Count -lt 10) {
+        $failures.Add("target sets too small to be real: catalogue $($catalogueIds.Count), matrix $($matrixIds.Count)")
+    } else {
+        foreach ($id in $catalogueIds) {
+            if ($matrixIds -notcontains $id) {
+                $failures.Add("client matrix lacks target $id, which the catalogue carries")
+            }
         }
-        $matrixNeedle = '| ' + [char]96 + $id + [char]96 + ' |'
-        if (-not (Select-String -LiteralPath 'docs/client-matrix.md' -SimpleMatch -Pattern $matrixNeedle -Quiet)) {
-            $failures.Add("client matrix lacks target $id")
+        foreach ($id in $matrixIds) {
+            if ($catalogueIds -notcontains $id) {
+                $failures.Add("the client matrix names $id, which the catalogue does not carry")
+            }
         }
     }
 

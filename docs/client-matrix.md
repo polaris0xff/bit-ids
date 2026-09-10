@@ -77,14 +77,16 @@ so. ⛔ Two routes make a record writable and not publishable: `E-PUB-02` keeps 
 measured field provisional while one connector could see it, and both lanes used
 one.
 
-⚠ **And a correction about how this table is held to the catalogue.** It said
-the target set is "pinned by `check-project` against the catalogue in both
-directions", and it is not: `check-project` carries a **list of ids** and asks
-that each appear in the catalogue *and* in this table. A target added to the
-catalogue and forgotten here is not caught by anything, in either half of the
-check. ⭐ `aria2-next` is on that list, so this row and its catalogue entry are
-pinned to each other; the general claim was wrong and is withdrawn rather than
-restated.
+⭐ **This table IS pinned to the catalogue in both directions, since
+2026-09-10.** ⚠ It was not when the claim was first made, and the correction
+that stood here said so: `check-project` carried a **list of seventeen ids** and
+asked that each appear in the catalogue *and* here, so a target added to the
+catalogue and forgotten here was caught by nothing, in either half. ⛔ The list
+is gone rather than extended, because a list is a value in two places and
+extending it only resets the clock. Both halves derive the set from
+`catalogue/clients.toml`, compare it against the ids in this table's own rows,
+and refuse a difference either way - and refuse a set too small to be real,
+because two empty sets agree perfectly.
 
 ## Library targets
 

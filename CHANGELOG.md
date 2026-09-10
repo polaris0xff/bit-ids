@@ -5,6 +5,18 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-10T01:34:00Z
+
+- ⛔ **The client matrix was not pinned to the catalogue in both directions**,
+  though it said it was. `check-project` carried a hardcoded list of seventeen
+  ids, so a target added to the catalogue and forgotten in the matrix was caught
+  by nothing, in either half.
+- ⭐ **Both halves derive the target set from the catalogue now** and compare it
+  against the matrix's own rows either way, refusing a set too small to be real
+  because two empty sets agree perfectly. The list is deleted rather than
+  extended.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-01`. No version bump and no deploy.
+
 ### 2026-09-10T01:08:02Z
 
 - ⭐ **THERE IS A SECOND CONNECTOR, which is what absolute 2 asks for and what

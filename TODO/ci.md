@@ -220,6 +220,32 @@ passing `--fast` to make its nine inner gate runs cheaper would mean changing
 what the lane itself runs. The saving comes from the gate being faster, not from
 it doing less.
 
+### ⭐ A rule this repository said it had and did not, closed 2026-09-10
+
+⛔ **`check-project` pinned the target set with a HARDCODED LIST of seventeen
+ids**, asking that each appear in `catalogue/clients.toml` and in
+`docs/client-matrix.md` - while that document claimed the set was "pinned by
+`check-project` against the catalogue in both directions". ⚠ A target added to
+the catalogue and forgotten in the matrix was caught by nothing, in either half,
+and so was a matrix row naming a target the catalogue had dropped. The claim had
+already been withdrawn in place on 2026-09-09; nothing had made it true.
+
+⭐ **Both halves derive the set from the catalogue now and compare it against the
+ids in the matrix's own rows, refusing a difference either way.** ⛔ And refusing
+a set too small to be real, which is the guard `ACQ-01`'s catalogue scan already
+carries: two empty sets agree perfectly, so a parser that stopped matching would
+report a pinned matrix over nothing at all.
+
+⚠ **The list is deleted rather than extended.** A list is a value in two places,
+and this file already records three counts that went stale in prose for exactly
+that reason; extending it only resets the clock.
+
+Guard mutation, three plants, both halves run on each and their output compared:
+a target added to the catalogue alone, a matrix row the catalogue does not carry,
+and a matrix id renamed away from the catalogue - which fires BOTH directions at
+once and is the case that says the two comparisons are separate. All three
+refused, the twins agreeing character for character, and the clean tree accepted.
+
 ### Residuals
 
 - ⚠ `check-workflow.sh` is not in `check-gate.sh` and cannot be, so a

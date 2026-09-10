@@ -346,9 +346,12 @@ happened this session.
 ⛔ **A rule a document says this repository has is not a rule it has.** Grep for
 the check before believing it runs. ⚠ Third instance, found on 2026-09-09:
 `docs/client-matrix.md` said its target set is "pinned by `check-project` against
-the catalogue in both directions", and `check-project` in fact carries a **list
-of ids** and asks that each appear in both files. A target added to the catalogue
-and forgotten in the matrix is caught by nothing, in either half of the check.
+the catalogue in both directions", and `check-project` in fact carried a **list
+of ids** and asked that each appear in both files. ⭐ **Closed on 2026-09-10**:
+both halves derive the set from the catalogue and compare it both ways, the list
+is deleted, and three plants are refused with the twins agreeing. ⚠ The lesson
+survives the fix - the claim stood for as long as it did because a document
+described a check nobody had grepped for.
 
 ⛔ **A product's help text names a switch only if you already suspect it; its
 socket table names it whether or not you do.** `aria2-next` was run with all

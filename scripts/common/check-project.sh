@@ -36,15 +36,41 @@ for path in README.md LICENSE Cargo.toml Cargo.lock catalogue/clients.toml \
   [ -f "$path" ] || say_fail "missing $path"
 done
 
-for id in qbittorrent qbittorrent-enhanced utorrent bitcomet aria2 aria2-next \
-  transmission deluge bittorrent biglybt tixati ktorrent fdm zona libtorrent \
-  anacrolix-torrent rqbit; do
-  grep -Fq "id = \"$id\"" catalogue/clients.toml 2>/dev/null || say_fail "missing target $id"
-  # shellcheck disable=SC2016
-  MATRIX_NEEDLE=$(printf '| `%s` |' "$id")
-  grep -Fq "$MATRIX_NEEDLE" docs/client-matrix.md 2>/dev/null ||
-    say_fail "client matrix lacks target $id"
-done
+# ⛔ THE TARGET SET IS DERIVED FROM THE CATALOGUE, IN BOTH DIRECTIONS. This was a
+# HARDCODED LIST of seventeen ids, asked to appear in the catalogue and in the
+# matrix - and `docs/client-matrix.md` claimed it was "pinned by check-project
+# against the catalogue in both directions", which it was not. A target added to
+# the catalogue and forgotten in the matrix was caught by nothing, and so was a
+# matrix row naming a target the catalogue had dropped. ⚠ That is the third
+# instance this repository has recorded of a rule a document says it has and
+# does not; the list is gone rather than extended, because a list is a value in
+# two places and extending it only resets the clock.
+CATALOGUE_IDS=$(awk -F'"' '$0 ~ /^id = "/ { print $2 }' catalogue/clients.toml 2>/dev/null | sort -u)
+# ⛔ THE MATRIX ROWS ARE READ THE WAY THE MATRIX WRITES THEM: a leading pipe, the
+# id in a code span, a pipe. Anything else in that table is a heading or a rule
+# line and names no target.
+MATRIX_IDS=$(awk '$0 ~ /^\| `[a-z0-9-]+` \|/ {
+                    split($0, cell, "`")
+                    print cell[2]
+                  }' docs/client-matrix.md 2>/dev/null | sort -u)
+
+# ⛔ A RESULT TOO SMALL TO BE REAL IS REFUSED, which is the guard `ACQ-01`'s
+# catalogue scan already carries. Two empty sets agree perfectly, so a parser
+# that stopped matching would report a pinned matrix over nothing at all.
+CATALOGUE_COUNT=$(printf '%s\n' "$CATALOGUE_IDS" | grep -c .)
+MATRIX_COUNT=$(printf '%s\n' "$MATRIX_IDS" | grep -c .)
+if [ "$CATALOGUE_COUNT" -lt 10 ] || [ "$MATRIX_COUNT" -lt 10 ]; then
+  say_fail "target sets too small to be real: catalogue $CATALOGUE_COUNT, matrix $MATRIX_COUNT"
+else
+  for id in $CATALOGUE_IDS; do
+    printf '%s\n' "$MATRIX_IDS" | grep -qx -F -e "$id" ||
+      say_fail "client matrix lacks target $id, which the catalogue carries"
+  done
+  for id in $MATRIX_IDS; do
+    printf '%s\n' "$CATALOGUE_IDS" | grep -qx -F -e "$id" ||
+      say_fail "the client matrix names $id, which the catalogue does not carry"
+  done
+fi
 
 TMP="${TMPDIR:-/tmp}/.check-project.$$"
 mkdir -p "$TMP" || exit 2
