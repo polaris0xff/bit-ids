@@ -294,6 +294,16 @@ Add-Unavailable 'check-staleness' 'a portable Rust subject; it needs store-lib.p
 # implementation of a comparison rather than a second platform's answer.
 Add-Unavailable 'check-gate-rows' 'it runs the sh runner itself, so there is no half to write; CI-07 class D'
 
+# ⛔ AND THIS ONE'S REASON IS AN ENTRY IN FLIGHT RATHER THAN A PLATFORM FACT.
+# check-bitcheck plants defects against the Go binary that CI-10 is porting the
+# checking layer into. ⭐ That binary runs natively on this platform - it is the
+# whole point of the port - so the gap is the HARNESS, which is still `sh`.
+# ⚠ The event that closes this row is therefore CI-10 finishing the port and
+# moving the harness into Go beside its subject, not CI-07 writing a twin: a
+# PowerShell twin of this file would be a new member of the layer this entry
+# exists to delete.
+Add-Unavailable 'check-bitcheck' 'an sh harness over a Go binary that does run here; closes when CI-10 moves the harness into Go'
+
 # ⛔ AND THIS ONE'S REASON IS THE MOST SPECIFIC ON THE LANE, because a
 # PowerShell half of it would not be the same check. check-step-bodies runs a
 # workflow step's body through a POSIX PIPE and asks whether that pipe reached

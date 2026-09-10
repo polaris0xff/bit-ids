@@ -390,7 +390,7 @@ for spec in acquisition/check-cache acquisition/check-release-route \
   publishing/check-formats publishing/check-publish publishing/check-access \
   publishing/check-catalogue ci/check-staleness ci/check-step-bodies \
   capture/check-assemble capture/check-connector common/check-examples \
-  common/check-handbook common/check-gate-rows; do
+  common/check-handbook common/check-gate-rows common/check-bitcheck; do
   PROVER="$HERE/../$spec.sh"
   NAME=${spec#*/}
   # ⛔ A ROW NAME IS A NAME AND TWO CHECKS MUST NOT SHARE ONE. The label is the

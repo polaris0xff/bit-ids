@@ -2,8 +2,8 @@
 
 State instant: 2026-09-10
 Total: 65
-Open: 22
-In progress: 0
+Open: 21
+In progress: 1
 Blocked: 0
 Done: 43
 

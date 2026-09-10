@@ -2624,7 +2624,7 @@ the class. ⚠ Two open entries still carry it in their `Prove`, `OBS-10` and
 
 Source: operator direction on 2026-09-10, after a job was cancelled at its bound
 three times in one session
-Priority: P1 | Effort: XL | Status: OPEN
+Priority: P1 | Effort: XL | Status: IN_PROGRESS
 
 Problem: The checking layer is shell and PowerShell, and it is slow in a way no
 single row explains. `check-workflow.sh` is ONE job that runs the whole gate
@@ -2692,3 +2692,107 @@ wall-clock target makes most tempting. ⛔ And the port needs a case-for-case
 comparison against the shell halves BEFORE they are deleted, because a Go
 harness compared only against itself is the self-consistency `OBS-07` was
 opened for, arriving in the checking layer.
+
+### ⛔ WHERE THE WALL CLOCK ACTUALLY IS, measured 2026-09-10 before porting
+
+The entry's Problem says the layer is slow "in a way no single row explains".
+⚠ **That was wrong, and one row explains most of it.** Every twin pair was timed,
+each half unpiped, on this host:
+
+| pair | `.sh` | `.ps1` |
+| --- | ---: | ---: |
+| `check-control-bytes` | 1.71s | **67.88s** |
+| `check-markers` | 1.30s | 12.74s |
+| `check-project` | 0.84s | 2.91s |
+| `check-one-home` | 0.23s | 2.74s |
+| `check-catalogue` | 1.50s | 2.57s |
+| `check-placeholders` | 0.06s | 1.96s |
+| `check-no-secrets` | 0.13s | 1.63s |
+| `check-docs` | 1.39s | 1.42s |
+| `check-cache` | 0.18s | 1.06s |
+| `check-licences` | 0.06s | 0.67s |
+| `check-changelog` | 0.02s | 0.50s |
+| **together** | **7.4s** | **96.1s** |
+
+⭐ **The PowerShell halves are thirteen times the shell halves, and ONE of them is
+seventy per cent of that.** `check-twins` runs both halves of every pair and was
+69 seconds; this is what those 69 seconds are. ⛔ And `check-workflow` runs the
+whole gate about nine times, so the twin layer is roughly ten minutes of every
+push.
+
+⚠ **The measurement does not make the port conditional and is not offered as
+though it did.** The direction is unconditional and recorded as given. What it
+decides is the ORDER: the two rows above are ported first because they are the
+wall clock, not because they were the easiest.
+
+### ⭐ Step 1 of 3: the binary exists and two rules are in it, 2026-09-10
+
+[`../tools/check/`](../tools/check/) is a Go module with an **empty require list
+and therefore no `go.sum`**. ⚠ That is a supply-chain property rather than a
+preference: nothing is fetched at build time, so a build needs no network and no
+pin audit, and `CI-04`'s dependency surface does not grow by a language.
+
+`check-control-bytes` and `check-markers` are ported. The scope is still asked of
+`git ls-files` by shelling out, deliberately: a Go reimplementation walking the
+filesystem with its own idea of `.gitignore` would be a SECOND answer to what is
+in the tree, and two answers drift in the direction that keeps a check green.
+
+### ⛔ The comparison that had to happen before anything is deleted
+
+`scripts/common/check-bitcheck.sh` is one case list in two modes.
+
+| mode | what it asks | cost |
+| --- | --- | ---: |
+| default | the plants, against the Go binary alone | **1.1s** for 18 cases, including building it |
+| `--compare` | each case additionally against the `.sh` half and the `.ps1` half, refusing any difference in exit code **or** in the `--json` line | about seven minutes, because it starts the 67.9-second PowerShell half once per case |
+
+⭐ **Measured 2026-09-10: 18 cases, 18 passed, 0 failed, all three implementations
+agreeing on the exit code and byte for byte on the JSON.** Eight are plants that
+must be refused and six are plants that must be ACCEPTED - a specimen inside a
+fenced block, a leading byte-order mark, tab and carriage return, a control byte
+in a file the extension list does not call text - because over-strictness is
+where a port fails and a harness of refusals alone never looks there.
+
+⛔ **`--compare` is deliberately not a gate row.** Running the layer this entry
+exists to delete, once per case, would cost more than the layer does. The default
+mode is the permanent row and stays one after every half has gone, because a
+plant does not need a second implementation to be a plant.
+
+### ⚠ The blind spot reproduced in the replacement, on its first mutation pass
+
+Four divergences were planted into the Go half, one at a time, each verified to
+have changed the file before it was judged:
+
+| plant | verdict |
+| --- | --- |
+| the density ceiling 30 changed to 20 | ⭐ refused, exit 1 |
+| `md` dropped from the marker scope | ⭐ refused, exit 1 |
+| the leading-BOM exemption removed | ⭐ refused, exit 1 |
+| **DEL (0x7f) added to the control class** | ⛔ **SURVIVED, exit 0** |
+
+⛔ **The fourth is `check-twins`' own documented blind spot arriving in its
+replacement.** `check-markers.sh`'s header records that a `py` scope dropped from
+one half was invisible because this tree holds no `.py` file; here, a class
+widened to include DEL was invisible because nothing in the tree and nothing
+planted carried that byte. ⭐ The repair is a FIXTURE and not a reading: a case
+plants a DEL and requires all three to accept it. Re-measured with it, the same
+plant is refused, exit 1.
+
+⚠ **A fifth probe reported NOT-PLANTED and that is a harness result rather than a
+finding.** The scope substitution was aimed at `markers.go` and the pattern lives
+in `repo.go`; re-aimed, it is the second row above. A plant that did not apply is
+a third status and is counted as neither.
+
+### Residuals of step 1
+
+- ⚠ **Nothing has run this on a runner.** The Go toolchain is assumed present on
+  both hosted images. It is not asserted here: `check-bitcheck` calls
+  `store_require go` and exits 2 without one, which `--strict` turns into a
+  failure on the lane, so an absent toolchain says so rather than skipping.
+- ⚠ **The harness is `sh` while its subject is a Go binary that runs on both
+  platforms.** The Windows lane declares the row with that reason and names this
+  entry as the event that closes it, rather than `CI-07`: a PowerShell twin of
+  this file would be a new member of the layer this entry exists to delete.
+- ⛔ **Nothing is deleted yet, and the gate is one row LONGER.** That is the
+  correct intermediate state - the proof precedes the deletion - and it is the
+  next unit rather than a residual to live with.

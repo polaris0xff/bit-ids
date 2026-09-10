@@ -274,10 +274,32 @@ from any working directory.
   in `catalogue/licences.toml` against the catalogue and the lockfile in both
   directions, refuse a row with no disposition, and refuse an installer-shaped
   file in the tree.
+- [`common/check-bitcheck.sh`](common/check-bitcheck.sh) plants a defect per rule
+  against the Go checking binary in [`../tools/check/`](../tools/check/) and
+  refuses one it does not catch. ⭐ **`--compare` additionally runs the `.sh` and
+  `.ps1` halves and refuses any difference in exit code or in the `--json`
+  line**, which is `CI-10`'s bound: a ported check refuses exactly what its shell
+  half refused, over the same plants, and is compared case for case BEFORE either
+  half is deleted. ⛔ That mode is deliberately not in the gate - one PowerShell
+  half alone is 67.9 seconds, so running it per case would cost more than the
+  layer this removes - and the default mode is the permanent row, which goes on
+  being a row after every half has gone.
+  ⚠ Its own first mutation pass reproduced `check-twins`' documented blind spot:
+  adding DEL to the Go control class left every case green, because nothing in
+  the tree and nothing planted carried that byte. The repair is a fixture.
 
-Shell is the default orchestration language. Rust owns parsing, normalization,
-validation, indexing, and publishing. Python requires a recorded need that
-cannot reasonably be met by those two layers.
+Shell is the default orchestration language and **Go is the checking layer**.
+Rust owns parsing, normalization, validation, indexing, and publishing. Python
+requires a recorded need that cannot reasonably be met by those layers.
+
+⭐ **The Go layer exists to DELETE the twin layer rather than to translate it.**
+`check-twins` exists because two hand-written halves drift; one binary that runs
+on both platforms cannot drift from itself, so the comparison stops being
+necessary rather than getting faster. `CI-10` owns the port and
+[`../tools/check/`](../tools/check/) is where it lands. ⚠ The module has an empty
+require list and therefore no `go.sum`: nothing is fetched at build time, so a
+build needs no network and `CI-04`'s dependency surface does not grow by a
+language.
 
 `check-twins.sh` has no PowerShell twin because it executes and compares both
 halves of every listed pair. The gate runners are deliberately absent from its

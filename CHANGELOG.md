@@ -5,6 +5,36 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-10T06:40:47Z
+
+- ⛔ **The twin layer's wall clock is ONE ROW, measured before porting anything.**
+  Every pair timed unpiped on this host: the eleven `.sh` halves together are
+  **7.4 seconds** and the eleven `.ps1` halves **96.1**, of which
+  `check-control-bytes.ps1` alone is **67.9**. `check-workflow` runs the whole
+  gate about nine times, so that is roughly ten minutes of every push.
+- ⚠ The measurement does not make `CI-10` conditional and is not offered as
+  though it did. It decides the ORDER: those two rows are ported first because
+  they are the wall clock.
+- ⭐ **`tools/check/` is the Go checking binary**, with an empty require list and
+  therefore no `go.sum` - nothing is fetched at build time, so a build needs no
+  network and `CI-04`'s dependency surface does not grow by a language.
+  `check-control-bytes` and `check-markers` are in it.
+- ⭐ **`scripts/common/check-bitcheck.sh` is one case list in two modes.** The
+  default plants against the Go binary alone, **1.1 seconds for 18 cases**
+  including building it, and is the permanent gate row. `--compare` additionally
+  runs both shell halves and refuses any difference in exit code or `--json`.
+- ⭐ **The pre-deletion proof ran: 18 cases, 18 passed, all three implementations
+  agreeing byte for byte.** Six of the cases plant something that must be
+  ACCEPTED, because over-strictness is where a port fails.
+- ⛔ **And the first mutation pass reproduced `check-twins`' own blind spot.**
+  Adding DEL to the Go control class SURVIVED - nothing in the tree and nothing
+  planted carried that byte - while three other plants were refused. The repair
+  is a fixture, not a reading, and the same plant is refused with it.
+- ⛔ Nothing is deleted yet and the gate is one row longer, at 36. The proof
+  precedes the deletion.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-10`, now `IN_PROGRESS`. No version bump
+  and no deploy.
+
 ### 2026-09-10T05:08:52Z
 
 - ⛔ **`CI-10` is filed, it is FIRST in the work order, and it is not

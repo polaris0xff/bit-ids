@@ -129,12 +129,23 @@ line count and last heading as the receipt described in
 - Do not redistribute a client binary. Keep URLs, signatures, package
   metadata and digests only.
 - Shell is the default orchestration language. Core parsers, validators,
-  capture tooling, publishing logic and the consumer library are Rust. Python
-  is used only where a documented constraint makes both unsuitable. ⛔ That
-  permission is now a declaration rather than a judgement: a `.py` file carries
-  `bit-ids:python-exception=<ENTRY>`, the entry has to be one `TODO/INDEX.md`
-  really carries, and **that entry's own section** has to mention the file.
-  `check-project` refuses all three ways.
+  capture tooling, publishing logic and the consumer library are Rust. ⭐ **The
+  checking layer is Go**, in [`../tools/check/`](../tools/check/), and `CI-10`
+  owns the port. Python is used only where a documented constraint makes the
+  others unsuitable. ⛔ That permission is now a declaration rather than a
+  judgement: a `.py` file carries `bit-ids:python-exception=<ENTRY>`, the entry
+  has to be one `TODO/INDEX.md` really carries, and **that entry's own section**
+  has to mention the file. `check-project` refuses all three ways.
+- ⛔ **Go is here to DELETE the twin layer, not to add a fourth language for its
+  own sake.** Every rule used to be a `.sh` and a hand-written `.ps1`, with
+  `check-twins` comparing them because two hand-written halves drift. One binary
+  that runs on both platforms removes that class rather than checking for it.
+  ⚠ So a new checking rule goes into `tools/check/`, and a new `.ps1` twin of an
+  existing check is work being added to a layer that is being removed.
+  ⛔ **A ported check refuses exactly what its shell half refused**, over the same
+  plants, with the same 0/1/2 vocabulary, and
+  `sh scripts/common/check-bitcheck.sh --compare` is what establishes that while
+  both halves still exist.
 - Main docs describe current truth. Amend stale text in place. Put superseded
   reasoning, corrections, reviews and narrative history under `docs/history/`.
   Never append diary or changelog material to reference pages.
