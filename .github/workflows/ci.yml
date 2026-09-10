@@ -112,7 +112,22 @@ jobs:
   acceptance:
     name: Workflow acceptance
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # ⛔ 45 RATHER THAN 30, AND THE NUMBER IS MEASURED. This job was cancelled at
+    # its 30-minute bound twice on 2026-09-10, at 30m15s each time.
+    # `check-workflow` runs the whole gate about ten times, so every second the
+    # gate gains costs this job ten - and the gate gained a real one:
+    # `check-capture-client` went from 48 seconds to **105** when `OBS-07`'s
+    # connector refusals were given cases, which is 57 seconds multiplied into
+    # about nine and a half minutes here.
+    # ⚠ THE FIRST READING WAS WRONG AND IS RECORDED AS SUCH. `check-defaults` was
+    # moved out of the gate for the same suspicion; that saved about five minutes
+    # and did not bring this job back under 30, which is what identified the
+    # capture harness instead.
+    # ⛔ RAISING A BOUND TO FIT GROWTH IS MASKING UNLESS THE GROWTH IS NAMED, so
+    # it is named: the coverage is six refusals that had never fired, and
+    # `CI-01`'s residual already carries the real fix, which is sharding this
+    # harness across runners rather than buying it more minutes.
+    timeout-minutes: 45
     permissions:
       contents: read
     steps:

@@ -2089,6 +2089,30 @@ is handled and for a related reason.
 any future one.** A row worth 28 seconds locally is worth nearly five minutes of
 the CI wall clock.
 
+#### ⛔ AND THAT READING WAS WRONG. The 28 seconds were not the cause
+
+⛔ **THE JOB HIT ITS BOUND AGAIN AFTER `check-defaults` LEFT THE GATE**, at
+30m15s both times. Moving it saved about five minutes and did not bring the job
+back under 30, which is what makes the first diagnosis a hypothesis that was
+tested rather than a conclusion.
+
+⭐ **Measured instead of guessed a second time**: `check-capture-client` is
+**105 seconds**, where this repository's own gate comment records it at **48 at
+`SECS=5`**. `OBS-07`'s connector refusals were given cases - eight stub-connector
+captures and three more - and each `run_case` runs a whole capture. That is 57
+seconds the gate gained, multiplied into about nine and a half minutes here.
+
+⚠ **The bound is 45 now and the growth is named rather than absorbed.** Raising a
+timeout to fit growth is masking unless the growth is written down; what bought
+those 57 seconds is six refusals that had never fired, and `CI-01`'s residual
+already carries the real fix - sharding this harness across runners rather than
+buying it more minutes.
+
+⛔ **The lesson is the one this file keeps recording.** A gate row's local cost is
+not its cost: the multiplier is `check-workflow`'s ten gate runs, and the two
+socket harnesses run SERIALLY after the concurrent batch, so a second added there
+is a second on the wall clock rather than a second shared with something else.
+
 `check-docs` is the one subject left out:
 it resolves links and parses fenced blocks, which is the least plausible thing
 for a locale or a scratch directory to reach. ⚠ `check-markers` stays because it

@@ -5,6 +5,21 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-10T04:31:42Z
+
+- ⛔ **The first diagnosis was wrong and the job hit its bound again.** Moving
+  `check-defaults` out of the gate saved about five minutes and did not bring
+  *Workflow acceptance* back under 30; it was cancelled at 30m15s twice.
+- ⭐ **Measured instead of guessed a second time:** `check-capture-client` is 105
+  seconds against the 48 this repository's own gate comment records. `OBS-07`'s
+  connector refusals were given cases and each one runs a whole capture - 57
+  seconds the gate gained, multiplied by `check-workflow`'s ten gate runs into
+  about nine and a half minutes.
+- ⚠ **The bound is 45 and the growth is named rather than absorbed.** What bought
+  those seconds is six refusals that had never fired; `CI-01`'s residual carries
+  the real fix, which is sharding rather than more minutes.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-08`. No version bump and no deploy.
+
 ### 2026-09-10T03:53:49Z
 
 - ⛔ **A 28-second gate row cost the CI lane five minutes and its job was
