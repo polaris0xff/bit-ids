@@ -147,7 +147,7 @@ therefore parsed none of them, reporting a clean changelog it had never read.
 It now refuses a file with no entries, because rules that are enforced per
 entry are all satisfied by having no entries.
 
-Four rules, and [`scripts/common/check-changelog.sh`](../../scripts/common/check-changelog.sh)
+Four rules, and [`scripts/common/check-changelog.sh`](../../tools/check/changelog.go)
 holds all four. ⭐ They were stated here and enforced by nothing for as long as
 this document existed, which is the shape a rule takes on its way to becoming
 a preference:

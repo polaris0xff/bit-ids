@@ -399,6 +399,139 @@ rm -rf "$TREE/LICENSES"
 agree "markers clean tree again" check-markers common/check-markers 0
 
 # ============================================================================
+# check-one-home
+# ============================================================================
+
+agree "one-home clean tree" check-one-home common/check-one-home 0
+
+# A sentence of twelve or more words, which is the length below which a repeated
+# phrase is not a fact.
+LONG='the capture host is claimed before anything else writes to it and the route is cut afterwards'
+SHORT='the capture host is claimed first'
+
+printf '%s\n' "$LONG" >"$TREE/tools/check/plant-a.md"
+printf '%s\n' "$LONG" >"$TREE/tools/check/plant-b.md"
+agree "one-home one sentence in two documents is refused" check-one-home common/check-one-home 1
+unplant tools/check/plant-a.md
+unplant tools/check/plant-b.md
+
+# ⚠ THE SAME SENTENCE TWICE IN ONE DOCUMENT IS NOT A DUPLICATE. The shell half
+# ran `sort -u` over (sentence, file) pairs before counting, so this is the case
+# that separates "in two documents" from "twice". A port that counted occurrences
+# rather than distinct files would refuse every document that repeats a heading.
+printf '%s\n\n%s\n' "$LONG" "$LONG" >"$TREE/tools/check/plant-a.md"
+agree "one-home the same sentence twice in ONE document is accepted" check-one-home common/check-one-home 0
+unplant tools/check/plant-a.md
+
+# ⚠ UNDER THE WORD FLOOR, SHARED. A short phrase in two documents is a phrase,
+# not a fact, and refusing it would fire on every correct tree.
+printf '%s\n' "$SHORT" >"$TREE/tools/check/plant-a.md"
+printf '%s\n' "$SHORT" >"$TREE/tools/check/plant-b.md"
+agree "one-home a sentence under the word floor is accepted" check-one-home common/check-one-home 0
+unplant tools/check/plant-a.md
+unplant tools/check/plant-b.md
+
+# ⛔ ROUTERS ARE EXEMPT AS A SET AND THIS TREE CARRIES NEITHER OF THEM at the
+# paths the rule names - it has docs/AGENTS.md, which is NOT in that set - so the
+# exemption is proved with a fixture rather than assumed from the tree.
+printf '%s\n' "$LONG" >"$TREE/AGENTS.md"
+printf '%s\n' "$LONG" >"$TREE/ROUTE.md"
+agree "one-home a sentence shared only between routers is accepted" check-one-home common/check-one-home 0
+unplant AGENTS.md
+
+# ⛔ AND THE EXEMPTION IS *EVERY* FILE, NOT *ANY*. With one router and one
+# ordinary document the same sentence is the defect, which is the branch that
+# says the test is over the whole set.
+printf '%s\n' "$LONG" >"$TREE/tools/check/plant-a.md"
+agree "one-home a router sharing with an ordinary document is refused" check-one-home common/check-one-home 1
+unplant tools/check/plant-a.md
+unplant ROUTE.md
+
+# ⚠ docs/history/ IS OUT OF SCOPE, because superseded reasoning is where a
+# repeated sentence is correct: the history says what was believed then and the
+# current document says what is true now.
+printf '%s\n' "$LONG" >"$TREE/tools/check/plant-a.md"
+mkdir -p "$TREE/docs/history"
+printf '%s\n' "$LONG" >"$TREE/docs/history/PLANT.md"
+agree "one-home docs/history is out of scope" check-one-home common/check-one-home 0
+unplant tools/check/plant-a.md
+unplant docs/history/PLANT.md
+
+# ⭐ A SHARED SENTENCE INSIDE A FENCED BLOCK IS NOT A SHARED SENTENCE. Two
+# documents quoting one command are quoting it, and the fence is what says so.
+for p in plant-a plant-b; do
+  {
+    printf '```\n'
+    printf '%s\n' "$LONG"
+    printf '```\n'
+  } >"$TREE/tools/check/$p.md"
+done
+agree "one-home a sentence shared inside fenced blocks is accepted" check-one-home common/check-one-home 0
+unplant tools/check/plant-a.md
+unplant tools/check/plant-b.md
+
+agree "one-home clean tree again" check-one-home common/check-one-home 0
+
+# ============================================================================
+# check-changelog
+# ============================================================================
+
+agree "changelog clean tree" check-changelog common/check-changelog 0
+
+CL="$TREE/CHANGELOG.md"
+cp "$CL" "$WORK/CHANGELOG.orig" || exit 2
+restore_changelog() { cp "$WORK/CHANGELOG.orig" "$CL"; }
+
+# ⛔ THE ORDERING RESETS AT EVERY SECTION, and this is the control for that: an
+# Unreleased section above a versioned one is CORRECT even though its date is
+# older, so a port comparing across the boundary refuses a right answer.
+{
+  printf '# Changelog\n\n## Unreleased\n\n'
+  printf '### 2026-01-01T00:00:00Z\n\n- Record: TODO/ci.md. No deploy.\n\n'
+  printf '## 1.0.0\n\n'
+  printf '### 2026-06-01T00:00:00Z\n\n- Record: TODO/ci.md. No deploy.\n'
+} >"$CL"
+agree "changelog an older date in a later section is accepted" check-changelog common/check-changelog 0
+
+{
+  printf '# Changelog\n\n## Unreleased\n\n'
+  printf '### 2026-01-01T00:00:00Z\n\n- Record: TODO/ci.md. No deploy.\n\n'
+  printf '### 2026-06-01T00:00:00Z\n\n- Record: TODO/ci.md. No deploy.\n'
+} >"$CL"
+agree "changelog two entries out of order in ONE section is refused" check-changelog common/check-changelog 1
+
+{
+  printf '# Changelog\n\n## Unreleased\n\n'
+  printf '### the day it happened\n\n- Record: TODO/ci.md. No deploy.\n'
+} >"$CL"
+agree "changelog an entry with no date is refused" check-changelog common/check-changelog 1
+
+{
+  printf '# Changelog\n\n## Unreleased\n\n'
+  printf '### 2026-06-01T00:00:00Z\n\n- Something happened. No deploy.\n'
+} >"$CL"
+agree "changelog an entry naming no record is refused" check-changelog common/check-changelog 1
+
+{
+  printf '# Changelog\n\n## Unreleased\n\n'
+  printf '### 2026-06-01T00:00:00Z\n\n- Record: TODO/ci.md.\n'
+} >"$CL"
+agree "changelog an entry silent about deployment is refused" check-changelog common/check-changelog 1
+
+# ⛔ A FILE THAT PARSES TO NO ENTRIES IS A FAILURE, NOT A CLEAN RUN, and this
+# repository shipped exactly that shape for as long as it took somebody to
+# notice. ⚠ It is the one refusal here that emits no JSON at all - there is no
+# `problems` count to report - so it is also the case that says the port carried
+# the stderr path rather than inventing an answer.
+{
+  printf '# Changelog\n\n## 2026-06-01T00:00:00Z\n\n- Record: TODO/ci.md. No deploy.\n'
+} >"$CL"
+agree "changelog a file with no entries the parser knows is refused" check-changelog common/check-changelog 1
+
+restore_changelog
+agree "changelog clean tree again" check-changelog common/check-changelog 0
+
+# ============================================================================
 
 store_report check-bitcheck/1 cases \
   "$([ "$JSON" = "1" ] && printf 1 || printf 0)"

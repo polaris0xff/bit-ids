@@ -51,7 +51,7 @@ written against tidy input.
 ## The bytes are hexadecimal
 
 A `.bin` beside each document would be the obvious shape and the wrong one.
-[`../../../../scripts/common/check-control-bytes.sh`](../../../../scripts/common/check-control-bytes.sh)
+[`../../../../tools/check/controlbytes.go`](../../../../tools/check/controlbytes.go)
 sets out the cost of a literal control byte in a tracked file: `grep` calls it
 binary and skips it, and `git diff` prints "Binary files differ", so a review of
 the one artefact that most needs reading shows no diff at all. Hex is lossless,

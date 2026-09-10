@@ -111,7 +111,7 @@ workspace member and nothing else.
 Decision: the fixtures are hex text inside a JSON document, not `.bin` files
 beside one. A literal control byte in a tracked file is skipped by `grep` and
 rendered as "Binary files differ" by `git diff`, which
-[`../scripts/common/check-control-bytes.sh`](../scripts/common/check-control-bytes.sh)
+[`../tools/check/controlbytes.go`](../tools/check/controlbytes.go)
 exists to refuse. Hex is lossless, so byte-exactness gives up nothing for it.
 
 Decision: the codecs observe rather than impose. Unsorted bencode keys, `i-0e`,

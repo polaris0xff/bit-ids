@@ -19,7 +19,7 @@
 //! ## The bytes are hexadecimal, and that is deliberate
 //!
 //! A `.bin` beside the document would be the obvious shape and the wrong one.
-//! `scripts/common/check-control-bytes.sh` documents what a literal control byte
+//! `tools/check/controlbytes.go` documents what a literal control byte
 //! costs: `grep` skips the file and `git diff` renders no diff at all, so the
 //! one artefact a reviewer most needs to read becomes the one they cannot. Hex
 //! is lossless, so nothing is given up for it.

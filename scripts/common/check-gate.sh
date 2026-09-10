@@ -288,9 +288,33 @@ if command -v cargo >/dev/null 2>&1; then
     --locked --examples >/dev/null 2>&1 || :
 fi
 
-# The sh halves. Each is the authority on its own subject.
-for c in check-docs check-markers check-one-home check-placeholders \
-  check-control-bytes check-changelog check-no-secrets check-project \
+# ⭐ THE PORTED RULES, RUN FROM ONE BINARY THAT BOTH LANES SHARE. CI-10. Each of
+# these had an `.sh` half and a hand-written `.ps1` twin, and `check-twins` ran
+# both of every pair to catch the drift between them. ⛔ One implementation cannot
+# drift from itself, so the pair is gone rather than compared - and the row is now
+# the SAME row on both lanes rather than a row here and a declared gap there.
+#
+# ⚠ THE BUILD IS ONE COMMAND AND ITS FAILURE IS NOT A GATE ROW, for the reason the
+# cargo build above is not: a build that fails here fails again inside
+# `check-bitcheck`, where it is reported with that check's own name. What IS a row
+# is each check, and a missing binary makes every one of them a SKIP rather than a
+# pass, because `queue` would have nothing to run.
+GOBIN="$OUT/bit-check"
+if command -v go >/dev/null 2>&1; then
+  (cd "$HERE/../../tools/check" && go build -o "$GOBIN" .) >/dev/null 2>&1 || :
+fi
+
+for c in check-changelog check-control-bytes check-markers check-one-home; do
+  if [ -x "$GOBIN" ]; then
+    queue "$c" "$GOBIN" "$c"
+  else
+    queue_row "$c" "SKIP  $c  (tools/check did not build)" skip
+  fi
+done
+
+# The sh halves that are not ported yet. Each is the authority on its own subject.
+for c in check-docs check-placeholders \
+  check-no-secrets check-project \
   check-licences; do
   if [ -f "$HERE/$c.sh" ]; then
     queue "$c" sh "$HERE/$c.sh"

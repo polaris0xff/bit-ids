@@ -2793,6 +2793,71 @@ a third status and is counted as neither.
   platforms.** The Windows lane declares the row with that reason and names this
   entry as the event that closes it, rather than `CI-07`: a PowerShell twin of
   this file would be a new member of the layer this entry exists to delete.
-- ⛔ **Nothing is deleted yet, and the gate is one row LONGER.** That is the
-  correct intermediate state - the proof precedes the deletion - and it is the
-  next unit rather than a residual to live with.
+### ⭐ Step 2 of 3: the twin layer is being deleted, four pairs on 2026-09-10
+
+`check-changelog`, `check-control-bytes`, `check-markers` and `check-one-home`
+are one Go binary. ⛔ **Both halves of each pair are gone** - eight files - and
+the pairs are out of `check-twins`' list. The gate runs the same binary on both
+lanes, so four rows that were an `sh` row here and a hand-written twin there are
+now one row on each.
+
+⚠ **They left the pair list only after `--compare` ran them against both deleted
+halves**: 35 cases, 35 passed, agreeing on the exit code and byte for byte on
+`--json`. A pair removed without that is a rule nobody checks.
+
+⭐ **`check-twins` went from 69 seconds to 15.9.** Four pairs removed, and one of
+them carried 67.9 seconds by itself.
+
+### ⛔ AND THE GATE DID NOT GET FASTER, WHICH REFUTES THIS ENTRY'S OWN PREMISE
+
+⚠ **Measured immediately after the deletion: the whole gate is 129.7 seconds,
+against the 118-125 `CI-01` recorded before any of this.** The concurrent batch
+lost 53 seconds and the gate lost none of them, so the twin layer was not on the
+critical path at all.
+
+⛔ **Every gate member was then timed, and the wall clock is somewhere nobody had
+looked:**
+
+| check | seconds |
+| --- | ---: |
+| `check-capture-client` | **105.0** |
+| `check-capture` | 45.1 |
+| `check-step-bodies` | 17.9 |
+| `check-twins` (after the deletion) | 16.3 |
+| `check-shell` | 10.9 |
+| everything else, each | under 4 |
+
+⛔ **`CI-01` measured `check-capture-client` at 47.9 seconds and it is 105 now.**
+Nothing changed its `SECS=5` deadline; it has **111 cases**, and it grew one case
+at a time while the number in the record stayed still. ⚠ Those two harnesses run
+AFTER the concurrent batch, alone, on purpose - `CI-01` records buying that on
+purpose because a saturated host changes their ANSWER - so the gate is
+`max(batch) + max(those two)`, and the second term is now four fifths of it.
+
+⭐ **This is the entry's own lesson arriving against the entry.** `CI-01`'s
+header says "CI is slow" is not a place to start optimising, and this entry's
+Problem said the layer is slow "in a way no single row explains". One row
+explains it, and it is not the row this entry named. ⚠ The port is still
+unconditional and still correct - it removes the drift class, and `CI-07`'s
+class-A backlog with it - but **it is not what makes CI faster**, and saying so
+here is worth more than the 53 seconds.
+
+⛔ **So the next unit is step 3, sharding, rather than more porting.**
+`check-workflow` runs the whole gate about nine times, and a 130-second gate is
+about twenty minutes of that job whatever language its rows are written in.
+Dividing that across runners is the only thing that touches it.
+
+### Residuals of step 2
+
+- ⚠ **`check-capture-client` at 105 seconds is unowned by this entry.** It is a
+  harness that grew, not a defect, and shrinking it is a decision about how many
+  cases a gate should carry rather than a port. Recorded here because the
+  measurement was taken here; it belongs to whoever next opens `CI-01`.
+- ⚠ **Seven pairs remain**, together 12.3 seconds of PowerShell against the 96.1
+  the layer started at. ⛔ The remaining wall-clock value of porting them is
+  therefore small and the DRIFT value is unchanged, which is the honest ordering
+  argument for doing them after sharding rather than before.
+- ⚠ **`check-defaults` runs the Go binary as a subject now.** A Go program
+  inherits a different set of host values than a shell script - no `IFS`, and
+  `TMPDIR` through the runtime rather than a shell expansion - so that row is
+  asking the same question of a subject with its own answers.

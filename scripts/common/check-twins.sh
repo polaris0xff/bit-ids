@@ -386,19 +386,25 @@ harvest_pairs() {
   done
 }
 
+# ⭐ FOUR PAIRS HAVE LEFT THIS LIST BY BEING DELETED, NOT BY BEING EXEMPTED.
+# CI-10, 2026-09-10. `check-changelog`, `check-control-bytes`, `check-markers` and
+# `check-one-home` are one Go binary now; both of each pair's halves are gone, so
+# there is no drift left to compare and no row here to keep in step.
+#
+# ⛔ THE COMPARISON WAS NOT SIMPLY DROPPED. `check-bitcheck.sh --compare` ran every
+# one of them against BOTH deleted halves, over eight planted defects and six
+# plants that must be accepted, and recorded 35 cases agreeing on the exit code
+# and byte for byte on the `--json` line. TODO/ci.md carries the run. A pair
+# removed from this list without that is a rule nobody checks.
+#
+# ⚠ AND THE PAIR THIS FILE SINGLED OUT IS ONE OF THE FOUR. `check-markers` was
+# "the one most worth comparing and the one least proved by the comparison",
+# because both halves decoded UTF-8 by hand from opposite directions and this
+# tree carries no character outside the five for them to disagree about. ⭐ There
+# is one decoder now, and `check-bitcheck` plants the character rather than hoping
+# the tree contains one - which is what that note asked for.
 compare_pair "check-docs" common/check-docs.sh "--json" common/check-docs.ps1 "-Json"
 compare_pair "check-placeholders" common/check-placeholders.sh "--json" common/check-placeholders.ps1 "-Json"
-compare_pair "check-control-bytes" common/check-control-bytes.sh "--json" common/check-control-bytes.ps1 "-Json"
-# ⚠ THIS PAIR IS THE ONE MOST WORTH COMPARING AND THE ONE LEAST PROVED BY THE
-# COMPARISON. Both halves decode UTF-8 by hand, from opposite directions: the
-# sh half walks bytes with an ordinal table and the PowerShell half walks .NET
-# chars and has to rejoin a surrogate pair. Two decoders agreeing on a tree
-# that contains no character outside the five is two decoders agreeing about
-# nothing. ⭐ Prove this one with a planted character, in both halves, the way
-# scripts/README.md says to. It was, on U+2014 and on U+1F600.
-compare_pair "check-markers" common/check-markers.sh "--json" common/check-markers.ps1 "-Json"
-compare_pair "check-one-home" common/check-one-home.sh "--json" common/check-one-home.ps1 "-Json"
-compare_pair "check-changelog" common/check-changelog.sh "--json" common/check-changelog.ps1 "-Json"
 compare_pair "check-no-secrets" common/check-no-secrets.sh "--json" common/check-no-secrets.ps1 "-Json"
 compare_pair "check-no-secrets pub" common/check-no-secrets.sh "--public --json" common/check-no-secrets.ps1 "-Public -Json"
 compare_pair "check-project" common/check-project.sh "--json" common/check-project.ps1 "-Json"

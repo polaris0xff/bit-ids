@@ -373,7 +373,7 @@ rather than warns, over every tracked text file.
   expression is correct for one and quietly wrong for the other. Counting bytes
   is byte-oriented and belongs to a byte tool. Counting characters is
   character-oriented and needs a Unicode-aware one. This matters most to
-  [`check-control-bytes.sh`](../../scripts/common/check-control-bytes.sh),
+  [`tools/check/controlbytes.go`](../../tools/check/controlbytes.go),
   whose whole subject is bytes that review tools misreport.
 
 ---

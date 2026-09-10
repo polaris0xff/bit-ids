@@ -305,6 +305,14 @@ language.
 halves of every listed pair. The gate runners are deliberately absent from its
 pair list because including a runner would recurse.
 
+⛔ **The pair list is SHRINKING, and a pair leaves it by being deleted rather
+than exempted.** `CI-10` ports each rule into `tools/check/` and removes both
+halves; four went on 2026-09-10, taking `check-twins` from **69 seconds to
+15.9**. ⚠ A pair may only leave after
+`sh scripts/common/check-bitcheck.sh --compare` has run it against both halves
+over the same plants, which is the entry's own bound. This file's list of twinned
+scripts above is therefore a list of what has NOT been ported yet.
+
 ⚠ The twin rule is about `common/`, where every script is a check that emits a
 comparable `--json` verdict. `acquisition/fetch-releases.sh` has no twin and
 does not belong in the pair list: what it emits depends on the network, so

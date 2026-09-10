@@ -5,6 +5,33 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-10T07:18:57Z
+
+- ⭐ **Four twin pairs are DELETED rather than translated.** `check-changelog`,
+  `check-control-bytes`, `check-markers` and `check-one-home` are one Go binary;
+  eight files are gone and the pairs are out of `check-twins`' list. Both lanes
+  run the same program, so four rows that were an `sh` row and a hand-written
+  twin are now one row each.
+- ⚠ They left only after `check-bitcheck --compare` ran them against both deleted
+  halves. `TODO/ci.md` carries that run and its counts.
+- ⭐ **`check-twins` went from 69 seconds to 15.9.**
+- ⛔ **AND THE GATE DID NOT GET FASTER, WHICH REFUTES `CI-10`'s OWN PREMISE.**
+  The whole gate is 129.7 seconds against the 118-125 recorded before any of
+  this: the concurrent batch lost 53 seconds and the gate lost none of them.
+- ⛔ **Every gate member was then timed and the wall clock is elsewhere.**
+  `check-capture-client` is **105 seconds** - `CI-01` recorded 47.9 - because it
+  has grown to 111 cases while the number in the record stayed still. It and
+  `check-capture` run after the batch, alone and on purpose, so the gate is
+  `max(batch) + max(those two)`.
+- ⚠ The port is still unconditional and still removes the drift class, and it is
+  **not** what makes CI faster. Sharding is, and it is the next unit.
+- ⚠ Seven pairs remain; the entry carries what they are worth in wall clock and
+  why porting them now comes after sharding.
+- ⛔ One defect introduced and caught while doing this: a Python text-mode rewrite
+  left `check-docs.ps1` at `w/lf` under `attr/text eol=crlf`, which `git diff`
+  shows nothing for. `git ls-files --eol` is what found it.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-10`. No version bump and no deploy.
+
 ### 2026-09-10T06:40:47Z
 
 - ⛔ **The twin layer's wall clock is ONE ROW, measured before porting anything.**

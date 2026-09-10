@@ -16,10 +16,10 @@
 #
 # ⚠ CONTROL BYTES ARE NOT CHECKED HERE. That rule scanned markdown only while
 # every .ts, .py, .rs and .sh in the tree went unchecked, so it moved to
-# check-control-bytes.ps1, which reads every text file. Run both.
+# tools/check/controlbytes.go, which reads every text file. Run both.
 #
 # ⚠ THE CHARACTER HALF OF THE PROSE RULE IS NOT HERE. No em dash and no
-# character outside the five belong to check-markers.ps1, which reads every
+# character outside the five belong to tools/check/markers.go, which reads every
 # tracked text file rather than markdown alone. Run both. What stays here is
 # what is specific to a document: links, fenced blocks, placeholders, banned
 # vocabulary and orphan pages.
@@ -273,7 +273,7 @@ if (Test-Path -LiteralPath $historyIndex) {
 
 # -- the character rule moved, it was NOT dropped -------------------------
 # ⛔ THE FIVE-CHARACTER ALLOWLIST AND THE EM-DASH RULE NOW LIVE IN
-# check-markers.ps1, over EVERY tracked text file rather than over markdown
+# tools/check/markers.go, over EVERY tracked text file rather than over markdown
 # alone. Two checks enforcing one rule is two places for it to be wrong, and
 # these two would have been wrong differently: this one strips fenced blocks
 # and code spans before it looks and a whole-tree scan that did not would

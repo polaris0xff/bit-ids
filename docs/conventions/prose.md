@@ -42,7 +42,7 @@ strictly to the five allowed characters spammed them until the documents were
 unreadable. Keeping to the allowlist was treated as compliance; nothing said
 how many.
 
-[`check-markers.sh`](../../scripts/common/check-markers.sh) refuses a file
+[`check-markers.sh`](../../tools/check/markers.go) refuses a file
 carrying more than **30 markers per 100 non-blank lines**. Measured over three
 trees on 2026-08-28:
 
@@ -88,7 +88,7 @@ symbol denotes a state. The reasoning is right and the rule is unenforceable: no
 check can decide what is anthropomorphic, so the boundary would move every time
 somebody argued for one more glyph, and a vocabulary that grows stops meaning
 anything. An explicit five-character allowlist is something
-[`check-markers.sh`](../../scripts/common/check-markers.sh) can hold, and it
+[`check-markers.sh`](../../tools/check/markers.go) can hold, and it
 holds it.
 
 ⛔ **The allowlist covers EVERY tracked text file, not just markdown.** It used
@@ -179,7 +179,7 @@ Every fact lives in exactly one document. If it must appear in a second place,
 derive it there or have a check assert that the two agree.
 
 ⛔ **This is checked now, and it had drifted badly while it was only a
-sentence.** [`check-one-home.sh`](../../scripts/common/check-one-home.sh)
+sentence.** [`check-one-home.sh`](../../tools/check/onehome.go)
 refuses a sentence of 12 words or more that appears in two documents. Its first
 run over this repository found **42** duplicates, five of them in the skeleton
 this template ships for recording a project's rules.
@@ -238,7 +238,7 @@ check sees:
 
 ⚠ **The character rules are checked by a different script, over a wider
 scope.** No em dash, nothing outside the five, and the density ceiling belong
-to [`check-markers.sh`](../../scripts/common/check-markers.sh), which reads
+to [`check-markers.sh`](../../tools/check/markers.go), which reads
 every tracked text file rather than the documents alone.
 [`../../scripts/README.md`](../../scripts/README.md) says why one rule gets one
 enforcer: two checks holding one rule is two places for it to be wrong, and

@@ -180,8 +180,54 @@ function Invoke-Check([string]$Name, [string]$Script, [string[]]$ExtraArgs = @()
     }
 }
 
-foreach ($c in 'check-docs', 'check-markers', 'check-one-home', 'check-placeholders',
-                'check-control-bytes', 'check-changelog', 'check-no-secrets', 'check-project',
+# ⭐ THE PORTED RULES, AND THEY ARE THE SAME BINARY THIS LANE'S TWIN RUNS. CI-10.
+# Each of these was a hand-written `.ps1` twin of an `.sh` half, kept in step by
+# check-twins. ⛔ One implementation cannot drift from itself, so both halves are
+# deleted rather than compared - and what this lane runs is now the same program
+# rather than a second reading of the same rule.
+#
+# ⚠ THE EXIT CODE IS STILL TAKEN FROM THE PROCESS, UNPIPED, which is what
+# Invoke-Native below is for: `&` into a redirect, then $LASTEXITCODE on the next
+# line, exactly as Invoke-Check does for a script.
+$goBin = Join-Path ([System.IO.Path]::GetTempPath()) ("bit-check." + $PID + $(if ($IsWindows) { '.exe' } else { '' }))
+$goPresent = [bool](Get-Command go -CommandType Application -ErrorAction SilentlyContinue)
+if ($goPresent -and -not $Rows) {
+    $toolDir = Join-Path $here '..' '..' 'tools' 'check'
+    Push-Location $toolDir
+    & go build -o $goBin . *> $logFile
+    Pop-Location
+}
+
+function Invoke-Ported([string]$Name) {
+    if ($Rows) { Write-Output $Name; return }
+    if (-not (Test-Path -LiteralPath $goBin -PathType Leaf)) {
+        Add-Row ("SKIP  " + $Name + "  (tools/check did not build)")
+        $script:skip++
+        return
+    }
+    & $goBin $Name *> $logFile
+    $rc = $LASTEXITCODE
+    switch ($rc) {
+        0 { Add-Row ("✅ ok    " + $Name); $script:pass++ }
+        2 { Add-Row ("SKIP  " + $Name + "  (could not run)"); $script:skip++ }
+        default {
+            Add-Row ("❌ FAIL  " + $Name + "  (exit " + $rc + ")")
+            $script:fail++
+            if (-not $Json -and (Test-Path -LiteralPath $logFile)) {
+                Get-Content -LiteralPath $logFile -ErrorAction SilentlyContinue |
+                    Select-Object -Last 20 |
+                    ForEach-Object { Write-Output ('          ' + $_) }
+            }
+        }
+    }
+}
+
+foreach ($c in 'check-changelog', 'check-control-bytes', 'check-markers', 'check-one-home') {
+    Invoke-Ported $c
+}
+
+foreach ($c in 'check-docs', 'check-placeholders',
+                'check-no-secrets', 'check-project',
                 'check-licences') {
     Invoke-Check $c ($c + '.ps1')
 }

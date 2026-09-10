@@ -72,7 +72,7 @@ ME=check-defaults
 # shellcheck source=scripts/corpus/store-lib.sh
 . "$ROOT/scripts/corpus/store-lib.sh"
 
-store_require env
+store_require env go
 
 WORK=$(store_workdir checkdefaults) || exit 2
 trap 'rm -rf "$WORK"' EXIT INT TERM
@@ -250,7 +250,22 @@ run_subject() { # label command...
 # and parses fenced blocks - the least plausible subject for a locale or a
 # scratch directory to reach - so it is the one dropped. ⚠ `check-markers`
 # decodes UTF-8 BY HAND and stays, because that is the most plausible one.
-run_subject "markers   " sh "$ROOT/scripts/common/check-markers.sh" --json
+#
+# ⭐ IT IS THE GO BINARY NOW RATHER THAN AN `sh` HALF, and the question this
+# harness asks is unchanged by that: a check that reads a value from its host
+# without saying so answers differently under a different environment whatever
+# language it is written in. ⚠ A Go program inherits a DIFFERENT set of host
+# values than a shell script - it does not read `IFS`, and it resolves `TMPDIR`
+# through the runtime rather than through a shell expansion - so this row is now
+# asking the same question of a subject with its own answers, which is the reason
+# to keep asking it rather than a reason to drop it.
+# ⛔ Its absence is `could not run` and never a pass: without the binary the
+# subject cannot be started, and `store_require` refuses the whole harness.
+if [ -x "$WORK/bit-check" ] || (cd "$ROOT/tools/check" && go build -o "$WORK/bit-check" .) >/dev/null 2>&1; then
+  run_subject "markers   " "$WORK/bit-check" check-markers --json
+else
+  fail "markers     tools/check did not build, so the ported subject could not be run"
+fi
 run_subject "licences  " sh "$ROOT/scripts/common/check-licences.sh" --json
 run_subject "secrets   " sh "$ROOT/scripts/common/check-no-secrets.sh" --public --json
 run_subject "project   " sh "$ROOT/scripts/common/check-project.sh" --json

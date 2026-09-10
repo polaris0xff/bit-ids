@@ -63,6 +63,13 @@ type verdict struct {
 	code int
 	json string
 	text string
+	// ⛔ stderr IS PRINTED IN BOTH MODES, and it exists for one shape: a refusal
+	// that happens BEFORE a check has a countable answer. check-changelog's
+	// no-entries case is the instance - a file whose headings the parser does not
+	// recognise has no `problems` to report, so its shell half wrote to stderr
+	// and exited 1 without emitting JSON at all. A port that invented a JSON line
+	// there would be answering a question its predecessor refused to answer.
+	stderr string
 }
 
 // check is one rule. The name is the gate row label, so a row this map does not
@@ -70,8 +77,10 @@ type verdict struct {
 type check func(r *repo) (verdict, error)
 
 var checks = map[string]check{
+	"check-changelog":     checkChangelog,
 	"check-control-bytes": checkControlBytes,
 	"check-markers":       checkMarkers,
+	"check-one-home":      checkOneHome,
 }
 
 func names() []string {
@@ -131,7 +140,9 @@ func main() {
 		os.Exit(2)
 	}
 
-	if jsonOut {
+	if v.stderr != "" {
+		fmt.Fprint(os.Stderr, v.stderr)
+	} else if jsonOut {
 		fmt.Println(v.json)
 	} else {
 		fmt.Print(v.text)
