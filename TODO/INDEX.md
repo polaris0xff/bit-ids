@@ -1,7 +1,7 @@
 # Work index
 
-Total: 64
-Open: 21
+Total: 65
+Open: 22
 In progress: 0
 Blocked: 0
 Done: 43
@@ -9,9 +9,9 @@ Done: 43
 | priority | open | in progress | blocked | done | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | P0 | 0 | 0 | 0 | 24 | 24 |
-| P1 | 21 | 0 | 0 | 18 | 39 |
+| P1 | 22 | 0 | 0 | 18 | 40 |
 | P2 | 0 | 0 | 0 | 1 | 1 |
-| Total | 21 | 0 | 0 | 43 | 64 |
+| Total | 22 | 0 | 0 | 43 | 65 |
 
 | id | priority | effort | status | title |
 | --- | --- | --- | --- | --- |
@@ -77,6 +77,7 @@ Done: 43
 | CI-07 | P1 | L | OPEN | PowerShell halves for the declared gate rows |
 | CI-08 | P1 | L | OPEN | Runner-default drift, swept rather than waited for |
 | CI-09 | P1 | L | OPEN | The capture-to-publisher path, end to end |
+| CI-10 | P1 | XL | OPEN | The CI wall clock, parallelised and then rewritten if that is not enough |
 | DOC-01 | P1 | M | DONE | Public data and library documentation |
 | DOC-02 | P2 | M | DONE | Contributor capture-run handbook |
 

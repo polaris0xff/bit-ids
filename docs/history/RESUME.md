@@ -147,6 +147,15 @@ subjects are not.
 
 **Next, in order:**
 
+0. ⛔ **`CI-10`, AND IT IS FIRST BY OPERATOR DIRECTION.** Parallelise the CI wall
+   clock - `check-workflow` is one job running the whole gate about ten times in
+   sequence - and if it is still slow after that, rewrite the harness layer
+   causing it in Go rather than moving the problem around, then parallelise
+   again. ⚠ **This session is the argument for it**: that job was cancelled at
+   its bound three times, two fixes were tried on the wrong cause, and the bound
+   was then raised to 45, which is the masking move this repository refuses
+   everywhere else. ⛔ Take it before anything below.
+
 1. ⭐ **DONE, 2026-09-10. `OBS-07`'s second connector exists and the capture
    path refuses to run without it.**
    `scripts/capture/connectors/cpython-stdlib.py` fills the contract

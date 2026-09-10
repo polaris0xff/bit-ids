@@ -2619,3 +2619,66 @@ it is not "passing over nothing", and refusing it outright would fire on a
 package with no library tests. `docs/conventions/forbidden-patterns.md` carries
 the class. ⚠ Two open entries still carry it in their `Prove`, `OBS-10` and
 `CORPUS-02`, and both are corrected when they close, as `OBS-09`'s was.
+
+## CI-10: The CI wall clock, parallelised and then rewritten if that is not enough
+
+Source: operator direction on 2026-09-10, after a job was cancelled at its bound
+three times in one session
+Priority: P1 | Effort: XL | Status: OPEN
+
+Problem: `check-workflow.sh` is ONE job that runs the whole gate about ten times
+in sequence. It is the CI wall clock and it has been for several sessions:
+`CI-01`'s residual named sharding as the next win, `docs/history/RESUME.md`
+listed it as a step, and every session since has deferred it and paid for the
+deferral instead.
+
+⛔ **What the deferral cost, measured on 2026-09-10.** The *Workflow acceptance*
+job was cancelled at its 30-minute bound **three times**, at 30m15s each. Two
+different fixes were tried on the wrong cause - `check-defaults` was moved out of
+the gate, which saved about five minutes and did not bring the job back under the
+bound - and the session then RAISED THE BOUND to 45, which is the masking move
+this repository refuses everywhere else. ⚠ That is the whole argument for this
+entry: the harness is not slow because of any one row, and buying it minutes is
+not a fix.
+
+Premise: The cases are independent. Each copies the working tree into a scratch
+repository, plants one defect, runs one workflow step against it and restores -
+so nothing in the design requires them to run on one machine, and the sequence is
+an accident of how the harness grew rather than a property of what it proves.
+
+Approach, in two stages with a MEASUREMENT between them:
+
+1. ⭐ **Parallelise everything.** Give the harness a shard selector, run the
+   shards as a GitHub matrix, and let the concurrency come from runners rather
+   than from one machine's cores. The gate itself is already concurrent; this
+   is the layer above it that is not. ⚠ Shard the LOCAL run too, or a
+   contributor keeps paying the full sequence for a harness CI no longer runs
+   that way.
+2. ⛔ **If it is still slow, stop porting the problem around and rewrite the
+   layer that causes it.** The candidate is the shell and PowerShell harness
+   layer: it forks a process per assertion, copies a tree per case, and has a
+   twin per file that doubles the work. ⭐ A single Go binary would run the
+   cases as goroutines over one tree snapshot, with no fork per row and no twin
+   to keep in step. ⚠ Then parallelise again, because a faster serial harness
+   is still serial.
+
+⚠ **The second stage is XL on its own and gets its own entry when it is
+reached.** `docs/AGENTS.md` section 5 makes shell the default orchestration
+language and Rust the language of every core component; a Go harness is neither,
+so the argument for it has to be made against a measurement rather than against
+a preference - which is exactly what stage 1 produces.
+
+⛔ **A stage that does not measure has not finished.** Stage 1 records the wall
+clock before and after, per shard and in total, and stage 2 is opened only if the
+number after stage 1 is still unacceptable. Reversing that order is how this
+entry's own Problem happened.
+
+Prove: `sh scripts/ci/check-workflow.sh --shard 1/N` runs a strict subset of the
+cases, the N shards together run every case exactly once with none dropped and
+none duplicated, a case moved between shards changes no verdict, and the CI job
+completes inside a bound that was not raised to accommodate it.
+
+Residual, before the work starts: the shard split must be checked rather than
+assumed. A harness that silently dropped a case would report a faster green run
+over less work, which is this repository's oldest defect class and the one a
+wall-clock target makes most tempting.

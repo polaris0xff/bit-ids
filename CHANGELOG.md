@@ -5,6 +5,20 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-10T05:01:27Z
+
+- ⛔ **`CI-10` is filed and it is the FIRST entry in the work order**, by operator
+  direction. The CI wall clock is one job running the whole gate about ten times
+  in sequence; it was cancelled at its bound three times in one session while two
+  fixes were tried on the wrong cause, and the bound was then raised.
+- ⭐ **Two stages with a measurement between them**: parallelise everything, and
+  only if it is still slow, rewrite the harness layer causing it in Go rather
+  than porting the problem around - then parallelise again.
+- ⚠ **The second stage is XL and gets its own entry when it is reached**, because
+  a language change against this repository's stated defaults has to be argued
+  from a number rather than a preference, and stage 1 is what produces it.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-10`. No version bump and no deploy.
+
 ### 2026-09-10T04:31:42Z
 
 - ⛔ **The first diagnosis was wrong and the job hit its bound again.** Moving
