@@ -5,6 +5,22 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-10T02:28:31Z
+
+- ⭐ **`check-catalogue` is a real row on the PowerShell lane**, the second
+  class-A row to stop being declared, and it needed no new library function -
+  which is `CI-07`'s sweep measured a second time. The entry carries the row
+  counts.
+- ⛔ **`check-twins` compares a VERDICT, so it cannot see a weakened assertion.**
+  Five plants: removing a restore, expecting the wrong error code and dropping a
+  case were all caught; replacing a passing case's assertion with `$true` was
+  not, twice. A pair proves the two halves reach the same verdicts and says
+  nothing about whether either reached them for a reason.
+- ⛔ **An empty pipeline unrolls to `$null` under `Set-StrictMode`**, so the new
+  twin died on the one case whose expected answer is an empty one. The outer
+  `@()` is load-bearing, which `assert-disposable.ps1` already records.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-07`. No version bump and no deploy.
+
 ### 2026-09-10T02:16:47Z
 
 - ⭐ **`docs/architecture.md` and `docs/capture-methodology.md` describe the

@@ -1379,10 +1379,47 @@ function nobody knows works, and shipping three of those would make the library
 look more complete than it is measured to be; they land with the first twin that
 exercises them.
 
+### ⭐ AND A SECOND CLASS-A ROW, WHICH NEEDED NO NEW LIBRARY FUNCTION
+
+⭐ **`check-catalogue` is a row on both lanes now**, and that is the sweep's
+finding measured a second time: `check-cache` proved the library, and this
+harness uses the same four calls with nothing added. That lane reports **15
+passed and 19 unavailable** over 35 rows both runners agree on.
+
+⛔ **WHERE THIS PAIR REALLY DIFFERS IS THE HARNESS, NOT THE SUBJECT.** Both
+halves drive the same five Rust examples over the same fixture publication, so
+the answers are identical by construction; what differs is how each PLANTS a
+defect and restores the publication afterwards. A half that restored it
+differently would report the same eighteen cases over a different experiment.
+
+#### ⛔ AND THE LIMIT OF THE TWIN COMPARISON, MEASURED RATHER THAN ASSUMED
+
+⛔ **`check-twins` COMPARES A VERDICT, SO IT CANNOT SEE A WEAKENED ASSERTION.**
+Four defects were planted in the PowerShell half one at a time:
+
+| plant | the pair |
+| --- | --- |
+| a plant's restore is removed | ⛔ disagree, caught |
+| a case expects the wrong error code | ⛔ disagree, caught |
+| a case is dropped from one half | ⛔ disagree, caught |
+| a passing case's assertion is replaced by `$true` | ⭐ **agree, survived** |
+| a second passing case's assertion is replaced by `$true` | ⭐ **agree, survived** |
+
+⚠ **The last two are the comparison working as specified, not a defect in it.**
+A case that already passed still passes, so the counts do not move and the JSON
+is identical. ⛔ **So a twin comparison proves the two halves reach the same
+VERDICTS and says nothing about whether either reached them for a reason.** That
+is the same blind spot this entry already records from the other side - a rule
+differing only on a defect the tree does not contain is invisible to it - and it
+is why a new half is mutation-proved against its own subject as well as compared
+against its twin.
+
 ⚠ **WHAT IS LEFT IS THE REST OF CLASS A**, which the table above this section
 lists: `check-corpus`, `check-indexes`, `check-release`, `check-formats`,
-`check-catalogue`, `check-staleness` and `check-assemble`. ⛔ No count of them is
-written here, for the reason this entry already records twice.
+`check-staleness` and `check-assemble`. ⛔ No count of them is written here, for
+the reason this entry already records twice. ⚠ Three of those need
+`tree_digest`, `tree_files` or `place`, which `store-lib.ps1` deliberately does
+not carry yet.
 
 ### ⛔ What the door sweep found on 2026-09-08: the two runners' row lists
 

@@ -418,6 +418,13 @@ compare_pair "check-licences" common/check-licences.sh "--json" common/check-lic
 # nothing else yet.
 compare_pair "check-cache" acquisition/check-cache.sh "--json" acquisition/check-cache.ps1 "-Json"
 
+# ⚠ AND THE SECOND, WHICH IS WHERE THE HARNESSES REALLY DIFFER. Both halves drive
+# the same five Rust examples over the same fixture publication, so the answers
+# are identical by construction; what differs is how each PLANTS a defect and
+# restores the publication afterwards. A half that restored it differently would
+# report the same eighteen cases over a different experiment.
+compare_pair "check-catalogue" publishing/check-catalogue.sh "--json" publishing/check-catalogue.ps1 "-Json"
+
 # ⭐ mine-repo IS COMPARED THROUGH --selftest, AND THAT IS THE WHOLE POINT.
 # This pair used to be excluded, on the reasoning that comparing two miners
 # means fetching a live third-party repository twice on every run. That

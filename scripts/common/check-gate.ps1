@@ -264,7 +264,24 @@ Add-Unavailable 'check-publish' 'its subject publish-data.sh has no PowerShell h
 # derivation of a request identifier. Copying the row above would have recorded a
 # reason that is not this one.
 Add-Unavailable 'check-access' 'its subject publish-data.sh has no PowerShell half; CI-07 class C'
-Add-Unavailable 'check-catalogue' 'a portable Rust subject; it needs store-lib.ps1; CI-07 class A'
+# ⭐ THE SECOND CLASS-A ROW TO STOP BEING DECLARED, 2026-09-10. It needed no new
+# library function: `check-cache` proved `store-lib.ps1` and this row uses the
+# same four calls, which is the sweep's finding measured a second time.
+$cataloguePs = Join-Path $here '..' 'publishing' 'check-catalogue.ps1'
+if ($Rows) { Write-Output 'check-catalogue' }
+elseif (Test-Path -LiteralPath $cataloguePs -PathType Leaf) {
+    & pwsh -NoProfile -File $cataloguePs *> $logFile
+    $rc = $LASTEXITCODE
+    switch ($rc) {
+        0 { Add-Row '✅ ok    check-catalogue'; $pass++ }
+        2 { Add-Row 'SKIP  check-catalogue  (could not run)'; $skip++ }
+        default { Add-Row ('❌ FAIL  check-catalogue  (exit ' + $rc + ')'); $fail++ }
+    }
+}
+else {
+    Add-Row 'SKIP  check-catalogue  (not present)'
+    $skip++
+}
 Add-Unavailable 'check-examples' 'it RUNS a document sh fenced blocks and there is no sh here; CI-07 class D'
 Add-Unavailable 'check-handbook' 'it RUNS a document sh fenced blocks and there is no sh here; CI-07 class D'
 Add-Unavailable 'check-staleness' 'a portable Rust subject; it needs store-lib.ps1; CI-07 class A'
