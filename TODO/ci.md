@@ -3173,6 +3173,62 @@ reads every tracked file, this harness is one, and its literals were findings.
 already built its marker bytes - and the check's own Go file is exempt from
 itself, exactly as both shell halves already were.
 
+### ⭐ `check-docs` ported, and the comparison earned its keep. 2026-09-15
+
+The binary carries **nine** checks and `check-twins` is down to **five file
+pairs and five rows**. ⛔ **This is the pair that justified the whole
+pre-deletion discipline**, because `--compare` found the two shell halves
+DISAGREEING on their first run together.
+
+⛔ **THE TWO HALVES READ LINKS DIFFERENTLY AND NOTHING COULD SEE IT.** The `sh`
+half used TWO awk programs - the broken-link pass stripped inline code spans and
+the orphan pass did not - while the PowerShell twin has ONE extractor that strips
+them and feeds both. ⚠ So a page cited only inside backticks was an orphan to one
+half and not to the other, and they agreed on every `check-twins` run for as long
+as both existed, because no page in this tree is cited only that way. That is
+`check-twins`' own documented blind spot: a rule differing only on a shape the
+tree does not contain.
+
+⭐ **The twin is correct, on the rule's own reasoning.** A code span is not a
+hyperlink; a reader following links never arrives; *an unlinked page is not read,
+so it is not corrected* is exactly what that describes. ⛔ So this is a verdict
+changed DELIBERATELY and recorded, which is what the port contract exists to
+distinguish from one changed by accident: the `sh` half was fixed in the same
+change, and only then did all three agree.
+
+⛔ **AND THE PORT REPRODUCED A DEFECT THIS REPOSITORY HAD ALREADY WRITTEN DOWN.**
+`docs/conventions/forbidden-patterns.md` records `check-docs.ps1` collapsing
+`a/../` with a GLOBAL replace, where `[^/]+` matches `..` as readily as a
+directory name, so
+`crates/bit-ids/tests/fixtures/../../../../docs/x.md` resolved to
+`crates/bit-ids/docs/x.md`. ⚠ The first Go `collapse` was the same global
+spelling, and it was green over the whole tree and over fourteen planted cases,
+because it is only wrong once a link climbs more than two levels.
+
+⭐ **The repair is not a better regex.** The hand-rolled collapse is deleted and
+`path.Join` does it, which is Go's own and correct - the same argument `repo.go`
+makes for asking `git ls-files` what is in the tree rather than walking it.
+
+⚠ **AND THE CASE WRITTEN TO PROVE THAT CANNOT REFUTE IT.** Measured by planting:
+with the global spelling restored and the plant verified to have changed the
+file, the four-level case still PASSED, because `path.Join` normalises before any
+collapse runs and the differing branch is unreachable. ⛔ It is kept as a
+regression guard on the ANSWER, with its label saying so rather than claiming a
+proof - the same correction the empty-register case took.
+
+⛔ **Fifteen cases, all three implementations agreeing**, run before either half
+was deleted. ⚠ The last of them was compared against halves restored from
+`git show HEAD:`, because the defect above was found after the deletion; a
+comparison that cannot be re-run is a comparison that has to be re-created
+honestly rather than skipped.
+
+⚠ **Two things bit while writing the harness.** The placeholder needle used the
+stand-in word `check-placeholders` also looks for, so the harness became that
+rule's finding and five of its cases went red over a clean tree - and then the
+comment explaining the mistake spelled the same literal and did it again. ⭐ A
+harness that plants a pattern cannot spell it, and neither can the comment that
+says so.
+
 ### ⛔ A gate row could silently ask the wrong question, and nothing would say so
 
 ⚠ **Filed 2026-09-15 by the guard-mutation pass, not fixed.** The gate runs

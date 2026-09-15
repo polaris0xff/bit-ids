@@ -419,7 +419,17 @@ harvest_pairs() {
 # beside a bare one, which proves an allowed item is deleted from the line rather
 # than the line being dropped; and a forty-six digit run after an infohash field,
 # which is what the trailing class on that expression is for.
-compare_pair "check-docs" common/check-docs.sh "--json" common/check-docs.ps1 "-Json"
+# ⛔ AND A SIXTH PAIR HAS LEFT: `check-docs`, 2026-09-15. ⭐ IT IS THE ONE THAT
+# PAID FOR THE WHOLE DISCIPLINE. `check-bitcheck --compare` ran its planted cases
+# against both halves and they DISAGREED on one: a page cited only inside
+# backticks was an orphan to the PowerShell twin and not to the `sh` half, which
+# read links with two awk programs where only one stripped code spans.
+#
+# ⚠ This file could never have found it. It compares the two halves' answers on
+# the tree it runs against, and no page here is cited only that way - the blind
+# spot its own header records, a rule differing only on a shape the tree does not
+# contain. The twin was correct, both other implementations were changed to match,
+# and only then did the pair leave.
 compare_pair "check-project" common/check-project.sh "--json" common/check-project.ps1 "-Json"
 
 # ⭐ THE FIRST PAIR OUTSIDE common/, AND WHY THE PATHS ABOVE GAINED A DIRECTORY.

@@ -100,14 +100,14 @@ the failure was the SCOPE claimed for a correct measurement, not the measurement
 
 ### What the checking layer looks like now
 
-**Eight rules are one Go binary** in `tools/check/`, and `bit-check --rows` is
+**Nine rules are one Go binary** in `tools/check/`, and `bit-check --rows` is
 the measurement rather than this sentence: `check-changelog`,
-`check-control-bytes`, `check-ignores`, `check-licences`, `check-markers`,
-`check-no-secrets`, `check-one-home`, `check-placeholders`. Both gate runners
+`check-control-bytes`, `check-docs`, `check-ignores`, `check-licences`,
+`check-markers`, `check-no-secrets`, `check-one-home`, `check-placeholders`. Both gate runners
 invoke it, so those rows are the SAME row on both lanes rather than an `sh` row
 here and a hand-written twin there.
-⛔ **Fourteen files are deleted, not translated.** `check-twins` went from 69
-seconds to about 15, and from twelve file pairs to **six**.
+⛔ **Sixteen files are deleted, not translated.** `check-twins` went from 69
+seconds to about 15, and from twelve file pairs to **five**.
 
 ⭐ **`check-ignores` is the one that was never a shell rule.** A new checking
 rule goes into the binary; a new `.ps1` twin is work added to a layer that is
@@ -136,7 +136,7 @@ surface does not grow by a language. Keep it that way.
 
 ### ⚠ What is left of the port, and why it is not urgent
 
-⛔ **SIX FILE PAIRS REMAIN AND `check-twins` PRINTS SIX ROWS**, and those two
+⛔ **FIVE FILE PAIRS REMAIN AND `check-twins` PRINTS FIVE ROWS**, and those two
 numbers were not equal until 2026-09-15. `check-no-secrets` was compared TWICE -
 once plain and once `--public`, which is a different question rather than a
 stricter one - so seven file pairs produced eight rows. ⚠ Both numbers were in
@@ -146,15 +146,20 @@ count is in, or it is the value-in-two-places defect this repository names
 everywhere else. `sh scripts/common/check-twins.sh` is the measurement, and it
 is what reconciled them rather than a choice between the two.
 
-⭐ **`check-no-secrets` IS THE PAIR THAT LEFT, 2026-09-15.** It was the two-row
-one, so a single deletion took the list from seven pairs and eight rows to six
-and six. ⚠ `--compare` ran its **twenty** cases over both deleted halves first,
-all three implementations agreeing on the exit code and byte for byte on
-`--json`.
+⭐ **TWO PAIRS LEFT ON 2026-09-15.** `check-no-secrets` was the two-row one, so a
+single deletion took the list from seven pairs and eight rows to six and six;
+`check-docs` took it to five and five. ⚠ `--compare` ran twenty cases and then
+fifteen over both halves before either went.
 
-The six that remain are `check-project`, which is 997 lines and is its own unit,
-plus `check-docs`, `check-cache`, `check-catalogue`, `check-remote-items` and
-`mine-repo`. Together they are about **11 seconds** of PowerShell against the
+⛔ **AND `check-docs` IS WHY THAT RULE EXISTS.** Its comparison found the two
+shell halves DISAGREEING - a page cited only inside backticks was an orphan to
+the PowerShell twin and not to the `sh` half - on a shape this tree does not
+contain and `check-twins` could never have seen. The twin was correct; both other
+implementations were changed to match before the pair left.
+
+The five that remain are `check-project`, which is 997 lines and is its own unit,
+plus `check-cache`, `check-catalogue`, `check-remote-items` and
+`mine-repo`. Together they are about **10 seconds** of PowerShell against the
 **96** the layer started at, ⛔ so the remaining WALL-CLOCK value is small and
 the DRIFT value is unchanged.
 
@@ -176,8 +181,8 @@ with `printf`, the way the marker harness already did.
    several captures into a `patterned` field and has never been run. Neither is a
    defect; both are the next real work.
 1. **`CI-10` continues where it is cheapest, not first.** Its three named
-   deliverables are landed and proved on runners. What remains is **six file
-   pairs and six rows**, `check-project` being its own unit at 997 lines.
+   deliverables are landed and proved on runners. What remains is **five file
+   pairs and five rows**, `check-project` being its own unit at 997 lines.
 2. **`CLIENT-01`, `CLIENT-06`**, the remaining vertical captures. ⭐ `aria2-next`
    is the worked example now: three dispatches in one session took it from four
    refusals to two written records.

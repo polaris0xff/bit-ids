@@ -859,6 +859,186 @@ cp "$WORK/gitignore.orig" "$GI"
 agree "ignores clean tree again" check-ignores - 0
 
 # ============================================================================
+# check-docs
+# ============================================================================
+#
+# ⛔ EVERY PLANT THAT MUST BE ACCEPTED SITS AT THE REPOSITORY ROOT, and that is
+# forced rather than chosen. A new `.md` in a subdirectory is an ORPHAN unless
+# something links to it, so a plant placed there would be refused by the orphan
+# rule whatever the branch under test did - and a case expecting 0 would fail for
+# a reason it was not written to ask about. A root file is an entry point and the
+# orphan rule skips it, which leaves exactly one rule looking at the plant.
+P=plant.md
+
+agree "docs clean tree" check-docs common/check-docs 0
+
+printf 'see [the thing](nope-does-not-exist.md) here\n' >"$TREE/$P"
+agree "docs a broken relative link is refused" check-docs common/check-docs 1
+unplant "$P"
+
+# ⭐ THE TWO READERS ARE NOT THE SAME READER, and these two cases are the whole
+# of why. The broken-link pass strips inline code spans, because markdown does
+# not linkify one; the orphan pass did NOT, in the `sh` half alone. A port that
+# unified them passes the clean tree and fails here.
+# shellcheck disable=SC2016
+# The backticks are the SUBJECT: this case exists to put a link inside an inline
+# code span, so nothing here is meant to expand. The directive is in this file
+# rather than in the invocation, because shellcheck answers differently depending
+# on how files were grouped on its command line.
+printf 'see `[the thing](nope-does-not-exist.md)` here\n' >"$TREE/$P"
+agree "docs a broken link inside a code span is accepted" check-docs common/check-docs 0
+unplant "$P"
+
+{
+  printf 'text\n\n'
+  printf '```\n'
+  printf '[the thing](nope-does-not-exist.md)\n'
+  printf '```\n'
+} >"$TREE/$P"
+agree "docs a broken link inside a fenced block is accepted" check-docs common/check-docs 0
+unplant "$P"
+
+# ⚠ AN ABSOLUTE URL IS NOT A PATH and nothing here resolves one. A rule that
+# tried would need the network, and a check that needs the network is a check
+# that goes red when somebody else's server does.
+printf 'see [the thing](https://example.invalid/nope) here\n' >"$TREE/$P"
+agree "docs an unresolvable http link is out of scope" check-docs common/check-docs 0
+unplant "$P"
+
+{
+  printf 'text\n\n'
+  printf '```sh\n'
+  printf 'if [ 1 = 1 ; then echo broken\n'
+  printf '```\n'
+} >"$TREE/$P"
+agree "docs a shell block that does not parse is refused" check-docs common/check-docs 1
+unplant "$P"
+
+# ⛔ THE PLACEHOLDER A HUMAN READS AS *fill this in* AND bash READS AS A
+# REDIRECT. The block parses; that is the point, and it is why this is a separate
+# rule rather than a consequence of the one above.
+#
+# ⛔ AND THE NEEDLE IS ASSEMBLED, WHICH THIS FILE HAD TO LEARN TWICE. The first
+# spelling used the possessive stand-in word check-placeholders also looks for,
+# so the harness became THAT rule's finding and five of its cases went red over a
+# clean tree. ⚠ Then the comment explaining the mistake spelled the same literal
+# and did it again. ⭐ The angle brackets are check-docs' subject and the word
+# inside them is not, so the word is one no other rule looks for and it is built
+# rather than typed - and this sentence names the class instead of quoting it.
+ANGLE=$(printf '%s%s%s' '<' 'endpoint' '>')
+{
+  printf 'text\n\n'
+  printf '```sh\n'
+  printf 'curl -sS %s\n' "$ANGLE"
+  printf '```\n'
+} >"$TREE/$P"
+agree "docs an angle-bracket placeholder in a shell block is refused" check-docs common/check-docs 1
+unplant "$P"
+
+# ⭐ AND A BLOCK THAT IS SIMPLY CORRECT, because a rule that refused every fenced
+# block would pass both cases above.
+{
+  printf 'text\n\n'
+  printf '```sh\n'
+  printf 'set -eu\nprintf "%%s\\n" "ok"\n'
+  printf '```\n'
+} >"$TREE/$P"
+agree "docs a shell block that parses is accepted" check-docs common/check-docs 0
+unplant "$P"
+
+# -- the orphan rule ----------------------------------------------------------
+
+mkdir -p "$TREE/docs"
+printf 'a page nothing points at\n' >"$TREE/docs/plant-orphan.md"
+agree "docs a page nothing links to is refused" check-docs common/check-docs 1
+
+# ⛔ AND THE SAME PAGE, CITED ONLY INSIDE BACKTICKS, IS STILL AN ORPHAN. ⭐ THIS
+# CASE IS WHY --compare EXISTS: on its first run the two shell halves ANSWERED
+# DIFFERENTLY here, and nothing in this repository could have told anybody.
+#
+# The `sh` half read links with two awk programs and only the broken-link one
+# stripped code spans, so a backticked citation counted as a link; the PowerShell
+# twin has a single extractor that strips them and feeds both passes. ⚠ No page
+# in this tree is cited only that way, so `check-twins` saw the two agree on
+# every run for as long as both existed - its own documented blind spot, a rule
+# differing only on a shape the tree does not contain.
+#
+# ⭐ The twin is correct on the rule's own reasoning: a code span is not a
+# hyperlink and a reader following links never arrives. The `sh` half and the
+# port were both changed to match, deliberately and in the same change, so this
+# case asserts a REFUSAL rather than freezing the defect it found.
+# shellcheck disable=SC2016
+# The backticks are the subject here too, for the reason given above.
+printf 'cited as `[the page](docs/plant-orphan.md)` above\n' >"$TREE/$P"
+agree "docs a page cited only inside backticks is still an orphan" check-docs common/check-docs 1
+unplant "$P"
+unplant docs/plant-orphan.md
+
+# ⚠ A LINK THAT CLIMBS MORE THAN TWO LEVELS, and this case is a GUARD rather than
+# a proof - which is worth saying, because it was written believing it was a
+# proof. Normalising `.../fixtures/../../../../docs/plant-orphan.md` is where
+# both shell halves hand-rolled a `segment/../` collapse, and
+# docs/conventions/forbidden-patterns.md records a GLOBAL replace eating a real
+# segment and a `../..` pair together, answering `crates/bit-ids/docs/...` and
+# leaving the real page an orphan. The Go port wrote that same global spelling
+# first.
+#
+# ⛔ BUT THIS CASE CANNOT REFUTE IT, MEASURED BY PLANTING: with the global
+# spelling restored and the plant verified to have changed the file, the case
+# still PASSED. `path.Join` normalises before any collapse runs, so the branch
+# that differs is unreachable - the port is correct for a reason this case does
+# not test. ⭐ The hand-rolled collapse is deleted rather than fixed, and the case
+# is kept as a regression guard on the ANSWER with its label saying so, the way
+# the empty-register case above names the rule that really refuses it.
+#
+# ⚠ The README carrying the link is orphan-exempt, so the only thing this case
+# can report is the page it points at.
+printf 'a page nothing else points at\n' >"$TREE/docs/plant-orphan.md"
+printf 'see [the page](../../../../docs/plant-orphan.md)\n' \
+  >"$TREE/crates/bit-ids/tests/fixtures/README.md"
+agree "docs a link climbing four levels resolves to the same page" check-docs common/check-docs 0
+unplant crates/bit-ids/tests/fixtures/README.md
+unplant docs/plant-orphan.md
+
+# ⚠ A README IS AN ENTRY POINT and the rule skips it by name, so a subdirectory
+# README nothing links to is accepted. This tree has no such file, so the branch
+# is proved with a fixture rather than assumed.
+mkdir -p "$TREE/docs/plantdir"
+printf 'an entry point\n' >"$TREE/docs/plantdir/README.md"
+agree "docs an unlinked subdirectory README is accepted" check-docs common/check-docs 0
+rm -rf "$TREE/docs/plantdir"
+
+# -- the history index --------------------------------------------------------
+#
+# ⛔ A RECORD LINKED FROM ANYWHERE IS NOT AN ORPHAN AND IS STILL MISSING FROM THE
+# INDEX, which is the stronger rule. ⚠ The plant is LINKED on purpose, so the
+# orphan rule is satisfied and this case can only fail for the index reason.
+printf 'an old record\n' >"$TREE/docs/history/SESSION-PLANT.md"
+printf 'see [the record](docs/history/SESSION-PLANT.md)\n' >"$TREE/$P"
+agree "docs a session record the history index omits is refused" check-docs common/check-docs 1
+unplant docs/history/SESSION-PLANT.md
+unplant "$P"
+
+# -- the template exemption ---------------------------------------------------
+#
+# ⛔ docs/templates/ IS EXEMPT FROM LINK RESOLUTION AND THIS TREE HAS NO SUCH
+# DIRECTORY, so the branch is invisible to any comparison over it - the `py`
+# scope lesson from check-markers, arriving in a different rule. ⚠ A template's
+# links are written relative to where the file will live in a PROJECT, not where
+# it lives here.
+#
+# ⚠ The plant is linked from the root file, because the orphan rule has NO
+# template exemption and would otherwise refuse it for a different reason.
+mkdir -p "$TREE/docs/templates"
+printf 'see [gate](methodology/gate.md), which is not here\n' >"$TREE/docs/templates/plant.md"
+printf 'see [the template](docs/templates/plant.md)\n' >"$TREE/$P"
+agree "docs a template's unresolvable link is exempt" check-docs common/check-docs 0
+rm -rf "$TREE/docs/templates"
+unplant "$P"
+
+agree "docs clean tree again" check-docs common/check-docs 0
+
+# ============================================================================
 
 store_report check-bitcheck/1 cases \
   "$([ "$JSON" = "1" ] && printf 1 || printf 0)"

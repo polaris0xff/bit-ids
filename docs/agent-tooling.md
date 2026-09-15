@@ -9,7 +9,6 @@ capability; run the doctor and the tool's own version command.
 | --- | --- |
 | [`../scripts/doctor/`](../scripts/doctor/) | read-only host, repository and tool probe |
 | [`../scripts/common/check-gate.sh`](../scripts/common/check-gate.sh) | one local gate entry point |
-| [`../scripts/common/check-docs.sh`](../scripts/common/check-docs.sh) | documentation/link checks |
 | [`../tools/check/`](../tools/check/) | one Go binary carrying the ported rules, run by both lanes |
 | [`../scripts/common/mine-repo.sh`](../scripts/common/mine-repo.sh) | reproducible read-only reference mining |
 | [`../scripts/common/check-project.sh`](../scripts/common/check-project.sh) | bit-ids skeleton, catalogue and TODO invariants |
@@ -21,11 +20,11 @@ both platforms removes that class instead of checking for it. ⚠ So a new
 checking rule goes into [`../tools/check/`](../tools/check/), and a new `.ps1`
 twin of an existing check is work added to a layer that is going away.
 
-⭐ **`check-no-secrets` is in that binary**, which is why this table no longer
-names a script for it: `bit-check check-no-secrets` is the default run and
-`bit-check check-no-secrets --public` adds the rules that only matter for a
-public repository. Seven file pairs still have twins and `check-twins` compares
-them as eight rows.
+⭐ **`check-no-secrets` and `check-docs` are in that binary**, which is why this
+table no longer names a script for either: `bit-check check-no-secrets` is the
+default run and `bit-check check-no-secrets --public` adds the rules that only
+matter for a public repository. ⚠ `bit-check --rows` is the list; five file pairs
+still have twins and `check-twins` compares them as five rows.
 
 `CI-01` eventually adds an independent Rust validator for the growing corpus.
 

@@ -5,6 +5,33 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-15T03:44:22Z
+
+- ⭐ **`check-docs` is in the Go binary and both shell halves are deleted**,
+  taking it to nine checks and `check-twins` to **five file pairs and five rows**.
+- ⛔ **This is the pair that justified the pre-deletion comparison.** `--compare`
+  found the two shell halves DISAGREEING on their first run together: the `sh`
+  half read links with two awk programs where only the broken-link one stripped
+  inline code spans, so a page cited only inside backticks was an orphan to the
+  PowerShell twin and not to it. ⚠ No page in this tree is cited that way, so
+  `check-twins` saw them agree on every run for as long as both existed.
+- ⭐ **The twin is correct and the `sh` half was fixed to match**, in the same
+  change: a code span is not a hyperlink, so a reader following links never
+  arrives. A verdict changed deliberately and recorded, which is what the port
+  contract exists to tell apart from one changed by accident.
+- ⛔ **The port reproduced a defect already written down here.**
+  `docs/conventions/forbidden-patterns.md` records a GLOBAL replace collapsing
+  `a/../` where `[^/]+` also matches `..`; the first Go spelling was the same and
+  was green over the tree and fourteen cases, because it is only wrong past two
+  levels. ⭐ The hand-rolled collapse is deleted and `path.Join` does it.
+- ⚠ **The four-level case cannot refute that defect**, which was established by
+  planting rather than by reading; it is kept as a regression guard with its
+  label saying so. [`TODO/ci.md`](TODO/ci.md) carries why.
+- ⚠ **A harness that plants a pattern cannot spell it, and neither can the comment
+  that says so** - the placeholder needle tripped `check-placeholders`, and then
+  the comment explaining it did the same thing again.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-10`. No version bump and no deploy.
+
 ### 2026-09-15T03:21:16Z
 
 - ⭐ **`rusqlite` 0.37.0 to 0.40.2, with the licence register updated in the same

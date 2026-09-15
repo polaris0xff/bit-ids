@@ -304,8 +304,9 @@ if command -v go >/dev/null 2>&1; then
   (cd "$HERE/../../tools/check" && go build -o "$GOBIN" .) >/dev/null 2>&1 || :
 fi
 
-for c in check-changelog check-control-bytes check-ignores check-licences \
-  check-markers check-no-secrets check-one-home check-placeholders; do
+for c in check-changelog check-control-bytes check-docs check-ignores \
+  check-licences check-markers check-no-secrets check-one-home \
+  check-placeholders; do
   if [ -x "$GOBIN" ]; then
     queue "$c" "$GOBIN" "$c"
   else
@@ -313,14 +314,15 @@ for c in check-changelog check-control-bytes check-ignores check-licences \
   fi
 done
 
-# The sh halves that are not ported yet. Each is the authority on its own subject.
-for c in check-docs check-project; do
-  if [ -f "$HERE/$c.sh" ]; then
-    queue "$c" sh "$HERE/$c.sh"
-  else
-    queue_row "$c" "SKIP  $c  (not present)" skip
-  fi
-done
+# ⭐ THE LAST `common/` HALF THAT IS NOT PORTED, and it was a `for` list until
+# 2026-09-15 because there were three. It is one direct call now rather than a
+# loop over one name, which shellcheck refuses as a loop that can only ever run
+# once - and it is right to: a list of one is a list that has stopped being one.
+if [ -f "$HERE/check-project.sh" ]; then
+  queue "check-project" sh "$HERE/check-project.sh"
+else
+  queue_row "check-project" "SKIP  check-project  (not present)" skip
+fi
 
 # ⚠ --public is a DIFFERENT question from the default run, not a stricter one.
 # Emails, absolute home paths and long hex are legitimate content in a private

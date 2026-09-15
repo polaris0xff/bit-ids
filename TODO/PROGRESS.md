@@ -317,17 +317,19 @@ nothing is. The clone question under *Settled decisions* is spent too.
    deleted, and the longest of four shards is **11.8** on run 124, which is
    green on every job. The acceptance bound came DOWN to 20 from the 45 a
    previous session had raised it to.
-   ⛔ **WHAT IS NOT DONE IS THE REST OF THE PORT.** **Eight** checks are in
-   `../tools/check/` - seven ported plus `check-ignores`, which was never a shell
-   rule - and **six twin file pairs remain, which `check-twins` prints
-   as six rows**, together about 11 seconds of PowerShell against the 96 the
+   ⛔ **WHAT IS NOT DONE IS THE REST OF THE PORT.** **Nine** checks are in
+   `../tools/check/` - eight ported plus `check-ignores`, which was never a shell
+   rule - and **five twin file pairs remain, which `check-twins` prints
+   as five rows**, together about 10 seconds of PowerShell against the 96 the
    layer started at. ⚠ So the remaining
    wall-clock value is small and the DRIFT value is unchanged, which is the
    ordering argument for taking them when they are cheapest rather than first.
-   ⭐ **`check-no-secrets` left on 2026-09-15** and it was the pair worth taking
-   first for a reason that is not wall clock: it was compared as TWO rows, since
-   `--public` is a different question rather than a stricter one, so one deletion
-   took the list from seven pairs and eight rows to six and six.
+   ⭐ **`check-no-secrets` and `check-docs` both left on 2026-09-15.** The first
+   was compared as TWO rows, since `--public` is a different question rather than
+   a stricter one, so one deletion took eight rows to six. ⛔ The second is the
+   one that justified the discipline: `--compare` caught the two shell halves
+   DISAGREEING about whether a page cited only inside backticks is an orphan, on
+   a shape this tree does not contain and `check-twins` could never have seen.
    ⛔ `check-project` is the big one at 997 lines and is best taken as its own
    unit.
    ⭐ Every pair deleted so far went through `check-bitcheck --compare` first:

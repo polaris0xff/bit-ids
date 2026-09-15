@@ -229,15 +229,15 @@ function Invoke-Ported([string]$Name, [string]$Check = '', [string[]]$ExtraArgs 
     }
 }
 
-foreach ($c in 'check-changelog', 'check-control-bytes', 'check-ignores',
-                'check-licences', 'check-markers', 'check-no-secrets',
-                'check-one-home', 'check-placeholders') {
+foreach ($c in 'check-changelog', 'check-control-bytes', 'check-docs',
+                'check-ignores', 'check-licences', 'check-markers',
+                'check-no-secrets', 'check-one-home', 'check-placeholders') {
     Invoke-Ported $c
 }
 
-foreach ($c in 'check-docs', 'check-project') {
-    Invoke-Check $c ($c + '.ps1')
-}
+# ⭐ THE LAST `common/` HALF THAT IS NOT PORTED. It was a list of three until
+# 2026-09-15 and is one call now.
+Invoke-Check 'check-project' 'check-project.ps1'
 
 # ⚠ --public is a DIFFERENT question from the default run, not a stricter one.
 # Emails, absolute home paths and long hex are legitimate content in a private
