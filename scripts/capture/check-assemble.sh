@@ -176,14 +176,37 @@ write_lane() { # tag route resolver-url commit binary-digest version peer-id [co
     printf 'started_at=2026-09-09T15:08:17Z\nfinished_at=2026-09-09T15:08:18Z\n'
   } >"$_cap/install-$2.txt"
 
-  {
-    printf 'bit-ids/release-resolution/1\ntarget=fixture-client\n'
-    printf 'repository=fixture-owner/fixture-client\n'
-    printf 'source_url=%s\n' "$3"
-    printf 'selected_version=%s\nselected_tag=v%s\n' "$6" "$6"
-    printf 'asset=fixture-client-%s-linux-x86-64\n' "$6"
-    printf 'asset_url=https://example.invalid/fixture-client-%s\n' "$6"
-  } >"$_ins/release/resolution.txt"
+  # ⛔ A SOURCE LANE'S RESOLUTION IS A DIFFERENT DOCUMENT IN A DIFFERENT PLACE,
+  # and this harness wrote a RELEASE one for every lane until 2026-09-15 - which
+  # is why twenty-four cases passed over a shape no source lane has ever had.
+  # `resolve-source.sh` writes `source/resolution.txt` with the banner
+  # `bit-ids/source-resolution/1`, carrying the clone URL in `source_url`,
+  # `refs_sha256` instead of a listing digest, and NO `asset_url` at all, because
+  # a source route selects no asset.
+  #
+  # ⚠ THE FIXTURE WAS WRONG IN THE DIRECTION THAT HIDES A DEFECT. Giving every
+  # lane an `asset_url` meant the assembler's demand for one was satisfiable by
+  # every lane here, so the branch that refuses a source route for a field its
+  # document is not supposed to carry was unreachable. Run 16 is what found it.
+  if [ "$2" = source ]; then
+    mkdir -p "$_ins/source" || return 1
+    {
+      printf 'bit-ids/source-resolution/1\ntarget=fixture-client\n'
+      printf 'repository=fixture-owner/fixture-client\n'
+      printf 'source_url=%s\n' "$3"
+      printf 'refs_sha256=%s\n' "$(printf 'refs-%s' "$6" | sha256sum | cut -d' ' -f1)"
+      printf 'selected_version=%s\nselected_tag=v%s\n' "$6" "$6"
+    } >"$_ins/source/resolution.txt"
+  else
+    {
+      printf 'bit-ids/release-resolution/1\ntarget=fixture-client\n'
+      printf 'repository=fixture-owner/fixture-client\n'
+      printf 'source_url=%s\n' "$3"
+      printf 'selected_version=%s\nselected_tag=v%s\n' "$6" "$6"
+      printf 'asset=fixture-client-%s-linux-x86-64\n' "$6"
+      printf 'asset_url=https://example.invalid/fixture-client-%s\n' "$6"
+    } >"$_ins/release/resolution.txt"
+  fi
 
   # ⛔ `E-ACQ-10` NEEDS WHAT THE BUILD PRINTED, AND IT IS IN THE INSTALL
   # ARTIFACT rather than in the capture bundle. That split is the first thing

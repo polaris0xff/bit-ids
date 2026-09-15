@@ -118,6 +118,8 @@ struct Lane {
     bundle: PathBuf,
     /// The bytes the build printed when asked its version.
     version_output: PathBuf,
+    /// Where the resolution document was looked for, so a refusal can name it.
+    resolution_path: PathBuf,
 }
 
 impl Lane {
@@ -156,7 +158,26 @@ impl Lane {
         let install = read_record(&install_path)?;
         let route = need(&install, "route", &install_path)?.to_owned();
 
-        let resolution_path = install_dir.join("release/resolution.txt");
+        // ⛔ THE RESOLUTION IS LOOKED FOR UNDER THE ROUTE THAT WROTE IT, and this
+        // read `release/resolution.txt` for every lane until 2026-09-15. That was
+        // complete for exactly as long as the source lane resolved through the
+        // release listing - which is what `E-ACQ-07` refused run 14 for - and it
+        // stopped being complete the moment that was repaired. ⚠ `resolve-source`
+        // writes `source/resolution.txt`, a `bit-ids/source-resolution/1`
+        // document whose `source_url` is the clone URL, deliberately so that it
+        // slugifies into a different resolver from the releases listing.
+        //
+        // ⚠ The release name is still tried as a fallback, because a `package`
+        // lane has no directory of its own and a release lane's document has not
+        // moved.
+        let resolution_path = {
+            let by_route = install_dir.join(format!("{route}/resolution.txt"));
+            if by_route.is_file() {
+                by_route
+            } else {
+                install_dir.join("release/resolution.txt")
+            }
+        };
         let resolution = if resolution_path.is_file() {
             Some(read_record(&resolution_path)?)
         } else {
@@ -181,6 +202,7 @@ impl Lane {
             attestation,
             bundle: capture_dir.join("capture/bundle"),
             version_output,
+            resolution_path,
         })
     }
 
@@ -405,9 +427,37 @@ fn route_of(lane: &Lane, version: &Version) -> Result<AcquisitionRoute, String> 
     // what the evidence supports, and `ACQ-05` is where a retrieval digest would
     // come from.
     let artifact = need(&lane.install, "installed_binary_sha256", install)?;
+    // ⛔ THE ORIGIN FIELD DIFFERS BY ROUTE KIND, because the two documents record
+    // different things. A release resolution names the asset it selected in
+    // `asset_url`; a source resolution has no asset at all and names the
+    // repository it will clone in `source_url`. ⚠ Asking every route for
+    // `asset_url` refused a source lane for a field its document is not supposed
+    // to carry, which reads as a capture-path gap and is a reader's assumption.
     let origin = match &lane.resolution {
-        Some(record) => need(record, "asset_url", Path::new("release/resolution.txt"))?.to_owned(),
-        None => return Err("a package route has no origin URL in the record".to_owned()),
+        Some(record) => {
+            let key = match lane.kind() {
+                RouteKind::SourceBuild => "source_url",
+                _ => "asset_url",
+            };
+            need(record, key, &lane.resolution_path)?.to_owned()
+        }
+        // ⛔ THIS MESSAGE USED TO SAY *a package route has no origin URL*, and
+        // it named the wrong route kind on the only lanes that reach it. A
+        // package route has no resolution because it consulted the host's index;
+        // a release or source lane reaches this branch when its resolution
+        // document was not UPLOADED, which is a different fact and a different
+        // fix. ⚠ Measured on 2026-09-15: run 16's release lane was told it was a
+        // package route, and the sentence sent a reader to the resolver rather
+        // than to the artifact.
+        None => {
+            return Err(format!(
+                "route {} has no resolution document at {}, so nothing names the origin. A \
+                 `package` route legitimately has none; a `release` or `source` lane reaching \
+                 this has one that the run did not upload",
+                lane.route,
+                lane.resolution_path.display()
+            ));
+        }
     };
     Ok(AcquisitionRoute {
         id: lane.route_id(),

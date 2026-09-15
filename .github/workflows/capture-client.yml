@@ -433,6 +433,19 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: install-${{ matrix.adapter }}-${{ matrix.route }}-${{ github.run_id }}-${{ github.run_attempt }}
+          # ⛔ THE SOURCE ROUTE'S RESOLUTION SHIPS TOO, AND IT DID NOT UNTIL
+          # 2026-09-15. This list named `release/` alone, which was complete for
+          # as long as the source lane resolved through the release listing -
+          # which is exactly what `E-ACQ-07` refused run 14 for. ⚠ The moment
+          # that was repaired, *Resolve the source tag* began writing
+          # `$RUNNER_TEMP/source/resolution.txt` and nothing carried it off the
+          # runner, so run 16 uploaded two green lanes and `assemble-capture`
+          # refused with *the source route has no resolution*.
+          #
+          # ⚠ Top-level globs, no `**`, for the reason this step's comment above
+          # gives and `install-client`'s rule-12 scan now depends on: a `*` does
+          # not descend, so a resolver workdir that ever held a clone would not
+          # ship it.
           path: |
             ${{ runner.temp }}/install-${{ matrix.route }}/*.log
             ${{ runner.temp }}/install-${{ matrix.route }}/*.err
@@ -440,6 +453,9 @@ jobs:
             ${{ runner.temp }}/release/*.txt
             ${{ runner.temp }}/release/*.json
             ${{ runner.temp }}/release/*.err
+            ${{ runner.temp }}/source/*.txt
+            ${{ runner.temp }}/source/*.json
+            ${{ runner.temp }}/source/*.err
           if-no-files-found: warn
           retention-days: 30
 

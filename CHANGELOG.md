@@ -5,6 +5,39 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-15T02:32:27Z
+
+- ⭐ **`assemble-capture` wrote TWO `Profile`s from `capture-client` run 16's
+  artifacts and exited 0.** Both lanes green, both `measured_build=2.7.5`,
+  different installed digests, and every one of run 14's four refusals gone.
+- ⛔ **Both records are `provisional, not publishable`, correctly**: `E-PUB-04`
+  because only one of the two installs was put on the wire, so equal version
+  labels are all that connects them; and `classify_across: divergent` because
+  the peer-ID tails differ per connection. ⭐ That makes `BuildEquivalent` being
+  unreachable through this path a measurement rather than an argument, and it
+  means nothing was published.
+- ⛔ **Two scope defects stood between the run and the records, and both are the
+  same shape as the day's earlier one.** The source route's resolution was never
+  uploaded - the artifact path list named `release/` alone - and the assembler
+  looked for every lane's resolution at a literal `release/resolution.txt`. Both
+  lists were complete for exactly as long as the source lane resolved through
+  the release listing, which is what `E-ACQ-07` refused run 14 for.
+- ⛔ **And the origin field differs by route kind.** A release resolution names
+  its asset; a source resolution has no asset and names the clone URL. Asking
+  every route for `asset_url` refused a source lane for a field its document is
+  not supposed to carry. ⚠ The refusal also named the wrong route kind - *a
+  package route has no origin URL* - and now names the route and the path it
+  looked for.
+- ⛔ **Twenty-four `check-assemble` cases passed over a shape no source lane has
+  ever had**: the harness wrote a release resolution for every lane. A source
+  lane is now built the way `resolve-source.sh` really writes one, and with that
+  fixture alone - no new case - dropping either half of the fix fails 8 and 5
+  cases respectively.
+- ⚠ **The assembly was a REHEARSAL and says so**: run 16 uploaded no source
+  resolution, so it was recovered from the job log where the step `cat`s it.
+  Every other byte is run 16's, but a dispatch producing a record is unproved.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-09`. No version bump and no deploy.
+
 ### 2026-09-15T02:08:43Z
 
 - ⭐ **`capture-client` run 15 dispatched, and three of run 14's four refusals are

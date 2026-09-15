@@ -2420,6 +2420,90 @@ both ways in `check-assemble`: a pair whose observations agree reaches
 `divergent`. ⭐ `SCHEMA-04`'s sampling model is where several captures become a
 `patterned` field; it sits above the record and nothing has run it.
 
+### ⭐ RECORDS EXIST. `capture-client` run 16 assembled, 2026-09-15
+
+⭐ **`assemble-capture` wrote TWO `Profile`s from real capture artifacts and
+exited 0.** Both lanes of run 16 are green, both attest `measured_build=2.7.5`
+and `stock_client=true`, the two installed binaries have different digests, and
+every one of run 14's four refusals is gone.
+
+⛔ **THE RECORDS ARE `provisional, not publishable`, FOR TWO SEPARATE AND
+CORRECT REASONS**, and neither is a defect:
+
+| what the store says | why it is right |
+| --- | --- |
+| `E-PUB-04` at acquisition: *the routes are unresolved* | the two routes installed different digests, both reported `2.7.5`, and the capture put only ONE of them on the wire - so equal version labels are all that connects them. `ACQ-03` refusing to call that agreement is the whole point of it |
+| `classify_across: divergent`, 2 of 4 overlapping fields | `peer_wire/peer_id` and `tracker_http/peer_id` are each `constant` within a lane and differ between lanes, which is the per-connection tail this record already predicted |
+
+⭐ **So `BuildEquivalent` being unreachable through this path is now MEASURED
+rather than argued**, on real bytes, exactly as the section above says.
+⚠ And nothing was published: a provisional record is not publishable, so the
+settled decision that a green capture publishes automatically did not fire.
+
+#### ⛔ Two defects stood between run 16 and this, and both were scope
+
+⛔ **THE SOURCE ROUTE'S RESOLUTION WAS NEVER UPLOADED.** *Resolve the source tag*
+writes `$RUNNER_TEMP/source/resolution.txt`; the artifact's path list named
+`$RUNNER_TEMP/release/*` and nothing else. ⚠ That list was COMPLETE for as long
+as the source lane resolved through the release listing - which is precisely
+what `E-ACQ-07` refused run 14 for - and it stopped being complete the moment
+that was repaired. ⭐ One repair uncovering the next, twice in one day: the same
+sentence describes the rule-12 scan in `TODO/acquisition.md`.
+
+⛔ **AND THE ASSEMBLER LOOKED FOR EVERY LANE'S RESOLUTION AT
+`release/resolution.txt`**, a literal path, for the same reason: no source lane
+had ever had its own. It reads `<route>/resolution.txt` now and falls back to
+the release name, because a `package` lane has no directory of its own.
+
+⛔ **THE ORIGIN FIELD DIFFERS BY ROUTE KIND AND THE READER ASKED EVERY ROUTE FOR
+`asset_url`.** A release resolution names the asset it selected; a source
+resolution has no asset at all and names the repository it will clone in
+`source_url` - deliberately, so the two slugify into different resolvers and
+`E-ACQ-07` can tell them apart. ⚠ Asking a source lane for `asset_url` refused
+it for a field its document is not supposed to carry, which reads as a
+capture-path gap and is a reader's assumption.
+
+⚠ **AND THE MESSAGE THAT SAID SO NAMED THE WRONG ROUTE KIND.** A lane with no
+resolution was told *a package route has no origin URL in the record* - true of
+a package route, which legitimately has none, and actively misleading for a
+release or source lane whose document did not ship. It names the route and the
+path it looked for now, and that one change is what turned a hunt through a
+healthy lane into a single run that said where to look.
+
+#### ⛔ Twenty-four cases passed over a shape no source lane has ever had
+
+`check-assemble` wrote a **release** resolution for every lane it built,
+`asset_url` and all. ⚠ So the branch that refuses a source route for a missing
+`asset_url` was unreachable, and so was the one that looks under the route's own
+directory: every fixture satisfied both. ⛔ **The fixture was wrong in the
+direction that hides a defect**, which is why twenty-four green cases said
+nothing about either.
+
+⭐ **A source lane is now built the way `resolve-source.sh` really writes one** -
+`source/resolution.txt`, banner `bit-ids/source-resolution/1`, `refs_sha256`
+rather than a listing digest, and no `asset_url` at all. Guard mutation over the
+corrected fixture, each plant verified to have changed the file:
+
+| plant | verdict |
+| --- | --- |
+| the per-route origin field dropped, every route asked for `asset_url` | ⭐ refused, 8 cases fail |
+| the per-route resolution path dropped, back to the literal `release/` | ⭐ refused, 5 cases fail |
+| both restored | ⭐ 24 cases, 24 passed |
+
+⚠ **Neither plant needed a NEW case.** The fixture is what made the existing
+ones able to fail, which is the sharper lesson: a corpus only tests the defects
+it contains an example of.
+
+#### ⚠ How run 16 was assembled, stated exactly
+
+⛔ **The store above was written in a REHEARSAL and is not evidence.** Run 16
+uploaded no source resolution - that is the defect - so the document was
+recovered from the job log, where *Resolve the source tag* `cat`s it. Every
+other byte is run 16's own artifact and the code path is the one the next
+dispatch runs, so it establishes that the assembler is correct and does NOT
+establish that a dispatch produces a record. ⚠ The workflow change that uploads
+it is unproved on a runner at the time of writing.
+
 ### ⭐ What was repaired here rather than only recorded
 
 - `aria2-next.sh`'s source route runs `git rev-parse HEAD` after its clone and
