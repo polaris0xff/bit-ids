@@ -499,9 +499,13 @@ fi
 
 # ⛔ THE ATTESTATION IS A CLAIM AND IT IS READ BACK. A runner that captured
 # correctly and wrote `kind=fixture` would pass every case above.
+# ⛔ `announces=2` AND `sessions_started=2` ARE WHAT SAY THE SECOND SESSION RAN.
+# The stub announces once per start, so this count is the session loop's own
+# receipt: it read `announces=1` until 2026-09-15, and a run that started the
+# build twice and announced once would be caught by nothing else here.
 for want in "kind=client" "target=stub-client" "adapter_kind=stub" \
-  "stock_client=false" "measured_build=1.2.3" "announces=1" \
-  "stopped_within_window=yes"; do
+  "stock_client=false" "measured_build=1.2.3" "announces=2" \
+  "sessions=2" "sessions_started=2" "stopped_within_window=yes"; do
   if grep -q -F -e "$want" "$CONTROL_OUT/attestation.txt"; then
     pass "the attestation says $want"
   else

@@ -685,8 +685,80 @@ adapter, the same observer and the same 20-second deadline under
 `git show HEAD:scripts/capture/capture-client.sh` report `announces=1`. One
 number against one number, with only the ordering different.
 
-⚠ Residual: no dispatch has taken this step, so what a stock `aria2-next` says
-on its way out is unmeasured. It is the next thing a run answers.
+⭐ **Run 20 answered it: `announces=2`, `started` and `stopped`, both in the
+transcript**, which is the first time a stock build gave this project two
+announces in one capture. ⛔ **And both carried the SAME peer ID**, so the field
+is `constant` with two samples rather than `patterned`, two lanes still state two
+different constants, and the pair is still refused. ⚠ That is a measurement of
+`aria2-next` rather than a defect: on the announce surface the twelve-byte tail
+is stable within a session.
+
+⛔ **Run 20 also found a defect in the field this section added.** It timed the
+stop's RETURN, and `aria2.shutdown` takes five seconds: the stop began at 40s of
+a 45-second window and returned at 45, so `stopped_within_window` read `no` over
+a run whose `stopped` announce HAD been heard. ⚠ The question the field answers
+is whether the observer was still recording when the build was ASKED to shut
+down, which is the condition this runner controls; how long the build then takes
+is the build's. It is read before the call now.
+
+### ⭐ A second SESSION, which is the dimension that was left, 2026-09-15
+
+⛔ **A VALUE THE BUILD STORES AND ONE IT REGENERATES READ IDENTICALLY IN ONE
+SESSION.** `SamplingPlan::restarts` says so in as many words, and run 20 measured
+exactly that: two announces, one session, one peer ID. `capture-client.sh` takes
+`--sessions`, defaulting to **two**, and starts and stops the build once per
+session inside the observer's window - so a build that regenerates its identity
+per run puts two different values in one transcript, which is what `patterned`
+needs and what two lanes can agree on.
+
+⚠ **Each session's boundary is measured from the observer's own start**, never
+from the line that computes it: `start` is bounded at `ADAPTER_SECONDS` rather
+than at the capture deadline and a stop takes as long as the build takes to go,
+so a per-session sleep computed locally would drift past a deadline that had
+already expired. ⚠ **The first session refuses and a later one ends the loop**: a
+build that never started is a run with no measurement in it, and one that
+started once and would not start again has been measured once - the same
+argument `client-capture` makes about a refused re-dial. `sessions` and
+`sessions_started` are both in the attestation, because a plan that asked for two
+and got one supports exactly what one supports.
+
+⛔ **THE ASSEMBLER ATTRIBUTES A SAMPLE TO ITS SESSION, READ OUT OF THE ANNOUNCE.**
+BEP 3 makes `event=started` the first announce of a run, so a second one
+delimits a second process. ⚠ Deriving it from the runner's `sessions_started`
+would be a record trusting a claim where a document is available, and it would
+be wrong whenever a session started and announced nothing. A build that never
+sends `started` reads as one session, which is conservative rather than wrong.
+
+⛔ **AND THE RECORD CANNOT SAY WHICH LIFETIME A TAIL HAS, WHICH THIS WORK IS
+WHAT FOUND.** `sampling::classify` computes a `Lifetime` per span -
+`per_connection`, `per_session`, `persistent` - and `field_state` **discards it**:
+the state is rebuilt from `differs_at` alone, so `PatternedValue` carries a
+tiling and no lifetime, and no record here has ever carried one. ⚠ So the
+session attribution is the correct input and changes no output today, and this
+entry says so rather than implying otherwise. ⭐ `check-assemble` carries a case
+asserting the ABSENCE, which passes while the schema has no such field and goes
+red the day one appears with nothing filling it. Adding the field is a schema
+change and belongs to `SCHEMA-04`.
+
+⚠ **Driving it found the shell twin of this repository's PowerShell collision.**
+A loop variable spelled `TARGET` is the same variable as the adapter's target,
+which is read much later to write `target=` into the attestation - so a run
+produced `target=16`, a document nothing else would have questioned. Found by
+reading the attestation back rather than by reading the script;
+`docs/conventions/shell.md` section 8 records the `[switch]$Marker` case this is
+the `sh` version of. The local is `SESSION_ENDS_AT` now.
+
+Driven on this host, 2026-09-15: a stub adapter announcing on start and on stop,
+under `--sessions 2`, reports `sessions=2`, `sessions_started=2` and
+`announces=4`. `check-capture-client` asserts `announces=2` and both session
+fields on its own stub, which is the session loop's own receipt: it read
+`announces=1` until this landed, and a run that started the build twice and
+announced once would be caught by nothing else there.
+
+⚠ Residual: no dispatch has taken the sessions step, so whether `aria2-next`
+regenerates its peer ID per run is unmeasured. It is the next thing a run
+answers, and it is the last thing between this project and a publishable
+measured record.
 
 ## OBS-03: UDP tracker observer
 

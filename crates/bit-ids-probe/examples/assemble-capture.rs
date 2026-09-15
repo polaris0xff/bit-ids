@@ -566,19 +566,35 @@ fn evidence_of(lane: &Lane) -> Result<Vec<(EvidenceRef, PathBuf)>, String> {
 /// which is what this wrote by hand before - so a capture that connects once is
 /// unchanged rather than newly refused.
 fn observations_of(lane: &Lane) -> Result<(Vec<ObservedField>, Firsts), String> {
+    let mut out = Vec::new();
+    let mut firsts = Firsts::new();
+    tracker_observations(lane, &mut out, &mut firsts)?;
+    peer_observations(lane, &mut out, &mut firsts)?;
+    out.sort_by_key(|entry| entry.path.to_string());
+    Ok((out, firsts))
+}
+
+/// The announce surface, whose samples are attributed to sessions.
+///
+/// ⚠ Split from [`peer_observations`] because the two surfaces answer the
+/// session question differently, and a reader of either should not have to hold
+/// the other's rule in mind to see why.
+fn tracker_observations(
+    lane: &Lane,
+    out: &mut Vec<ObservedField>,
+    firsts: &mut Firsts,
+) -> Result<(), String> {
     use bit_ids_lab::evidence::parse_transcript_document;
-    use bit_ids_wire::peer_wire::Handshake;
     use bit_ids_wire::tracker_http::HttpRequest;
     use bit_ids_wire::tracker_udp::Direction;
 
-    let mut out = Vec::new();
-    let mut firsts = Firsts::new();
     let tracker = std::fs::read_to_string(lane.bundle.join("tracker-http.transcript.json"))
         .map_err(|error| format!("the tracker transcript: {error}"))?;
     let (_, tracker) = parse_transcript_document(&tracker)
         .map_err(|error| format!("the tracker transcript: {error}"))?;
     let mut peer_ids = Vec::new();
     let mut agents = Vec::new();
+    let mut sessions = Sessions::new();
     for segment in tracker
         .segments()
         .iter()
@@ -594,11 +610,22 @@ fn observations_of(lane: &Lane) -> Result<(Vec<ObservedField>, Firsts), String> 
         let Some(raw) = queried.first() else {
             continue;
         };
-        peer_ids.push(
-            raw.decoded_value()
+        // ⛔ THE SESSION IS READ OUT OF THE ANNOUNCE, NOT OUT OF THE
+        // ATTESTATION. BEP 3 makes `started` the first announce of a run, so a
+        // second one delimits a second separately started process - which is
+        // exactly what `SamplingPlan::sessions` counts. ⚠ Deriving it from the
+        // runner's `sessions_started` instead would be this record trusting a
+        // claim where a document is available, and it would be wrong whenever a
+        // session started and announced nothing.
+        let at = sessions.observe(&request);
+        peer_ids.push(Observation {
+            session: at.session,
+            connection: at.connection,
+            value: raw
+                .decoded_value()
                 .map_err(|error| format!("the announce peer_id: {error}"))?
                 .ok_or_else(|| "the announce peer_id has no value".to_owned())?,
-        );
+        });
         // ⛔ Taken from the SAME announces, so the two fields rest on one set of
         // observations. A header sampled from a different set would report two
         // sample counts for one connection.
@@ -607,27 +634,43 @@ fn observations_of(lane: &Lane) -> Result<(Vec<ObservedField>, Firsts), String> 
             .iter()
             .find(|header| header.name().eq_ignore_ascii_case(b"user-agent"))
             .ok_or_else(|| "the announce carries no User-Agent".to_owned())?;
-        agents.push(agent.value().to_vec());
+        agents.push(Observation {
+            session: at.session,
+            connection: at.connection,
+            value: agent.value().to_vec(),
+        });
     }
     if peer_ids.is_empty() {
         return Err("the tracker transcript carries nothing the build sent".to_owned());
     }
     push_sampled(
-        &mut out,
-        &mut firsts,
+        out,
+        firsts,
         "tracker_http/peer_id",
         &peer_ids,
         lane,
         "tracker",
     )?;
     push_sampled(
-        &mut out,
-        &mut firsts,
+        out,
+        firsts,
         "tracker_http/user_agent",
         &agents,
         lane,
         "tracker",
     )?;
+    Ok(())
+}
+
+/// The peer surface, whose connections all belong to one session.
+fn peer_observations(
+    lane: &Lane,
+    out: &mut Vec<ObservedField>,
+    firsts: &mut Firsts,
+) -> Result<(), String> {
+    use bit_ids_lab::evidence::parse_transcript_document;
+    use bit_ids_wire::peer_wire::Handshake;
+    use bit_ids_wire::tracker_udp::Direction;
 
     let peer = std::fs::read_to_string(lane.bundle.join("peer-wire-dialled.transcript.json"))
         .map_err(|error| format!("the peer transcript: {error}"))?;
@@ -635,10 +678,11 @@ fn observations_of(lane: &Lane) -> Result<(Vec<ObservedField>, Firsts), String> 
         .map_err(|error| format!("the peer transcript: {error}"))?;
     let mut handshake_ids = Vec::new();
     let mut reserved = Vec::new();
-    for segment in peer
+    for (index, segment) in peer
         .segments()
         .iter()
         .filter(|segment| segment.direction() == Direction::FromTarget)
+        .enumerate()
     {
         // ⛔ Every segment the build sent on this surface must be a handshake,
         // which is the strictness this had over the first one, applied to all of
@@ -648,31 +692,37 @@ fn observations_of(lane: &Lane) -> Result<(Vec<ObservedField>, Firsts), String> 
         let handshake = Handshake::parse_prefix(segment.bytes())
             .map_err(|error| format!("the peer handshake: {error}"))?
             .0;
-        handshake_ids.push(handshake.peer_id().to_vec());
-        reserved.push(handshake.reserved().to_vec());
+        // ⚠ ONE SESSION ON THIS SURFACE, and that is a fact about the capture
+        // rather than a default. `client-capture` dials as soon as the first
+        // announce arrives and opens every peer connection back to back, so all
+        // of them belong to whichever session was live then. Nothing in a peer
+        // handshake delimits a restart the way an announce event does, so
+        // attributing them across sessions would be a guess.
+        let connection = u32::try_from(index).map_err(|error| format!("the peer: {error}"))?;
+        handshake_ids.push(Observation {
+            session: 0,
+            connection,
+            value: handshake.peer_id().to_vec(),
+        });
+        reserved.push(Observation {
+            session: 0,
+            connection,
+            value: handshake.reserved().to_vec(),
+        });
     }
     if handshake_ids.is_empty() {
         return Err("the peer transcript carries nothing the build sent".to_owned());
     }
     push_sampled(
-        &mut out,
-        &mut firsts,
+        out,
+        firsts,
         "peer_wire/peer_id",
         &handshake_ids,
         lane,
         "peer",
     )?;
-    push_sampled(
-        &mut out,
-        &mut firsts,
-        "peer_wire/reserved",
-        &reserved,
-        lane,
-        "peer",
-    )?;
-
-    out.sort_by_key(|entry| entry.path.to_string());
-    Ok((out, firsts))
+    push_sampled(out, firsts, "peer_wire/reserved", &reserved, lane, "peer")?;
+    Ok(())
 }
 
 /// What each declared connector saw, per field.
@@ -814,12 +864,80 @@ fn corroboration_of(
 /// `patterned` and its corroboration carries bytes.
 type Firsts = BTreeMap<String, HexBytes>;
 
+/// One observation of one field, with where in the plan it came from.
+///
+/// ⚠ The position travels with the value rather than being recomputed from its
+/// index later. Two fields sampled from one set of announces have to agree about
+/// which session each came from, and an index into a filtered list agrees with
+/// itself and with nothing else.
+struct Observation {
+    session: u32,
+    connection: u32,
+    value: Vec<u8>,
+}
+
+/// Where in the plan an observation sat.
+struct At {
+    session: u32,
+    connection: u32,
+}
+
+/// Walks a run's announces and says which separately started process each
+/// belongs to.
+///
+/// ⛔ **`event=started` IS THE DELIMITER AND BEP 3 IS WHY.** It names the first
+/// announce of a run, so a second one is a second process - which is exactly
+/// what `SamplingPlan::sessions` counts and the only thing that separates
+/// `Lifetime::PerSession` from `Lifetime::Persistent`.
+///
+/// ⚠ **A build that never sends `started` reads as one session**, which is the
+/// conservative answer rather than a wrong one: without a delimiter the run has
+/// shown nothing about restarts, and `classify_offset` then answers `Unknown`
+/// where it would otherwise answer `PerSession`.
+struct Sessions {
+    session: u32,
+    connection: u32,
+    seen: bool,
+}
+
+impl Sessions {
+    const fn new() -> Self {
+        Self {
+            session: 0,
+            connection: 0,
+            seen: false,
+        }
+    }
+
+    fn observe(&mut self, request: &bit_ids_wire::tracker_http::HttpRequest) -> At {
+        let started = request
+            .query_values(b"event")
+            .first()
+            .and_then(|pair| pair.decoded_value().ok().flatten())
+            .is_some_and(|value| value == b"started");
+        // ⚠ The FIRST announce does not open a new session however it is
+        // spelled: it opens the first one. Incrementing on it would number every
+        // run's sessions from one and claim a restart that never happened.
+        if started && self.seen {
+            self.session = self.session.saturating_add(1);
+            self.connection = 0;
+        } else if self.seen {
+            self.connection = self.connection.saturating_add(1);
+        }
+        self.seen = true;
+        At {
+            session: self.session,
+            connection: self.connection,
+        }
+    }
+}
+
 /// Builds one sampled field and remembers the observation corroboration uses.
 fn push_sampled(
     out: &mut Vec<ObservedField>,
     firsts: &mut Firsts,
     path: &str,
-    values: &[Vec<u8>],
+    values: &[Observation],
     lane: &Lane,
     evidence: &str,
 ) -> Result<(), String> {
@@ -831,35 +949,70 @@ fn push_sampled(
 
 /// One field, from every observation of it the transcript carries.
 ///
-/// ⛔ **The plan is read off the evidence rather than invented.** One session,
-/// because a lane runs the build once; one torrent, because the lab generates
-/// one; and a connection per sampled segment, because that is what a transcript
-/// records. ⚠ A plan claiming more than the transcript shows would let a field
+/// ⛔ **The plan is read off the evidence rather than invented.** One torrent,
+/// because the lab generates one; a session per separately started process, read
+/// out of the announce events below; and a connection per sampled segment within
+/// a session. ⚠ A plan claiming more than the transcript shows would let a field
 /// rest on samples the run could not have produced, which is `E-BND-21`.
+///
+/// ⛔ **THE SESSION IS WHAT SEPARATES TWO LIFETIMES AND IT USED TO BE HARDCODED
+/// TO ONE.** `classify_offset` answers `PerConnection` for a value that differs
+/// within a session and `PerSession` for one that differs only across them, and
+/// with every sample filed under session 0 the second is unreachable. ⚠ Run 20
+/// measured exactly the value that needs it: `aria2-next` announced twice in one
+/// session and carried the SAME peer ID both times, so the tail is per session
+/// on that surface and a record claiming `per_connection` would be wrong about
+/// the build.
 fn sampled(
     path: &str,
-    values: &[Vec<u8>],
+    values: &[Observation],
     lane: &Lane,
     evidence: &str,
 ) -> Result<(ObservedField, HexBytes), String> {
-    let count = u32::try_from(values.len())
-        .ok()
-        .and_then(core::num::NonZeroU32::new)
-        .ok_or_else(|| format!("{path}: {} observation(s)", values.len()))?;
+    if values.is_empty() {
+        return Err(format!("{path}: 0 observation(s)"));
+    }
     let mut samples = Vec::new();
-    for (index, value) in values.iter().enumerate() {
+    for value in values {
         samples.push(Sample {
-            session: 0,
+            session: value.session,
             torrent: 0,
-            connection: u32::try_from(index).map_err(|error| format!("{path}: {error}"))?,
-            value: HexBytes::new(value.clone()).map_err(|error| format!("{path}: {error}"))?,
+            connection: value.connection,
+            value: HexBytes::new(value.value.clone())
+                .map_err(|error| format!("{path}: {error}"))?,
         });
     }
+    // ⚠ Counted from the samples rather than taken from the attestation. A run
+    // that asked for two sessions and achieved one supports exactly what one
+    // supports, and the evidence is what says which happened.
+    let sessions = samples
+        .iter()
+        .map(|sample| sample.session)
+        .collect::<std::collections::BTreeSet<_>>()
+        .len();
+    // ⛔ The WIDEST session, not the total. `observations()` multiplies the
+    // dimensions, so a total here would claim a grid the run never ran - and a
+    // narrower one would trip `E-BND-21` on a run whose sessions differ in
+    // length.
+    let mut widest = 0_usize;
+    for session in samples.iter().map(|sample| sample.session) {
+        let count = samples
+            .iter()
+            .filter(|sample| sample.session == session)
+            .count();
+        widest = widest.max(count);
+    }
+    let nonzero = |value: usize, what: &str| {
+        u32::try_from(value)
+            .ok()
+            .and_then(core::num::NonZeroU32::new)
+            .ok_or_else(|| format!("{path}: {value} {what}"))
+    };
     let one = core::num::NonZeroU32::new(1).expect("one is not zero");
     let plan = SamplingPlan {
-        sessions: one,
+        sessions: nonzero(sessions, "session(s)")?,
         torrents: one,
-        connections: count,
+        connections: nonzero(widest, "connection(s)")?,
     };
     let state = field_state(&samples, &plan)
         .ok_or_else(|| format!("{path}: no state rests on those observations"))?;

@@ -44,8 +44,8 @@
 #   sh scripts/capture/capture-client.sh --run-id <id> --out <dir>
 #                                        --observer <path> --adapter <path>
 #                                        --connector <path>
-#                                        [--seconds <n>] [--peer-port <n>]
-#                                        [--route-table <path>]
+#                                        [--seconds <n>] [--sessions <n>]
+#                                        [--peer-port <n>] [--route-table <path>]
 #
 # Exit codes: 0 the capture ran and its evidence verifies, 1 a guard refuses,
 # 2 could not run.
@@ -62,6 +62,11 @@ CONNECTOR=""
 SECONDS_TO_SERVE=25
 PEER_PORT=""
 ROUTE_TABLE=""
+# ⛔ TWO BY DEFAULT, because one session cannot separate a value the build stores
+# from one it regenerates. `SamplingPlan::restarts` says so in as many words:
+# restarting the process is the only thing that distinguishes the two, and
+# `Lifetime::PerSession` is the answer only a second session can reach.
+SESSIONS=2
 
 usage() {
   awk 'NR>1 { if (/^#/) { sub(/^# ?/, ""); print } else exit }' "$0"
@@ -112,6 +117,11 @@ while [ $# -gt 0 ]; do
       SECONDS_TO_SERVE="$2"
       shift
       ;;
+    --sessions)
+      [ $# -ge 2 ] || cannot "--sessions takes a value"
+      SESSIONS="$2"
+      shift
+      ;;
     --peer-port)
       [ $# -ge 2 ] || cannot "--peer-port takes a value"
       PEER_PORT="$2"
@@ -157,6 +167,13 @@ esac
 case "$SECONDS_TO_SERVE" in
   '' | *[!0-9]*) cannot "--seconds must be a whole number: $SECONDS_TO_SERVE" ;;
 esac
+
+case "$SESSIONS" in
+  '' | *[!0-9]*) cannot "--sessions must be a whole number: $SESSIONS" ;;
+esac
+# ⚠ At least one, because zero sessions is a capture that starts nothing, and a
+# run that measured no build is a refusal rather than an empty result.
+[ "$SESSIONS" -ge 1 ] || cannot "--sessions must be at least 1: $SESSIONS"
 
 if [ -n "$PEER_PORT" ]; then
   case "$PEER_PORT" in
@@ -325,57 +342,100 @@ fi
   refuse "the observer wrote no torrent at $TORRENT"
 }
 
-# ⭐ THE CLIENT IS STARTED WITH THE TORRENT AND NOTHING ELSE. It learns the
-# tracker's address by reading the file, which is what a stock build does with
-# any torrent, so nothing here is a control the product does not already have.
-timeout -k "$ADAPTER_KILL_AFTER" "$ADAPTER_SECONDS" sh "$ADAPTER" start "$TORRENT" "$WORKDIR" "${PEER_PORT:-0}" \
-  </dev/null >"$OUT/client.log" 2>&1
-START_RC=$?
-if [ "$START_RC" != 0 ]; then
-  timeout -k "$ADAPTER_KILL_AFTER" "$ADAPTER_SECONDS" sh "$ADAPTER" stop "$WORKDIR" </dev/null >/dev/null 2>&1
-  wait "$OBSERVER_PID" 2>/dev/null
-  sed 's/^/          /' "$OUT/client.log" >&2
-  if [ "$START_RC" = 124 ]; then
-    refuse "the adapter did not return from start within ${ADAPTER_SECONDS}s; it launches and returns"
-  fi
-  refuse "the adapter could not start the build (exit $START_RC)"
-fi
-
-# -- ⛔ THE CLIENT IS STOPPED INSIDE THE OBSERVER'S WINDOW ---------------------
+# -- ⛔ THE SESSIONS, WHICH ARE THE ONLY DIMENSION THAT SEPARATES TWO LIFETIMES --
 #
-# ⛔ **A `stopped` ANNOUNCE IS A SECOND SAMPLE AND THIS STEP USED TO THROW IT
-# AWAY.** The stop ran after `wait "$OBSERVER_PID"`, so whatever a build says on
-# its way out reached a tracker that had already gone. Every `tracker_http/*`
-# field then rested on the one `started` announce, `SCHEMA-04` could state each
-# only as a `constant`, and two lanes stated two different constants - which is
-# half of `E-PUB-03` on `capture-client` runs 18 and 19.
+# ⛔ **A VALUE THE BUILD STORES AND ONE IT REGENERATES READ IDENTICALLY IN ONE
+# SESSION.** `SamplingPlan::restarts` says so in as many words, and
+# `Lifetime::PerSession` is the answer only a restart can reach. Run 20 measured
+# exactly that gap: `aria2-next` announced twice, `started` and `stopped`, and
+# both carried the SAME peer ID - so the field is `constant` with two samples,
+# two lanes state two different constants, and `classify_across` says
+# `divergent`. A second session is what makes the tail vary inside one capture.
 #
-# ⚠ **It is the lever that is left.** Run 19 answered `interval: 15` under a
-# 45-second deadline and `aria2-next` announced once anyway, so asking a build to
-# re-announce is a condition this project can set and cannot enforce. A shutdown
-# is different: the build is going to send it or not, and the only question was
+# ⛔ **THE STOP IS INSIDE THE OBSERVER'S WINDOW AND USED NOT TO BE.** It ran
+# after `wait "$OBSERVER_PID"`, so whatever a build said on its way out reached a
+# tracker that had already gone. ⚠ Run 19 answered `interval: 15` under a
+# 45-second deadline and the build announced once anyway, so asking a build to
+# re-announce is a condition this project can set and cannot enforce; a shutdown
+# is different, because the build sends it or does not and the only question was
 # whether anything was listening.
 #
 # ⚠ **The margin is a fifth of the run, capped at five seconds and floored at
-# one**, so the `stopped` announce and the observer's record of it both fit
+# one**, so the last `stopped` announce and the observer's record of it both fit
 # inside what is left. A margin as long as the run would stop the build before it
 # had announced at all.
 STOP_MARGIN=$((SECONDS_TO_SERVE / 5))
 [ "$STOP_MARGIN" -le 5 ] || STOP_MARGIN=5
 [ "$STOP_MARGIN" -ge 1 ] || STOP_MARGIN=1
-# ⛔ MEASURED FROM THE OBSERVER'S OWN START, not from here. `start` is bounded at
-# ADAPTER_SECONDS and a slow one can eat the whole window, so a sleep computed
-# from this line would run past a deadline that had already expired.
-ELAPSED=$(($(date +%s) - OBSERVER_EPOCH))
-STOP_IN=$((SECONDS_TO_SERVE - STOP_MARGIN - ELAPSED))
-[ "$STOP_IN" -le 0 ] || sleep "$STOP_IN"
+SESSION_WINDOW=$((SECONDS_TO_SERVE - STOP_MARGIN))
 
-timeout -k "$ADAPTER_KILL_AFTER" "$ADAPTER_SECONDS" sh "$ADAPTER" stop "$WORKDIR" </dev/null >>"$OUT/client.log" 2>&1
-STOP_RC=$?
-# ⚠ Read after the stop returns rather than before it: a stop bounded at
-# ADAPTER_SECONDS can itself outlive the window, and the fact a reader needs is
-# whether the observer was still recording when the build had finished speaking.
-STOPPED_AFTER=$(($(date +%s) - OBSERVER_EPOCH))
+SESSION=0
+SESSIONS_STARTED=0
+STOP_RC=0
+STOPPED_AFTER=0
+while [ "$SESSION" -lt "$SESSIONS" ]; do
+  SESSION=$((SESSION + 1))
+
+  # ⭐ THE CLIENT IS STARTED WITH THE TORRENT AND NOTHING ELSE. It learns the
+  # tracker's address by reading the file, which is what a stock build does with
+  # any torrent, so nothing here is a control the product does not already have.
+  timeout -k "$ADAPTER_KILL_AFTER" "$ADAPTER_SECONDS" sh "$ADAPTER" start "$TORRENT" "$WORKDIR" "${PEER_PORT:-0}" \
+    </dev/null >>"$OUT/client.log" 2>&1
+  START_RC=$?
+  if [ "$START_RC" != 0 ]; then
+    # ⛔ THE FIRST SESSION REFUSES AND A LATER ONE ENDS THE LOOP. A build that
+    # never started is a run with no measurement in it; a build that started once
+    # and would not start again has been measured once, which is weaker than was
+    # asked for and better than nothing - the same argument `client-capture`
+    # makes about a refused re-dial. The count is in the attestation either way.
+    if [ "$SESSIONS_STARTED" -gt 0 ]; then
+      printf 'capture-client: session %s would not start (exit %s); %s of %s ran\n' \
+        "$SESSION" "$START_RC" "$SESSIONS_STARTED" "$SESSIONS" >&2
+      break
+    fi
+    timeout -k "$ADAPTER_KILL_AFTER" "$ADAPTER_SECONDS" sh "$ADAPTER" stop "$WORKDIR" </dev/null >/dev/null 2>&1
+    wait "$OBSERVER_PID" 2>/dev/null
+    sed 's/^/          /' "$OUT/client.log" >&2
+    if [ "$START_RC" = 124 ]; then
+      refuse "the adapter did not return from start within ${ADAPTER_SECONDS}s; it launches and returns"
+    fi
+    refuse "the adapter could not start the build (exit $START_RC)"
+  fi
+  SESSIONS_STARTED=$((SESSIONS_STARTED + 1))
+
+  # ⛔ EACH SESSION'S BOUNDARY IS MEASURED FROM THE OBSERVER'S OWN START, never
+  # from this line. `start` is bounded at ADAPTER_SECONDS rather than at the
+  # capture deadline and a stop takes as long as the build takes to go, so a
+  # sleep computed per session from here would drift past a deadline that had
+  # already expired.
+  # ⚠ NOT `TARGET`. That name is already the adapter's target and is read much
+  # later to write `target=` into the attestation; a loop variable spelled the
+  # same way put `target=16` in a document nothing else would have questioned.
+  # Found by driving the run and reading the attestation back, which is the
+  # shell twin of the `[switch]$Marker` collision `CI-03` records.
+  SESSION_ENDS_AT=$((SESSION_WINDOW * SESSION / SESSIONS))
+  ELAPSED=$(($(date +%s) - OBSERVER_EPOCH))
+  STOP_IN=$((SESSION_ENDS_AT - ELAPSED))
+  [ "$STOP_IN" -le 0 ] || sleep "$STOP_IN"
+
+  # ⛔ READ BEFORE THE STOP IS CALLED, NEVER AFTER IT RETURNS, and run 20 is why.
+  # Its first spelling timed the stop's RETURN: `aria2.shutdown` took five
+  # seconds, the stop began at 40s of a 45-second window and returned at 45, and
+  # the field read `stopped_within_window=no` over a run whose `stopped` announce
+  # had been heard - `announces=2`, both in the transcript. ⚠ The question this
+  # answers is whether the observer was still recording when the build was ASKED
+  # to shut down, which is the condition this runner controls; how long the build
+  # then took is the build's. A shutdown slower than the margin is still missed,
+  # and that is a limit of the margin rather than something a second timestamp
+  # would fix.
+  STOPPED_AFTER=$(($(date +%s) - OBSERVER_EPOCH))
+
+  timeout -k "$ADAPTER_KILL_AFTER" "$ADAPTER_SECONDS" sh "$ADAPTER" stop "$WORKDIR" </dev/null >>"$OUT/client.log" 2>&1
+  STOP_RC=$?
+done
+
+# ⚠ The LAST stop is what this describes, because it is the one whose `stopped`
+# announce the observer had to still be there for.
 STOPPED_WITHIN=no
 [ "$STOPPED_AFTER" -ge "$SECONDS_TO_SERVE" ] || STOPPED_WITHIN=yes
 
@@ -659,6 +719,11 @@ PEER_DIALLED=$(awk '$1 == "peer-dialled" { $1 = ""; sub(/^ /, ""); print; exit }
   # has been asked to shut down before it did anything worth recording.
   printf 'stopped_after=%ss\n' "$STOPPED_AFTER"
   printf 'stop_margin=%ss\n' "$STOP_MARGIN"
+  # ⛔ ASKED FOR AND ACHIEVED, as two numbers. A plan that asked for two sessions
+  # and ran one supports exactly the conclusions one session supports, and
+  # `SamplingPlan` is built from what the run DID rather than from what it wanted.
+  printf 'sessions=%s\n' "$SESSIONS"
+  printf 'sessions_started=%s\n' "$SESSIONS_STARTED"
   printf 'platform=%s\n' "$(uname -srm)"
   printf 'started_at=%s\n' "$STARTED"
   printf 'finished_at=%s\n' "$FINISHED"

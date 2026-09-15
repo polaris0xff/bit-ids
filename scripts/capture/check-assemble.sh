@@ -89,7 +89,22 @@ INFO_HASH_HEX=$(repeat_byte aa 20)
 RESERVED_HEX=0000000000100005
 
 # One announce, in the shape a stock client sends and `tracker_http` parses.
-announce_hex() { # peer-id
+#
+# ⚠ A SECOND ARGUMENT ADDS `event=`, and `started` is what delimits a session.
+# BEP 3 makes it the first announce of a run, so a second one in a transcript is
+# a second separately started process - which is the only thing that separates
+# `Lifetime::PerSession` from `Lifetime::PerConnection`. ⛔ Omitting it is the
+# default because every fixture here predates sessions, and a helper that always
+# wrote one would have silently re-attributed every existing case.
+announce_hex() { # peer-id [event]
+  if [ -n "${2:-}" ]; then
+    hexof "GET /announce?info_hash=$(printf 'X%.0s' 1)&peer_id=$1&port=51413&event=$2 HTTP/1.1
+Host: 127.0.0.1:1
+User-Agent: fixture-client/1.2.3
+
+"
+    return
+  fi
   hexof "GET /announce?info_hash=$(printf 'X%.0s' 1)&peer_id=$1&port=51413 HTTP/1.1
 Host: 127.0.0.1:1
 User-Agent: fixture-client/1.2.3
@@ -245,8 +260,13 @@ write_lane() { # tag route resolver-url commit binary-digest version peer-id [co
   # peer ID - which is what a build with a per-connection tail really puts in a
   # transcript, and what turns `constant` with one sample into a pattern.
   if [ -n "${9:-}" ]; then
+    # ⭐ A TENTH ARGUMENT MAKES THE SECOND ANNOUNCE A SECOND SESSION, by giving
+    # it `event=started`. ⛔ The peer surface is left alone on purpose: nothing
+    # in a handshake delimits a restart, and `client-capture` opens every peer
+    # connection back to back once the first announce arrives, so they belong to
+    # whichever session was live then.
     transcript "$_cap/capture/bundle/tracker-http.transcript.json" \
-      tracker-http "$(announce_hex "$7")" "$(announce_hex "$9")"
+      tracker-http "$(announce_hex "$7")" "$(announce_hex "$9" "${10:-}")"
     transcript "$_cap/capture/bundle/peer-wire-dialled.transcript.json" \
       peer-wire-dialled "$(handshake_hex "$7")" "$(handshake_hex "$9")"
   else
@@ -429,6 +449,46 @@ if grep -q '"kind": "constant"' \
   pass "a lane that connected once still states a constant"
 else
   fail "a lane that connected once still states a constant"
+fi
+
+# -- ⛔ AND WHICH LIFETIME THE TAIL HAS, WHICH ONE SESSION CANNOT ANSWER -------
+#
+# ⛔ `capture-client` run 20 announced twice in ONE session and carried the same
+# peer ID both times, so the tail is per session on that surface - and a record
+# calling it `per_connection` would be wrong about the build.
+# `classify_offset` can only answer `per_session` when the samples are attributed
+# to more than one, and the assembler filed every one of them under session 0
+# until 2026-09-15.
+#
+# ⭐ THE SESSION IS READ OUT OF THE ANNOUNCE rather than out of the attestation,
+# so this fixture carries no new field: the second announce says `event=started`,
+# which BEP 3 makes the first announce of a run.
+write_lane sess-release release "$GH" "" "$DIGEST_A" 1.2.3 \
+  "$PEER_A" "$PEER_A" "$PEER_C" started || exit 2
+write_lane sess-source source "$REFS" "$COMMIT" "$DIGEST_B" 1.2.3 \
+  "$PEER_B" "$PEER_B" "$PEER_D" started || exit 2
+case_is 0 "build_equivalent" \
+  "two sessions per lane make a per-session tail a pattern both lanes share" \
+  sess sess-release sess-source
+_sess_record=$(find "$WORK/store-sess/profiles" -name '*.json' -type f | head -1)
+if grep -q '"kind": "patterned"' "$_sess_record"; then
+  pass "a tail that moves across sessions is a pattern, as one that moves across connections is"
+else
+  fail "a tail that moves across sessions is a pattern, as one that moves across connections is"
+fi
+
+# ⛔ AND THE RECORD CANNOT SAY WHICH OF THE TWO IT IS. `sampling::classify`
+# computes a `Lifetime` per span - `per_connection`, `per_session`, `persistent`
+# - and `field_state` DISCARDS it: the state is rebuilt from `differs_at` alone,
+# so `PatternedValue` carries a tiling and no lifetime, and no record in this
+# repository has ever carried one. ⚠ **This case exists to keep that gap
+# measured rather than remembered.** It passes while the schema has no such
+# field and goes red the day one appears with nothing filling it, which is the
+# event that should make somebody read the residual in `TODO/observer.md`.
+if grep -q '"lifetime"' "$_sess_record"; then
+  fail "the record carries no lifetime, and this says so rather than assuming it"
+else
+  pass "the record carries no lifetime: classify computes one and field_state drops it"
 fi
 
 # ⛔ AND A REQUEST THAT IS NOT AN ANNOUNCE IS NOT A SAMPLE OF ONE. A scrape

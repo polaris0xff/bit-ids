@@ -5,6 +5,26 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-15T14:42:24Z
+
+- ⭐ **Run 20 gave two announces from a stock build**, `started` and `stopped`,
+  which is the first time this project has had two in one capture. ⛔ Both carry
+  the same peer ID, so the tail is stable within a session on that surface.
+- ⭐ **`capture-client.sh --sessions` defaults to two.** A value the build stores
+  and one it regenerates read identically in one session, which is what
+  `SamplingPlan::restarts` says; a second session is what separates them.
+- ⛔ **The assembler attributes a sample to its session, read out of the
+  announce.** `event=started` delimits a run, so the record does not have to
+  trust the runner's count.
+- ⛔ **The record cannot say which lifetime a tail has.** `classify` computes one
+  per span and `field_state` drops it, so `PatternedValue` carries a tiling and
+  no lifetime. `check-assemble` asserts the absence so the gap stays measured.
+- ⚠ **A loop variable named `TARGET` was the adapter's target**, and put
+  `target=16` in an attestation. The shell twin of the `[switch]$Marker`
+  collision, found by reading the document back.
+- Record: [`TODO/observer.md`](TODO/observer.md), `OBS-04`. No version bump and
+  no deploy.
+
 ### 2026-09-15T14:08:32Z
 
 - ⛔ **`capture-client` run 19 refuted both recorded readings.** Both repairs are
