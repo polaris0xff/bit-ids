@@ -271,7 +271,17 @@ Guard mutation, each plant verified to have changed the file:
 
 ⚠ An earlier attempt at the third plant reported NOT-PLANTED - the `sed` expected
 `jks)$` where the source reads `jks)|id_rsa` - which is a third status and is
-counted as neither. ⛔ `check-bitcheck` carries the first two and not the third:
+counted as neither.
+
+⛔ **AND IT PASSED OVER NOTHING UNTIL A LATER MUTATION PASS.** With the specimen
+list emptied it answered *every one of the 0 credential shapes is also ignored*
+and exited 0 - the shape `check-licences` refuses in its register and `ACQ-01`'s
+scan refuses in its vocabulary, reproduced in a new rule by the session that
+wrote both. ⭐ A floor of 12 refuses a list too small to be real, and it answers
+**2** rather than 1: an empty list means nothing was verified, not that a rule was
+broken. ⚠ It is mutation-proved and is not a `check-bitcheck` case, for the same
+reason the specimen self-check is not - the plant changes Go source and the
+harness builds the binary once. ⛔ `check-bitcheck` carries the first two and not the third:
 that one changes Go source and the harness builds the binary once before its
 first case. It is also the first rule there that never had a shell half, so its
 cases name `-` for the predecessor.
@@ -2870,7 +2880,7 @@ have changed the file before it was judged:
 | **DEL (0x7f) added to the control class** | ⛔ **SURVIVED, exit 0** |
 
 ⛔ **The fourth is `check-twins`' own documented blind spot arriving in its
-replacement.** `check-markers.sh`'s header records that a `py` scope dropped from
+replacement.** `check-markers`' deleted shell half recorded that a `py` scope dropped from
 one half was invisible because this tree holds no `.py` file; here, a class
 widened to include DEL was invisible because nothing in the tree and nothing
 planted carried that byte. ⭐ The repair is a FIXTURE and not a reading: a case
@@ -3205,8 +3215,11 @@ written up as a property of the change rather than of the host.
   harness that grew, not a defect, and shrinking it is a decision about how many
   cases a gate should carry rather than a port. Recorded here because the
   measurement was taken here; it belongs to whoever next opens `CI-01`.
-- ⚠ **Five file pairs remain and `check-twins` prints five rows**, together about
-  10 seconds of PowerShell against the 96.1 the layer started at. ⛔ The
+- ⚠ **Five file pairs remain and `check-twins` prints five rows.** Their
+  PowerShell halves together are **5.3 seconds**, timed on 2026-09-15, against
+  the 96.1 the layer started at. ⛔ The figure had been decremented from 12.3 as
+  pairs left rather than re-timed, which is the value-in-two-places defect in a
+  different costume. ⛔ The
   remaining wall-clock value of porting them is therefore small and the DRIFT
   value is unchanged, which is the honest ordering argument for doing them after
   sharding rather than before.

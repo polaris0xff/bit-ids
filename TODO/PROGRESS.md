@@ -286,8 +286,8 @@ nothing is. The clone question under *Settled decisions* is spent too.
    ⛔ **WHAT IS NOT DONE IS THE REST OF THE PORT.** **Nine** checks are in
    `../tools/check/` - eight ported plus `check-ignores`, which was never a shell
    rule - and **five twin file pairs remain, which `check-twins` prints
-   as five rows**, together about 10 seconds of PowerShell against the 96 the
-   layer started at. ⚠ So the remaining
+   as five rows**, whose PowerShell halves together are 5.3 seconds, timed on
+   2026-09-15, against the 96 the layer started at. ⚠ So the remaining
    wall-clock value is small and the DRIFT value is unchanged, which is the
    ordering argument for taking them when they are cheapest rather than first.
    ⭐ **`check-no-secrets` and `check-docs` both left on 2026-09-15.** The first

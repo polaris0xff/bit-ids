@@ -5,6 +5,28 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-15T04:18:40Z
+
+- ⛔ **`check-ignores` passed over nothing and now has a floor.** With its
+  specimen list emptied it answered *every one of the 0 credential shapes is also
+  ignored* and exited 0 - the shape `check-licences` refuses in its register,
+  reproduced in a new rule by the session that wrote both. A floor of 12 refuses
+  a list too small to be real and answers **2**, because an empty list means
+  nothing was verified rather than that a rule was broken.
+- ⛔ **The door sweep found citations to files that no longer exist**: five
+  markdown links whose label named a deleted script while the target pointed at
+  the Go file, `FOUND-04`'s Acceptance naming two deleted commands, and three
+  comments citing a deleted header. All repointed; the dated closure evidence is
+  left as it was.
+- ⛔ **The claim audit caught a number that was decremented rather than
+  measured.** The remaining twin pairs' PowerShell halves were carried at 12.3
+  seconds and stepped down to 11 and 10 as pairs left; timed, they are **5.3**.
+  `check-twins` is **10.0 seconds**, not the 15 the record carried.
+- ⚠ **And `docs/history/RESUME.md` exceeded the marker density ceiling** at 31
+  per 100 against 30, which is verbosity measured rather than argued. Thinned to
+  27.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-01`. No version bump and no deploy.
+
 ### 2026-09-15T04:07:40Z
 
 - ⛔ **`rusqlite` 0.40.2 was taken and then REVERTED to 0.37.0.** `PUB-05` had

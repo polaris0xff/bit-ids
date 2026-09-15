@@ -284,10 +284,15 @@ was disabled by exactly the input it exists to catch.** It was invisible on a
 clean tree, which is what `check-twins` compares, and visible immediately when
 the two halves were compared per planted mutation. `wc -l` replaces the idiom.
 
-### Acceptance, all run on 2026-09-06
+### Acceptance
 
-- `sh scripts/common/check-licences.sh`
-- `pwsh -NoProfile -File scripts/common/check-licences.ps1`
+⚠ **The commands changed when the rule was ported**, 2026-09-15. Both shell
+halves are deleted, so the pair below is one binary that runs on either lane;
+the closure evidence under it is a dated measurement of the tree at closure and
+is left as it was.
+
+- `bit-check check-licences`, built from [`../tools/check/`](../tools/check/)
+- `bit-check check-ignores`
 - `sh scripts/common/check-gate.sh`
 
 ### Closure evidence, 2026-09-06

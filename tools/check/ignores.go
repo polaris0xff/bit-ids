@@ -72,9 +72,24 @@ var ignoreSpecimens = []string{
 	"service-account-prod.json",
 }
 
+// specimenFloor is the smallest list that can still be real.
+//
+// ⛔ A CHECK OVER AN EMPTY LIST REPORTS A CLEAN BILL OVER NOTHING, which is the
+// shape check-licences refuses in its register and ACQ-01's catalogue scan
+// refuses in its vocabulary. ⚠ Measured by planting: with the specimens emptied
+// this answered *every one of the 0 credential shapes is also ignored* and
+// exited 0. The floor is below the list and above nothing, so a shape may be
+// retired without tripping it while a list that stopped being built cannot pass.
+const specimenFloor = 12
+
 func checkIgnores(r *repo) (verdict, error) {
 	if _, err := exec.LookPath("git"); err != nil {
 		return verdict{}, errCannotRun("git not found")
+	}
+	if len(ignoreSpecimens) < specimenFloor {
+		return verdict{}, errCannotRun(fmt.Sprintf(
+			"only %d specimen(s), below the floor of %d: this check cannot be meaningful over a list that small",
+			len(ignoreSpecimens), specimenFloor))
 	}
 
 	var problems []string

@@ -50,7 +50,7 @@ and both records are `provisional`, so the publish-on-green decision did not fir
 and could not have. [`../../TODO/ci.md`](../../TODO/ci.md) under `CI-09` carries
 the command and what the records hold.
 
-⭐ **The whole loop runs from a session**: dispatch `capture-client` through the
+**The whole loop runs from a session**: dispatch `capture-client` through the
 Actions tooling on `ref: main`, download artifacts through rule 8's route
 (`.../actions/artifacts/<id>/zip` answers 200), then assemble locally. ⛔ This
 file used to say nothing in the tree could press that button. That was false.
@@ -69,9 +69,9 @@ and `bit-check --rows` is the measurement rather than this sentence. Both gate
 runners invoke it, so those rows are the SAME row on both lanes.
 
 ⛔ **Sixteen files are deleted, not translated.** `check-twins` went from twelve
-file pairs to **five**, and from 69 seconds to about 15.
+file pairs to **five**, and from 69 seconds to **10.0**, measured on 2026-09-15.
 
-⭐ **`check-ignores` is the one that was never a shell rule.** A new checking rule
+**`check-ignores` is the one that was never a shell rule.** A new checking rule
 goes into the binary; a new `.ps1` twin is work added to a layer being removed.
 
 ⛔ **A PAIR MAY ONLY LEAVE THAT LIST ONE WAY.**
@@ -82,14 +82,16 @@ halves and refuses any difference in exit code or in the `--json` line.
 it is checking less. The pre-deletion run is the one that counts, and
 `TODO/ci.md` records it.
 
-⭐ **It has earned that rule.** `check-docs`' comparison caught the two shell
+**It has earned that rule.** `check-docs`' comparison caught the two shell
 halves DISAGREEING about whether a page cited only inside backticks is an orphan
 - on a shape this tree does not contain, which `check-twins` could never see.
 
 **The five pairs left** are `check-project`, 997 lines and its own unit, plus
-`check-cache`, `check-catalogue`, `check-remote-items` and `mine-repo`. Together
-about **10 seconds** of PowerShell against the **96** the layer started at, ⛔ so
-the remaining wall-clock value is small and the DRIFT value is unchanged.
+`check-cache`, `check-catalogue`, `check-remote-items` and `mine-repo`. Their
+PowerShell halves together are **5.3 seconds**, timed on 2026-09-15, against the
+**96** the layer started at. ⛔ So the remaining wall-clock value is small and the
+DRIFT value is unchanged. That number was carried at 12.3, then decremented to 11 and 10 as pairs
+left, which is arithmetic rather than measurement; it is timed here.
 
 ### Next, in order
 
@@ -100,7 +102,7 @@ the remaining wall-clock value is small and the DRIFT value is unchanged.
    first is a capture-design question - a lane that observes BOTH installs - and
    the second is `SCHEMA-04`'s sampling model, which turns several captures into
    a `patterned` field and has never been run.
-1. **`CLIENT-01`, `CLIENT-06`**, the remaining vertical captures. ⭐ `aria2-next`
+1. **`CLIENT-01`, `CLIENT-06`**, the remaining vertical captures. `aria2-next`
    is the worked example: three dispatches took it from four refusals to two
    written records.
 2. **`CI-10`**, five pairs left, `check-project` its own unit.
@@ -115,7 +117,7 @@ the remaining wall-clock value is small and the DRIFT value is unchanged.
 ## How this project is checked
 
 ⛔ **Run the gate with one command, `sh scripts/common/check-gate.sh`, after the
-last edit.** ⭐ **37 checks, about 127 seconds** on a four-processor host. Its
+last edit.** **37 checks, about 125 seconds** on a four-processor host. Its
 wall clock is `max(concurrent batch) + max(check-capture, check-capture-client)`
 rather than a sum: those two run alone, after the batch, on purpose.
 

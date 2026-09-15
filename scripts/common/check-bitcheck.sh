@@ -416,9 +416,9 @@ agree "markers a file over the density ceiling is refused" check-markers common/
 unplant tools/check/plant.md
 
 # ⛔ LICENSES/*.txt IS EXEMPT AND THIS TREE HAS NO SUCH FILE, so the exemption is
-# proved with a fixture. check-markers.sh's own header is where the lesson comes
-# from: a `py` scope dropped from one half was invisible to check-twins because
-# the tree held no .py file at all.
+# proved with a fixture. The lesson comes from check-markers' own deleted shell
+# header: a `py` scope dropped from one half was invisible to check-twins because
+# the tree held no .py file at all. TODO/ci.md carries it under CI-10.
 mkdir -p "$TREE/LICENSES"
 printf 'a canonical text with a dash %s in it\n' "$DASH" >"$TREE/LICENSES/PLANT.txt"
 agree "markers LICENSES/*.txt is exempt" check-markers common/check-markers 0
@@ -637,8 +637,8 @@ agree "licences clean tree again" check-licences common/check-licences 0
 # its first version turned the clean tree red for exactly that reason. ⚠ The three
 # implementations of the check are exempt from themselves; a harness is not, and
 # exempting one more file is a worse answer than not planting the literal.
-# ⭐ It is the same rule check-markers.sh already followed by building its marker
-# bytes with printf instead of typing them.
+# ⭐ It is the same rule the marker harness already followed, by building its
+# marker bytes with printf instead of typing them.
 BR=$(printf '%s%s' '{' '{')
 BRC=$(printf '%s%s' '}' '}')
 
