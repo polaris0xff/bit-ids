@@ -60,7 +60,16 @@ fn main() {
     println!("peer {address}");
     println!("info_hash {}", hex(&INFO_HASH));
     if let Some(target) = dial_to {
-        match lab.dial("peer-dial", target, peer.opening(), peer.dialling()) {
+        // ⚠ One `present` per dial, and the responder is built from the value it
+        // returned: the offer recorded against the connection is the one whose
+        // bytes actually went down it.
+        let presented = peer.present();
+        match lab.dial(
+            "peer-dial",
+            target,
+            presented.handshake().to_vec(),
+            peer.dialling(&presented),
+        ) {
             Ok(endpoint) => println!("dialled {}", endpoint.address()),
             Err(error) => println!("dial refused: {error}"),
         }
@@ -74,6 +83,13 @@ fn main() {
     println!("segments: {}", journal.segments().len());
     for stream in peer.streams() {
         println!("--- connection {} {:?}", stream.connection(), stream.role());
+        // ⚠ What was OFFERED, printed beside what came back. The two are
+        // different facts and a reader comparing them is comparing the build's
+        // answer against the condition it answered under.
+        match stream.presented_peer_id() {
+            Some(peer_id) => println!("  presented     {}", hex(peer_id)),
+            None => println!("  presented     none"),
+        }
         println!("  bytes         {}", stream.raw().len());
         println!("  rebuilds      {}", stream.rebuilds_from_raw());
         match stream.handshake() {

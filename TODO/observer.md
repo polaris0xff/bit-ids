@@ -750,12 +750,13 @@ connection 3 the lab wrote the same 68 bytes and **nothing came back**. The
 attestation agrees: `peer_streams=1`, because a stream is counted once bytes
 arrive.
 
-⚠ **The most likely reading is the lab's own identity**, and it is a reading
-rather than a finding: `PeerWire::opening` is `identity.handshake(&info_hash)`,
-so both connections present the **same observer peer ID**, and a client that
+⚠ **The most likely reading was the lab's own identity**, and it was a reading
+rather than a finding: `PeerWire::opening` was `identity.handshake(&info_hash)`,
+so both connections presented the **same observer peer ID**, and a client that
 drops a second connection from a peer it already has would do exactly this.
 ⛔ Varying it per connection is a change to what is **offered**, which this entry
-records as part of the measurement, so it is its own unit rather than a tweak.
+records as part of the measurement, so it was its own unit rather than a tweak.
+⭐ **That unit is the section below.**
 
 ⚠ **The tracker surface has the same shape for a different reason**: one
 announce per lane, because the tracker answers `interval: 60` and the observer's
@@ -766,8 +767,87 @@ the pair is refused by `E-PUB-03` naming `cap-source`, `cap-release` and the two
 fields that disagree - a comparable capture that CONFLICTS - where every previous
 assembly was refused for holding no comparable capture at all.
 
+### ⭐ The observer presents a different peer ID per connection, 2026-09-15
+
+⛔ **`PeerWire::opening()` IS DELETED RATHER THAN FIXED.** It answered the same
+sixty-eight bytes however often it was called, so a caller could not dial twice
+without offering one peer twice, and nothing in its signature said so.
+`PeerWire::present()` replaces it and **allocates**: it returns a `Presented`
+carrying the ordinal, the twenty bytes and the opening to hand `Lab::dial`, and
+`dialling(&presented)` builds the responder from that same value, so the offer
+recorded against a connection is the offer whose bytes went down it.
+
+⭐ **The derivation is `PeerIdentity::at`: the last FOUR bytes are the connection
+ordinal in decimal**, so the first connection presents `bit-ids-fixture-0001`,
+the second `bit-ids-fixture-0002`, and the sixteen-byte name is the invariant.
+⚠ That is deliberately the same shape this project MEASURES in a build - a fixed
+prefix and a moving tail - and it is here because it is OFFERED. It wraps at
+10000 and the wrap is recorded rather than refused: four digits is what fits
+beside a sixteen-byte name in twenty bytes, and a capture has never come near
+ten thousand connections.
+
+⛔ **ONE counter serves both roles.** A dial takes its ordinal before the
+connection exists and an accepted connection takes one when it is answered, so
+two counters would hand the same identity to one of each - on the surface where
+a build meets both roles at once, which is exactly where a duplicate peer is
+dropped. `Stream::presented_peer_id` reports what went down each connection, and
+`PeerWire::presented` reports the whole offer, which is what a record cites as a
+run condition beside `PeerWire::offer`.
+
+⚠ **`Stream::recorded` answers `None` and that is not an absence of an offer.**
+It is handed what the TARGET sent; the observer's own handshake went the other
+way and a bundle carries it as that connection's `to_target` segment. A reader
+filling the field in from `raw` would report the build's peer ID as the
+observer's.
+
+⚠ **`client-capture`'s `is-observer-peer-id` row had to widen with it.** It
+compared an announce against one twenty-byte value, which answers *not mine*
+about every connection after the first; it matches the sixteen-byte NAME now.
+`capture-client.sh` reads that row to refuse a run in which nothing external
+announced, so a guard seeing one spelling of the thing it looks for would have
+weakened a refusal rather than a report.
+
+Guard mutation, six plants one at a time over `peer_wire.rs`, each verified to
+have changed the file by comparing its SHA-256 either side, each exit code read
+unpiped, with `--no-fail-fast` so a refusal count is not a count of the binaries
+that ran, and the clean control run first and again after every restore:
+
+| plant | verdict |
+| --- | --- |
+| `at()` ignores the connection - run 18's defect itself | ⭐ refused, 5 cases |
+| `present()` does not advance the counter | ⭐ refused, 3 cases |
+| an accepted connection takes its ordinal from a counter of its own | ⭐ refused, 2 cases |
+| `dialling()` derives an identity rather than taking the one presented | ⭐ refused, 1 case |
+| the ordinal is not zero-padded, so the peer ID changes width | ⭐ refused, 2 cases |
+| the stream does not record what was offered on it | ⭐ refused, 1 case |
+
+⛔ **The fourth plant SURVIVED the first pass, and the repair is the case's
+ORDER rather than a new assertion.** The one-gated-door case dialled before it
+accepted, so the dial held ordinal 1 - and a responder deriving `at(1)` for
+itself is indistinguishable from one carrying the identity actually presented.
+The accept goes first now, the dial is ordinal 2, and the plant is refused.
+⚠ A sixth plant did not compile on its first aim, which is a third status and is
+counted as neither; re-aimed at the same guard in a form that builds, it is the
+last row.
+
+Driven on this host, 2026-09-15, by a reader this project did not write. A
+Python peer written from BEP 3 listened on one port, `client-capture` served a
+torrent naming its own tracker, `curl` announced, and the observer dialled the
+peer twice. ⭐ **Python read the two openings off the wire and reports
+`bit-ids-fixture-0001` and `bit-ids-fixture-0002`** - distinct, sharing one
+sixteen-byte name, with the protocol string, the reserved block and the info
+hash identical on both, so the peer ID is the only thing that varied. The
+observer's own report agrees: `offered-peer-ids 2`, `peer-connections 2`,
+`peer-streams 2`, and each `peer <n> presented` line naming the connection's own
+offer.
+
 Residual: the same one `OBS-02` and `OBS-03` carry. No stock `BitTorrent` client
 has driven this, and none can on a session host.
+
+Residual: ⚠ **whether a stock build answers a second connection is still
+unmeasured.** What is established is that the two connections are now offered
+two peers; whether `aria2-next` handshakes on both is what a dispatch says, and
+until one runs, the reading in the section above stays a reading.
 
 ## OBS-05: BEP 10 and early-message observer
 

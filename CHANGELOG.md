@@ -5,6 +5,19 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-15T12:05:20Z
+
+- ⭐ **The observer offers a different peer ID on every connection.**
+  `PeerWire::opening()` is deleted rather than fixed: it answered the same bytes
+  however often it was called, so two dials offered one peer.
+  `PeerWire::present()` allocates, and `dialling` takes the value it returned.
+- ⛔ **One counter serves both roles**, because a dial takes its ordinal before
+  the connection exists and an accept takes one when it answers.
+- ⚠ **`is-observer-peer-id` compared against one twenty-byte value** and would
+  have answered *not mine* about every connection after the first.
+- Record: [`TODO/observer.md`](TODO/observer.md), `OBS-04`. No version bump and
+  no deploy.
+
 ### 2026-09-15T08:09:05Z
 
 - ⛔ **`capture-client` run 18 is green on both lanes and the refusal MOVED.**

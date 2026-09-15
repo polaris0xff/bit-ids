@@ -59,7 +59,13 @@ use bit_ids_probe::{HttpTracker, TrackerResponse};
 /// ⚠ It is what **this observer** calls itself, and never what the build under
 /// measurement is called. A capture whose transcript held only this value
 /// measured nothing.
-const OBSERVER_PEER_ID: &[u8] = b"bit-ids-fixture-0001";
+///
+/// ⛔ **It is the NAME rather than a whole peer ID, and it has to be.** The
+/// observer varies the last four bytes per connection, so a comparison against
+/// one twenty-byte value would answer *not mine* about every connection after
+/// the first - which is a guard that sees one spelling of the thing it looks
+/// for.
+const OBSERVER_NAME: &[u8] = b"bit-ids-fixture-";
 
 fn slug(text: &str) -> Slug {
     Slug::parse(text).expect("a canonical identifier")
@@ -215,6 +221,7 @@ fn main() {
     println!("segments: {}", journal.segments().len());
 
     report_announces(&tracker);
+    report_offered(&peer_wire);
     report_peers(&peer_wire);
     write_bundle(&root, &journal, &torrent);
 }
@@ -246,11 +253,16 @@ fn dial_when_announced(
     let wait_for = Duration::from_secs(seconds).min(Duration::from_secs(60));
     loop {
         if !tracker.announces().is_empty() {
+            // ⛔ A FRESH IDENTITY PER CONNECTION, which is what run 18 lacked:
+            // both its dials presented the same peer ID, so a build that drops a
+            // second connection from a peer it already has would answer one and
+            // ignore the other - which is exactly what it did.
+            let presented = peer_wire.present();
             let first = match lab.dial(
                 "peer-wire-dialled",
                 address,
-                peer_wire.opening(),
-                peer_wire.dialling(),
+                presented.handshake().to_vec(),
+                peer_wire.dialling(&presented),
             ) {
                 Ok(_) => format!("{address}"),
                 // ⚠ A refused dial is recorded and does not end the run. The
@@ -261,6 +273,7 @@ fn dial_when_announced(
             };
             let mut opened = 1;
             for _ in 1..dials {
+                let presented = peer_wire.present();
                 // ⚠ A refused RE-dial ends the dialling and not the run, for the
                 // same reason: a build that accepts one connection and not a
                 // second has been measured once, which is a weaker record than
@@ -268,8 +281,8 @@ fn dial_when_announced(
                 if let Err(error) = lab.dial_again(
                     "peer-wire-dialled",
                     address,
-                    peer_wire.opening(),
-                    peer_wire.dialling(),
+                    presented.handshake().to_vec(),
+                    peer_wire.dialling(&presented),
                 ) {
                     println!("peer-redial refused: {error}");
                     break;
@@ -318,8 +331,26 @@ fn report_announces(tracker: &HttpTracker) {
         let mine = announce
             .peer_id()
             .and_then(Result::ok)
-            .is_some_and(|bytes| bytes == OBSERVER_PEER_ID);
+            .is_some_and(|bytes| bytes.starts_with(OBSERVER_NAME));
         println!("announce {index} is-observer-peer-id {mine}");
+    }
+}
+
+/// What this observer OFFERED on the peer wire, which is a run condition.
+///
+/// ⛔ **A build's answer means nothing without it.** `OBS-04` records what was
+/// offered beside what came back, and the offer is per connection now: two
+/// connections presenting one identity is a build being asked to talk to a peer
+/// it already has, which run 18 measured as a build that answered once.
+fn report_offered(peer_wire: &PeerWire) {
+    let presented = peer_wire.presented();
+    println!("offered-peer-ids {}", presented.len());
+    for one in &presented {
+        println!(
+            "offered-peer-id {} {}",
+            one.connection(),
+            hex(one.peer_id())
+        );
     }
 }
 
@@ -330,6 +361,14 @@ fn report_peers(peer_wire: &PeerWire) {
     println!("peer-dropped {}", peer_wire.dropped());
     for (index, stream) in streams.iter().enumerate() {
         println!("peer {index} role {:?}", stream.role());
+        // ⚠ The offer this connection carried, beside what came back on it. A
+        // reader comparing two connections' answers needs to see that the two
+        // conditions differed, or a build answering once reads as a build that
+        // refuses a second connection rather than one shown the same peer twice.
+        match stream.presented_peer_id() {
+            Some(peer_id) => println!("peer {index} presented {}", hex(peer_id)),
+            None => println!("peer {index} presented none"),
+        }
         println!("peer {index} messages {}", stream.messages().len());
         println!("peer {index} rebuilds {}", stream.rebuilds_from_raw());
         match stream.extended_handshake() {

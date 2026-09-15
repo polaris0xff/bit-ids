@@ -31,7 +31,7 @@ pub mod tracker_udp;
 pub mod web_seed;
 
 pub use peer_wire::{
-    ExtendedOffer, ExtensionProtocol, Offer, PeerIdentity, PeerWire, Role, Stream,
+    ExtendedOffer, ExtensionProtocol, Offer, PeerIdentity, PeerWire, Presented, Role, Stream,
 };
 pub use tracker_http::{Announce, HttpTracker, OfferedPeer, TrackerResponse};
 pub use tracker_udp::{Observed, Refusal, UdpTracker, UdpTrackerResponse};

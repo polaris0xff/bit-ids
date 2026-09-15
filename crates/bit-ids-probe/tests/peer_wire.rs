@@ -248,7 +248,21 @@ fn peer_wire_tells_two_concurrent_connections_apart() {
     second.flush().expect("flush");
     let second_answer = read_handshake(&mut second);
 
-    assert_eq!(first_answer, second_answer, "one observer, one identity");
+    // ⛔ THE ANSWERS DIFFER, AND ONLY IN THE PEER ID. This assertion read
+    // `assert_eq!(.., "one observer, one identity")` until 2026-09-15, and that
+    // identity is what made a build drop the second connection as a peer it
+    // already had. Everything else in the handshake is the same run condition.
+    assert_ne!(
+        first_answer, second_answer,
+        "two connections are offered two identities"
+    );
+    assert_eq!(
+        first_answer[..48],
+        second_answer[..48],
+        "only the peer ID varies: same protocol, reserved block and info hash"
+    );
+    assert_eq!(&first_answer[48..68], b"bit-ids-fixture-0001");
+    assert_eq!(&second_answer[48..68], b"bit-ids-fixture-0002");
     drop(first);
     drop(second);
     drop(lab);
@@ -262,6 +276,24 @@ fn peer_wire_tells_two_concurrent_connections_apart() {
         .collect();
     assert!(peer_ids.contains(&b"-qB5000-abcdefghijkl".to_vec()));
     assert!(peer_ids.contains(&b"-TR4060-zyxwvutsrqpo".to_vec()));
+
+    // ⚠ Each connection reports the offer that went down IT, not the set. A
+    // record that only listed the identities could not say which connection saw
+    // which, and the ordering of two concurrent accepts is not fixed.
+    let offered: Vec<Vec<u8>> = streams
+        .iter()
+        .map(|one| one.presented_peer_id().expect("it answered").to_vec())
+        .collect();
+    assert_ne!(offered[0], offered[1], "no identity is offered twice");
+    let presented: Vec<Vec<u8>> = peer
+        .presented()
+        .iter()
+        .map(|one| one.peer_id().to_vec())
+        .collect();
+    assert_eq!(presented.len(), 2, "two allocations, and no more");
+    for one in &offered {
+        assert!(presented.contains(one), "the stream's offer was allocated");
+    }
 }
 
 #[test]
@@ -303,8 +335,14 @@ fn peer_wire_observes_the_other_role_by_dialling_the_target() {
         length[0]
     });
 
+    let presented = peer.present();
     let endpoint = lab
-        .dial("peer-dial", address, peer.opening(), peer.dialling())
+        .dial(
+            "peer-dial",
+            address,
+            presented.handshake().to_vec(),
+            peer.dialling(&presented),
+        )
         .expect("a loopback dial");
     assert_eq!(endpoint.transport(), Transport::Dialled);
     assert_eq!(endpoint.address(), address);
@@ -566,4 +604,126 @@ fn peer_wire_sends_its_handshake_once_per_connection_and_not_once_per_read() {
         .collect();
     assert_eq!(sent.len(), 1, "one handshake per connection, not per read");
     assert_eq!(sent[0].len(), 68, "and it is a handshake");
+}
+
+#[test]
+fn a_dial_and_an_accept_on_one_observer_never_present_one_identity() {
+    // ⛔ THE ONE-GATED-DOOR CASE. A dial takes its ordinal before the connection
+    // exists and an accept takes one when it answers, so two counters would hand
+    // the same peer to one of each - on the surface where a build meets both
+    // roles at once, which is exactly where a duplicate peer is dropped.
+    let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).expect("a target listener");
+    let address = listener.local_addr().expect("an address");
+
+    let peer = observer();
+    let mut lab = Lab::builder()
+        .deadline(Duration::from_secs(60))
+        .stream("peer-wire", peer.accepting())
+        .expect("a canonical endpoint name")
+        .start()
+        .expect("loopback binds");
+
+    let target = std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("the observer dials");
+        stream
+            .set_read_timeout(Some(Duration::from_secs(10)))
+            .expect("a read timeout is settable");
+        let mut opening = [0_u8; 68];
+        stream
+            .read_exact(&mut opening)
+            .expect("the whole handshake");
+        stream
+            .write_all(&handshake(
+                b"BitTorrent protocol",
+                [0; RESERVED_LEN],
+                b"-DE13F0-listenerside",
+            ))
+            .expect("the target answers");
+        stream.flush().expect("flush");
+        std::thread::sleep(Duration::from_millis(200));
+        opening[48..68].to_vec()
+    });
+
+    // ⛔ THE ACCEPT GOES FIRST, SO THE DIAL IS NOT ORDINAL 1. With the dial
+    // first, a responder deriving `at(1)` for itself is indistinguishable from
+    // one carrying the identity actually presented, and a plant that did exactly
+    // that SURVIVED this case until the order was turned round.
+    let mut client = connect(&lab);
+    client.write_all(&standard_handshake()).expect("write");
+    client.flush().expect("flush");
+    let answered = read_handshake(&mut client);
+
+    let presented = peer.present();
+    assert_ne!(
+        presented.peer_id().to_vec(),
+        answered[48..68].to_vec(),
+        "the accept already took ordinal 1"
+    );
+    lab.dial(
+        "peer-dial",
+        address,
+        presented.handshake().to_vec(),
+        peer.dialling(&presented),
+    )
+    .expect("a loopback dial");
+
+    let dialled_with = target.join().expect("the target thread");
+    let streams = wait_for_role(&peer, Role::ObserverDialled);
+    drop(client);
+    drop(lab);
+
+    assert_eq!(
+        dialled_with,
+        presented.peer_id().to_vec(),
+        "the target read the identity the dial was told it presented"
+    );
+    assert_ne!(
+        answered[48..68].to_vec(),
+        dialled_with,
+        "the accept did not re-offer the dial's identity"
+    );
+    // ⛔ And the RECORD of the dialled connection names the bytes that went down
+    // it, rather than an identity the responder worked out for itself.
+    let dialled = streams
+        .iter()
+        .find(|one| one.role() == Role::ObserverDialled)
+        .expect("the dialled stream");
+    assert_eq!(
+        dialled.presented_peer_id().expect("the dial presented one"),
+        presented.peer_id(),
+        "the offer recorded is the offer sent"
+    );
+
+    let all: Vec<Vec<u8>> = peer
+        .presented()
+        .iter()
+        .map(|one| one.peer_id().to_vec())
+        .collect();
+    assert_eq!(all.len(), 2, "one allocation per connection");
+    let mut unique = all.clone();
+    unique.sort();
+    unique.dedup();
+    assert_eq!(unique.len(), all.len(), "and no two are the same");
+}
+
+/// Waits until the observer has a stream in `role` carrying a handshake.
+///
+/// ⚠ On the condition rather than on a clock: the bound turns a hang into a
+/// failure and says nothing about how long the observer took.
+fn wait_for_role(peer: &PeerWire, role: Role) -> Vec<bit_ids_probe::Stream> {
+    let deadline = std::time::Instant::now() + Duration::from_secs(20);
+    loop {
+        let streams = peer.streams();
+        if streams
+            .iter()
+            .any(|one| one.role() == role && one.handshake().is_some())
+        {
+            return streams;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "no {role:?} stream ever carried a handshake"
+        );
+        std::thread::sleep(Duration::from_millis(5));
+    }
 }
