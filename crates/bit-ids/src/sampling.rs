@@ -18,6 +18,9 @@ use core::num::NonZeroU32;
 use serde::{Deserialize, Serialize};
 
 use crate::canonical::HexBytes;
+use crate::observation::{
+    BytePattern, ConstantValue, FieldState, PatternRun, PatternedValue, VariableValue,
+};
 
 /// What a run varied between samples.
 ///
@@ -256,4 +259,165 @@ pub fn classify(samples: &[Sample], plan: &SamplingPlan) -> Option<VariabilityRe
         spans,
         samples: samples.len(),
     })
+}
+
+/// Whether two samples anywhere carry a different byte at `offset`.
+///
+/// ⚠ Per offset rather than per span, which is what the runs below are built
+/// from. [`differs_anywhere`] above answers the same question and takes the
+/// borrowed form [`classify`] works in.
+fn differs_at(samples: &[Sample], offset: usize) -> bool {
+    let Some(first) = samples.first() else {
+        return false;
+    };
+    let head = first.value.as_slice()[offset];
+    samples
+        .iter()
+        .any(|sample| sample.value.as_slice()[offset] != head)
+}
+
+/// How many distinct values the samples carried.
+fn distinct_values(samples: &[Sample]) -> Option<NonZeroU32> {
+    let mut seen: Vec<&[u8]> = Vec::new();
+    for sample in samples {
+        let bytes = sample.value.as_slice();
+        if !seen.contains(&bytes) {
+            seen.push(bytes);
+        }
+    }
+    u32::try_from(seen.len()).ok().and_then(NonZeroU32::new)
+}
+
+/// Appends a fixed run, merging it into the previous one when that is also
+/// fixed.
+///
+/// [`classify`] splits on **lifetime** and this splits on **bytes**, so two
+/// adjacent spans can land on one kind here. The record has no spelling for the
+/// difference between one fixed run and two touching ones, so emitting two
+/// would make the same evidence produce two record shapes.
+fn push_fixed(
+    runs: &mut Vec<PatternRun>,
+    bytes: &[u8],
+) -> Result<(), crate::canonical::CanonicalError> {
+    if let Some(PatternRun::Fixed { bytes: previous }) = runs.last() {
+        let mut joined = previous.as_slice().to_vec();
+        joined.extend_from_slice(bytes);
+        let merged = HexBytes::new(joined)?;
+        runs.pop();
+        runs.push(PatternRun::Fixed { bytes: merged });
+        return Ok(());
+    }
+    runs.push(PatternRun::Fixed {
+        bytes: HexBytes::new(bytes.to_vec())?,
+    });
+    Ok(())
+}
+
+/// Appends a varying run, merging it into the previous one when that is also
+/// varying.
+fn push_varying(runs: &mut Vec<PatternRun>, length: usize) {
+    if let Some(PatternRun::Varying {
+        length: previous, ..
+    }) = runs.last_mut()
+    {
+        *previous += length;
+        return;
+    }
+    runs.push(PatternRun::Varying {
+        length,
+        // ⚠ An alphabet is a claim about what the build **can** emit, and a
+        // handful of runs cannot establish one. `observation.rs` makes it
+        // optional for exactly this reason, so it is left unstated rather than
+        // inferred from the samples in hand.
+        alphabet: None,
+    });
+}
+
+/// The record state a set of samples supports.
+///
+/// ⛔ **This is the join `SCHEMA-04` closed without**, and its absence is why
+/// the classifier above had no caller that writes a record. [`classify`] says
+/// what the samples prove; a record carries a [`FieldState`]. With nothing
+/// between them every writer here spelled `constant` with one sample by hand,
+/// so a peer ID whose tail is regenerated per connection was recorded as a
+/// constant - and two records of one build then disagreed about it, which
+/// [`crate::equivalence::classify_across`] reports as `divergent`.
+///
+/// ⛔ **A run is fixed when the BYTES are identical in every sample, and the
+/// runs are derived per OFFSET rather than from [`VariabilityReport::spans`].**
+/// Two spans are one run here whenever their bytes behave alike, because
+/// [`PatternRun`] carries no lifetime and two shapes for one measurement would
+/// be two records. ⚠ And one span can hold both kinds: [`Lifetime::Unknown`]
+/// covers a value that never changed **and** a value that changed where no
+/// dimension the plan varied separates the change, so a span-wide reading calls
+/// eighteen fixed bytes varying because two bytes beside them moved. Measured
+/// by a test that did exactly that.
+///
+/// ⚠ **The lifetimes are deliberately not carried into the record.** The plan
+/// lives in the run manifest and the claim lives in the profile, which is
+/// `SCHEMA-04`'s own split; what a byte's lifetime is belongs beside the plan
+/// that established it, and `bind` is what holds the two documents together.
+///
+/// ⚠ **The plan is the caller's claim and the bytes are the measurement.**
+/// Samples that differ under a plan that varied nothing still report variation
+/// here, because the samples are the evidence. That pair is contradictory and
+/// `E-BND-20` is what refuses it, against the run manifest.
+///
+/// # Errors
+///
+/// Returns `None` when there are no samples, when there are more than
+/// [`u32::MAX`] of them, or when a span cannot be represented - each of which is
+/// a state nobody measured rather than a state to invent.
+#[must_use]
+pub fn field_state(samples: &[Sample], plan: &SamplingPlan) -> Option<FieldState> {
+    let report = classify(samples, plan)?;
+    let count = u32::try_from(report.samples)
+        .ok()
+        .and_then(NonZeroU32::new)?;
+
+    let Some(width) = report.length else {
+        // ⚠ The widths did not line up, so no offset is comparable and there is
+        // no span to describe. That is what `variable` with no length says.
+        return Some(FieldState::Variable(VariableValue {
+            length: None,
+            samples: count,
+            distinct: distinct_values(samples)?,
+        }));
+    };
+
+    let first = samples.first()?.value.as_slice().to_vec();
+    let mut runs: Vec<PatternRun> = Vec::new();
+    let mut varying = 0usize;
+    for offset in 0..width {
+        if differs_at(samples, offset) {
+            varying += 1;
+            push_varying(&mut runs, 1);
+        } else {
+            push_fixed(&mut runs, &first[offset..=offset]).ok()?;
+        }
+    }
+
+    if varying == 0 {
+        return Some(FieldState::Constant(ConstantValue {
+            value: HexBytes::new(first).ok()?,
+            samples: count,
+        }));
+    }
+    if varying == width {
+        // ⛔ Every byte moved, so there is no fixed run to report and
+        // `E-OBS-10` refuses a pattern without one. A value with no stable span
+        // is a variable, which is the state that says exactly that.
+        return Some(FieldState::Variable(VariableValue {
+            length: Some(width),
+            samples: count,
+            distinct: distinct_values(samples)?,
+        }));
+    }
+    Some(FieldState::Patterned(PatternedValue {
+        pattern: BytePattern {
+            length: width,
+            runs,
+        },
+        samples: count,
+    }))
 }

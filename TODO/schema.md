@@ -272,6 +272,68 @@ and `cargo clippy` at `--workspace --locked --all-targets`, `shellcheck`,
 against; the manifest coverage test refused the change until they were, which
 is the guard working before anyone remembered to.
 
-Residual: the classifier is not yet called by anything that writes a record.
-A capture tool turns samples into a `FieldState` with it, and that tool is
-`OBS-02` onward.
+### ⭐ The join that turns samples into a record's state, 2026-09-15
+
+⛔ **This entry's residual said the classifier is not called by anything that
+writes a record, and that had a cost this file did not name.** `capture-client`
+run 17's two records spelled every field `constant` with one sample, because
+there was nothing between [`classify`](../crates/bit-ids/src/sampling.rs) and
+the [`FieldState`](../crates/bit-ids/src/observation.rs) a record carries. A
+peer ID's tail is regenerated per connection, so those two constants differed
+and `classify_across` reported the pair **`divergent`** - which is one of the
+two reasons nothing this project has measured is publishable.
+
+⭐ **`sampling::field_state` is that join.** Given the samples and the run's
+plan it answers `constant`, `patterned` or `variable`, and a lane that restarts
+the build now describes what holds still rather than what one connection
+carried.
+
+⛔ **A run is fixed when the BYTES are identical in every sample, and the runs
+are derived per OFFSET rather than from the classifier's spans.** Both halves of
+that were found by a test rather than by reading:
+
+- `classify` merges adjacent offsets by **lifetime**, and `Lifetime::Unknown`
+  covers two different facts - a value that never changed, and a value that
+  changed where no dimension the plan varied separates the change. One span
+  therefore holds both kinds, and a span-wide byte test called eighteen fixed
+  bytes varying because two bytes beside them moved.
+- Reading the lifetime instead of the bytes reports a value that changed as
+  **fixed**, which would publish bytes no sample carried.
+
+⚠ **The lifetimes are deliberately not carried into the record.** `PatternRun`
+has no lifetime field, which is this entry's own split: the plan lives in the
+manifest and the claim lives in the profile. Two spans differing only in
+lifetime are therefore one run, or one measurement would produce two record
+shapes.
+
+Prove: `cargo test -p bit-ids --locked --test variability --test equivalence`.
+
+Closure evidence, 2026-09-15: 20 variability cases and 11 equivalence cases,
+all passed. ⭐ The two that matter are a pair of lanes built from the same
+prefix and different tails: recorded from **one** sample each they are
+`constant`, they conflict, and `classify_across` answers `divergent`; recorded
+from four restarts each they are `patterned` on one shape, the comparison
+answers `build_equivalent`, and `publishable` holds for both records.
+
+Guard mutation: five plants into `field_state`, one at a time, each verified to
+have changed the file, with the clean tree run either side. All five refused,
+none survived, none failed to apply.
+
+| plant | cases that went red |
+| --- | ---: |
+| runs derived from the lifetime rather than the bytes | 1 |
+| touching varying runs no longer merged | 3 |
+| touching fixed runs no longer merged | 3 |
+| a pattern emitted with no fixed run at all | 1 |
+| every state reported as the first sample, constant | 6 |
+
+⛔ **`cargo test` stops at the first failing binary, so the first pass of that
+table under-reported.** The last row read as one case until the pass was re-run
+with `--no-fail-fast`, and the case it named was in the other file. A count of
+refusals taken from a fail-fast run is a count of the binaries that ran.
+
+Residual: ⚠ **nothing yet takes more than one sample.** The join exists and
+`assemble-capture` still reads one capture per lane, so a real record stays
+`constant` with one sample until a capture restarts the build and the assembler
+is given the several bundles. That is a capture-path change and a dispatch, and
+`CI-09` carries it beside the other half of the same question.

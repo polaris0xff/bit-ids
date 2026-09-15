@@ -5,6 +5,33 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-15T07:08:37Z
+
+- ⭐ **The sampling classifier reaches a record now.** `SCHEMA-04` closed with a
+  residual saying nothing that writes a record calls it, and
+  `sampling::field_state` is the join it named: samples and the run's plan in,
+  `constant`, `patterned` or `variable` out.
+- ⛔ **That residual is why nothing measured can publish.** Run 17's records
+  spelled every field `constant` with one sample, a peer ID's tail is
+  regenerated per connection, so the two lanes' constants conflicted and
+  `classify_across` answered `divergent`. Recorded from four restarts each they
+  are one pattern, the comparison answers `build_equivalent`, and both records
+  pass `publishable`.
+- ⛔ **A run is fixed when the BYTES match, derived per OFFSET, and a test found
+  both halves of that.** The classifier merges adjacent offsets by lifetime and
+  `unknown` covers two different facts, so one span holds bytes that moved
+  beside bytes that did not; and reading the lifetime rather than the bytes
+  reports a value that changed as fixed.
+- ⛔ **`E-PUB-04` is structural, and the closer the record named does not
+  exist.** A capture observes one route, `classify` can never answer
+  `build_equivalent`, and the per-record gate never sees the sibling. Filed with
+  the store-level rule that would close it rather than written.
+- ⚠ **`cargo test` stops at the first failing binary**, so a mutation pass that
+  counts refusals without `--no-fail-fast` counts the binaries that ran. One
+  plant read as 1 case and is 6.
+- Record: [`TODO/schema.md`](TODO/schema.md), `SCHEMA-04`. No version bump and
+  no deploy.
+
 ### 2026-09-15T06:33:43Z
 
 - ⛔ **`check-docs` shipped a Windows-only defect and CI run 132 caught it.** The

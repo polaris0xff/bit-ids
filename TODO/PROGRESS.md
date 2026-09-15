@@ -34,8 +34,28 @@ automatically did not fire and could not have.
 
 | refusal | what would close it |
 | --- | --- |
-| `E-PUB-04`: only ONE of the two installs was put on the wire, so equal version labels are all that connects the routes | a capture that observes both installs, or `ACQ-03` reaching `byte_identical` - which a release binary and a local build never will |
-| `classify_across: divergent`: a peer ID's tail is per connection, so two captures necessarily disagree | `SCHEMA-04`'s sampling model, which turns several captures into a `patterned` field and has never been run |
+| `E-PUB-04`: only ONE of the two installs was put on the wire, so equal version labels are all that connects the routes | ⛔ **not expressible in a record today** - see below |
+| `classify_across: divergent`: a peer ID's tail is per connection, so two captures necessarily disagree | ⭐ **the model reaches a record now**, `SCHEMA-04`; what is left is a capture that takes more than one sample |
+
+⛔ **`E-PUB-04` IS STRUCTURAL AND THIS FILE USED TO NAME A CLOSER THAT DOES NOT
+EXIST.** It said "a capture that observes both installs", and a capture cannot:
+`Capture::observed_route` is a single route, by design and with the reason in
+its own doc comment. Three facts compose into a dead end, each pinned by a test
+rather than read:
+
+- `equivalence::classify`, which is what `publishable` asks, reaches
+  `byte_identical` or `unresolved` and **never** `build_equivalent`;
+- `build_equivalent` is reachable only from `classify_across`, which takes two
+  records, and nothing carries its answer back into either of them;
+- `corpus::publishable_view` maps the per-record gate over each record
+  separately, so the one place that holds both records never compares them.
+
+⚠ So a record whose routes installed byte-different builds cannot publish
+however many captures exist, and a release binary against a local build never
+installs the same bytes. ⭐ The fix is a store-level rule rather than a record
+field: the corpus holds the sibling capture, and `classify_across` over the pair
+is what `E-PUB-04` is waiting for. Recorded here rather than written, because it
+changes a publication gate and belongs in its own unit with its own plants.
 
 ⭐ **The identity measured is not the product's own**, corroborated by a reader
 this project did not write: `tracker_http/user_agent` decodes to

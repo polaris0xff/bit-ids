@@ -96,12 +96,18 @@ left, which is arithmetic rather than measurement; it is timed here.
 ### Next, in order
 
 0. ⛔ **Make a record publishable.** Run 17's are `provisional` for two reasons,
-   both correct: `E-PUB-04`, because only ONE of the two installs was put on the
-   wire, so equal version labels are all that connects the routes; and
-   `classify_across: divergent`, because a peer ID's tail is per connection. The
-   first is a capture-design question - a lane that observes BOTH installs - and
-   the second is `SCHEMA-04`'s sampling model, which turns several captures into
-   a `patterned` field and has never been run.
+   both correct, and they are no longer in the same state as each other.
+   ⭐ **The divergence half has its repair.** `sampling::field_state` turns a
+   lane's samples into the state a record carries, so a build that is restarted
+   is recorded as the pattern it has rather than as the one tail one connection
+   produced - and two lanes then agree. ⚠ What is missing is the samples: the
+   capture path runs the build once per lane, so `assemble-capture` still has
+   one to fold. That is a capture-path change and a dispatch.
+   ⛔ **The `E-PUB-04` half is structural and the closer this file used to name
+   does not exist.** A capture observes one route, `classify` can never answer
+   `build_equivalent`, and the per-record gate never sees the sibling record.
+   `TODO/PROGRESS.md` carries the three facts and the store-level rule that
+   would close it.
 1. **`CLIENT-01`, `CLIENT-06`**, the remaining vertical captures. `aria2-next`
    is the worked example: three dispatches took it from four refusals to two
    written records.

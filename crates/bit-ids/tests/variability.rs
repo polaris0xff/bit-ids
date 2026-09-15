@@ -14,7 +14,8 @@
 use core::num::NonZeroU32;
 
 use bit_ids::canonical::HexBytes;
-use bit_ids::sampling::{Lifetime, Sample, SamplingPlan, classify};
+use bit_ids::observation::{FieldState, PatternRun};
+use bit_ids::sampling::{Lifetime, Sample, SamplingPlan, classify, field_state};
 
 fn plan(sessions: u32, torrents: u32, connections: u32) -> SamplingPlan {
     SamplingPlan {
@@ -281,4 +282,195 @@ fn variability_counts_what_a_plan_can_produce() {
         "varying torrents is not restarting the process"
     );
     assert!(plan(2, 1, 1).restarts());
+}
+
+// -- the state a record carries, derived from those samples ----------------
+//
+// `field_state` is the join this entry was closed without: the classifier said
+// what the samples prove and nothing turned that into the `FieldState` a record
+// holds. These assert the mapping, and the one that matters most is the third,
+// which is the case where reading the lifetime rather than the bytes would
+// report a value that changed as fixed.
+
+fn runs_of(state: &FieldState) -> Vec<(&'static str, usize)> {
+    let FieldState::Patterned(patterned) = state else {
+        panic!("expected a patterned state, got {}", state.as_str());
+    };
+    patterned
+        .pattern
+        .runs
+        .iter()
+        .map(|run| match run {
+            PatternRun::Fixed { bytes } => ("fixed", bytes.len()),
+            PatternRun::Varying { length, .. } => ("varying", *length),
+        })
+        .collect()
+}
+
+/// Four restarts of a build whose eight-byte prefix holds and whose twelve-byte
+/// tail is regenerated, which is the shape a real peer ID has.
+fn restarted_peer_ids() -> Vec<Sample> {
+    (0..4u32)
+        .map(|session| {
+            let mut bytes = b"-XX0000-".to_vec();
+            bytes.extend((0..12u32).map(|index| {
+                u8::try_from((session * 13 + index * 7 + 1) & 0xff).expect("masked to one byte")
+            }));
+            Sample {
+                session,
+                torrent: 0,
+                connection: 0,
+                value: HexBytes::new(bytes).expect("twenty bytes is not empty"),
+            }
+        })
+        .collect()
+}
+
+#[test]
+fn variability_turns_a_restarted_peer_id_into_the_patterned_state_a_record_carries() {
+    let state =
+        field_state(&restarted_peer_ids(), &plan(4, 1, 1)).expect("four samples support a state");
+    assert_eq!(
+        runs_of(&state),
+        vec![("fixed", 8), ("varying", 12)],
+        "the client prefix is the identifying half and it is kept"
+    );
+    let FieldState::Patterned(patterned) = &state else {
+        unreachable!("runs_of already refused anything else");
+    };
+    assert_eq!(patterned.pattern.length, 20);
+    assert_eq!(patterned.samples.get(), 4);
+}
+
+#[test]
+fn variability_reports_a_value_that_never_moved_as_constant() {
+    let plan = plan(3, 1, 1);
+    let samples: Vec<Sample> = (0..3)
+        .map(|session| sample(session, 0, 0, &peer_id("aabbccddeeff001122334455")))
+        .collect();
+    let state = field_state(&samples, &plan).expect("three samples support a state");
+    let FieldState::Constant(constant) = &state else {
+        panic!("expected constant, got {}", state.as_str());
+    };
+    assert_eq!(constant.samples.get(), 3);
+    assert!(
+        !state.claims_variation(),
+        "nothing moved, so nothing may claim it did"
+    );
+}
+
+#[test]
+fn variability_will_not_call_a_span_fixed_because_its_lifetime_does_not_vary() {
+    // ⛔ `Lifetime::Unknown` covers two facts: a value that never changed, and a
+    // value that changed where no dimension the plan varied separates the
+    // change. A state derived from the lifetime would report the second as
+    // fixed bytes. These samples are labelled across sessions under a plan that
+    // declares one, which is the combination that reaches it.
+    let plan = plan(1, 2, 1);
+    let samples = vec![
+        sample(0, 0, 0, &peer_id("aabbccddeeff001122334455")),
+        sample(1, 0, 0, &peer_id("aabbccddeeff00112233ffff")),
+    ];
+    let offset = 18;
+    let report = classify(&samples, &plan).expect("two samples classify");
+    assert_eq!(
+        report.span_at(offset).map(|span| span.lifetime),
+        Some(Lifetime::Unknown),
+        "this is the case the guard exists for; if it stops being unknown the \
+         test is no longer testing anything"
+    );
+
+    let state = field_state(&samples, &plan).expect("two samples support a state");
+    assert_eq!(
+        runs_of(&state),
+        vec![("fixed", 18), ("varying", 2)],
+        "the bytes differ over those two, whatever the lifetime could not say"
+    );
+}
+
+#[test]
+fn variability_merges_touching_spans_the_record_cannot_tell_apart() {
+    // `classify` splits on lifetime and a record's pattern splits on bytes, so
+    // a per-connection byte beside a per-session one is two spans there and one
+    // varying run here. Two shapes for one measurement would be two records.
+    let plan = plan(2, 1, 2);
+    let samples: Vec<Sample> = [(0, 0), (0, 1), (1, 0), (1, 1)]
+        .into_iter()
+        .map(|(session, connection): (u32, u32)| {
+            let tail = format!("{connection:02x}{session:02x}");
+            sample(
+                session,
+                0,
+                connection,
+                &peer_id(&format!("aabbccddeeff00112233{tail}")),
+            )
+        })
+        .collect();
+    let report = classify(&samples, &plan).expect("four samples classify");
+    assert_eq!(
+        report.span_at(18).map(|span| span.lifetime),
+        Some(Lifetime::PerConnection)
+    );
+    assert_eq!(
+        report.span_at(19).map(|span| span.lifetime),
+        Some(Lifetime::PerSession),
+        "two different lifetimes, which is what makes them two spans"
+    );
+
+    let state = field_state(&samples, &plan).expect("four samples support a state");
+    assert_eq!(runs_of(&state), vec![("fixed", 18), ("varying", 2)]);
+}
+
+#[test]
+fn variability_reports_a_value_whose_every_byte_moved_as_variable() {
+    // ⛔ A pattern needs a fixed run and a varying one, so a value with no
+    // stable span is a variable rather than a pattern of one run. `E-OBS-10`
+    // refuses the other spelling.
+    let plan = plan(2, 1, 1);
+    let samples = vec![sample(0, 0, 0, "aabbcc"), sample(1, 0, 0, "ddeeff")];
+    let state = field_state(&samples, &plan).expect("two samples support a state");
+    let FieldState::Variable(variable) = &state else {
+        panic!("expected variable, got {}", state.as_str());
+    };
+    assert_eq!(variable.length, Some(3));
+    assert_eq!(variable.samples.get(), 2);
+    assert_eq!(variable.distinct.get(), 2);
+}
+
+#[test]
+fn variability_reports_a_changing_width_as_a_variable_with_no_length() {
+    let plan = plan(2, 1, 1);
+    let samples = vec![sample(0, 0, 0, "aabbcc"), sample(1, 0, 0, "aabbccdd")];
+    let state = field_state(&samples, &plan).expect("two samples support a state");
+    let FieldState::Variable(variable) = &state else {
+        panic!("expected variable, got {}", state.as_str());
+    };
+    assert_eq!(
+        variable.length, None,
+        "the width itself moved, so there is no common length to state"
+    );
+    assert_eq!(variable.distinct.get(), 2);
+}
+
+#[test]
+fn variability_supports_no_state_at_all_over_no_samples() {
+    assert!(
+        field_state(&[], &plan(4, 2, 2)).is_none(),
+        "a state over nothing is a measurement nobody took"
+    );
+}
+
+#[test]
+fn variability_states_the_bytes_even_when_the_plan_varied_nothing() {
+    // ⚠ The plan is the caller's claim and the samples are the measurement, so
+    // this reports what it saw. The pair is contradictory and `E-BND-20` is
+    // what refuses it, against the run manifest - not this function, which
+    // would otherwise be a second gate answering a different way.
+    let plan = plan(1, 1, 1);
+    let samples = vec![sample(0, 0, 0, "aabbcc"), sample(0, 0, 0, "aabbdd")];
+    let state = field_state(&samples, &plan).expect("two samples support a state");
+    assert!(
+        state.claims_variation(),
+        "the bytes moved; calling that constant would publish a value no sample carried"
+    );
 }

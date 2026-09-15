@@ -5,9 +5,13 @@
 //! every route to report the version the record declares, so a test that only
 //! checked labels would pass over every case this entry exists for.
 
-use bit_ids::canonical::{Slug, Version};
+use core::num::NonZeroU32;
+
+use bit_ids::canonical::{HexBytes, Slug, Version};
 use bit_ids::equivalence::{Equivalence, classify, classify_across};
 use bit_ids::identity::{RecordId, RecordKey, SchemaVersion};
+use bit_ids::observation::FieldState;
+use bit_ids::sampling::{Sample, SamplingPlan, field_state};
 use bit_ids::{Profile, publishable};
 use serde_json::{Value, json};
 
@@ -259,4 +263,133 @@ fn equivalence_within_one_record_never_claims_build_equivalence() {
         "one capture cannot establish that two different builds behave alike"
     );
     assert!(!outcome.publishable());
+}
+
+// -- what makes a real pair diverge, and what stops it ----------------------
+//
+// `capture-client` run 17 produced two records whose `peer_wire/peer_id` was
+// `constant` with one sample each, because nothing turned samples into a state.
+// A peer ID's tail is per connection, so the two constants differed and the
+// pair was `divergent`. These two tests are that situation and its repair, with
+// the states built by `sampling::field_state` rather than written by hand.
+
+/// Four restarts of one build whose `-qB5230-` prefix holds and whose tail is
+/// regenerated. `seed` is what makes two lanes produce different tails.
+fn observed_peer_ids(seed: u32) -> Vec<Sample> {
+    (0..4u32)
+        .map(|session| {
+            let mut bytes = b"-qB5230-".to_vec();
+            bytes.extend((0..12u32).map(|index| {
+                u8::try_from((seed + session * 13 + index * 7) & 0xff).expect("masked to one byte")
+            }));
+            Sample {
+                session,
+                torrent: 0,
+                connection: 0,
+                value: HexBytes::new(bytes).expect("twenty bytes is not empty"),
+            }
+        })
+        .collect()
+}
+
+fn restart_plan() -> SamplingPlan {
+    SamplingPlan {
+        sessions: NonZeroU32::new(4).expect("four is not zero"),
+        torrents: NonZeroU32::new(1).expect("one is not zero"),
+        connections: NonZeroU32::new(1).expect("one is not zero"),
+    }
+}
+
+fn set_peer_id(document: &mut Value, state: &FieldState) {
+    let encoded = serde_json::to_value(state).expect("a state serializes");
+    let mut changed = 0;
+    for field in document["observations"]
+        .as_array_mut()
+        .expect("an array")
+        .iter_mut()
+    {
+        if field["path"] == "peer_wire/peer_id" {
+            field["state"] = encoded.clone();
+            changed += 1;
+        }
+    }
+    assert_eq!(changed, 1, "the fixture must carry peer_wire/peer_id");
+}
+
+/// ⛔ One sample per lane is what run 17 recorded, and it cannot do anything
+/// else: a tail that is regenerated per connection differs between any two
+/// captures, so two constants conflict and the pair does not publish.
+#[test]
+fn equivalence_across_diverges_on_a_peer_id_tail_recorded_from_one_sample() {
+    let one = |seed| {
+        let samples = observed_peer_ids(seed);
+        field_state(&samples[..1], &restart_plan()).expect("one sample supports a state")
+    };
+    let left = one(0x10);
+    let right = one(0x90);
+    assert!(
+        matches!(left, FieldState::Constant(_)),
+        "one sample is constant and nothing else"
+    );
+    assert_ne!(left, right, "the tails differ, which is the whole problem");
+
+    let mut first = golden_value();
+    set_peer_id(&mut first, &left);
+    let first = read(&first);
+    let mut second = golden_value();
+    second_capture(&mut second);
+    set_peer_id(&mut second, &right);
+    let second = read(&second);
+
+    let comparison = classify_across(&[&first, &second]);
+    assert_eq!(comparison.outcome, Equivalence::Divergent);
+    assert!(
+        comparison
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("peer_wire/peer_id")),
+        "the reason names the field: {:?}",
+        comparison.reasons
+    );
+}
+
+/// ⭐ And the same two lanes, sampled across restarts, agree - because what the
+/// build holds still is the prefix, and that is what a pattern states. The
+/// tails are still different bytes; they are no longer a different *claim*.
+#[test]
+fn equivalence_across_agrees_on_a_peer_id_tail_recorded_as_the_pattern_it_is() {
+    let sampled = |seed| {
+        field_state(&observed_peer_ids(seed), &restart_plan())
+            .expect("four samples support a state")
+    };
+    let left = sampled(0x10);
+    let right = sampled(0x90);
+    assert!(
+        matches!(left, FieldState::Patterned(_)),
+        "four restarts over a regenerated tail is a pattern"
+    );
+    assert_eq!(
+        left, right,
+        "two lanes of one build describe one shape, which is why they agree"
+    );
+
+    let mut first = golden_value();
+    set_peer_id(&mut first, &left);
+    let first = read(&first);
+    let mut second = golden_value();
+    second_capture(&mut second);
+    set_peer_id(&mut second, &right);
+    let second = read(&second);
+
+    let comparison = classify_across(&[&first, &second]);
+    assert_eq!(
+        comparison.outcome,
+        Equivalence::BuildEquivalent,
+        "{:?}",
+        comparison.reasons
+    );
+    assert!(
+        publishable(&first).is_ok() && publishable(&second).is_ok(),
+        "and neither record is held back by anything else"
+    );
 }
