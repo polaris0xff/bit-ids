@@ -51,11 +51,24 @@ connections; `aria2-next` answered the handshake on **one** of them and sent
 nothing on the other, and announced once. So every field still rests on one
 sample and the pair is refused - ⭐ **by `E-PUB-03` now rather than `E-PUB-04`**,
 which is the whole difference: the store holds a comparable capture and it
-CONFLICTS, where before it held none. ⚠ Two precisely located repairs were named
-and `TODO/observer.md` carries both. ⭐ **The first landed on 2026-09-15**: the
-observer allocates a peer ID per connection, so two dials no longer offer one
-peer. ⛔ The second is open: the tracker answers a 60-second interval under a
-45-second deadline, so no re-announce is ever due.
+CONFLICTS, where before it held none.
+
+⛔ **BOTH REPAIRS LANDED AND RUN 19 REFUTED BOTH READINGS, 2026-09-15.** The
+observer allocates a peer ID per connection and the tracker's interval is
+derived from the deadline, so neither surface rests on a condition this project
+set wrongly. ⚠ `capture-client` run 19 is green on both lanes, carries
+`offered-interval 15` and two distinct offered peers - and `aria2-next`
+announced **once** and answered **one** of its two connections anyway. So the
+recorded reading, *a client dropping a duplicate peer would do exactly this*, is
+measured and wrong. [`observer.md`](observer.md) under `OBS-04` carries the
+bytes and the next hypothesis, which is the source ADDRESS rather than the
+identity.
+
+⭐ **The lever that is left is a `stopped` announce, and the capture path now
+hears one.** `capture-client.sh` stopped the client after the observer's
+deadline, so every build's shutdown announce reached a tracker that had gone.
+The stop happens inside the window now: driven here, the same adapter reports
+two announces where the previous script reported one.
 
 ⛔ **`E-PUB-04` WAS STRUCTURAL AND THIS FILE NAMED A CLOSER THAT COULD NOT
 EXIST.** It said "a capture that observes both installs", and a capture cannot:

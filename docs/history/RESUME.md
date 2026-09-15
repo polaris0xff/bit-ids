@@ -109,12 +109,17 @@ left, which is arithmetic rather than measurement; it is timed here.
    record still rests on one sample per field and is refused - ⭐ by `E-PUB-03`
    now rather than `E-PUB-04`, which is the difference: a comparable capture that
    conflicts, rather than none at all.
-   ⚠ **Two repairs were located precisely**, in `TODO/observer.md` under
-   `OBS-04`. ⭐ **The first is done, 2026-09-15**: the observer allocates a peer
-   ID per connection, `PeerWire::opening()` is deleted rather than fixed, and a
-   Python peer read `bit-ids-fixture-0001` and `-0002` off the wire in one run.
-   ⛔ The second is open: the tracker answers `interval: 60` under a 45-second
-   deadline, so no re-announce is ever due.
+   ⭐ **BOTH REPAIRS LANDED AND RUN 19 REFUTED BOTH READINGS, 2026-09-15.** The
+   observer allocates a peer ID per connection and the tracker's interval comes
+   from the deadline. `capture-client` run 19 is green on both lanes, carries
+   `offered-interval 15` and two distinct offered peers - and `aria2-next`
+   announced once and answered one of its two connections anyway. ⛔ So neither
+   surface rests on a condition this project set wrongly, and what one sample
+   per field now measures is the build. ⚠ The next hypothesis is the source
+   ADDRESS rather than the identity, and it is untested.
+   ⭐ **The lever that is left is a `stopped` announce**, which the capture path
+   threw away by stopping the client after the deadline. It stops inside the
+   window now: two announces here where the previous script gave one.
    ⭐ **The `E-PUB-04` half is closed.** It was unclosable by any capture: a
    capture observes one route, `classify` can never answer `build_equivalent`,
    and every publication gate asked the per-record question one record at a

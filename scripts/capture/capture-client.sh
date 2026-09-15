@@ -297,6 +297,10 @@ STARTED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 # this work on a slow runner.
 "$OBSERVER" "$BUNDLE" "$SECONDS_TO_SERVE" "$TORRENT" ${PEER_PORT:+"$PEER_PORT"} >"$LOG" 2>&1 &
 OBSERVER_PID=$!
+# ⚠ Read once, here, because every deadline below is measured from the moment
+# the observer began its own. Re-reading the clock later would compare a span
+# against a start that had moved.
+OBSERVER_EPOCH=$(date +%s)
 
 WAITED=0
 while [ "$WAITED" -lt 60 ]; do
@@ -337,14 +341,56 @@ if [ "$START_RC" != 0 ]; then
   refuse "the adapter could not start the build (exit $START_RC)"
 fi
 
+# -- ⛔ THE CLIENT IS STOPPED INSIDE THE OBSERVER'S WINDOW ---------------------
+#
+# ⛔ **A `stopped` ANNOUNCE IS A SECOND SAMPLE AND THIS STEP USED TO THROW IT
+# AWAY.** The stop ran after `wait "$OBSERVER_PID"`, so whatever a build says on
+# its way out reached a tracker that had already gone. Every `tracker_http/*`
+# field then rested on the one `started` announce, `SCHEMA-04` could state each
+# only as a `constant`, and two lanes stated two different constants - which is
+# half of `E-PUB-03` on `capture-client` runs 18 and 19.
+#
+# ⚠ **It is the lever that is left.** Run 19 answered `interval: 15` under a
+# 45-second deadline and `aria2-next` announced once anyway, so asking a build to
+# re-announce is a condition this project can set and cannot enforce. A shutdown
+# is different: the build is going to send it or not, and the only question was
+# whether anything was listening.
+#
+# ⚠ **The margin is a fifth of the run, capped at five seconds and floored at
+# one**, so the `stopped` announce and the observer's record of it both fit
+# inside what is left. A margin as long as the run would stop the build before it
+# had announced at all.
+STOP_MARGIN=$((SECONDS_TO_SERVE / 5))
+[ "$STOP_MARGIN" -le 5 ] || STOP_MARGIN=5
+[ "$STOP_MARGIN" -ge 1 ] || STOP_MARGIN=1
+# ⛔ MEASURED FROM THE OBSERVER'S OWN START, not from here. `start` is bounded at
+# ADAPTER_SECONDS and a slow one can eat the whole window, so a sleep computed
+# from this line would run past a deadline that had already expired.
+ELAPSED=$(($(date +%s) - OBSERVER_EPOCH))
+STOP_IN=$((SECONDS_TO_SERVE - STOP_MARGIN - ELAPSED))
+[ "$STOP_IN" -le 0 ] || sleep "$STOP_IN"
+
+timeout -k "$ADAPTER_KILL_AFTER" "$ADAPTER_SECONDS" sh "$ADAPTER" stop "$WORKDIR" </dev/null >>"$OUT/client.log" 2>&1
+STOP_RC=$?
+# ⚠ Read after the stop returns rather than before it: a stop bounded at
+# ADAPTER_SECONDS can itself outlive the window, and the fact a reader needs is
+# whether the observer was still recording when the build had finished speaking.
+STOPPED_AFTER=$(($(date +%s) - OBSERVER_EPOCH))
+STOPPED_WITHIN=no
+[ "$STOPPED_AFTER" -ge "$SECONDS_TO_SERVE" ] || STOPPED_WITHIN=yes
+
 wait "$OBSERVER_PID"
 OBSERVER_RC=$?
 
 # ⚠ STOPPED WHATEVER HAPPENED ABOVE. A client left running holds a port and its
 # own executable open, and on a host that is about to upload evidence that is a
-# process writing into the directory being uploaded.
-timeout -k "$ADAPTER_KILL_AFTER" "$ADAPTER_SECONDS" sh "$ADAPTER" stop "$WORKDIR" </dev/null >>"$OUT/client.log" 2>&1
-STOP_RC=$?
+# process writing into the directory being uploaded. ⛔ Called again rather than
+# only on the failing path: the contract says a stop over a build that already
+# exited is done rather than refused, and a second call is how a stop that was
+# interrupted by its own time limit still leaves nothing running.
+if [ "$STOP_RC" != 0 ]; then
+  timeout -k "$ADAPTER_KILL_AFTER" "$ADAPTER_SECONDS" sh "$ADAPTER" stop "$WORKDIR" </dev/null >>"$OUT/client.log" 2>&1
+fi
 
 [ "$OBSERVER_RC" = "0" ] || {
   sed 's/^/          /' "$LOG" >&2
@@ -602,6 +648,17 @@ PEER_DIALLED=$(awk '$1 == "peer-dialled" { $1 = ""; sub(/^ /, ""); print; exit }
   printf 'adapter_kind=%s\n' "$ADAPTER_KIND"
   printf 'adapter_sha256=%s\n' "$ADAPTER_DIGEST"
   printf 'adapter_stop_status=%s\n' "$STOP_RC"
+  # ⛔ WHETHER THE BUILD WAS STOPPED WHILE ANYTHING WAS STILL LISTENING. A run
+  # that answers `no` measured nothing about a shutdown, so a build that sends no
+  # `stopped` announce and a run that was not there to hear one read the same
+  # without this field - and only the first is a fact about the build.
+  printf 'stopped_within_window=%s\n' "$STOPPED_WITHIN"
+  # ⚠ The measurement the verdict above is read from, kept beside it rather than
+  # left to be re-derived. `within` alone cannot tell a stop LATE in the window
+  # from one at the very start, and a build stopped a second after it launched
+  # has been asked to shut down before it did anything worth recording.
+  printf 'stopped_after=%ss\n' "$STOPPED_AFTER"
+  printf 'stop_margin=%ss\n' "$STOP_MARGIN"
   printf 'platform=%s\n' "$(uname -srm)"
   printf 'started_at=%s\n' "$STARTED"
   printf 'finished_at=%s\n' "$FINISHED"

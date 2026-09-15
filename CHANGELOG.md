@@ -5,6 +5,26 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-15T14:08:32Z
+
+- ⛔ **`capture-client` run 19 refuted both recorded readings.** Both repairs are
+  on the wire - `offered-interval 15`, and connections 2 and 3 offered
+  `bit-ids-fixture-0001` and `-0002` - and `aria2-next` announced once and
+  answered one of the two connections anyway.
+- ⭐ **The client is stopped inside the observer's window now**, so a `stopped`
+  announce is heard rather than sent to a tracker that has gone. The negative
+  control is the previous script: the same adapter reports `announces=1` where
+  this one reports 2.
+- ⚠ **`stopped_within_window` and `stopped_after` are attestation fields**, the
+  verdict and the measurement it is read from. A start that outlives the window
+  is recorded rather than refused.
+- ⛔ **A plant survived because the assertion read its own parameter.** The
+  lateness case compared against the margin out of the attestation, so a margin
+  set to the whole run moved the threshold with it. It compares against the
+  deadline now.
+- Record: [`TODO/observer.md`](TODO/observer.md), `OBS-04` and `OBS-02`. No
+  version bump and no deploy.
+
 ### 2026-09-15T12:34:13Z
 
 - ⭐ **The announce interval is derived from the deadline.** It was a literal 60

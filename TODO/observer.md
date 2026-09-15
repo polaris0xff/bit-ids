@@ -600,14 +600,93 @@ seconds**, where the literal 60 gave exactly one; the observer recorded
 by construction, which is what the next dispatch asks about a real build: whether
 the twelve-byte tail is per announce as well as per peer connection.
 
-⛔ **Residual, found by the door sweep and deliberately not taken here.**
-`capture-client.sh` runs the adapter's `stop` AFTER `wait "$OBSERVER_PID"`, so a
-build's `stopped` announce - a different event, and a second sample for free -
-arrives at a tracker that has already shut down. ⚠ Moving the stop inside the
-deadline is a second lever on the same measurement, and taking both at once
-would leave a dispatch unable to say which produced the second announce. It is
-its own unit, with its own plants, and it needs a case for the run where a build
-stopped early never announced at all.
+### ⛔ Run 19 refuted BOTH readings, and the door sweep's residual is what is left
+
+**`capture-client` run 19, dispatched 2026-09-15 on `c3c9f6c`, green on both
+lanes.** Both repairs are on the wire and the build declined both:
+
+| what the run offered | what `aria2-next` did |
+| --- | --- |
+| `offered-interval 15` under a 45-second deadline, `intervali15e` in the answered body | announced **once**, and not again in 45 seconds |
+| `offered-peer-ids 2`, `bit-ids-fixture-0001` on connection 2 and `-0002` on connection 3 | answered the handshake on connection 2 with 266 bytes and sent **nothing** on connection 3 |
+
+⛔ **So the reading this entry recorded is refuted, and it said it was a reading.**
+*A client that drops a second connection from a peer it already has would do
+exactly this* - it would not, because the second connection presented a
+different peer and was ignored anyway. ⚠ The next hypothesis is the address
+rather than the identity: both connections reach the build from `127.0.0.1`, and
+a build keying an incoming peer on its IP would behave exactly as measured. The
+lab can dial from another loopback address without leaving loopback, which makes
+it testable; it is not tested here.
+
+⭐ **What run 19 does establish is that the conditions are now right.** Neither
+surface rests on a condition this project set wrongly, so what one sample per
+field now measures is the build.
+
+### ⭐ The client is stopped inside the observer's window, 2026-09-15
+
+⛔ **`capture-client.sh` ran the adapter's `stop` AFTER `wait "$OBSERVER_PID"`,
+so a build's `stopped` announce reached a tracker that had already gone.** Every
+BitTorrent client sends one; this discarded it, and with it the second sample
+every `tracker_http/*` field needs.
+
+⭐ **It is the lever that is left.** Run 19 asked for `interval: 15` and
+`aria2-next` announced once anyway, so a re-announce is a condition this project
+can set and cannot enforce. A shutdown is different: the build sends it or it
+does not, and the only question was whether anything was listening.
+
+⚠ **The margin is a fifth of the run, capped at five seconds and floored at
+one**, measured from the observer's own start rather than from the stop line -
+`start` is bounded at `ADAPTER_SECONDS` rather than at the capture deadline, so
+a slow one can eat the window and a sleep computed later would run past a
+deadline that had already expired.
+
+⭐ **`stopped_within_window` is the verdict and `stopped_after` is the
+measurement it is read from**, both in the attestation. Without the first, a
+build that sends no `stopped` announce and a run that was not there to hear one
+read the same, and only one of those is a fact about the build. ⚠ A start that
+outlives the window is **recorded rather than refused**: everything the
+`started` announce carried is still a measurement, and throwing a capture away
+over a shutdown nobody heard would lose it to a detail of the driver.
+
+Guard mutation, five plants over `capture-client.sh`, each verified to have
+changed the file, each run through `check-capture-client` with the exit code
+read unpiped, control first and again after every restore:
+
+| plant | verdict |
+| --- | --- |
+| the stop lands after the deadline, which is the old ordering's effect | ⭐ refused |
+| the wait before the stop is deleted, so the build is shut down at once | ⭐ refused |
+| `stopped_within_window` always answers yes | ⭐ refused |
+| the margin is the whole run, so the stop lands before the build spoke | ⭐ refused |
+| the elapsed time is measured from the stop line rather than the observer | ⭐ refused |
+
+⛔ **THE FOURTH SURVIVED THE FIRST PASS AND THE REASON IS THIS REPOSITORY'S OWN.**
+The lateness case asked `stopped_after >= SECS - stop_margin`, reading the margin
+out of the attestation - so a plant setting the margin to the whole run moved the
+threshold with it and passed, exit 0. ⚠ That is *a constant every test reads is a
+constant no test can check*, which `OBS-08` found twice in its own constants
+before this. The repair is to drop the parameter: the invariant that matters is
+that a build is left more than half its own window, and it needs no margin to
+state. ⚠ **The ordering plant took TWO re-aims and neither attempt was counted.** Its
+first spelling waited on the observer twice, so the second `wait` failed and
+three unrelated cases went red - a refusal that arrives for a reason the case did
+not plant. Its second left `STOP_IN` with no reader, which `shellcheck` refuses,
+so the harness reported *could not run* - a third status, and the instrument
+saying so rather than scoring it. The third sleeps past the deadline with
+`STOP_IN` still read, and is refused by the attestation case.
+
+Driven on this host, 2026-09-15, with a stub adapter whose product announces
+`started` on start and `stopped` on stop, which is what every BitTorrent client
+does. ⭐ **Two announces, `event=started` on connection 1 and `event=stopped` on
+connection 2**, both in the transcript, `stopped_within_window=yes`.
+⛔ **The negative control is the previous script, not a plant**: the same
+adapter, the same observer and the same 20-second deadline under
+`git show HEAD:scripts/capture/capture-client.sh` report `announces=1`. One
+number against one number, with only the ordering different.
+
+⚠ Residual: no dispatch has taken this step, so what a stock `aria2-next` says
+on its way out is unmeasured. It is the next thing a run answers.
 
 ## OBS-03: UDP tracker observer
 

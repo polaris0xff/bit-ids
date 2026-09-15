@@ -269,6 +269,15 @@ case "$COMMAND" in
         ;;
     esac
     curl -sS --noproxy '*' --max-time 20 -o /dev/null "$URL$Q" || exit 1
+    # ⚠ A START THAT EATS THE OBSERVER'S WINDOW, planted AFTER the announce and
+    # not before it. `start` is bounded at ADAPTER_SECONDS rather than at the
+    # capture deadline, so a slow product really can return with nothing left to
+    # stop inside - and the run is still a measurement of everything the
+    # `started` announce carried. ⛔ Delaying before the announce plants a
+    # different defect, a build that never announced at all, which the segment
+    # guard refuses; the first draft did exactly that and the case went red
+    # claiming the wrong thing.
+    [ -z "${BIT_IDS_STUB_START_DELAY:-}" ] || sleep "$BIT_IDS_STUB_START_DELAY"
     ;;
   stop) exit "${BIT_IDS_STUB_STOP_RC:-0}" ;;
   *) exit 2 ;;
@@ -451,6 +460,7 @@ export BIT_IDS_STUB_DESCRIBE_RC=0
 export BIT_IDS_STUB_VERSION_RC=0
 export BIT_IDS_STUB_VERSION=1.2.3
 export BIT_IDS_STUB_START_RC=0
+export BIT_IDS_STUB_START_DELAY=""
 export BIT_IDS_STUB_STOP_RC=0
 export BIT_IDS_STUB_ANNOUNCE=yes
 export BIT_IDS_STUB_PEER_ID=stub-adapter-00000001
@@ -461,10 +471,37 @@ export BIT_IDS_STUB_INSTALL_DROP=""
 run_case 0 "" "a claimed, contained host captures a stub client and verifies"
 CONTROL_OUT="$WORK/out-$OUTS"
 
+# ⛔ AND THE STOP IS LATE IN THE WINDOW RATHER THAN MERELY INSIDE IT. Deleting
+# the wait before it leaves `stopped_within_window=yes` and a build shut down a
+# moment after it launched, which is a capture of nothing.
+#
+# ⛔ **THE COMPARISON IS AGAINST THE DEADLINE, NEVER AGAINST THE MARGIN.** Its
+# first spelling asked `stopped_after >= SECS - stop_margin`, reading the margin
+# out of the attestation - so a plant setting the margin to the whole run moved
+# the threshold with it and SURVIVED, exit 0. That is *a constant every test
+# reads is a constant no test can check*, which `OBS-08` found twice before this.
+# The invariant that matters needs no parameter: a build must be left more than
+# half its own window.
+#
+# ⚠ The comparison is one-sided on purpose: `sleep` can return late on a loaded
+# host and never early, so a floor is sound where a window would be the
+# load-sensitive row `CI-08` already carries one of.
+# ⚠ `-F=` and then strip the unit. A separator class of `[=s]` also splits on the
+# `s` inside `stopped_after`, so `$1` is empty and every comparison below reads
+# as a missing field - which is what the first draft reported.
+STOPPED_AFTER=$(awk -F= '$1 == "stopped_after" { sub(/s$/, "", $2); print $2; exit }' "$CONTROL_OUT/attestation.txt")
+STOP_MARGIN=$(awk -F= '$1 == "stop_margin" { sub(/s$/, "", $2); print $2; exit }' "$CONTROL_OUT/attestation.txt")
+if [ -n "$STOPPED_AFTER" ] && [ "$((STOPPED_AFTER * 2))" -ge "$SECS" ]; then
+  pass "the build was stopped late in the window, not at the start of it"
+else
+  fail "the build was stopped late in the window (after ${STOPPED_AFTER:-?}s of $SECS, margin ${STOP_MARGIN:-?}s)"
+fi
+
 # ⛔ THE ATTESTATION IS A CLAIM AND IT IS READ BACK. A runner that captured
 # correctly and wrote `kind=fixture` would pass every case above.
 for want in "kind=client" "target=stub-client" "adapter_kind=stub" \
-  "stock_client=false" "measured_build=1.2.3" "announces=1"; do
+  "stock_client=false" "measured_build=1.2.3" "announces=1" \
+  "stopped_within_window=yes"; do
   if grep -q -F -e "$want" "$CONTROL_OUT/attestation.txt"; then
     pass "the attestation says $want"
   else
@@ -693,6 +730,21 @@ BIT_IDS_STUB_VERSION=1.2.3
 BIT_IDS_STUB_START_RC=5
 run_case 1 "could not start the build" "an adapter that cannot start the build is refused"
 BIT_IDS_STUB_START_RC=0
+
+# ⛔ AND A START THAT EATS THE WINDOW IS RECORDED RATHER THAN REFUSED. A run with
+# nothing left to stop inside measured nothing about a shutdown, and a build that
+# sends no `stopped` announce reads identically without this field. ⚠ The run is
+# otherwise green: everything the `started` announce measured is still a
+# measurement, and throwing it away over a shutdown nobody heard would be losing
+# a capture to a detail of the driver.
+BIT_IDS_STUB_START_DELAY=$((SECS + 2))
+run_case 0 "" "a start that outlives the window still captures"
+if grep -q -F -e "stopped_within_window=no" "$WORK/out-$OUTS/attestation.txt"; then
+  pass "and the attestation says the shutdown was not observed"
+else
+  fail "and the attestation says the shutdown was not observed"
+fi
+BIT_IDS_STUB_START_DELAY=""
 
 # -- 4. what makes it a measurement -------------------------------------------
 #
