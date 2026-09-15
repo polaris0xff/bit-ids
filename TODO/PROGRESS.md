@@ -35,7 +35,7 @@ automatically did not fire and could not have.
 | refusal | where it stands |
 | --- | --- |
 | `E-PUB-04`: only ONE of the two installs was put on the wire | ⭐ **closed, 2026-09-15.** The other route's capture settles it, and the gate is asked with the store |
-| `classify_across: divergent`: a peer ID's tail is per connection | ⭐ **the model reaches a record now**, `SCHEMA-04`; what is left is a capture that takes more than one sample |
+| `classify_across: divergent`: a peer ID's tail is per connection | ⭐ **closed for any surface the build connects to twice**, `SCHEMA-04`; what is left is the capture's single peer-wire dial |
 
 ⛔ **`E-PUB-04` WAS STRUCTURAL AND THIS FILE NAMED A CLOSER THAT COULD NOT
 EXIST.** It said "a capture that observes both installs", and a capture cannot:

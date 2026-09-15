@@ -111,20 +111,32 @@ handshake_hex() { # peer-id
 # emit, so a document typed here that it accepts is a document the lab would
 # have written. A harness whose fixtures the real reader rejected would prove
 # nothing about a real bundle.
-transcript() { # path endpoint hex
+# ⚠ ONE SEGMENT PER PAYLOAD, because a transcript records a segment per
+# connection and a field rests on every one of them. This took a single hex
+# argument until 2026-09-15, so every fixture here had exactly one sample of
+# every field and the assembler's sampling could not be exercised at all.
+transcript() { # path endpoint hex...
+  _path=$1
+  _endpoint=$2
+  shift 2
+  _total=$#
   {
     printf '{\n'
     printf '  "schema": "bit-ids/transcript/1",\n'
-    printf '  "endpoint": "%s",\n' "$2"
+    printf '  "endpoint": "%s",\n' "$_endpoint"
     printf '  "segments": [\n'
-    printf '    {\n'
-    printf '      "connection": 1,\n'
-    printf '      "offset_ms": 2075,\n'
-    printf '      "direction": "from_target",\n'
-    printf '      "bytes": "%s"\n' "$3"
-    printf '    }\n'
+    _n=0
+    for _hex in "$@"; do
+      _n=$((_n + 1))
+      printf '    {\n'
+      printf '      "connection": %s,\n' "$_n"
+      printf '      "offset_ms": %s,\n' "$((2000 + _n * 75))"
+      printf '      "direction": "from_target",\n'
+      printf '      "bytes": "%s"\n' "$_hex"
+      if [ "$_n" = "$_total" ]; then printf '    }\n'; else printf '    },\n'; fi
+    done
     printf '  ]\n}\n'
-  } >"$1"
+  } >"$_path"
 }
 
 # Writes one lane's two artifact directories.
@@ -215,10 +227,20 @@ write_lane() { # tag route resolver-url commit binary-digest version peer-id [co
     >"$_ins/install-$2/version.err"
 
   printf 'd4:infod4:name7:fixtureee' >"$_cap/capture/bundle/fixture/generated.torrent"
-  transcript "$_cap/capture/bundle/tracker-http.transcript.json" \
-    tracker-http "$(announce_hex "$7")"
-  transcript "$_cap/capture/bundle/peer-wire-dialled.transcript.json" \
-    peer-wire-dialled "$(handshake_hex "$7")"
+  # ⭐ A ninth argument is a SECOND connection on each surface, carrying its own
+  # peer ID - which is what a build with a per-connection tail really puts in a
+  # transcript, and what turns `constant` with one sample into a pattern.
+  if [ -n "${9:-}" ]; then
+    transcript "$_cap/capture/bundle/tracker-http.transcript.json" \
+      tracker-http "$(announce_hex "$7")" "$(announce_hex "$9")"
+    transcript "$_cap/capture/bundle/peer-wire-dialled.transcript.json" \
+      peer-wire-dialled "$(handshake_hex "$7")" "$(handshake_hex "$9")"
+  else
+    transcript "$_cap/capture/bundle/tracker-http.transcript.json" \
+      tracker-http "$(announce_hex "$7")"
+    transcript "$_cap/capture/bundle/peer-wire-dialled.transcript.json" \
+      peer-wire-dialled "$(handshake_hex "$7")"
+  fi
 }
 
 # Runs the assembler over two lanes into a fresh store, keeping the streams
@@ -272,6 +294,10 @@ DIGEST_A=$(printf 'build-a' | sha256sum | cut -d' ' -f1)
 DIGEST_B=$(printf 'build-b' | sha256sum | cut -d' ' -f1)
 PEER_A='-XX0000-aaaaaaaaaaaa'
 PEER_B='-XX0000-bbbbbbbbbbbb'
+# ⚠ A second connection's tail per lane. Same eight-byte prefix, different
+# twelve bytes, which is what a per-connection tail looks like on the wire.
+PEER_C='-XX0000-cccccccccccc'
+PEER_D='-XX0000-dddddddddddd'
 
 # -- ⭐ THE CONTROL, AND IT IS THE HALF THAT MATTERS MOST ---------------------
 #
@@ -346,6 +372,49 @@ if said vary "provisional, not publishable" && said vary "E-PUB-03" &&
 else
   fail "a pair the store shows diverging is refused as a conflict, not an absence"
   [ "$JSON" = "1" ] || sed 's/^/          /' "$WORK/vary.out" | head -12
+fi
+
+# -- ⭐ AND THE SAMPLES THAT TURN THAT DIVERGENCE INTO AN AGREEMENT -----------
+#
+# ⛔ THE PAIR ABOVE DIVERGES BECAUSE EACH FIELD RESTS ON ONE SAMPLE. A peer ID's
+# tail is regenerated per connection, so one observation of it is a value the
+# next connection will not repeat, and two lanes then state two different
+# constants. ⭐ A build that connects TWICE puts two of them in the transcript,
+# and `sampling::field_state` reads the eight-byte prefix that held and the
+# twelve bytes that moved: both lanes describe ONE pattern, and a pattern is
+# what they can agree on.
+# ⚠ All four tails here are different. That is the point - what agrees is the
+# shape, not the bytes.
+write_lane samp-release release "$GH" "" "$DIGEST_A" 1.2.3 \
+  "$PEER_A" "$PEER_A" "$PEER_C" || exit 2
+write_lane samp-source source "$REFS" "$COMMIT" "$DIGEST_B" 1.2.3 \
+  "$PEER_B" "$PEER_B" "$PEER_D" || exit 2
+case_is 0 "build_equivalent" \
+  "two connections per lane make a per-connection tail a pattern both lanes share" \
+  samp samp-release samp-source
+if [ "$(grep -c '^[[:space:]]*publishable$' "$WORK/samp.out")" = "2" ]; then
+  pass "and the pair that was divergent on one sample each publishes"
+else
+  fail "and the pair that was divergent on one sample each publishes"
+  [ "$JSON" = "1" ] || sed 's/^/          /' "$WORK/samp.out" | head -14
+fi
+# ⛔ AND THE STATE IS `patterned`, NOT `constant`. Without this the case above
+# would pass equally over an assembler that read the first segment and got lucky
+# on lanes whose first tails happened to match.
+if grep -q '"kind": "patterned"' \
+  "$(find "$WORK/store-samp/profiles" -name '*.json' -type f | head -1)"; then
+  pass "the record states the pattern rather than one connection's bytes"
+else
+  fail "the record states the pattern rather than one connection's bytes"
+fi
+# ⚠ AND ONE CONNECTION IS STILL `constant` WITH ONE SAMPLE, which is what says
+# this changed the sampling and not the default: every lane above has one
+# segment per surface and every record they produce is unchanged.
+if grep -q '"kind": "constant"' \
+  "$(find "$WORK/store-good/profiles" -name '*.json' -type f | head -1)"; then
+  pass "a lane that connected once still states a constant"
+else
+  fail "a lane that connected once still states a constant"
 fi
 
 # -- The refusals ------------------------------------------------------------

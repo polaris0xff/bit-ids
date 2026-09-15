@@ -332,8 +332,32 @@ table under-reported.** The last row read as one case until the pass was re-run
 with `--no-fail-fast`, and the case it named was in the other file. A count of
 refusals taken from a fail-fast run is a count of the binaries that ran.
 
-Residual: ⚠ **nothing yet takes more than one sample.** The join exists and
-`assemble-capture` still reads one capture per lane, so a real record stays
-`constant` with one sample until a capture restarts the build and the assembler
-is given the several bundles. That is a capture-path change and a dispatch, and
-`CI-09` carries it beside the other half of the same question.
+⭐ **And the assembler folds them, 2026-09-15.** `assemble-capture` took the
+FIRST segment of each transcript and wrote `samples: 1`; a transcript records a
+segment per connection, so a build that announced twice had already put two peer
+IDs in the evidence and the record threw one away. Every `from_target` segment
+is a sample now, under the plan the transcript shows - one session, one torrent,
+a connection per segment - and a lane that connected once is unchanged.
+
+⛔ **Sampling a field broke corroboration through a second door, and only
+driving it found that.** The assembler mapped the observer's own seen value as
+`constant` to its bytes and **everything else to `out_of_scope`**, so the moment
+a field became `patterned` it was uncorroborated and `E-PUB-02` refused the
+record - publication blocked through a different code by the change that
+unblocked it. ⭐ Corroboration is per OBSERVATION rather than per state: the
+connector reports what it saw on one connection, so the observer reports the
+same one. ⚠ That is the golden fixture's own shape, whose `peer_wire/peer_id`
+is `patterned` beside byte-level corroboration.
+
+Residual: ⚠ **the capture connects to the peer surface once**, so
+`peer_wire/*` still rests on one sample on a real run whatever the tracker
+carries: `client-capture` dials the listen port on the first announce and
+returns. Two lanes therefore still disagree on `peer_wire/peer_id`. `CLIENT-01`
+carries the dial, and it is the last thing between a dispatch and a publishable
+measured record.
+
+⚠ **A connector corroborates an observation, not the pattern.** It reports one
+value per field, so a field resting on four samples is corroborated on one of
+them. Widening that is a change to the connector contract in
+[`../scripts/capture/connectors/`](../scripts/capture/connectors/), and `OBS-07`
+owns it.

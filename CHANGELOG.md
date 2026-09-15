@@ -5,6 +5,30 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-15T07:34:08Z
+
+- ⛔ **The assembler took the first segment of each transcript and called it
+  `samples: 1`.** A transcript records a segment per connection, so a build that
+  announced twice had already put two peer IDs in the evidence and the record
+  threw one away. Every `from_target` segment is a sample now, under the plan the
+  transcript shows.
+- ⭐ **Two connections per lane turn a per-connection tail into a pattern both
+  lanes share**, so a pair that was `divergent` reaches `build_equivalent` and
+  both records publish - measured on the assembler's own lanes, where all four
+  tails differ and what agrees is the shape.
+- ⛔ **Sampling broke corroboration through a second door and driving it is what
+  found that.** The observer's seen value was its bytes for `constant` and
+  `out_of_scope` for everything else, so a field became uncorroborated the
+  moment it became `patterned` and `E-PUB-02` refused the record. Corroboration
+  is per observation, not per state.
+- ⚠ **One dial is what is left.** `client-capture` connects to the peer surface
+  once, so `peer_wire/*` rests on one sample on a real run and two lanes still
+  disagree there.
+- ⚠ The harness wrote one transcript segment per lane, so its fixtures had
+  exactly one sample of every field and none of this was reachable by a case.
+- Record: [`TODO/schema.md`](TODO/schema.md), `SCHEMA-04`. No version bump and
+  no deploy.
+
 ### 2026-09-15T07:22:37Z
 
 - ⭐ **`E-PUB-04` is closed, and it could not be closed by any capture.** A

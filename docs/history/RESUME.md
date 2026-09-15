@@ -97,12 +97,13 @@ left, which is arithmetic rather than measurement; it is timed here.
 
 0. ⛔ **Make a record publishable.** Run 17's are `provisional` for two reasons,
    both correct, and they are no longer in the same state as each other.
-   ⭐ **The divergence half has its repair.** `sampling::field_state` turns a
-   lane's samples into the state a record carries, so a build that is restarted
-   is recorded as the pattern it has rather than as the one tail one connection
-   produced - and two lanes then agree. ⚠ What is missing is the samples: the
-   capture path runs the build once per lane, so `assemble-capture` still has
-   one to fold. That is a capture-path change and a dispatch.
+   ⭐ **The divergence half is repaired end to end on the synthetic path.**
+   `sampling::field_state` turns samples into the state a record carries, and
+   `assemble-capture` folds EVERY `from_target` segment rather than the first -
+   so a build that connects twice is recorded as the pattern it has, both lanes
+   describe one shape, and the pair publishes. ⚠ **What is left is one dial**:
+   `client-capture` connects to the peer surface once, so `peer_wire/*` rests on
+   one sample on a real run and two lanes still disagree there.
    ⭐ **The `E-PUB-04` half is closed.** It was unclosable by any capture: a
    capture observes one route, `classify` can never answer `build_equivalent`,
    and every publication gate asked the per-record question one record at a

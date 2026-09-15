@@ -60,10 +60,11 @@ use bit_ids::acquisition::{AcquisitionRoute, RouteKind, SignatureStatus, SourceI
 use bit_ids::agreement::{ConnectorObservation, FieldCorroboration, Projection, SeenValue};
 use bit_ids::canonical::{HexBytes, Instant, Label, RelPath, Sha256Digest, Slug, Url, Version};
 use bit_ids::identity::{RecordId, RecordKey, SchemaVersion};
-use bit_ids::observation::{ConstantValue, FieldPath, FieldState, ObservedField};
+use bit_ids::observation::{FieldPath, FieldState, ObservedField};
 use bit_ids::record::{
     Build, Capture, Connector, EvidenceKind, EvidenceRef, Profile, Target, TargetKind,
 };
+use bit_ids::sampling::{Sample, SamplingPlan, field_state};
 use bit_ids::store::StoreKey;
 use bit_ids::{PROFILE_SCHEMA, ReleaseChannel};
 
@@ -551,77 +552,127 @@ fn evidence_of(lane: &Lane) -> Result<Vec<(EvidenceRef, PathBuf)>, String> {
 /// project's one reading of these formats. A second parser written here would
 /// be a second reading, and `FOUND-03` records what that costs.
 ///
-/// ⚠ **`constant` with one sample is the honest state and `patterned` is not
-/// available.** `E-OBS` refuses a pattern claiming bytes changed between
-/// samples over fewer than two, and this record rests on one capture. Two
-/// records of two lanes are what a later sampling pass compares.
-fn observations_of(lane: &Lane) -> Result<Vec<ObservedField>, String> {
+/// ⛔ **EVERY OBSERVATION OF A FIELD IS A SAMPLE, AND THIS USED TO TAKE THE
+/// FIRST AND CALL IT `constant`.** A transcript carries a segment per
+/// connection, so a build that announced twice put two peer IDs in the evidence
+/// and the record said `samples: 1`. The tail after a client prefix is
+/// regenerated per connection, so two lanes then disagreed about a field neither
+/// of them had measured once - which is `divergent`, and since `E-PUB-04` closed
+/// it is what refuses publication.
+///
+/// ⭐ [`field_state`] is what turns the samples into a state, and the plan is
+/// what the transcript shows: one session, one torrent, and a connection per
+/// sampled segment. ⚠ With one segment it answers `constant` with one sample,
+/// which is what this wrote by hand before - so a capture that connects once is
+/// unchanged rather than newly refused.
+fn observations_of(lane: &Lane) -> Result<(Vec<ObservedField>, Firsts), String> {
     use bit_ids_lab::evidence::parse_transcript_document;
     use bit_ids_wire::peer_wire::Handshake;
     use bit_ids_wire::tracker_http::HttpRequest;
     use bit_ids_wire::tracker_udp::Direction;
 
     let mut out = Vec::new();
+    let mut firsts = Firsts::new();
     let tracker = std::fs::read_to_string(lane.bundle.join("tracker-http.transcript.json"))
         .map_err(|error| format!("the tracker transcript: {error}"))?;
     let (_, tracker) = parse_transcript_document(&tracker)
         .map_err(|error| format!("the tracker transcript: {error}"))?;
-    let announce = tracker
+    let mut peer_ids = Vec::new();
+    let mut agents = Vec::new();
+    for segment in tracker
         .segments()
         .iter()
-        .find(|segment| segment.direction() == Direction::FromTarget)
-        .ok_or_else(|| "the tracker transcript carries nothing the build sent".to_owned())?;
-    let request = HttpRequest::parse(announce.bytes())
-        .map_err(|error| format!("the announce is not an HTTP request: {error}"))?;
-
-    let peer_id = request
-        .query_values(b"peer_id")
-        .first()
-        .ok_or_else(|| "the announce carries no peer_id".to_owned())?
-        .decoded_value()
-        .map_err(|error| format!("the announce peer_id: {error}"))?
-        .ok_or_else(|| "the announce peer_id has no value".to_owned())?;
-    out.push(constant("tracker_http/peer_id", &peer_id, lane, "tracker")?);
-
-    let agent = request
-        .headers()
-        .iter()
-        .find(|header| header.name().eq_ignore_ascii_case(b"user-agent"))
-        .ok_or_else(|| "the announce carries no User-Agent".to_owned())?;
-    out.push(constant(
-        "tracker_http/user_agent",
-        agent.value(),
+        .filter(|segment| segment.direction() == Direction::FromTarget)
+    {
+        let request = HttpRequest::parse(segment.bytes())
+            .map_err(|error| format!("the announce is not an HTTP request: {error}"))?;
+        // ⚠ A request with no `peer_id` is not an announce - a scrape is the
+        // obvious one - so it is not a sample of an announce field. Reading it
+        // as one would refuse a capture for carrying a request this record does
+        // not describe.
+        let queried = request.query_values(b"peer_id");
+        let Some(raw) = queried.first() else {
+            continue;
+        };
+        peer_ids.push(
+            raw.decoded_value()
+                .map_err(|error| format!("the announce peer_id: {error}"))?
+                .ok_or_else(|| "the announce peer_id has no value".to_owned())?,
+        );
+        // ⛔ Taken from the SAME announces, so the two fields rest on one set of
+        // observations. A header sampled from a different set would report two
+        // sample counts for one connection.
+        let agent = request
+            .headers()
+            .iter()
+            .find(|header| header.name().eq_ignore_ascii_case(b"user-agent"))
+            .ok_or_else(|| "the announce carries no User-Agent".to_owned())?;
+        agents.push(agent.value().to_vec());
+    }
+    if peer_ids.is_empty() {
+        return Err("the tracker transcript carries nothing the build sent".to_owned());
+    }
+    push_sampled(
+        &mut out,
+        &mut firsts,
+        "tracker_http/peer_id",
+        &peer_ids,
         lane,
         "tracker",
-    )?);
+    )?;
+    push_sampled(
+        &mut out,
+        &mut firsts,
+        "tracker_http/user_agent",
+        &agents,
+        lane,
+        "tracker",
+    )?;
 
     let peer = std::fs::read_to_string(lane.bundle.join("peer-wire-dialled.transcript.json"))
         .map_err(|error| format!("the peer transcript: {error}"))?;
     let (_, peer) = parse_transcript_document(&peer)
         .map_err(|error| format!("the peer transcript: {error}"))?;
-    let answered = peer
+    let mut handshake_ids = Vec::new();
+    let mut reserved = Vec::new();
+    for segment in peer
         .segments()
         .iter()
-        .find(|segment| segment.direction() == Direction::FromTarget)
-        .ok_or_else(|| "the peer transcript carries nothing the build sent".to_owned())?;
-    let handshake = Handshake::parse_prefix(answered.bytes())
-        .map_err(|error| format!("the peer handshake: {error}"))?
-        .0;
-    out.push(constant(
+        .filter(|segment| segment.direction() == Direction::FromTarget)
+    {
+        // ⛔ Every segment the build sent on this surface must be a handshake,
+        // which is the strictness this had over the first one, applied to all of
+        // them. The lab records one connection per dial and a handshake is what
+        // opens one, so a segment that is not one is a transcript this record
+        // cannot describe rather than a segment to pass over.
+        let handshake = Handshake::parse_prefix(segment.bytes())
+            .map_err(|error| format!("the peer handshake: {error}"))?
+            .0;
+        handshake_ids.push(handshake.peer_id().to_vec());
+        reserved.push(handshake.reserved().to_vec());
+    }
+    if handshake_ids.is_empty() {
+        return Err("the peer transcript carries nothing the build sent".to_owned());
+    }
+    push_sampled(
+        &mut out,
+        &mut firsts,
         "peer_wire/peer_id",
-        handshake.peer_id(),
+        &handshake_ids,
         lane,
         "peer",
-    )?);
-    out.push(constant(
+    )?;
+    push_sampled(
+        &mut out,
+        &mut firsts,
         "peer_wire/reserved",
-        handshake.reserved(),
+        &reserved,
         lane,
         "peer",
-    )?);
+    )?;
 
     out.sort_by_key(|entry| entry.path.to_string());
-    Ok(out)
+    Ok((out, firsts))
 }
 
 /// What each declared connector saw, per field.
@@ -651,6 +702,7 @@ fn observations_of(lane: &Lane) -> Result<Vec<ObservedField>, String> {
 fn corroboration_of(
     lane: &Lane,
     fields: &[ObservedField],
+    firsts: &Firsts,
     connectors: &[Connector],
 ) -> Result<Vec<FieldCorroboration>, String> {
     let mut reports: BTreeMap<String, Record> = BTreeMap::new();
@@ -679,9 +731,18 @@ fn corroboration_of(
         let mut observations = Vec::new();
         for connector in connectors {
             let seen = if connector.id.as_str() == "bit-ids-probe" {
-                match &field.state {
-                    FieldState::Constant(value) => SeenValue::Bytes(value.value.clone()),
-                    _ => SeenValue::OutOfScope,
+                // ⛔ THE OBSERVATION, NOT THE STATE. A sampled field has no
+                // single value, and mapping everything but `constant` to
+                // `out_of_scope` left every patterned field uncorroborated -
+                // which `E-PUB-02` refuses, so sampling a field would have
+                // blocked publication through a second door the moment it
+                // stopped blocking it through the first.
+                match firsts.get(&field.path.to_string()) {
+                    Some(bytes) => SeenValue::Bytes(bytes.clone()),
+                    None => match &field.state {
+                        FieldState::Constant(value) => SeenValue::Bytes(value.value.clone()),
+                        _ => SeenValue::OutOfScope,
+                    },
                 }
             } else {
                 let report = &reports[connector.id.as_str()];
@@ -742,20 +803,79 @@ fn corroboration_of(
     Ok(out)
 }
 
-fn constant(
+/// What each field's FIRST observation was, keyed by field path.
+///
+/// ⛔ **Corroboration is per OBSERVATION, not per state.** A connector reads the
+/// bundle and reports the bytes it saw on one connection; a sampled field has no
+/// single value to compare that against. So the observer reports the same
+/// observation the connector did - the first segment of the transcript - and the
+/// pattern over the rest is the record's claim rather than the corroborated one.
+/// ⚠ That is the golden fixture's own shape: its `peer_wire/peer_id` is
+/// `patterned` and its corroboration carries bytes.
+type Firsts = BTreeMap<String, HexBytes>;
+
+/// Builds one sampled field and remembers the observation corroboration uses.
+fn push_sampled(
+    out: &mut Vec<ObservedField>,
+    firsts: &mut Firsts,
     path: &str,
-    value: &[u8],
+    values: &[Vec<u8>],
     lane: &Lane,
     evidence: &str,
-) -> Result<ObservedField, String> {
-    Ok(ObservedField {
-        path: FieldPath::parse(path).map_err(|error| format!("{path}: {error}"))?,
-        state: FieldState::Constant(ConstantValue {
-            value: HexBytes::new(value.to_vec()).map_err(|error| format!("{path}: {error}"))?,
-            samples: core::num::NonZeroU32::new(1).expect("one is not zero"),
-        }),
-        evidence: vec![lane.evidence_id(evidence)],
-    })
+) -> Result<(), String> {
+    let (field, first) = sampled(path, values, lane, evidence)?;
+    firsts.insert(path.to_owned(), first);
+    out.push(field);
+    Ok(())
+}
+
+/// One field, from every observation of it the transcript carries.
+///
+/// ⛔ **The plan is read off the evidence rather than invented.** One session,
+/// because a lane runs the build once; one torrent, because the lab generates
+/// one; and a connection per sampled segment, because that is what a transcript
+/// records. ⚠ A plan claiming more than the transcript shows would let a field
+/// rest on samples the run could not have produced, which is `E-BND-21`.
+fn sampled(
+    path: &str,
+    values: &[Vec<u8>],
+    lane: &Lane,
+    evidence: &str,
+) -> Result<(ObservedField, HexBytes), String> {
+    let count = u32::try_from(values.len())
+        .ok()
+        .and_then(core::num::NonZeroU32::new)
+        .ok_or_else(|| format!("{path}: {} observation(s)", values.len()))?;
+    let mut samples = Vec::new();
+    for (index, value) in values.iter().enumerate() {
+        samples.push(Sample {
+            session: 0,
+            torrent: 0,
+            connection: u32::try_from(index).map_err(|error| format!("{path}: {error}"))?,
+            value: HexBytes::new(value.clone()).map_err(|error| format!("{path}: {error}"))?,
+        });
+    }
+    let one = core::num::NonZeroU32::new(1).expect("one is not zero");
+    let plan = SamplingPlan {
+        sessions: one,
+        torrents: one,
+        connections: count,
+    };
+    let state = field_state(&samples, &plan)
+        .ok_or_else(|| format!("{path}: no state rests on those observations"))?;
+    let first = samples
+        .first()
+        .ok_or_else(|| format!("{path}: no observations"))?
+        .value
+        .clone();
+    Ok((
+        ObservedField {
+            path: FieldPath::parse(path).map_err(|error| format!("{path}: {error}"))?,
+            state,
+            evidence: vec![lane.evidence_id(evidence)],
+        },
+        first,
+    ))
 }
 
 /// The host family, the architecture and the package format the record is filed
@@ -911,9 +1031,14 @@ fn profile_of(lanes: &[Lane], watched: usize, version: &Version) -> Result<Profi
         supersedes: None,
         adjudication: None,
     };
-    profile.observations = observations_of(lane)?;
-    profile.corroboration =
-        corroboration_of(lane, &profile.observations, &profile.capture.connectors)?;
+    let (observations, firsts) = observations_of(lane)?;
+    profile.observations = observations;
+    profile.corroboration = corroboration_of(
+        lane,
+        &profile.observations,
+        &firsts,
+        &profile.capture.connectors,
+    )?;
     profile.evidence.sort_by_key(|entry| entry.id.to_string());
     Ok(profile)
 }
