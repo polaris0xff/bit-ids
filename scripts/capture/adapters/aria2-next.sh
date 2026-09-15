@@ -196,7 +196,23 @@ no package index carries it, and installing aria2 would acquire a different prod
         command -v curl >/dev/null 2>&1 || cannot "curl is not on this host"
         PREFIX=${BIT_IDS_PREFIX:-/usr/local}
         mkdir -p "$PREFIX/bin" || cannot "cannot create $PREFIX/bin"
-        curl -fsSL --retry 2 -o "$WORKDIR/aria2-next" "$BIT_IDS_RELEASE_URL" \
+        # ⛔ BOUNDED, AND THIS FETCH WAS NOT UNTIL 2026-09-15. `capture-client`
+        # runs 21 and 22 both hung in *Install the client* on the RELEASE lane,
+        # which had taken six seconds on runs 19 and 20 - and a stalled transfer
+        # with no limit waits forever, which is the shape of a step that went
+        # from six seconds to thirty minutes. ⚠ `docs/conventions/shell.md`
+        # section 9 already stated the rule; four adapters broke it, and the
+        # RPC call ninety lines above this one has carried `--max-time` all
+        # along, so the convention held on one of two paths into one product.
+        # ⭐ `bit-check check-adapters` is the rule now rather than this comment.
+        #
+        # ⚠ THE SPEED FLOOR IS THE ONE THAT CATCHES A STALL. `--max-time` alone
+        # has to be large enough for a slow link to finish a 14-megabyte
+        # artifact, which is large enough to sit in a dead transfer for minutes;
+        # a transfer under 1 KB/s for a minute is stopped whatever its size.
+        curl -fsSL --retry 2 --connect-timeout 20 --max-time 300 \
+          --speed-limit 1024 --speed-time 60 \
+          -o "$WORKDIR/aria2-next" "$BIT_IDS_RELEASE_URL" \
           </dev/null >"$WORKDIR/install.log" 2>&1 ||
           refuse "the release route could not be fetched"
         [ -s "$WORKDIR/aria2-next" ] ||
@@ -275,10 +291,24 @@ no package index carries it, and installing aria2 would acquire a different prod
         # every check here would have passed.
         _repo=$(sh "$0" describe | awk -F= '$1 == "release_repo" { sub(/^[^=]*=/, ""); print; exit }')
         [ -n "$_repo" ] || cannot "this adapter declares no release_repo to clone from"
-        git clone --depth 1 --branch "$_tag" \
+        # ⛔ BOUNDED, for the same reason the release fetch above is: a clone
+        # that stalls has no limit of its own and waits forever. ⚠ `git` has no
+        # `--max-time`, so the bound is `timeout` around it - which is the
+        # spelling `shell.md` section 9 gives for a tool that does not bound
+        # itself. ⛔ 600 rather than 300: this clone is the input to a build the
+        # workflow already allows 900 seconds for, so a bound sized like the
+        # release fetch's would refuse a source lane that was working.
+        # ⚠ Exit 124 is `timeout`'s verdict and is reported as a refusal naming
+        # the bound, never as a clone that failed for its own reasons.
+        timeout 600 git clone --depth 1 --branch "$_tag" \
           "https://github.com/$_repo.git" "$WORKDIR/src" \
-          </dev/null >"$WORKDIR/install.log" 2>&1 ||
+          </dev/null >"$WORKDIR/install.log" 2>&1
+        _clone=$?
+        [ "$_clone" = 0 ] || {
+          [ "$_clone" != 124 ] ||
+            refuse "the source route's clone of $_tag did not finish within 600s"
           refuse "the source route could not clone $_tag"
+        }
         # ⛔ THE COMMIT IS WHAT `E-ACQ-06` ASKS FOR AND A TAG IS NOT IT. A tag is
         # a name somebody can move; `SourceIdentity::SourceCommit` takes a full
         # object name and refuses an abbreviation. Measured on 2026-09-09 by

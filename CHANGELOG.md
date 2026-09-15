@@ -5,6 +5,27 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-15T16:04:12Z
+
+- ⛔ **`capture-client` runs 21 and 22 both hung thirty minutes in *Install the
+  client*** on a lane that took six seconds on runs 19 and 20, and were
+  cancelled with no log and no artifact. Three more bounds were measured not to
+  fire, taking `CI-08`'s tally from four to seven.
+- ⭐ **Every adapter fetch is bounded, and `bit-check check-adapters` is the
+  rule.** Four adapters ran `curl -fsSL --retry 2` with no time limit while
+  `docs/conventions/shell.md` section 9 stated the rule. The gate is **39
+  checks**.
+- ⛔ **The door sweep found the same defect one directory away, twice.**
+  `provision.sh` is bounded in the same change; `mine-repo`'s pair is NOT, and
+  the attempt was reverted: `timeout` is a PAUSE on Windows, so its two halves
+  need two idioms.
+- ⚠ **A control run separates the commit from the clock**: a re-run at
+  `95e90f5` installed in six seconds. The cause is located, not confirmed.
+- ⚠ **An optimisation was measured and reverted.** Running most
+  `check-capture-client` cases at one session left it at 134 seconds, so the
+  sessions default is not what grew it.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-08`. No version bump and no deploy.
+
 ### 2026-09-15T14:42:24Z
 
 - ⭐ **Run 20 gave two announces from a stock build**, `started` and `stopped`,

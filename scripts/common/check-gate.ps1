@@ -229,9 +229,10 @@ function Invoke-Ported([string]$Name, [string]$Check = '', [string[]]$ExtraArgs 
     }
 }
 
-foreach ($c in 'check-changelog', 'check-control-bytes', 'check-docs',
-                'check-ignores', 'check-licences', 'check-markers',
-                'check-no-secrets', 'check-one-home', 'check-placeholders') {
+foreach ($c in 'check-adapters', 'check-changelog', 'check-control-bytes',
+                'check-docs', 'check-ignores', 'check-licences',
+                'check-markers', 'check-no-secrets', 'check-one-home',
+                'check-placeholders') {
     Invoke-Ported $c
 }
 

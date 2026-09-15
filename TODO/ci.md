@@ -2251,6 +2251,67 @@ Guard mutation, one plant per tool, each verified to apply: a removed
 `shellcheck` directive and an added indent. Both refused, and each row named
 itself rather than the other.
 
+### ⛔ A FIFTH, SIXTH AND SEVENTH BOUND MEASURED NOT TO FIRE. 2026-09-15
+
+**`capture-client` runs 21 and 22, both on `40ed628`, both cancelled with no log
+and no artifact.** The RELEASE lane's *Install the client* step ran for about
+thirty minutes where runs 19 and 20 took **six seconds**, measured from the step
+timings this entry's own route reads:
+
+| run | commit | release install | verdict |
+| --- | --- | ---: | --- |
+| 19 | `c3c9f6c` | 12:38:25 to 12:38:31, **6s** | green |
+| 20 | `95e90f5` | 14:12:58 to 14:13:04, **6s** | green |
+| 21 | `40ed628` | 14:46:22, never completed | ⛔ cancelled at 15:15:51 |
+| 22 | `40ed628` | 15:20:36, never completed | ⛔ cancelled |
+
+⛔ **THREE MORE BOUNDS DID NOT END IT, which takes this entry's tally from four
+to seven.** `install-client`'s inner 420 seconds should have refused at 14:53
+and did not. The step's own `timeout -k 30 1080` - the bound this entry moved
+outside the shell precisely because nothing inside it was reachable - should
+have ended the process at 15:04 and did not. The job's `timeout-minutes: 25`
+ended it at **thirty** minutes rather than twenty-five.
+
+⛔ **AND A CANCELLED JOB WRITES NO LOG AT ALL.** Its log endpoint answered
+`BlobNotFound` for four minutes of polling and never resolved, which is the same
+answer `AGENTS.md` rule 8 records for a job that has not finished. ⚠ So runs 21
+and 22 measured nothing about the build and cost a dispatch each - which is the
+whole argument this entry already makes about runs 7, 8 and 9.
+
+⭐ **The located cause is an unbounded fetch, and it is fixed.** The release
+route ran `curl -fsSL --retry 2` with **no time limit**, in four adapters at
+once, and a stalled transfer with no limit waits forever - which is exactly the
+shape of a six-second step becoming a thirty-minute one.
+[`../docs/conventions/shell.md`](../docs/conventions/shell.md) section 9 had
+stated that rule for as long as the adapters had been breaking it, and
+`aria2-next.sh` has carried `--max-time 20` on its JSON-RPC call ninety lines
+above the fetch that had none: the convention held on one of two paths into one
+product. ⭐ `bit-check check-adapters` is the rule now rather than a comment, and
+the gate is **39 checks**.
+
+⛔ **THE DOOR SWEEP FOUND THE SAME DEFECT TWICE MORE, ONE DIRECTORY AWAY**, which
+is the rule being narrower than the class it is about:
+
+| where | verdict |
+| --- | --- |
+| `scripts/doctor/provision.sh` fetched every pinned tool with no limit | ⭐ bounded in the same change; out of `check-adapters`' scope because a stall there costs a session's start in front of somebody rather than a dispatch |
+| `scripts/common/mine-repo.sh` and its `.ps1` twin clone with no bound | ⛔ **NOT fixed, and the attempt was reverted** |
+
+⚠ **The revert is the finding.** `timeout` is not a bound on Windows -
+`timeout.exe` is a PAUSE - so a `.ps1` wrapped that way would sleep for ten
+minutes and then clone. The two halves need two idioms, `check-twins` compares
+that pair, and doing it during a wrap-up would have shipped a Windows defect to
+avoid leaving a residual. It is its own unit.
+
+⚠ **IT IS LOCATED RATHER THAN CONFIRMED, AND THE DIFFERENCE MATTERS HERE.** No
+run since carries the fix. What was measured from this host is that the vendor's
+release listing answers in 0.9 seconds and its asset in 0.6, so the endpoint is
+reachable from somewhere - which is evidence about this host's network and not
+about the runner's. ⛔ **The control is a re-run of run 20 at `95e90f5`**, the
+same workflow without this session's commits: if it hangs too, the cause is
+outside this repository and the bound is still the right fix for a different
+reason. It was still running when this was written.
+
 ### ⚠ Residual, filed 2026-09-09: `check-step-bodies` is a load-sensitive row
 
 ⛔ **A gate row that fails under load and passes alone is the same class this
@@ -3293,7 +3354,8 @@ check could assert it once rather than twice.
 is that check, 2026-09-15**, and it is a gate row on both lanes - a real row on
 the `sh` one and a declared `n/a` on the PowerShell one, because it reads both
 runners itself and a second implementation would answer the same thing from the
-same two files. The gate is **38 checks** now.
+same two files. The gate is **39 checks** now, `check-adapters` having joined
+it on 2026-09-15.
 
 ⛔ **The flags are READ OUT OF the runners and then RUN.** A harness that spelled
 `--public` itself could not catch the defect being guarded against, which is a

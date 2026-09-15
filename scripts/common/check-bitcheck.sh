@@ -859,6 +859,47 @@ cp "$WORK/gitignore.orig" "$GI"
 agree "ignores clean tree again" check-ignores - 0
 
 # ============================================================================
+# check-adapters
+# ============================================================================
+#
+# ⭐ THE SECOND RULE HERE THAT WAS NEVER A SHELL CHECK, so its cases name `-` for
+# the predecessor. ⛔ It exists because `capture-client` runs 21 and 22 both hung
+# in *Install the client* on the RELEASE lane - six seconds on runs 19 and 20 -
+# and an unbounded fetch is the only thing in that route that can wait forever.
+# `docs/conventions/shell.md` section 9 had stated the rule for as long as four
+# adapters had been breaking it.
+
+agree "adapters clean tree" check-adapters - 0
+
+# ⛔ A RELEASE FETCH WITH NO TIME LIMIT, which is the exact shape found on
+# 2026-09-15 in four adapters at once.
+AD="$TREE/scripts/capture/adapters/aria2-next.sh"
+cp "$AD" "$WORK/adapter.orig" || exit 2
+sed 's/--connect-timeout 20 --max-time 300/--connect-timeout 20/' \
+  "$WORK/adapter.orig" >"$AD"
+agree "adapters a curl that writes a file with no --max-time is refused" check-adapters - 1
+cp "$WORK/adapter.orig" "$AD"
+
+# ⛔ AND A CLONE THAT NOTHING BOUNDS. `git` has no flag of its own, so the rule
+# is a `timeout` wrapper, and a clone is the other way a capture host hangs.
+sed 's/timeout 600 git clone/git clone/' "$WORK/adapter.orig" >"$AD"
+agree "adapters a git clone with no timeout wrapper is refused" check-adapters - 1
+cp "$WORK/adapter.orig" "$AD"
+
+# ⚠ AND A BOUND THAT BOUNDS SOMETHING ELSE IS NOT A BOUND. A `timeout` after the
+# command it is supposed to wrap satisfies a rule that only asks whether the word
+# appears on the line.
+sed 's/timeout 600 git clone \(.*\)$/git clone \1 \&\& timeout 5 true/' \
+  "$WORK/adapter.orig" >"$AD"
+agree "adapters a timeout after the command it should wrap is refused" check-adapters - 1
+cp "$WORK/adapter.orig" "$AD"
+
+# ⭐ AND THE ACCEPTING HALF THAT MATTERS MOST: a curl that only ASKS is out of
+# scope, so a rule that demanded a bound on every invocation would fire on the
+# probe this adapter already carries and would be a rule somebody switches off.
+agree "adapters clean tree again" check-adapters - 0
+
+# ============================================================================
 # check-docs
 # ============================================================================
 #

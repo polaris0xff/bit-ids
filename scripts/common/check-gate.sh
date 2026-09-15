@@ -304,8 +304,8 @@ if command -v go >/dev/null 2>&1; then
   (cd "$HERE/../../tools/check" && go build -o "$GOBIN" .) >/dev/null 2>&1 || :
 fi
 
-for c in check-changelog check-control-bytes check-docs check-ignores \
-  check-licences check-markers check-no-secrets check-one-home \
+for c in check-adapters check-changelog check-control-bytes check-docs \
+  check-ignores check-licences check-markers check-no-secrets check-one-home \
   check-placeholders; do
   if [ -x "$GOBIN" ]; then
     queue "$c" "$GOBIN" "$c"

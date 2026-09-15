@@ -82,6 +82,7 @@ type verdict struct {
 type check func(r *repo) (verdict, error)
 
 var checks = map[string]check{
+	"check-adapters":      checkAdapters,
 	"check-changelog":     checkChangelog,
 	"check-control-bytes": checkControlBytes,
 	"check-docs":          checkDocs,

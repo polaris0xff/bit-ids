@@ -409,6 +409,14 @@ STUBC
 # ⛔ UNPIPED, AND $? READ ON THE NEXT LINE. Piping the runner into anything
 # reports the pipeline's status, so a runner that failed to refuse reads as
 # having refused.
+# ⚠ EVERY CASE RUNS AT THE RUNNER'S OWN DEFAULT, and an attempt to run most of
+# them at one session was measured and REVERTED. This harness went from 105
+# seconds at 111 cases to 134 at 123, and the sessions default looked like the
+# cause; running every case but the control at `--sessions 1` left it at **134
+# seconds**, so it is not. ⛔ The growth is the twelve extra cases, and a harness
+# complicated for a saving that was never measured is the shape this repository
+# refuses. `CI-10` carries the row as a harness that grew.
+
 run_case() { # want-code  saying  name  [extra-args...]
   _want="$1"
   _saying="$2"

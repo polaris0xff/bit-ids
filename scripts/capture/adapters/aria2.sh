@@ -203,7 +203,16 @@ case "$COMMAND" in
             cannot "the release route builds from source and $_need is not on this host"
         done
         PREFIX=${BIT_IDS_PREFIX:-/usr/local}
-        curl -fsSL --retry 2 -o "$WORKDIR/aria2.tar.bz2" "$BIT_IDS_RELEASE_URL" \
+        # ⛔ BOUNDED. An unlimited fetch is how `capture-client` runs 21 and
+        # 22 turned a six-second step into thirty minutes, and
+        # `docs/conventions/shell.md` section 9 already stated the rule.
+        # ⚠ The speed floor is what catches a stall: `--max-time` alone has to
+        # be large enough for a slow link to finish, which is large enough to
+        # sit in a dead transfer for minutes. `bit-check check-adapters` is the
+        # rule rather than this comment.
+        curl -fsSL --retry 2 --connect-timeout 20 --max-time 300 \
+          --speed-limit 1024 --speed-time 60 \
+          -o "$WORKDIR/aria2.tar.bz2" "$BIT_IDS_RELEASE_URL" \
           </dev/null >"$WORKDIR/install.log" 2>&1 || refuse "the release route could not be fetched"
         mkdir -p "$WORKDIR/src" || cannot "cannot create $WORKDIR/src"
         tar -xjf "$WORKDIR/aria2.tar.bz2" -C "$WORKDIR/src" \

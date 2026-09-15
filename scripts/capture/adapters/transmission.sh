@@ -190,7 +190,16 @@ case "$COMMAND" in
         # against upstream 4.1.3, so this target has no same-version pair to
         # compare today and `AGENTS.md` rule 5 forbids backfilling one.
         # `CLIENT-06` carries it.
-        curl -fsSL --retry 2 -o "$WORKDIR/transmission-release" "$BIT_IDS_RELEASE_URL" \
+        # ⛔ BOUNDED. An unlimited fetch is how `capture-client` runs 21 and
+        # 22 turned a six-second step into thirty minutes, and
+        # `docs/conventions/shell.md` section 9 already stated the rule.
+        # ⚠ The speed floor is what catches a stall: `--max-time` alone has to
+        # be large enough for a slow link to finish, which is large enough to
+        # sit in a dead transfer for minutes. `bit-check check-adapters` is the
+        # rule rather than this comment.
+        curl -fsSL --retry 2 --connect-timeout 20 --max-time 300 \
+          --speed-limit 1024 --speed-time 60 \
+          -o "$WORKDIR/transmission-release" "$BIT_IDS_RELEASE_URL" \
           </dev/null >"$WORKDIR/install.log" 2>&1 || refuse "the release route could not be fetched"
         refuse "the release route fetched a source archive and this adapter cannot build it; a route that installs nothing must not report an install"
         ;;

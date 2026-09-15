@@ -152,7 +152,12 @@ fetch_verified() { # url  sha256  destination
   _fv_url="$1"
   _fv_want="$2"
   _fv_dest="$3"
-  curl -fsSL --retry 2 -o "$_fv_dest" "$_fv_url" </dev/null || {
+  # ⛔ BOUNDED, found one directory away from the adapters by the door sweep that
+  # wrote `check-adapters`. A stall here costs a session's start rather than a
+  # dispatch, which is cheaper and is the same defect.
+  curl -fsSL --retry 2 --connect-timeout 20 --max-time 300 \
+    --speed-limit 1024 --speed-time 60 \
+    -o "$_fv_dest" "$_fv_url" </dev/null || {
     printf '%s: could not fetch %s\n' "$ME" "$_fv_url" >&2
     return 1
   }

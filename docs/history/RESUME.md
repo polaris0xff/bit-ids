@@ -65,9 +65,17 @@ uncovers the next, and only a dispatch shows it.**
 
 ### What the checking layer looks like now
 
-**Nine rules are one Go binary** in [`../../tools/check/`](../../tools/check/),
+**Ten rules are one Go binary** in [`../../tools/check/`](../../tools/check/),
 and `bit-check --rows` is the measurement rather than this sentence. Both gate
 runners invoke it, so those rows are the SAME row on both lanes.
+
+⭐ **`check-adapters` is the tenth, 2026-09-15, and it was never a shell rule
+either.** Every network fetch a capture adapter makes carries a time bound: a
+`curl` that writes a file carries `--max-time`, a `git clone` is wrapped in
+`timeout`. ⛔ It exists because `capture-client` runs 21 and 22 both hung thirty
+minutes in *Install the client* on a lane that had taken six seconds, and
+`docs/conventions/shell.md` section 9 had stated that rule for as long as four
+adapters had been breaking it.
 
 ⛔ **Sixteen files are deleted, not translated.** `check-twins` went from twelve
 file pairs to **five**, and from 69 seconds to **10.0**, measured on 2026-09-15.
@@ -96,53 +104,49 @@ left, which is arithmetic rather than measurement; it is timed here.
 
 ### Next, in order
 
-0. ⛔ **Make a record publishable.** Run 17's are `provisional` for two reasons,
-   both correct, and they are no longer in the same state as each other.
-   ⭐ **`E-PUB-04` IS CLOSED AND A RECORD HAS BEEN PRODUCED PUBLISHABLE.** Driven
-   on this host: two captures whose lanes installed different digests assembled
-   into two records, each stating a pattern - a fixed eight-byte prefix and a
-   varying twelve over two samples - with `classify_across` answering
-   `build_equivalent` and `publishable` holding for both, exit 0.
-   ⛔ **What it measured is a stub.** `capture-client` run 18 ran the same path
-   against a real `aria2-next`: green on both lanes, **two** peer connections
-   each, and the build handshook on **one** of them and announced once. So a real
-   record still rests on one sample per field and is refused - ⭐ by `E-PUB-03`
-   now rather than `E-PUB-04`, which is the difference: a comparable capture that
-   conflicts, rather than none at all.
-   ⭐ **BOTH REPAIRS LANDED AND RUN 19 REFUTED BOTH READINGS, 2026-09-15.** The
-   observer allocates a peer ID per connection and the tracker's interval comes
-   from the deadline. `capture-client` run 19 is green on both lanes, carries
-   `offered-interval 15` and two distinct offered peers - and `aria2-next`
-   announced once and answered one of its two connections anyway. ⛔ So neither
-   surface rests on a condition this project set wrongly, and what one sample
-   per field now measures is the build. ⚠ The next hypothesis is the source
-   ADDRESS rather than the identity, and it is untested.
-   ⭐ **The lever that is left is a `stopped` announce**, which the capture path
-   threw away by stopping the client after the deadline. It stops inside the
-   window now: two announces here where the previous script gave one.
-   ⭐ **The `E-PUB-04` half is closed.** It was unclosable by any capture: a
-   capture observes one route, `classify` can never answer `build_equivalent`,
-   and every publication gate asked the per-record question one record at a
-   time. `publishable_among` asks it with the store, which is what
-   `routes_publishable`'s own wording had always described. ⚠ So a two-route
-   pair whose observations agree PUBLISHES now, proved on the assembler's own
-   synthetic lanes; what a real one still needs is the samples above.
-1. **`CLIENT-01`, `CLIENT-06`**, the remaining vertical captures. `aria2-next`
-   is the worked example: three dispatches took it from four refusals to two
-   written records.
-2. **`CI-10`**, five pairs left, `check-project` its own unit.
-3. **`CI-09`'s** remaining residuals, no longer about reaching a record: the
+0. ⛔ **THE CAPTURE WORKFLOW HANGS AND THAT IS THE FIRST THING TO SETTLE.**
+   `capture-client` runs **21 and 22** both spent thirty minutes in *Install the
+   client* on the RELEASE lane, which took **six seconds** on runs 19 and 20.
+   Every bound failed: the inner 420s, the outer `timeout -k 30 1080`, and the
+   job's own `timeout-minutes: 25`, which ended it at thirty. ⛔ A cancelled job
+   leaves **no log and no artifact**, so neither run measured anything.
+   ⭐ **The located cause is an unbounded fetch**, now fixed and enforced by
+   `check-adapters`; ⚠ **it is not confirmed**, because no run since carries the
+   fix. ⛔ **A control was queued and had not started**: a re-run of run 20 at
+   `95e90f5`, which is the same workflow without this session's commits. Read
+   both back before anything else - if the control hangs too, the cause is
+   outside this repository and the fix above is still right and not the reason.
+1. ⛔ **Make a MEASURED record publishable, which is one dispatch away.** Runs 19
+   and 20 refuted both recorded readings: the observer now offers a distinct peer
+   per connection and an interval the run can outlive, and `aria2-next` still
+   answered one of two connections and announced once. ⭐ **Run 20 then gave two
+   announces** - `started` and `stopped`, the first pair a stock build has ever
+   given this project - **and both carried the same peer ID**, so the tail is
+   stable within a session.
+   ⭐ **So the last lever is a second SESSION, and it is built.**
+   `capture-client.sh --sessions` defaults to two and starts and stops the build
+   once per session inside the window. ⚠ **No dispatch has taken it**: whether
+   `aria2-next` regenerates its peer ID per run is the open question, and a
+   `patterned` field is what two lanes can agree on.
+2. **`CLIENT-01`, `CLIENT-06`**, the remaining vertical captures. `aria2-next`
+   is the worked example: five dispatches took it from four refusals to two
+   written records and two announces.
+3. **`CI-10`**, five pairs left, `check-project` its own unit.
+4. **`CI-09`'s** remaining residuals, no longer about reaching a record: the
    `RunManifest` a record needs beside it, and the publisher, which cannot run at
    all because it downloads an artifact named `bundle` that nothing produces.
-4. **`CI-07`**, whose class-A backlog shrinks as `CI-10` ports pairs.
-5. **`CI-08`'s** load-sensitive `check-step-bodies` row.
+   ⚠ And a third: `sampling::classify` computes a `Lifetime` per span and
+   `field_state` DISCARDS it, so no record can say whether a tail is
+   per-connection or per-session. `SCHEMA-04` owns the field.
+5. **`CI-07`**, whose class-A backlog shrinks as `CI-10` ports pairs.
+6. **`CI-08`'s** load-sensitive `check-step-bodies` row.
 
 ---
 
 ## How this project is checked
 
 ⛔ **Run the gate with one command, `sh scripts/common/check-gate.sh`, after the
-last edit.** **38 checks, about 127 seconds** on a four-processor host. Its
+last edit.** **39 checks, about 165 seconds** on a four-processor host. Its
 wall clock is `max(concurrent batch) + max(check-capture, check-capture-client)`
 rather than a sum: those two run alone, after the batch, on purpose.
 
