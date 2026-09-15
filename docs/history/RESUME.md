@@ -75,7 +75,8 @@ either.** Every network fetch a capture adapter makes carries a time bound: a
 `timeout`. ⛔ It exists because `capture-client` runs 21 and 22 both hung thirty
 minutes in *Install the client* on a lane that had taken six seconds, and
 `docs/conventions/shell.md` section 9 had stated that rule for as long as four
-adapters had been breaking it.
+adapters had been breaking it. ⚠ **It did not fix the hang** - run 23 carries
+the bound and hung anyway - and the rule is kept on its own terms.
 
 ⛔ **Sixteen files are deleted, not translated.** `check-twins` went from twelve
 file pairs to **five**, and from 69 seconds to **10.0**, measured on 2026-09-15.
@@ -110,12 +111,17 @@ left, which is arithmetic rather than measurement; it is timed here.
    Every bound failed: the inner 420s, the outer `timeout -k 30 1080`, and the
    job's own `timeout-minutes: 25`, which ended it at thirty. ⛔ A cancelled job
    leaves **no log and no artifact**, so neither run measured anything.
-   ⭐ **The located cause is an unbounded fetch**, now fixed and enforced by
-   `check-adapters`; ⚠ **it is not confirmed**, because no run since carries the
-   fix. ⛔ **A control was queued and had not started**: a re-run of run 20 at
-   `95e90f5`, which is the same workflow without this session's commits. Read
-   both back before anything else - if the control hangs too, the cause is
-   outside this repository and the fix above is still right and not the reason.
+   ⛔ **A CAUSE WAS LOCATED, FIXED AND REFUTED, AND THE REFUTATION IS THE
+   FINDING.** The adapters fetched with no time limit, which is a real defect
+   and is fixed; run **23** on `80ec75a` carries `--max-time 300` and its
+   release install still ran past **twelve minutes**, so the step is not waiting
+   in the fetch. ⚠ A control re-run at `95e90f5` installed in **six seconds**,
+   so the hang correlates with this session's commits - and the two hangs are
+   contiguous in time, which that control does not separate.
+   ⭐ **The next dispatch that reaches an upload answers it in one file.**
+   `install-step.sh` writes a `ps` timeline into the workdir every five seconds
+   and the workdir ships as the install artifact; runs 21, 22 and 23 were
+   cancelled before any upload. ⛔ Read that timeline before theorising again.
 1. ⛔ **Make a MEASURED record publishable, which is one dispatch away.** Runs 19
    and 20 refuted both recorded readings: the observer now offers a distinct peer
    per connection and an interval the run can outlive, and `aria2-next` still

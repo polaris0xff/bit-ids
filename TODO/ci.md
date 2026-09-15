@@ -2278,10 +2278,28 @@ answer `AGENTS.md` rule 8 records for a job that has not finished. ⚠ So runs 2
 and 22 measured nothing about the build and cost a dispatch each - which is the
 whole argument this entry already makes about runs 7, 8 and 9.
 
-⭐ **The located cause is an unbounded fetch, and it is fixed.** The release
+⛔ **A CAUSE WAS LOCATED, FIXED, AND THEN REFUTED BY THE NEXT RUN.** The release
 route ran `curl -fsSL --retry 2` with **no time limit**, in four adapters at
 once, and a stalled transfer with no limit waits forever - which is exactly the
-shape of a six-second step becoming a thirty-minute one.
+shape of a six-second step becoming a thirty-minute one. ⚠ **It is not the
+cause.** Run **23**, on `80ec75a`, carries `--max-time 300` on that fetch and
+its release install ran past **twelve minutes**: a bound that would have refused
+at five did not fire, so the step is not waiting in the fetch. ⭐ The fix is kept
+because the rule is right on its own terms and `shell.md` section 9 states it;
+this paragraph says what it did NOT buy rather than leaving a repair reading as
+an explanation.
+
+⚠ **What that leaves unexplained is the whole of it.** The release route after
+the fetch is `chmod`, `cp`, `mv` and a `test -x`; `install-client` then runs its
+rule-12 scan and asks the adapter for a version. One of those is where the step
+sits, and no run has produced a log to say which - ⛔ which is the same wall
+runs 7, 8 and 9 hit. ⭐ `install-step.sh` writes a `ps` timeline into the workdir
+every five seconds precisely for this, and the workdir ships as the install
+artifact: **the next dispatch that reaches an upload answers it in one file.**
+Runs 21, 22 and 23 uploaded nothing because the job was cancelled first.
+
+The original reasoning, kept because a corrected claim with its reasoning
+deleted teaches nothing:
 [`../docs/conventions/shell.md`](../docs/conventions/shell.md) section 9 had
 stated that rule for as long as the adapters had been breaking it, and
 `aria2-next.sh` has carried `--max-time 20` on its JSON-RPC call ninety lines

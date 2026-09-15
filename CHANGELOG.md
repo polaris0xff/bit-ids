@@ -19,8 +19,13 @@ Nothing is released yet. Entries accumulate here until the first
   `provision.sh` is bounded in the same change; `mine-repo`'s pair is NOT, and
   the attempt was reverted: `timeout` is a PAUSE on Windows, so its two halves
   need two idioms.
+- ⛔ **AND THE LOCATED CAUSE WAS REFUTED BY THE NEXT RUN.** Run 23 carries
+  `--max-time 300` on that fetch and its release install ran past twelve
+  minutes, so the step is not waiting there. The bound is kept on its own terms
+  and the record says what it did not buy.
 - ⚠ **A control run separates the commit from the clock**: a re-run at
-  `95e90f5` installed in six seconds. The cause is located, not confirmed.
+  `95e90f5` installed in six seconds, so the hang correlates with this session's
+  commits; the two hangs are also contiguous in time.
 - ⚠ **An optimisation was measured and reverted.** Running most
   `check-capture-client` cases at one session left it at 134 seconds, so the
   sessions default is not what grew it.
