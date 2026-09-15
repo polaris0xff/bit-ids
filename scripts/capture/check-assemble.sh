@@ -97,6 +97,20 @@ User-Agent: fixture-client/1.2.3
 "
 }
 
+# ⛔ A SCRAPE: a request the build sends on the same surface that is NOT an
+# announce, because it carries no `peer_id`. ⚠ The tree contains no such segment
+# and neither did this harness, so the assembler's rule for one - sample the
+# announces, pass over the rest - survived a mutation pass with every case green.
+# That is the blind spot `docs/methodology/reviews.md` names: a corpus only tests
+# the defects it holds an example of.
+scrape_hex() {
+  hexof "GET /scrape?info_hash=$(printf 'X%.0s' 1) HTTP/1.1
+Host: 127.0.0.1:1
+User-Agent: fixture-client/1.2.3
+
+"
+}
+
 # One peer handshake, in the shape `peer_wire` parses: a length byte, the
 # protocol name, eight reserved bytes, the info hash and the peer ID.
 handshake_hex() { # peer-id
@@ -415,6 +429,30 @@ if grep -q '"kind": "constant"' \
   pass "a lane that connected once still states a constant"
 else
   fail "a lane that connected once still states a constant"
+fi
+
+# ⛔ AND A REQUEST THAT IS NOT AN ANNOUNCE IS NOT A SAMPLE OF ONE. A scrape
+# carries no `peer_id`, so it says nothing about the fields an announce does;
+# reading it as one would refuse a capture for carrying a request the record
+# does not describe. ⚠ This case exists because the rule SURVIVED a mutation
+# pass - no fixture here had such a segment, so every reading agreed.
+write_lane scrape-source source "$REFS" "$COMMIT" "$DIGEST_B" 1.2.3 \
+  "$PEER_B" "$PEER_B" "$PEER_D" || exit 2
+transcript "$WORK/scrape-source-capture/capture/bundle/tracker-http.transcript.json" \
+  tracker-http "$(announce_hex "$PEER_B")" "$(scrape_hex)" "$(announce_hex "$PEER_D")"
+case_is 0 "build_equivalent" \
+  "a scrape between two announces is passed over rather than refused" \
+  scrape samp-release scrape-source
+# ⛔ AND IT IS PASSED OVER RATHER THAN COUNTED. Three segments, two announces:
+# a field resting on three samples would mean the scrape became one, which is a
+# different defect from a refusal and looks identical in the line above.
+if grep -q '"samples": 2' \
+  "$(find "$WORK/store-scrape/profiles" -name 'cap-source.json' -type f | head -1)"; then
+  pass "the scrape is not counted as a sample of an announce field"
+else
+  fail "the scrape is not counted as a sample of an announce field"
+  [ "$JSON" = "1" ] || find "$WORK/store-scrape/profiles" -name 'cap-source.json' \
+    -exec grep -o '"samples": [0-9]*' {} + | sed 's/^/          /' | head -6
 fi
 
 # -- The refusals ------------------------------------------------------------

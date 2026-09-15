@@ -97,14 +97,21 @@ left, which is arithmetic rather than measurement; it is timed here.
 
 0. ⛔ **Make a record publishable.** Run 17's are `provisional` for two reasons,
    both correct, and they are no longer in the same state as each other.
-   ⭐ **BOTH ARE CLOSED AND A RECORD HAS BEEN PRODUCED PUBLISHABLE.** Driven on
-   this host: two captures whose lanes installed different digests assembled
+   ⭐ **`E-PUB-04` IS CLOSED AND A RECORD HAS BEEN PRODUCED PUBLISHABLE.** Driven
+   on this host: two captures whose lanes installed different digests assembled
    into two records, each stating a pattern - a fixed eight-byte prefix and a
    varying twelve over two samples - with `classify_across` answering
    `build_equivalent` and `publishable` holding for both, exit 0.
-   ⛔ **What it measured is a stub**, written to announce twice and accept two
-   peer connections. The path is established; the product is not. A dispatch is
-   what says whether a stock build accepts the second connection.
+   ⛔ **What it measured is a stub.** `capture-client` run 18 ran the same path
+   against a real `aria2-next`: green on both lanes, **two** peer connections
+   each, and the build handshook on **one** of them and announced once. So a real
+   record still rests on one sample per field and is refused - ⭐ by `E-PUB-03`
+   now rather than `E-PUB-04`, which is the difference: a comparable capture that
+   conflicts, rather than none at all.
+   ⚠ **Two repairs are located precisely**, in `TODO/observer.md` under `OBS-04`:
+   the lab presents the SAME peer ID on both connections, so a client dropping a
+   duplicate peer would do exactly this; and the tracker answers `interval: 60`
+   under a 45-second deadline, so no re-announce is ever due.
    ⭐ **The `E-PUB-04` half is closed.** It was unclosable by any capture: a
    capture observes one route, `classify` can never answer `build_equivalent`,
    and every publication gate asked the per-record question one record at a
@@ -127,7 +134,7 @@ left, which is arithmetic rather than measurement; it is timed here.
 ## How this project is checked
 
 ⛔ **Run the gate with one command, `sh scripts/common/check-gate.sh`, after the
-last edit.** **37 checks, about 125 seconds** on a four-processor host. Its
+last edit.** **38 checks, about 127 seconds** on a four-processor host. Its
 wall clock is `max(concurrent batch) + max(check-capture, check-capture-client)`
 rather than a sum: those two run alone, after the batch, on purpose.
 

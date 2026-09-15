@@ -67,6 +67,21 @@ fn main() -> ExitCode {
                     std::io::stderr(),
                     "provisional, not publishable\n{blockers}"
                 );
+                // ⛔ THIS READS ONE DOCUMENT, AND `E-PUB-04` IS NOT A PROPERTY
+                // OF ONE. Whether two byte-different installs behave alike is a
+                // property of a PAIR, and the second capture is a different
+                // record; `publishable_among` is the same gate asked where the
+                // store is visible. Saying so is the difference between a
+                // reader taking this for a permanent refusal and taking it for
+                // the answer one file can give.
+                if blockers.has("E-PUB-04") {
+                    let _ = writeln!(
+                        std::io::stderr(),
+                        "⚠ E-PUB-04 is the answer ONE record can give. A capture \
+                         of the other route, in the same store, is what settles \
+                         it: validate-corpus asks that question."
+                    );
+                }
                 return ExitCode::from(1);
             }
             let _ = writeln!(stdout, "publishable");

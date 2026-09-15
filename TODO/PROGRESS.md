@@ -37,14 +37,24 @@ automatically did not fire and could not have.
 | `E-PUB-04`: only ONE of the two installs was put on the wire | ⭐ **closed, 2026-09-15.** The other route's capture settles it, and the gate is asked with the store |
 | `classify_across: divergent`: a peer ID's tail is per connection | ⭐ **closed.** The capture connects twice, the assembler folds both, and the pattern is what two lanes agree on |
 
-⭐ **BOTH REFUSALS ARE GONE AND A RECORD HAS BEEN PRODUCED PUBLISHABLE**, driven
-on this host on 2026-09-15: two captures whose lanes installed **different
-digests** assembled into two records, each stating `patterned` with a fixed
-eight-byte prefix and a varying twelve over two samples, `classify_across`
-answering `build_equivalent`, and `publishable` holding for both. ⛔ **What it
-measured is a stub**, written to announce twice and accept two peer connections,
-so what is established is the path rather than a product. A dispatch is what says
-whether a stock build accepts the second connection.
+⭐ **A RECORD HAS BEEN PRODUCED PUBLISHABLE**, driven on this host on 2026-09-15:
+two captures whose lanes installed **different digests** assembled into two
+records, each stating `patterned` with a fixed eight-byte prefix and a varying
+twelve over two samples, `classify_across` answering `build_equivalent`, and
+`publishable` holding for both. ⛔ **What it measured is a stub**, written to
+announce twice and accept two peer connections, so what is established is the
+path rather than a product.
+
+⛔ **AND THE DISPATCH SAYS A STOCK BUILD DOES NOT COOPERATE YET.**
+`capture-client` run 18 is green on both lanes and each opened **two** peer
+connections; `aria2-next` answered the handshake on **one** of them and sent
+nothing on the other, and announced once. So every field still rests on one
+sample and the pair is refused - ⭐ **by `E-PUB-03` now rather than `E-PUB-04`**,
+which is the whole difference: the store holds a comparable capture and it
+CONFLICTS, where before it held none. ⚠ Two precisely located repairs remain and
+`TODO/observer.md` carries both: the lab presents the same peer ID on both
+connections, and the tracker answers a 60-second interval under a 45-second
+deadline, so no re-announce is ever due.
 
 ⛔ **`E-PUB-04` WAS STRUCTURAL AND THIS FILE NAMED A CLOSER THAT COULD NOT
 EXIST.** It said "a capture that observes both installs", and a capture cannot:

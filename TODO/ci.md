@@ -354,6 +354,52 @@ cases name `-` for the predecessor.
   and CRLF where LF is - because they are different branches, and `git diff`
   prints nothing for either.
 
+### The three deep reviews, 2026-09-15
+
+⛔ **The door sweep asked which other door reaches a publication gate**, because
+this session moved one. Four callers ask it and three hold a corpus - two in
+`index.rs` and `corpus::publishable_view` - and all three were repointed;
+`index.rs`'s third occurrence is inside `#[cfg(test)]` and correctly asks the
+per-record question. ⚠ **The finding is `validate-profile`**, which reads ONE
+document and therefore asks the one-document question correctly - and whose
+`E-PUB-04` line now reads as a permanent refusal when a sibling capture is what
+settles it. It says so on its own line when that code is among the blockers.
+⭐ The sweep also enumerated every writer of a record `FieldState` outside the
+schema: there is one, and it is the assembler.
+
+⛔ **The guard mutation pass ran over four surfaces and two plants survived.**
+Eighteen plants across `sampling::field_state`, the store-aware publication rule,
+`Lab::dial_again` and the assembler's sampling fold, each verified to have
+changed the file, with the clean tree run either side.
+
+| survivor | what it says |
+| --- | --- |
+| the address comparison in `dial_again` | nothing varied the address, so a re-dial to somewhere else would have filed its segments under an endpoint naming a different peer. ⭐ A case varies it now and the plant is refused |
+| a request with no `peer_id` read as an announce | no fixture here held one. ⭐ A scrape between two announces is a case now, and the plant is refused |
+
+⚠ **Both survivors are the same shape and it is the one this file keeps
+recording**: a corpus only tests the defects it contains an example of. Neither
+was a gap in the rule; both were gaps in the fixtures, and the repair is a
+fixture rather than a reading.
+
+⛔ **And the mutation harness itself reported five refusals over nothing** on its
+first run, because it named a `--test` target that does not exist: every plant
+exited non-zero and read as REFUSED, with `0 case(s)` beside it and an empty
+control. ⚠ A harness exit is *could not run*, never *refused*. It prints its
+control first now. ⚠ A second instance of the same class: `cargo test` stops at
+the first failing binary, so a refusal count taken without `--no-fail-fast` is a
+count of the binaries that ran - one plant read as 1 case and is 6.
+
+⛔ **The claim audit re-read every number written this session against the
+tree**, and two did not hold. `docs/history/RESUME.md` carried **37 checks,
+about 125 seconds** for a gate that is now **38 checks, 127 seconds**, timed
+rather than assumed. And the `E-PUB-04` section above quoted a case count for
+`check-assemble` that the same session's later work moved from 26 to 32; the
+count is gone rather than corrected, which is what this file already says to do
+about a number in prose. ⚠ What holds: 54 test binaries and **579 passed, 0
+failed**; five twin pairs; 20 variability cases and 16 equivalence cases; and
+`check-public-row`'s 5.
+
 ## CI-02: Stable-release staleness monitor
 
 Source: operator automatic maintenance requirement
@@ -2447,6 +2493,25 @@ both correct at the time and neither a defect in the capture:
 
 ⛔ **The store is scratch state rather than the tree, and nothing is published.**
 
+### ⛔ Run 18: the refusal MOVED, which is what says the repair landed
+
+**Dispatched 2026-09-15 on `66df90b`, both lanes green**, same inputs as run 17
+and one difference: the observer dials the peer surface twice. Each lane's
+transcript carries **connections 2 and 3**, so the second dial works on a runner;
+`aria2-next` answered the handshake on one of them and sent nothing on the other,
+and announced once. Every field therefore still rests on one sample.
+
+⭐ **And the pair is refused by `E-PUB-03` rather than `E-PUB-04`.** That is the
+whole measurement: the store now holds a comparable capture of the other route
+and the two DISAGREE, where every assembly before this was refused for holding no
+comparable capture at all. The refusal names `cap-release`, `cap-source` and the
+two fields - `peer_wire/peer_id` and `tracker_http/peer_id`, `2 of 4 overlapping
+field(s) disagree`.
+
+⚠ [`observer.md`](observer.md) under `OBS-04` carries the two repairs the run
+located: the lab presents the same peer ID on both connections, and the tracker
+answers a 60-second interval under a 45-second deadline.
+
 ### ⭐ `E-PUB-04` was unclosable by any capture, and is closed. 2026-09-15
 
 ⛔ **A record whose routes installed different bytes could not publish however
@@ -2499,10 +2564,13 @@ run*, never *refused*, and this is that rule arriving in the instrument written
 to apply it. It prints the control first and refuses a non-zero exit with no red
 case now.
 
-Driven pass: `sh scripts/capture/check-assemble.sh`, **26 cases, 26 passed**.
+Driven pass: `sh scripts/capture/check-assemble.sh`, every case passing.
 ⭐ Its control pair already installs two different digests, so those two records
 were provisional and now publish; a plant that ignores the store turns exactly
-the two new cases red and nothing else.
+the two new cases red and nothing else. ⚠ **No count of its cases is written
+here**, for the reason this file records three times over: the harness grows and
+a number in prose is a value in two places with nothing comparing them. It
+printed 26 at this change and 32 by the end of the same session.
 
 #### ⛔ Three scope defects stood between run 14 and that record
 

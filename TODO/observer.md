@@ -733,10 +733,41 @@ assembled into two records stating `patterned`, `fixed 8 + varying 12`,
 `samples: 2` - and `classify_across` answered `build_equivalent` with both
 records **publishable**.
 
+### ⛔ And the dispatch answered it: a stock build does not handshake twice
+
+**`capture-client` run 18, 2026-09-15, both lanes green.** The second dial works
+on a runner - each lane's transcript carries **connections 2 and 3** - and the
+build answered on one of them:
+
+| lane | peer connections | peer `from_target` | announces |
+| --- | --- | ---: | ---: |
+| release | 2, 3 | **1** | 1 |
+| source | 2, 3 | **1** | 1 |
+
+⛔ **The bytes say exactly what happened.** On connection 2 the lab wrote its
+68-byte handshake and `aria2-next` answered 266 bytes a millisecond later; on
+connection 3 the lab wrote the same 68 bytes and **nothing came back**. The
+attestation agrees: `peer_streams=1`, because a stream is counted once bytes
+arrive.
+
+⚠ **The most likely reading is the lab's own identity**, and it is a reading
+rather than a finding: `PeerWire::opening` is `identity.handshake(&info_hash)`,
+so both connections present the **same observer peer ID**, and a client that
+drops a second connection from a peer it already has would do exactly this.
+⛔ Varying it per connection is a change to what is **offered**, which this entry
+records as part of the measurement, so it is its own unit rather than a tweak.
+
+⚠ **The tracker surface has the same shape for a different reason**: one
+announce per lane, because the tracker answers `interval: 60` and the observer's
+deadline was 45 seconds, so no re-announce was ever due.
+
+⭐ **What run 18 does establish** is that `E-PUB-04` is really gone. Assembled,
+the pair is refused by `E-PUB-03` naming `cap-source`, `cap-release` and the two
+fields that disagree - a comparable capture that CONFLICTS - where every previous
+assembly was refused for holding no comparable capture at all.
+
 Residual: the same one `OBS-02` and `OBS-03` carry. No stock `BitTorrent` client
-has driven this, and none can on a session host. ⚠ **And nothing has yet shown a
-stock build accepting the second connection**: the drive above is a stub that
-was written to accept two. A dispatch is what answers it.
+has driven this, and none can on a session host.
 
 ## OBS-05: BEP 10 and early-message observer
 

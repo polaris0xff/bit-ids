@@ -5,6 +5,28 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-15T08:09:05Z
+
+- ⛔ **`capture-client` run 18 is green on both lanes and the refusal MOVED.**
+  Each lane opened two peer connections, `aria2-next` answered the handshake on
+  one of them and sent nothing on the other, and announced once - so every field
+  still rests on one sample. ⭐ The pair is refused by `E-PUB-03` rather than
+  `E-PUB-04`: a comparable capture that conflicts, where before there was none.
+- ⚠ **Two repairs are located precisely**, in
+  [`TODO/observer.md`](TODO/observer.md) under `OBS-04`: one about what the lab
+  offers on a second connection, one about when a re-announce falls due.
+- ⛔ **The door sweep found `validate-profile` reading as a permanent refusal.**
+  It asks the one-document question correctly, and `E-PUB-04` is not a property
+  of one document; it says so on its own line now.
+- ⛔ **Two mutation plants survived, both the same shape**: nothing varied the
+  dial address, and no fixture held a request without a `peer_id`. Both repairs
+  are fixtures rather than readings, and both plants are refused now.
+- ⚠ **The claim audit caught two numbers**: the gate is 38 checks and 127
+  seconds, not 37 and 125; and a case count quoted for `check-assemble` moved
+  from 26 to 32 inside one session, so it is gone rather than corrected.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-01` and `CI-09`. No version bump and
+  no deploy.
+
 ### 2026-09-15T07:57:25Z
 
 - ⭐ **A gate row could ask the wrong question and stay green, and now cannot.**
