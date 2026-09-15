@@ -305,7 +305,7 @@ if command -v go >/dev/null 2>&1; then
 fi
 
 for c in check-changelog check-control-bytes check-licences check-markers \
-  check-one-home check-placeholders; do
+  check-no-secrets check-one-home check-placeholders; do
   if [ -x "$GOBIN" ]; then
     queue "$c" "$GOBIN" "$c"
   else
@@ -314,7 +314,7 @@ for c in check-changelog check-control-bytes check-licences check-markers \
 done
 
 # The sh halves that are not ported yet. Each is the authority on its own subject.
-for c in check-docs check-no-secrets check-project; do
+for c in check-docs check-project; do
   if [ -f "$HERE/$c.sh" ]; then
     queue "$c" sh "$HERE/$c.sh"
   else
@@ -326,11 +326,19 @@ done
 # Emails, absolute home paths and long hex are legitimate content in a private
 # project, so this row is a second call rather than a flag on the first.
 # ⚠ THE ROW LABEL NAMES THE QUESTION RATHER THAN THE FLAG, and it is the same
-# label on both lanes. Each half spells its own flag differently - `--public`
-# here and `-Public` there - so a label built from the flag made the two runners'
-# row lists differ on a row they both have, which is a false difference in the
-# one comparison that exists to find real ones.
-[ -f "$HERE/check-no-secrets.sh" ] && queue "check-no-secrets (public)" sh "$HERE/check-no-secrets.sh" --public
+# label on both lanes. It was built from the flag once, and because each half
+# spelled its own - `--public` here and `-Public` there - the two runners' row
+# lists differed on a row they both have, which is a false difference in the one
+# comparison that exists to find real ones.
+# ⭐ BOTH LANES NOW SPELL THE FLAG THE SAME WAY, because both call one binary.
+# The label stays named after the question rather than the flag anyway: it is
+# what a reader of the row list is looking for, and the next ported mode may
+# differ again.
+if [ -x "$GOBIN" ]; then
+  queue "check-no-secrets (public)" "$GOBIN" check-no-secrets --public
+else
+  queue_row "check-no-secrets (public)" "SKIP  check-no-secrets (public)  (tools/check did not build)" skip
+fi
 
 # ⚠ NEEDS gh AND THE NETWORK, so it exits 2 on a machine without them and that
 # reads as a skip rather than a pass. That is correct: nothing was verified.

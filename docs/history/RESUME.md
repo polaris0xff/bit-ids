@@ -13,7 +13,7 @@ the branch, the remote, the clone depth, `git status` and `HEAD..origin/main`
 before editing anything.
 
 **The container may start on a `claude/*` branch with `user.name` set to an
-agent and a shallow clone.** All three were true at the start of the last seven
+agent and a shallow clone.** All three were true at the start of the last nine
 sessions. Correct them before any edit: the branch to `main` per rule 7, the
 identity to the operator's own per rule 11, and the clone with
 `git fetch --unshallow`. ⛔ Read the identity out of the history with
@@ -38,13 +38,15 @@ images; this host had 1.24.7 with nothing to install.
 **In flight:** `CI-10`, with all three of its named deliverables landed and the
 rest of the port open. See below.
 
-⭐ **Measured at the start of the 2026-09-10 session, rather than carried:** the
-container started on `claude/ci-10-go-port-x40l0l` with `user.name=Claude` and a
-shallow clone - all three, for the eighth session running. Corrected to `main`,
+⭐ **Measured at the start of the 2026-09-15 session, rather than carried:** the
+container started on `claude/jolly-rubin-eb5zs9` with `user.name=Claude` and a
+shallow clone - all three, for the ninth session running. Corrected to `main`,
 to the operator identity read out of `git log`, and unshallowed. The tree was
-clean and level with `origin/main` at `2aa84bf`, and the baseline gate over it was
-**35 checks, 34 passed, 0 failed, 1 skipped**, the skip being
-`check-remote-items`.
+clean and level with `origin/main` at `dfc1821`, and the baseline gate over it was
+**36 checks, 35 passed, 0 failed, 1 skipped**, the skip being
+`check-remote-items`. `provision.sh` installed the three tools; this host carries
+`go` 1.24.7, `pwsh` 7.4.6, `shellcheck` 0.10.0, `shfmt` 3.14.0, `cargo` 1.98.0
+and **four processors**.
 
 ### ⭐ CI IS 2.8x FASTER AND EVERY NUMBER IS FROM A RUNNER
 
@@ -91,11 +93,27 @@ surface does not grow by a language. Keep it that way.
 
 ### ⚠ What is left of the port, and why it is not urgent
 
-**Eight pairs remain**, together about **12 seconds** of PowerShell against the
-**96** the layer started at. ⛔ So the remaining WALL-CLOCK value is small and the
-DRIFT value is unchanged. `check-project` is 997 lines and is its own unit;
-`check-docs`, `check-no-secrets`, `check-cache`, `check-catalogue`,
-`check-remote-items` and `mine-repo` are the rest.
+⛔ **SIX FILE PAIRS REMAIN AND `check-twins` PRINTS SIX ROWS**, and those two
+numbers were not equal until 2026-09-15. `check-no-secrets` was compared TWICE -
+once plain and once `--public`, which is a different question rather than a
+stricter one - so seven file pairs produced eight rows. ⚠ Both numbers were in
+this tree and neither said which it counted: this file said eight and then named
+seven files, and `TODO/ci.md`'s own residual said seven. ⭐ Say which unit a
+count is in, or it is the value-in-two-places defect this repository names
+everywhere else. `sh scripts/common/check-twins.sh` is the measurement, and it
+is what reconciled them rather than a choice between the two.
+
+⭐ **`check-no-secrets` IS THE PAIR THAT LEFT, 2026-09-15.** It was the two-row
+one, so a single deletion took the list from seven pairs and eight rows to six
+and six. ⚠ `--compare` ran its **twenty** cases over both deleted halves first,
+all three implementations agreeing on the exit code and byte for byte on
+`--json`.
+
+The six that remain are `check-project`, which is 997 lines and is its own unit,
+plus `check-docs`, `check-cache`, `check-catalogue`, `check-remote-items` and
+`mine-repo`. Together they are about **11 seconds** of PowerShell against the
+**96** the layer started at, ⛔ so the remaining WALL-CLOCK value is small and
+the DRIFT value is unchanged.
 
 **Two things bit while porting and will bite again.** A check's own
 implementation must be exempt from itself where it spells the patterns it looks
@@ -106,7 +124,8 @@ with `printf`, the way the marker harness already did.
 **Next, in order:**
 
 0. **`CI-10` continues where it is cheapest, not first.** Its three named
-   deliverables are landed and proved on runners. What remains is eight pairs.
+   deliverables are landed and proved on runners. What remains is seven file
+   pairs, which `check-twins` prints as eight rows.
 1. **`CLIENT-01`, `CLIENT-06`, `CLIENT-05`**, the first complete vertical
    captures.
 2. ⛔ **THE ONE THING STILL BETWEEN A CAPTURE AND A RECORD IS A DISPATCH.** Every

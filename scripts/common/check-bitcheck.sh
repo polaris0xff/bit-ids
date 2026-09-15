@@ -152,8 +152,15 @@ mkdir -p "$TREE" || exit 2
 # three zeroes and call it agreement.
 OUTF="$WORK/out"
 
-run_go() { # check
-  (cd "$TREE" && "$BIN" "$1" --json) >"$OUTF" 2>&1
+# ⚠ THE MODE FLAGS GO TO THE GO HALF VERBATIM, and that is a property of the
+# binary rather than a convenience here: `--public` is spelled the same way the
+# `sh` half spells it, so a case states one flag and two of the three
+# implementations take it unchanged. Only PowerShell needs a translation, and
+# `agree` does that one below rather than deriving all three from a label.
+run_go() { # check flags...
+  _c=$1
+  shift
+  (cd "$TREE" && "$BIN" "$_c" --json "$@") >"$OUTF" 2>&1
   printf '%s\t%s\n' "$?" "$(cat "$OUTF")"
 }
 
@@ -184,7 +191,7 @@ agree() { # label check sh-rel expected-code [sh-flags...]
   _want=$4
   shift 4
 
-  _g=$(run_go "$_check")
+  _g=$(run_go "$_check" "$@")
   _gc=${_g%%	*}
   _gj=${_g#*	}
 
@@ -264,6 +271,26 @@ agree() { # label check sh-rel expected-code [sh-flags...]
 # everything it has done so far, and every case after the first is then reporting
 # a tree nobody chose.
 unplant() { # relative-path
+  rm -f "$TREE/$1"
+}
+
+# ⛔ SOME PLANTS HAVE TO BE TRACKED, AND .gitignore IS WHY. check-no-secrets'
+# first rule fires on a credential FILE, and this repository ignores most of the
+# names it knows - `*.pem`, `*.key`, `id_rsa` - so a plant left untracked is
+# ignored, out of scope, and the case would report a rule holding over a file it
+# never saw. ⭐ `git add -f` is also the truer fixture: the rule's own title is
+# *a credential file is TRACKED*, which is what happens when a name is force-added
+# or was added before the ignore rule existed.
+plant_tracked() { # relative-path
+  (cd "$TREE" && git add -f -- "$1")
+}
+
+# ⛔ AND IT LEAVES THE INDEX AS IT FOUND IT. Deleting the file alone leaves a
+# tracked-but-deleted path, which `git ls-files` still reports - and rule 1 reads
+# a PATH rather than a file, so the finding would survive the unplant and every
+# case after it would be measuring a tree nobody chose.
+unplant_tracked() { # relative-path
+  (cd "$TREE" && git rm -q --cached --ignore-unmatch -- "$1")
   rm -f "$TREE/$1"
 }
 
@@ -647,6 +674,144 @@ agree "placeholders a Go template is accepted" check-placeholders common/check-p
 unplant tools/check/plant.yml
 
 agree "placeholders clean tree again" check-placeholders common/check-placeholders 0
+
+# ============================================================================
+# check-no-secrets
+# ============================================================================
+#
+# ⛔ EVERY NEEDLE BELOW IS ASSEMBLED AND NONE OF THEM IS WRITTEN, for the reason
+# the placeholder needles are: check-no-secrets reads every file in this tree,
+# this harness is one of them, and a token shape or a forty-digit run typed here
+# as a literal would make THIS file the finding. ⚠ A credential's SHAPE is
+# exactly what it looks for, so the rule bites harder here than anywhere else -
+# a bare `AKIA` and sixteen characters would turn the clean-tree control red and
+# the harness would be refusing itself.
+AKID=$(printf '%s%s%s' 'AKI' 'A' 'IOSFODNN7EXAMPLE')
+KEYBLOCK=$(printf '%s %s' 'BEGIN' 'PRIVATE KEY')
+URLCRED=$(printf '%s//%s:%s@%s' 'https:' 'bob' 'hunter22x' 'example.invalid')
+MAIL=$(printf '%s@%s' 'someone' 'example.invalid')
+HOMEP=$(printf '%s/%s/work' '/home' 'alice')
+HOMEG=$(printf '%s/%s/work' '/home' 'runner')
+
+# ⚠ SIXTEEN HEX DIGITS IS UNDER THE TWENTY-FOUR FLOOR, which is what lets the
+# pieces be written and the assembled runs not be.
+HX=0123456789abcdef
+HEX40=$(printf '%s%s%s' "$HX" "$HX" '01234567')
+HEX64=$(printf '%s%s%s%s' "$HX" "$HX" "$HX" "$HX")
+HEX46=$(printf '%s%s' "$HEX40" '012345')
+
+agree "no-secrets clean tree" check-no-secrets common/check-no-secrets 0
+
+# ⛔ A CREDENTIAL FILE, TRACKED. `id_ecdsa` and `*.jks` are the two names the
+# check knows that .gitignore does not carry, so an untracked plant of either is
+# genuinely in scope - but it is force-added anyway, because the rule is about a
+# file that reached the index and a fixture that only works while an ignore list
+# has a hole is a fixture that breaks when the hole is closed.
+printf 'not a real key\n' >"$TREE/tools/check/id_ecdsa"
+plant_tracked tools/check/id_ecdsa
+agree "no-secrets a tracked credential file is refused" check-no-secrets common/check-no-secrets 1
+unplant_tracked tools/check/id_ecdsa
+
+# ⭐ AND THE WAIVER, WHICH IS A DIFFERENT BRANCH. `.env.example` matches the same
+# name rule and is then dropped by the `.example` exclusion; without that branch
+# the rule fires on the file a project is SUPPOSED to commit. ⚠ .gitignore
+# un-ignores this one name explicitly, so it reaches the scan on its own.
+printf 'TOKEN=\n' >"$TREE/tools/check/.env.example"
+agree "no-secrets an .example credential template is accepted" check-no-secrets common/check-no-secrets 0
+unplant tools/check/.env.example
+
+printf 'key %s here\n' "$AKID" >"$TREE/tools/check/plant.md"
+agree "no-secrets an aws access key id is refused" check-no-secrets common/check-no-secrets 1
+unplant tools/check/plant.md
+
+printf -- '-----%s-----\n' "$KEYBLOCK" >"$TREE/tools/check/plant.md"
+agree "no-secrets a private key block is refused" check-no-secrets common/check-no-secrets 1
+unplant tools/check/plant.md
+
+printf 'clone %s now\n' "$URLCRED" >"$TREE/tools/check/plant.md"
+agree "no-secrets a password in a url is refused" check-no-secrets common/check-no-secrets 1
+unplant tools/check/plant.md
+
+# ⛔ AN EMAIL IS NOT A DEFAULT-MODE FINDING, and this is the case that separates
+# the two modes rather than treating --public as "the same rules, stricter". In a
+# private project an address is legitimate content.
+printf 'write to %s\n' "$MAIL" >"$TREE/tools/check/plant.md"
+agree "no-secrets an email address is accepted without --public" check-no-secrets common/check-no-secrets 0
+unplant tools/check/plant.md
+
+# ⚠ A BINARY FILE IS SKIPPED, which is what `grep -I` does, and the plant carries
+# a real key so the case cannot pass by the file being uninteresting. ⛔ The byte
+# is written by printf rather than as a literal, this repository's own rule.
+printf 'key %s\000here\n' "$AKID" >"$TREE/tools/check/plant.md"
+agree "no-secrets a key inside a binary file is out of scope" check-no-secrets common/check-no-secrets 0
+unplant tools/check/plant.md
+
+agree "no-secrets clean tree again" check-no-secrets common/check-no-secrets 0
+
+# -- the public rules ---------------------------------------------------------
+#
+# ⚠ --public IS A SECOND QUESTION AND THE FLAG IS PASSED TO ALL THREE. The Go
+# binary and the sh half spell it the same way; `agree` translates it for the
+# PowerShell half, because only that one differs.
+
+agree "no-secrets clean tree, public" check-no-secrets common/check-no-secrets 0 --public
+
+printf 'write to %s\n' "$MAIL" >"$TREE/tools/check/plant.md"
+agree "no-secrets an email address is refused with --public" check-no-secrets common/check-no-secrets 1 --public
+unplant tools/check/plant.md
+
+printf 'built in %s\n' "$HOMEP" >"$TREE/tools/check/plant.md"
+agree "no-secrets an absolute home path is refused" check-no-secrets common/check-no-secrets 1 --public
+unplant tools/check/plant.md
+
+# ⚠ Narrowed rather than switched off: /home/runner/ is a well-known generic
+# path, not a fingerprint of anybody's machine.
+printf 'built in %s\n' "$HOMEG" >"$TREE/tools/check/plant.md"
+agree "no-secrets a generic runner home path is accepted" check-no-secrets common/check-no-secrets 0 --public
+unplant tools/check/plant.md
+
+printf 'a bare %s here\n' "$HEX40" >"$TREE/tools/check/plant.md"
+agree "no-secrets a bare long hex run is refused" check-no-secrets common/check-no-secrets 1 --public
+unplant tools/check/plant.md
+
+# ⚠ A PINNED ACTION IS THE SAFE PRACTICE and a rule that fired on correct
+# hardening is a rule somebody disables.
+printf 'uses: owner/repo@%s\n' "$HEX40" >"$TREE/tools/check/plant.yml"
+agree "no-secrets a pinned action commit is accepted" check-no-secrets common/check-no-secrets 0 --public
+unplant tools/check/plant.yml
+
+# ⛔ THE CASE THAT SAYS THE ALLOW EXPRESSIONS READ THE OUTPUT LINE AND NOT THE
+# TEXT. The lockfile allowance is anchored `^(.*Cargo\.lock:[0-9]+:checksum = )`,
+# so it can only match with the `path:lineno:` prefix in front of it. A port that
+# ran its allowances over the file's own line would refuse every registry digest
+# in the tree, and every case above would still be green.
+printf '%s "%s"\n' 'checksum =' "$HEX64" >"$TREE/tools/check/plant-Cargo.lock"
+agree "no-secrets a registry lockfile digest is accepted" check-no-secrets common/check-no-secrets 0 --public
+unplant tools/check/plant-Cargo.lock
+
+# ⛔ AND THE CASE THAT SAYS AN ALLOWED ITEM IS DELETED FROM THE LINE RATHER THAN
+# THE LINE BEING DROPPED. `grep -v` drops lines, not characters, so an allowed
+# digest sitting beside a real one would take the real one out of the report with
+# it. This plants exactly that pair on one line: an allowed `sha256:` digest and
+# a bare run. A port that dropped the line answers 0 and every other case here
+# still passes.
+printf 'sha256:%s and %s\n' "$HEX64" "$HEX40" >"$TREE/tools/check/plant.md"
+agree "no-secrets an allowed digest beside a bare one is still refused" check-no-secrets common/check-no-secrets 1 --public
+unplant tools/check/plant.md
+
+printf 'Infohash: %s\n' "$HEX40" >"$TREE/tools/check/plant.md"
+agree "no-secrets an announce infohash is accepted" check-no-secrets common/check-no-secrets 0 --public
+unplant tools/check/plant.md
+
+# ⛔ THE TRAILING CLASS IS THE ANCHOR AND THIS IS WHAT IT IS FOR. Without it
+# `{40}` blanks the first forty characters of a LONGER run and leaves a remainder
+# too short to reach the threshold, so a forty-six digit value after the field
+# name goes unreported. Both shell twins agreed on that and both were wrong.
+printf 'Infohash: %s\n' "$HEX46" >"$TREE/tools/check/plant.md"
+agree "no-secrets a longer run after the infohash field is refused" check-no-secrets common/check-no-secrets 1 --public
+unplant tools/check/plant.md
+
+agree "no-secrets clean tree again, public" check-no-secrets common/check-no-secrets 0 --public
 
 # ============================================================================
 

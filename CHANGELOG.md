@@ -5,6 +5,30 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-15T01:39:49Z
+
+- ⭐ **`check-no-secrets` is in the Go binary and both shell halves are deleted**,
+  taking it to seven checks and `check-twins` to **six file pairs and six rows**.
+  ⚠ It was the two-row pair, so one deletion removed two rows: `--public` is a
+  different question from the default run rather than a stricter one.
+- ⛔ **The patterns were the easy half.** Two properties of the pipeline they sat
+  in decide verdicts, and both are carried: the allow expressions run over the
+  grep OUTPUT line `path:lineno:text`, because the lockfile allowance is anchored
+  to that prefix; and an allowed item is deleted FROM the line rather than the
+  line being dropped, because `grep -v` drops lines and would take a real
+  credential out of the report beside an allowed digest.
+- ⭐ **Twenty cases over both halves before either was deleted**, all three
+  implementations agreeing on the exit code and byte for byte on `--json`. Eight
+  of them plant something that must be ACCEPTED, which is where a port fails.
+- ⛔ **The callers moved with it**, and `check-defaults`' subject moved INSIDE
+  the block that gates on the Go build rather than beside it - the one-gated-door
+  shape that block's own comment records.
+- ⚠ **Two counts in this tree disagreed and neither said which unit it was in.**
+  `docs/history/RESUME.md` said eight pairs and then named seven files;
+  `TODO/ci.md` said seven. Both were real - seven file pairs, eight comparison
+  rows - and `sh scripts/common/check-twins.sh` is what reconciled them.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-10`. No version bump and no deploy.
+
 ### 2026-09-10T09:01:53Z
 
 - ⭐ **The matrix is proved on runners: run 124 is green on every job**, and the

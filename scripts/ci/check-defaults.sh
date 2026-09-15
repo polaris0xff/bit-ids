@@ -270,14 +270,23 @@ run_subject() { # label command...
 # command answers 127 under all six. ⚠ That is the one-gated-door shape
 # docs/methodology/reviews.md calls the most recurring hole there is, found by a
 # door sweep over this entry's own change.
+#
+# ⚠ `secrets` JOINED THE GATED SET WHEN IT WAS PORTED, and it is the row this
+# harness would miss most: `check-no-secrets --public` reads a TMPDIR-shaped
+# scratch path in neither half, but its scope comes from `git ls-files` and its
+# answer from a regex engine, and both are exactly the kind of thing a locale or
+# a changed environment reaches. ⛔ Moving a subject and leaving it outside the
+# condition is the one-gated-door defect this block's own comment records; it is
+# inside.
 if (cd "$ROOT/tools/check" && go build -o "$WORK/bit-check" .) >/dev/null 2>&1; then
   run_subject "markers   " "$WORK/bit-check" check-markers --json
   run_subject "licences  " "$WORK/bit-check" check-licences --json
+  run_subject "secrets   " "$WORK/bit-check" check-no-secrets --public --json
 else
   fail "markers     tools/check did not build, so the ported subject could not be run"
   fail "licences    tools/check did not build, so the ported subject could not be run"
+  fail "secrets     tools/check did not build, so the ported subject could not be run"
 fi
-run_subject "secrets   " sh "$ROOT/scripts/common/check-no-secrets.sh" --public --json
 run_subject "project   " sh "$ROOT/scripts/common/check-project.sh" --json
 run_subject "cache     " sh "$ROOT/scripts/acquisition/check-cache.sh" --json
 

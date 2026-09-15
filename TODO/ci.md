@@ -2975,6 +2975,61 @@ reads every tracked file, this harness is one, and its literals were findings.
 already built its marker bytes - and the check's own Go file is exempt from
 itself, exactly as both shell halves already were.
 
+### ⭐ `check-no-secrets` ported and both halves deleted, 2026-09-15
+
+The binary carries **seven** checks now and `check-twins` is down to **six file
+pairs and six rows**. ⚠ It was the two-row pair - `--public` is a different
+question from the default run rather than a stricter one, so the two modes were
+compared separately - which is why one deletion took eight rows to six.
+
+⛔ **THE PATTERNS WERE THE EASY HALF.** What a port of this check loses silently
+is the SHAPE of the pipeline the patterns were built into, and two properties of
+it decide verdicts:
+
+| the property | what a port that missed it would do |
+| --- | --- |
+| the allow expressions run over the grep OUTPUT LINE, `path:lineno:text` | refuse every registry lockfile digest in the tree: that allowance is anchored `^(.*Cargo\.lock:[0-9]+:checksum = )` and cannot match without the path prefix |
+| an allowed item is DELETED from the line; the line is not dropped | lose a real credential sitting beside an allowed digest, which is the `grep -v` defect `docs/conventions/forbidden-patterns.md` records |
+
+⚠ **And the home-path rule is the opposite shape**: its two exclusions really
+are `grep -v` over the whole line. A port that unified the two would be changing
+a verdict while claiming only to change a language, so the difference is
+inherited rather than tidied.
+
+⛔ **Twenty cases, all three implementations agreeing**, run by
+`check-bitcheck.sh --compare` over both halves before either was deleted: nine
+in the default mode and eleven under `--public`. Eight of the twenty plant
+something that must be ACCEPTED, because over-strictness is where a port fails
+and this rule's accept branches are the narrow ones - a pinned action commit, a
+lockfile digest, a generic `/home/runner/` path, an announce infohash, an
+`.example` credential template, an email without `--public`, a key inside a
+binary file.
+
+⭐ **Three of the cases exist because a port could pass every other one and
+still be wrong**, and each was written against a specific way to get it wrong:
+the lockfile digest is the one that says the allowances read the output line;
+the allowed-digest-beside-a-bare-one is the one that says an allowed item is
+deleted rather than the line dropped; and a forty-six digit run after an
+`Infohash:` field is what the trailing class on that expression is for - without
+it `{40}` blanks the first forty of a longer run and leaves a remainder too
+short to reach the threshold.
+
+⛔ **THE CALLERS MOVED WITH IT, WHICH IS THE LESSON `check-licences` ALREADY
+TAUGHT.** `check-defaults` runs this check as one of its subjects, and it moved
+INSIDE the block that gates on the Go build rather than beside it - a subject
+left outside that condition runs a binary that is not there, a missing command
+answers 127 under every environment, and `run_subject` reports *the same answer
+under all 6* over a subject that never started. ⚠ Both gate lanes moved too, and
+`Invoke-Ported` gained a row label separate from the check name, because one row
+is no longer one check.
+
+⚠ **The PowerShell lane was DRIVEN rather than argued**, on this host: both
+`check-no-secrets` rows run through the binary and pass, which is what
+establishes that the new parameter list binds and that `@ExtraArgs` splats. ⛔
+The extra arguments are not called `$Args` - that is an automatic variable
+inside a function and PowerShell names are case-insensitive, so `$args` collides
+too.
+
 ### The three deep reviews, 2026-09-10
 
 ⛔ **The door sweep found the one-gated-door defect, in this entry's own change.**
@@ -3037,10 +3092,19 @@ written up as a property of the change rather than of the host.
   harness that grew, not a defect, and shrinking it is a decision about how many
   cases a gate should carry rather than a port. Recorded here because the
   measurement was taken here; it belongs to whoever next opens `CI-01`.
-- ⚠ **Seven pairs remain**, together 12.3 seconds of PowerShell against the 96.1
-  the layer started at. ⛔ The remaining wall-clock value of porting them is
-  therefore small and the DRIFT value is unchanged, which is the honest ordering
-  argument for doing them after sharding rather than before.
+- ⚠ **Seven FILE pairs remain and `check-twins` prints EIGHT rows**, together
+  12.3 seconds of PowerShell against the 96.1 the layer started at. ⛔ The
+  remaining wall-clock value of porting them is therefore small and the DRIFT
+  value is unchanged, which is the honest ordering argument for doing them after
+  sharding rather than before.
+  ⛔ **The two numbers are both real and neither said which unit it was in**,
+  which is this repository's own value-in-two-places defect arriving in its own
+  record. `check-no-secrets` is compared TWICE - once plain and once `--public`,
+  a different question rather than a stricter one - so seven pairs of files
+  produce eight comparison rows. This residual said seven and
+  `docs/history/RESUME.md` said eight while naming seven files. Corrected
+  2026-09-15 by running `sh scripts/common/check-twins.sh` rather than by
+  picking one of the two.
 - ⚠ **`check-defaults` runs the Go binary as a subject now.** A Go program
   inherits a different set of host values than a shell script - no `IFS`, and
   `TMPDIR` through the runtime rather than a shell expansion - so that row is

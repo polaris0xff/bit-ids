@@ -198,14 +198,21 @@ if ($goPresent -and -not $Rows) {
     Pop-Location
 }
 
-function Invoke-Ported([string]$Name) {
+# ⚠ THE ROW LABEL AND THE CHECK NAME ARE TWO PARAMETERS, because one row is no
+# longer one check: `check-no-secrets (public)` is the same check under a mode,
+# and the label is what the row lists compare. ⛔ The extra arguments are NOT
+# called $Args: that is an automatic variable inside a function and it silently
+# swallows a parameter of that name, and PowerShell names are case-insensitive so
+# $args collides too. docs/conventions/shell.md section 8.
+function Invoke-Ported([string]$Name, [string]$Check = '', [string[]]$ExtraArgs = @()) {
     if ($Rows) { Write-Output $Name; return }
+    $target = if ($Check) { $Check } else { $Name }
     if (-not (Test-Path -LiteralPath $goBin -PathType Leaf)) {
         Add-Row ("SKIP  " + $Name + "  (tools/check did not build)")
         $script:skip++
         return
     }
-    & $goBin $Name *> $logFile
+    & $goBin $target @ExtraArgs *> $logFile
     $rc = $LASTEXITCODE
     switch ($rc) {
         0 { Add-Row ("✅ ok    " + $Name); $script:pass++ }
@@ -223,18 +230,24 @@ function Invoke-Ported([string]$Name) {
 }
 
 foreach ($c in 'check-changelog', 'check-control-bytes', 'check-licences',
-                'check-markers', 'check-one-home', 'check-placeholders') {
+                'check-markers', 'check-no-secrets', 'check-one-home',
+                'check-placeholders') {
     Invoke-Ported $c
 }
 
-foreach ($c in 'check-docs', 'check-no-secrets', 'check-project') {
+foreach ($c in 'check-docs', 'check-project') {
     Invoke-Check $c ($c + '.ps1')
 }
 
-# ⚠ -Public is a DIFFERENT question from the default run, not a stricter one.
+# ⚠ --public is a DIFFERENT question from the default run, not a stricter one.
 # Emails, absolute home paths and long hex are legitimate content in a private
 # project, so this is a second call rather than a flag on the first.
-Invoke-Check 'check-no-secrets (public)' 'check-no-secrets.ps1' @('-Public')
+# ⭐ AND BOTH LANES NOW SPELL THE FLAG THE SAME WAY, because both call the one
+# binary. This lane used to pass `-Public` while the other passed `--public`,
+# which is why the row LABEL is named after the question rather than built from
+# the flag: a label built from the flag made the two runners' row lists differ on
+# a row they both have.
+Invoke-Ported 'check-no-secrets (public)' 'check-no-secrets' @('--public')
 
 # ⚠ NEEDS gh AND THE NETWORK, so it exits 2 on a machine without them and that
 # reads as a skip rather than a pass. Correct: nothing was verified.

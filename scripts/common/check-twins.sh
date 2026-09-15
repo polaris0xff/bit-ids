@@ -403,9 +403,23 @@ harvest_pairs() {
 # tree carries no character outside the five for them to disagree about. ⭐ There
 # is one decoder now, and `check-bitcheck` plants the character rather than hoping
 # the tree contains one - which is what that note asked for.
+# ⛔ AND A FIFTH PAIR HAS LEFT BY BEING DELETED: `check-no-secrets`, 2026-09-15.
+# It was TWO rows here rather than one, because `--public` is a different
+# question from the default run rather than a stricter version of it, so the two
+# modes were compared separately. ⚠ That is why the pair count and the row count
+# disagree and always did: seven file pairs produced eight rows.
+#
+# ⛔ IT LEFT THE LIST THE ONLY WAY A PAIR MAY. `check-bitcheck.sh --compare` ran
+# twenty cases over both deleted halves - nine in the default mode and eleven
+# under `--public` - with all three implementations agreeing on the exit code and
+# byte for byte on the `--json` line. Three of those cases exist because a port
+# could pass every other one and still be wrong: a lockfile digest, which is
+# allowed by an expression anchored to the `path:lineno:` prefix and so proves
+# the allowances read the OUTPUT LINE rather than the text; an allowed digest
+# beside a bare one, which proves an allowed item is deleted from the line rather
+# than the line being dropped; and a forty-six digit run after an infohash field,
+# which is what the trailing class on that expression is for.
 compare_pair "check-docs" common/check-docs.sh "--json" common/check-docs.ps1 "-Json"
-compare_pair "check-no-secrets" common/check-no-secrets.sh "--json" common/check-no-secrets.ps1 "-Json"
-compare_pair "check-no-secrets pub" common/check-no-secrets.sh "--public --json" common/check-no-secrets.ps1 "-Public -Json"
 compare_pair "check-project" common/check-project.sh "--json" common/check-project.ps1 "-Json"
 
 # ⭐ THE FIRST PAIR OUTSIDE common/, AND WHY THE PATHS ABOVE GAINED A DIRECTORY.

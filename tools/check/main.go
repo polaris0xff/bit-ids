@@ -86,6 +86,7 @@ var checks = map[string]check{
 	"check-control-bytes": checkControlBytes,
 	"check-licences":      checkLicences,
 	"check-markers":       checkMarkers,
+	"check-no-secrets":    checkNoSecrets,
 	"check-one-home":      checkOneHome,
 	"check-placeholders":  checkPlaceholders,
 }
@@ -130,6 +131,16 @@ func main() {
 			// derivation of that answer in the caller would be the value in two
 			// places this repository refuses everywhere else.
 			optPermitted = true
+		case "--public":
+			// ⚠ check-no-secrets' second question rather than a stricter first
+			// one. Emails, absolute home paths and long hex are legitimate
+			// content in a private project, which is why the gate runs this as
+			// its own row rather than as a flag on the default one.
+			optPublic = true
+		case "--all-history":
+			// ⚠ Slow on purpose and deliberately not a gate row: it reads every
+			// blob ever committed.
+			optAllHistory = true
 		default:
 			fmt.Fprintf(os.Stderr, "bit-check: unknown argument: %s\n", a)
 			os.Exit(2)
