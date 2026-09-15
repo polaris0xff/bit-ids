@@ -183,6 +183,11 @@ function is automatic.
 ⛔ **A Python text-mode rewrite of a `.ps1` silently converts CRLF to LF**, and
 `git diff` shows nothing. `git ls-files --eol` is the only thing that does.
 
+⛔ **In Go, `filepath` is the HOST's separator and `path` is slashes.** A
+repo-relative key derived with `filepath.Dir` matches on Linux and misses on
+Windows. ⚠ Running `check-gate.ps1` on Linux does not test Windows: only the
+Windows lane can. CI run 132 caught it where three local passes did not.
+
 **A count in prose is a value in two places with nothing comparing them.**
 **An in-place `sed` edits every line that matches, not the one you meant.**
 

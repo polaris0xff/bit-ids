@@ -3137,6 +3137,19 @@ that says so.** The placeholder needle used the stand-in word
 `check-placeholders` looks for, turning the harness into that rule's finding; the
 comment explaining it then did the same thing again.
 
+⛔ **AND THE PORT SHIPPED A WINDOWS-ONLY DEFECT THAT ONLY CI COULD SEE.** It used
+`filepath.Dir` - the HOST's separator - to derive a repo-relative directory, while
+every path here comes from `git ls-files` as forward slashes and the orphan set is
+keyed on that spelling. On Windows it answered `docs\methodology`, so every joined
+key missed and run 132's Windows gate reported **every page an orphan**.
+
+⚠ **Green on the Linux lane, and green on `check-gate.ps1` run on Linux.** Go's
+`filepath` separator is the host's, so driving the PowerShell lane here does not
+test Windows - which is the *local is not production* rule arriving in a place
+this project had not met it. ⭐ `path.Dir` is slash-based and is what the map keys
+need; `filepath.Join` stays where the code touches the filesystem, because that
+one must be the host's.
+
 ### ⛔ Residual: a gate row could ask the wrong question and stay green
 
 The gate runs `check-no-secrets` twice and the second row exists only because

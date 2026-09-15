@@ -5,6 +5,20 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-15T06:33:43Z
+
+- ⛔ **`check-docs` shipped a Windows-only defect and CI run 132 caught it.** The
+  port derived a repo-relative directory with `filepath.Dir`, which is the HOST's
+  separator, while every path comes from `git ls-files` as forward slashes and the
+  orphan set is keyed on that spelling. On Windows it answered `docs\methodology`,
+  every joined key missed, and the lane reported **every page an orphan**.
+- ⚠ **Green on the Linux lane and green on `check-gate.ps1` run on Linux**, because
+  Go's `filepath` separator is the host's. Running the PowerShell lane here does
+  not test Windows; only the Windows lane can.
+- ⭐ `path.Dir` is slash-based and is what the keys need; `filepath.Join` stays
+  where the code touches the filesystem.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-10`. No version bump and no deploy.
+
 ### 2026-09-15T04:18:40Z
 
 - ⛔ **`check-ignores` passed over nothing and now has a floor.** With its

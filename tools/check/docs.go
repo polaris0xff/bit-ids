@@ -189,7 +189,16 @@ func checkDocs(r *repo) (verdict, error) {
 		if err != nil {
 			continue
 		}
-		dir := filepath.Dir(f)
+		// ⛔ `path.Dir`, NOT `filepath.Dir`, AND WINDOWS IS THE ONLY PLACE THAT
+		// CAN TELL. Every path here comes from `git ls-files`, which is always
+		// forward-slash, and the `linked` set is keyed on that spelling. On
+		// Windows `filepath.Dir` answers `docs\methodology`, so every joined key
+		// missed and the run reported EVERY page an orphan.
+		//
+		// ⚠ Green on the Linux lane and green on `check-gate.ps1` run on Linux,
+		// because Go's `filepath` separator is the HOST's. Running the PowerShell
+		// lane on Linux does not test Windows. CI run 132 is what caught it.
+		dir := path.Dir(f)
 
 		// -- broken links ----------------------------------------------------
 		if !docsNoLinkRe.MatchString(f) {
@@ -208,6 +217,9 @@ func checkDocs(r *repo) (verdict, error) {
 				if target == "" {
 					continue
 				}
+				// ⚠ `filepath.Join` here on purpose: this one touches the
+				// filesystem, and it cleans a forward-slash `dir` to the host's
+				// separator. Only the map keys must stay slash-based.
 				if _, err := os.Stat(filepath.Join(dir, target)); err != nil {
 					problems = append(problems,
 						fmt.Sprintf("%s:%d broken link -> %s", f, l.line, l.target))
