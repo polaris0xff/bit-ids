@@ -1074,27 +1074,6 @@ fn run(lanes: &[Lane], out: &Path) -> Result<String, String> {
                 }
                 writeln!(report, "  ⭐ lane {}: {}", lanes[index].route, path)
                     .expect("a String cannot fail");
-                // ⛔ WRITTEN IS NOT PUBLISHABLE, AND THIS REPORT SAID NOTHING
-                // ABOUT THE DIFFERENCE. Found on 2026-09-10 by giving a lane a
-                // second connector that read different bytes: the record kept
-                // the conflict, `to_json` accepted it - correctly, because
-                // refusing it would lose the evidence of the disagreement - and
-                // the report printed a star and a path. A session reading that
-                // would have taken a record carrying a connector conflict for a
-                // finished one.
-                // ⚠ It is NOT a refusal. `validate` and `publishable` are
-                // separate gates at every level here, and collapsing them would
-                // stop the disagreement being recordable at all.
-                match bit_ids::publishable(&profile) {
-                    Ok(()) => writeln!(report, "       publishable").expect("a String cannot fail"),
-                    Err(blockers) => {
-                        writeln!(report, "       provisional, not publishable")
-                            .expect("a String cannot fail");
-                        for line in blockers.to_string().lines() {
-                            writeln!(report, "       {line}").expect("a String cannot fail");
-                        }
-                    }
-                }
                 written.push(profile);
             }
             Err(error) => {
@@ -1102,6 +1081,41 @@ fn run(lanes: &[Lane], out: &Path) -> Result<String, String> {
                 writeln!(report, "  ⛔ lane {}: refused", lanes[index].route)
                     .expect("a String cannot fail");
                 for line in error.to_string().lines() {
+                    writeln!(report, "       {line}").expect("a String cannot fail");
+                }
+            }
+        }
+    }
+
+    // ⛔ WRITTEN IS NOT PUBLISHABLE, AND THIS REPORT SAID NOTHING ABOUT THE
+    // DIFFERENCE. Found on 2026-09-10 by giving a lane a second connector that
+    // read different bytes: the record kept the conflict, `to_json` accepted it
+    // - correctly, because refusing it would lose the evidence of the
+    // disagreement - and the report printed a star and a path. A session reading
+    // that would have taken a record carrying a connector conflict for a
+    // finished one.
+    // ⚠ It is NOT a refusal. `validate` and `publishable` are separate gates at
+    // every level here, and collapsing them would stop the disagreement being
+    // recordable at all.
+    // ⛔ AND IT IS ASKED ONCE EVERY LANE IS WRITTEN, not inside the loop, because
+    // it is not a property of one document: `E-PUB-04` is settled by the OTHER
+    // route's capture. Asked per lane it reported every record of a
+    // byte-different pair provisional while holding the record that settles it.
+    for (index, profile) in written.iter().enumerate() {
+        let others: Vec<&Profile> = written
+            .iter()
+            .enumerate()
+            .filter(|(other, _)| *other != index)
+            .map(|(_, other)| other)
+            .collect();
+        writeln!(report, "  lane {}:", profile.capture.observed_route)
+            .expect("a String cannot fail");
+        match bit_ids::agreement::publishable_among(profile, &others) {
+            Ok(()) => writeln!(report, "       publishable").expect("a String cannot fail"),
+            Err(blockers) => {
+                writeln!(report, "       provisional, not publishable")
+                    .expect("a String cannot fail");
+                for line in blockers.to_string().lines() {
                     writeln!(report, "       {line}").expect("a String cannot fail");
                 }
             }

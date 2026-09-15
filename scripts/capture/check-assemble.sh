@@ -288,6 +288,20 @@ else
   fail "a pair whose observations agree reaches build_equivalent"
   [ "$JSON" = "1" ] || sed 's/^/          /' "$WORK/good.out" | head -6
 fi
+# ⛔ AND THE PAIR PUBLISHES, WHICH IT DID NOT UNTIL 2026-09-15. These two lanes
+# install DIFFERENT BYTES - `DIGEST_A` and `DIGEST_B` - which is every
+# release-against-source pair there is, and a capture puts one of them on the
+# wire. So `classify` answers `unresolved` and `E-PUB-04` refused every record of
+# this shape however many captures existed. The other route's capture is what
+# settles it and it is a DIFFERENT RECORD, so the gate is asked with the store.
+# ⚠ Counted on a whole line rather than with a substring, because
+# `provisional, not publishable` contains the word.
+if [ "$(grep -c '^[[:space:]]*publishable$' "$WORK/good.out")" = "2" ]; then
+  pass "a byte-different pair settled by the other route's capture publishes"
+else
+  fail "a byte-different pair settled by the other route's capture publishes"
+  [ "$JSON" = "1" ] || sed 's/^/          /' "$WORK/good.out" | head -12
+fi
 # ⛔ TWO RECORDS, NOT ONE. `E-ACQ-01` needs two routes in each and
 # `observed_route` says which install each watched, so a lane per route is two
 # documents over one route list. A store with one profile is an assembler that
@@ -315,11 +329,24 @@ fi
 # `build_equivalent` is unreachable for any real client through this path -
 # which is what the work order said run 14 had made reachable.
 # ⭐ `SCHEMA-04`'s sampling model is where several captures become a `patterned`
-# field; it sits above the record, and nothing has run it.
+# field, and `sampling::field_state` is the join that reaches a record since
+# 2026-09-15. ⚠ What is still missing is the SAMPLES: this path captures once per
+# lane, so `constant` with one sample remains the only state it can produce.
 write_lane vary-source source "$REFS" "$COMMIT" "$DIGEST_B" 1.2.3 "$PEER_B" "$PEER_B" || exit 2
 case_is 0 "divergent" \
   "two captures whose peer IDs differ are divergent rather than build_equivalent" \
   vary good-release vary-source
+# ⛔ AND THE DIVERGENCE MUST REFUSE PUBLICATION, or the rule above would be a
+# search for any sibling that agrees. ⚠ `E-PUB-03` rather than `E-PUB-04`: the
+# store held a comparable capture and it CONFLICTED, which is a different
+# finding from no capture at all, and folding them would lose which.
+if said vary "provisional, not publishable" && said vary "E-PUB-03" &&
+  ! said vary "E-PUB-04"; then
+  pass "a pair the store shows diverging is refused as a conflict, not an absence"
+else
+  fail "a pair the store shows diverging is refused as a conflict, not an absence"
+  [ "$JSON" = "1" ] || sed 's/^/          /' "$WORK/vary.out" | head -12
+fi
 
 # -- The refusals ------------------------------------------------------------
 

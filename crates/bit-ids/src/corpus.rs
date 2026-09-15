@@ -20,7 +20,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::agreement::publishable;
+use crate::agreement::publishable_among;
 use crate::canonical::RelPath;
 use crate::identity::RecordId;
 use crate::manifest::{RunManifest, bind, validate_manifest};
@@ -324,7 +324,37 @@ pub fn publishable_view(corpus: &Corpus) -> Vec<(&RelPath, Result<(), Violations
     corpus
         .profiles
         .iter()
-        .map(|stored| (&stored.path, publishable(&stored.profile)))
+        .map(|stored| {
+            (
+                &stored.path,
+                publishable_among(&stored.profile, &others_of(corpus, &stored.profile)),
+            )
+        })
+        .collect()
+}
+
+/// Every record in the store except this one.
+///
+/// ⛔ **The selection is deliberately not made here.**
+/// [`crate::equivalence::classify_across`] decides which of these are a real
+/// pair - the same build, a different run, a different observed route - and a
+/// second filter written beside it would be a second answer to that question.
+/// All this removes is the record itself, which is the one case no comparison
+/// can be asked about.
+///
+/// ⚠ **And nothing can refute that removal**, measured rather than assumed: a
+/// mutation pass dropping the filter left every case green, because
+/// `classify_across` already answers `unresolved` for a record paired with
+/// itself - *two records of one run are one record*. It is kept because a
+/// record comparing itself is nonsense whatever a second rule happens to catch,
+/// and it is recorded here rather than claimed as proven.
+#[must_use]
+pub fn others_of<'a>(corpus: &'a Corpus, profile: &Profile) -> Vec<&'a Profile> {
+    corpus
+        .profiles
+        .iter()
+        .map(|stored| &stored.profile)
+        .filter(|other| other.id != profile.id)
         .collect()
 }
 

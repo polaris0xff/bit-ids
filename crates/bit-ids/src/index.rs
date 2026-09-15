@@ -24,9 +24,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 
-use crate::agreement::publishable;
+use crate::agreement::publishable_among;
 use crate::canonical::{Instant, RelPath, Sha256Digest, Slug, Version};
 use crate::corpus::Corpus;
+use crate::corpus::others_of;
 use crate::identity::RecordId;
 use crate::observation::{FieldPath, FieldState, PatternRun};
 use crate::record::Profile;
@@ -252,7 +253,7 @@ fn chains(corpus: &Corpus, errors: &mut Vec<SchemaError>) -> Chains {
     for stored in corpus.profiles() {
         let profile = &stored.profile;
         filed.insert(profile.id, stored.path.clone());
-        if publishable(profile).is_err() {
+        if publishable_among(profile, &others_of(corpus, profile)).is_err() {
             continue;
         }
         if let Some(prior) = profile.supersedes {
@@ -420,7 +421,7 @@ pub fn build(
 
     for stored in corpus.profiles() {
         let profile = &stored.profile;
-        if publishable(profile).is_err() {
+        if publishable_among(profile, &others_of(corpus, profile)).is_err() {
             excluded += 1;
             continue;
         }

@@ -32,30 +32,36 @@ automatically did not fire and could not have.
 
 ⛔ **What makes them provisional is the next real work**, and neither is a defect:
 
-| refusal | what would close it |
+| refusal | where it stands |
 | --- | --- |
-| `E-PUB-04`: only ONE of the two installs was put on the wire, so equal version labels are all that connects the routes | ⛔ **not expressible in a record today** - see below |
-| `classify_across: divergent`: a peer ID's tail is per connection, so two captures necessarily disagree | ⭐ **the model reaches a record now**, `SCHEMA-04`; what is left is a capture that takes more than one sample |
+| `E-PUB-04`: only ONE of the two installs was put on the wire | ⭐ **closed, 2026-09-15.** The other route's capture settles it, and the gate is asked with the store |
+| `classify_across: divergent`: a peer ID's tail is per connection | ⭐ **the model reaches a record now**, `SCHEMA-04`; what is left is a capture that takes more than one sample |
 
-⛔ **`E-PUB-04` IS STRUCTURAL AND THIS FILE USED TO NAME A CLOSER THAT DOES NOT
+⛔ **`E-PUB-04` WAS STRUCTURAL AND THIS FILE NAMED A CLOSER THAT COULD NOT
 EXIST.** It said "a capture that observes both installs", and a capture cannot:
-`Capture::observed_route` is a single route, by design and with the reason in
-its own doc comment. Three facts compose into a dead end, each pinned by a test
-rather than read:
+`Capture::observed_route` is a single route, deliberately. Three facts composed
+into a dead end, each pinned by a test rather than read:
 
-- `equivalence::classify`, which is what `publishable` asks, reaches
+- `equivalence::classify`, which is what `publishable` asked, reaches
   `byte_identical` or `unresolved` and **never** `build_equivalent`;
 - `build_equivalent` is reachable only from `classify_across`, which takes two
-  records, and nothing carries its answer back into either of them;
-- `corpus::publishable_view` maps the per-record gate over each record
-  separately, so the one place that holds both records never compares them.
+  records, and nothing carried its answer back into either of them;
+- every publication gate mapped the per-record question over one record at a
+  time, so the places holding both records never compared them.
 
-⚠ So a record whose routes installed byte-different builds cannot publish
-however many captures exist, and a release binary against a local build never
-installs the same bytes. ⭐ The fix is a store-level rule rather than a record
-field: the corpus holds the sibling capture, and `classify_across` over the pair
-is what `E-PUB-04` is waiting for. Recorded here rather than written, because it
-changes a publication gate and belongs in its own unit with its own plants.
+⚠ So a record whose routes installed byte-different builds could not publish
+however many captures existed - and a release binary against a local build never
+installs the same bytes, which is every such pair this project can produce.
+
+⭐ **`publishable_among` is the same gate asked where the store is visible**, and
+`routes_publishable`'s own wording had always named it: *an unresolved record
+needs a second capture through the other route*. The three gates that hold a
+corpus ask it - the two in `index.rs` and `publishable_view` - and so does
+`assemble-capture`, which had both records in hand and asked the one-record
+question. ⛔ **Every comparable sibling is read, not the first that agrees**: a
+store holding one capture that agrees and one that conflicts refuses the record,
+because publishing on the agreeable half would bury the finding.
+[`ci.md`](ci.md) under `CI-09` carries the cases.
 
 ⭐ **The identity measured is not the product's own**, corroborated by a reader
 this project did not write: `tracker_http/user_agent` decodes to

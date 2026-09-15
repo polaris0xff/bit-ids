@@ -232,6 +232,25 @@ impl FieldCorroboration {
 ///
 /// Returns every field that blocks publication, each with a stable code.
 pub fn publishable(profile: &Profile) -> Result<(), Violations> {
+    publishable_among(profile, &[])
+}
+
+/// The same gate, with the store's other records available.
+///
+/// ⛔ **One of the three rules cannot be answered by a record alone.** A
+/// connector disagreement and an uncorroborated field are properties of this
+/// document; whether two byte-different installs behave alike is a property of
+/// a **pair**, and the second capture is a different record. `E-PUB-04` was
+/// therefore unclosable for every target whose routes deliver different bytes,
+/// which is every release-against-source pair there is.
+///
+/// ⚠ A caller holding a store uses this; [`publishable`] is the same question
+/// asked with an empty store, which is what a single document can answer.
+///
+/// # Errors
+///
+/// As [`publishable`].
+pub fn publishable_among(profile: &Profile, others: &[&Profile]) -> Result<(), Violations> {
     let mut out = Vec::new();
     for entry in &profile.corroboration {
         let at = format!("corroboration {}", entry.path);
@@ -262,7 +281,7 @@ pub fn publishable(profile: &Profile) -> Result<(), Violations> {
     // lives in its own module, but it is asked here rather than beside here: a
     // second publication gate a caller has to remember is the shape that lets a
     // record ship past one of them.
-    if let Err(refused) = crate::equivalence::routes_publishable(profile) {
+    if let Err(refused) = crate::equivalence::routes_publishable_among(profile, others) {
         out.extend(refused.errors().iter().cloned());
     }
     Violations::from_errors(out)

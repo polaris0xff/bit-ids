@@ -5,6 +5,33 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-15T07:22:37Z
+
+- ⭐ **`E-PUB-04` is closed, and it could not be closed by any capture.** A
+  record whose two routes installed different bytes - every release-against-
+  source pair there is - was refused however many captures existed:
+  `equivalence::classify` reaches `byte_identical` or `unresolved` and never
+  `build_equivalent`, `build_equivalent` comes only from `classify_across`,
+  which takes two records, and every publication gate asked the per-record
+  question one record at a time.
+- ⭐ **`agreement::publishable_among` is the same gate asked with the store.**
+  `routes_publishable` had always said an unresolved record needs a second
+  capture through the other route; nothing could act on it, because that capture
+  is a different record.
+- ⛔ **The door sweep found a fourth caller holding both records and asking the
+  one-record question.** `assemble-capture` reported publishability inside its
+  per-lane loop, then compared the pair two statements later. It asks once every
+  lane is written now.
+- ⛔ **Every comparable sibling is read, not the first that agrees**, and a
+  store that holds one agreeing and one conflicting capture refuses the record
+  with `E-PUB-03` rather than `E-PUB-04` - a conflict is a different finding
+  from an absence of evidence.
+- ⚠ **A mutation pass reported five refusals over nothing**, because it named a
+  test target that does not exist and read the non-zero exit as a refusal. It
+  prints its control first now. A harness exit is *could not run*, never
+  *refused*.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-09`. No version bump and no deploy.
+
 ### 2026-09-15T07:08:37Z
 
 - ⭐ **The sampling classifier reaches a record now.** `SCHEMA-04` closed with a

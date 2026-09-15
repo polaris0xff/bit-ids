@@ -7,6 +7,7 @@
 
 use core::num::NonZeroU32;
 
+use bit_ids::agreement::publishable_among;
 use bit_ids::canonical::{HexBytes, Slug, Version};
 use bit_ids::equivalence::{Equivalence, classify, classify_across};
 use bit_ids::identity::{RecordId, RecordKey, SchemaVersion};
@@ -40,6 +41,13 @@ fn recapture(document: &mut Value, capture: &str, observed: &str) {
     document["capture"]["id"] = json!(capture);
     document["capture"]["observed_route"] = json!(observed);
     document["acquisition"][1]["installed_executable"] = document["build"]["executable"].clone();
+    rederive_id(document);
+}
+
+/// Re-derives the record identifier from the identity tuple the document now
+/// carries. ⚠ Separate from [`recapture`] because a byte-different pair sets the
+/// installs itself, and a helper that also rewrote them would undo it.
+fn rederive_id(document: &mut Value) {
     let schema = SchemaVersion::current();
     let target = Slug::parse(document["target"]["id"].as_str().expect("a string")).expect("slug");
     let version =
@@ -392,4 +400,184 @@ fn equivalence_across_agrees_on_a_peer_id_tail_recorded_as_the_pattern_it_is() {
         publishable(&first).is_ok() && publishable(&second).is_ok(),
         "and neither record is held back by anything else"
     );
+}
+
+// -- the pair the per-record gate cannot see --------------------------------
+//
+// ⛔ `classify` reaches `byte_identical` or `unresolved` and never
+// `build_equivalent`, so a record whose routes installed different bytes was
+// refused by `E-PUB-04` however many captures existed. The second capture
+// through the other route is a different record, and `publishable_among` is the
+// same gate asked where that record is visible.
+
+/// What the second route delivers, which is not what the first one does.
+const OTHER_BYTES: &str = "sha256:4444444444444444444444444444444444444444444444444444444444444444";
+
+/// The golden record with the two routes installing different bytes, which is
+/// every release-against-source pair there is, observed through `observed`.
+///
+/// ⛔ `E-CAP-06` binds `build.executable` to what the **observed** route
+/// installed, so the two records of such a pair legitimately declare different
+/// builds. That is the shape, not a workaround: each record describes the bytes
+/// its own capture put on the wire.
+fn byte_different(capture: &str, observed: &str) -> Value {
+    let mut document = golden_value();
+    document["acquisition"][1]["installed_executable"] = json!(OTHER_BYTES);
+    document["capture"]["id"] = json!(capture);
+    document["capture"]["observed_route"] = json!(observed);
+    let installed = document["acquisition"]
+        .as_array()
+        .expect("an array")
+        .iter()
+        .find(|route| route["id"] == observed)
+        .expect("the record carries the route it says it watched")["installed_executable"]
+        .clone();
+    document["build"]["executable"] = installed;
+    rederive_id(&mut document);
+    assert_ne!(
+        document["acquisition"][0]["installed_executable"],
+        document["acquisition"][1]["installed_executable"],
+        "the whole point of this helper is that the routes differ"
+    );
+    document
+}
+
+fn release_lane() -> Value {
+    byte_different("fixture-capture-0001", "route-package-manager")
+}
+
+fn source_lane() -> Value {
+    byte_different("fixture-capture-0002", "route-vendor-release")
+}
+
+#[test]
+fn equivalence_among_settles_a_pair_the_per_record_gate_cannot() {
+    let first = read(&release_lane());
+    let second = read(&source_lane());
+
+    // The record alone is refused, and it is refused for a reason no amount of
+    // capturing this record could address.
+    let alone = publishable(&first).expect_err("one record cannot settle a pair");
+    assert!(alone.has("E-PUB-04"), "{alone}");
+    assert_eq!(
+        classify(&first).outcome,
+        Equivalence::Unresolved,
+        "which is what the per-record classifier can say and no more"
+    );
+
+    // With the other route's capture in the store, the pair settles it.
+    assert_eq!(
+        classify_across(&[&first, &second]).outcome,
+        Equivalence::BuildEquivalent
+    );
+    publishable_among(&first, &[&second]).expect("the sibling capture settles the routes");
+    publishable_among(&second, &[&first]).expect("and it settles them both ways");
+}
+
+#[test]
+fn equivalence_among_still_refuses_when_nothing_in_the_store_is_a_pair() {
+    let first = read(&release_lane());
+
+    // A record of a different build says nothing about this one. ⚠ `E-ACQ-04`
+    // makes every route report the version the record declares, so moving the
+    // version means moving it everywhere; a record with one of them changed is
+    // refused before it can be compared.
+    let mut other = source_lane();
+    other["build"]["version"] = json!("9.9.9");
+    for route in other["acquisition"].as_array_mut().expect("an array") {
+        route["installed_version"] = json!("9.9.9");
+    }
+    rederive_id(&mut other);
+    let other = read(&other);
+    assert_eq!(
+        classify_across(&[&first, &other]).outcome,
+        Equivalence::Unresolved,
+        "not a pair, which is what makes this the no-sibling case"
+    );
+
+    let refused =
+        publishable_among(&first, &[&other]).expect_err("nothing here settles the routes");
+    assert!(refused.has("E-PUB-04"), "{refused}");
+    assert!(
+        refused
+            .errors()
+            .iter()
+            .any(|error| error.detail().contains("no capture of another route")),
+        "the message says the store held no pair: {refused}"
+    );
+}
+
+#[test]
+fn equivalence_among_refuses_a_record_whose_sibling_disagrees() {
+    let first = read(&release_lane());
+    let mut second = source_lane();
+    let mut changed = 0;
+    for field in second["observations"]
+        .as_array_mut()
+        .expect("an array")
+        .iter_mut()
+    {
+        if field["path"] == "peer_wire/reserved" {
+            assert_ne!(field["state"]["detail"]["value"], json!("0000000000000000"));
+            field["state"]["detail"]["value"] = json!("0000000000000000");
+            changed += 1;
+        }
+    }
+    assert_eq!(changed, 1, "the fixture must carry the field being changed");
+    let second = read(&second);
+
+    let refused = publishable_among(&first, &[&second]).expect_err("the two captures disagree");
+    assert!(refused.has("E-PUB-03"), "{refused}");
+    assert!(
+        !refused.has("E-PUB-04"),
+        "a conflict is a different finding from an absence of evidence: {refused}"
+    );
+}
+
+/// ⛔ The rule that a first-match search would get wrong. One sibling agrees and
+/// one conflicts, so the store holds evidence against this record; publishing on
+/// the agreeable half would bury it.
+#[test]
+fn equivalence_among_refuses_when_one_sibling_agrees_and_another_conflicts() {
+    let first = read(&release_lane());
+    let agrees = read(&source_lane());
+
+    let mut conflicts = byte_different("fixture-capture-0003", "route-vendor-release");
+    let mut changed = 0;
+    for field in conflicts["observations"]
+        .as_array_mut()
+        .expect("an array")
+        .iter_mut()
+    {
+        if field["path"] == "peer_wire/reserved" {
+            field["state"]["detail"]["value"] = json!("0000000000000000");
+            changed += 1;
+        }
+    }
+    assert_eq!(changed, 1);
+    let conflicts = read(&conflicts);
+
+    assert_eq!(
+        classify_across(&[&first, &agrees]).outcome,
+        Equivalence::BuildEquivalent,
+        "the first sibling really does agree, or this tests nothing"
+    );
+    let refused = publishable_among(&first, &[&agrees, &conflicts])
+        .expect_err("a conflict anywhere refuses the record");
+    assert!(refused.has("E-PUB-03"), "{refused}");
+
+    // And the order of the store must not decide the verdict.
+    let reversed = publishable_among(&first, &[&conflicts, &agrees])
+        .expect_err("whichever order the store is read in");
+    assert!(reversed.has("E-PUB-03"), "{reversed}");
+}
+
+#[test]
+fn equivalence_among_leaves_a_byte_identical_record_exactly_as_it_was() {
+    let profile = read(&golden_value());
+    assert_eq!(classify(&profile).outcome, Equivalence::ByteIdentical);
+    publishable(&profile).expect("it published before");
+    publishable_among(&profile, &[]).expect("and an empty store changes nothing");
+    let other = read(&source_lane());
+    publishable_among(&profile, &[&other]).expect("nor does an unrelated record");
 }

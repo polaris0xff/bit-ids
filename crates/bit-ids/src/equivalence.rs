@@ -20,6 +20,15 @@
 //! there is only one build, and which route was watched stops mattering. That
 //! is the whole reason the executable digest is recorded per route rather than
 //! once per record.
+//!
+//! ⛔ **AND THE OTHER WAY OUT IS A SECOND RECORD, NOT A SECOND READING.** A
+//! release binary against a local build never installs the same bytes, so
+//! [`classify`] refuses that pair forever and [`routes_publishable`]'s own
+//! wording - *an unresolved record needs a second capture through the other
+//! route* - named something no caller could act on: the second capture is a
+//! different record, and the per-record gate cannot see it.
+//! [`routes_publishable_among`] is the same rule asked where the store is
+//! visible, and it is what makes a measured record publishable at all.
 
 use core::fmt;
 
@@ -287,7 +296,13 @@ fn states_agree(left: &FieldState, right: &FieldState) -> bool {
     }
 }
 
-/// The publication rule this module contributes.
+/// The publication rule this module contributes, over one record alone.
+///
+/// ⚠ **A record alone cannot settle a pair**, which is the whole of `E-PUB-04`:
+/// [`classify`] reaches `byte_identical` or `unresolved` and never
+/// `build_equivalent`, so a record whose routes installed different bytes is
+/// refused here however many captures exist. [`routes_publishable_among`] is
+/// the same rule asked where the second capture is visible.
 ///
 /// # Errors
 ///
@@ -296,6 +311,36 @@ fn states_agree(left: &FieldState, right: &FieldState) -> bool {
 /// divergence needs adjudicating and an unresolved record needs a second
 /// capture through the other route.
 pub fn routes_publishable(profile: &Profile) -> Result<(), Violations> {
+    routes_publishable_among(profile, &[])
+}
+
+/// The same rule, with the store's other records available.
+///
+/// ⛔ **The second capture through the other route is a DIFFERENT RECORD**, and
+/// [`routes_publishable`]'s own wording has always said that is what an
+/// unresolved record needs. Nothing could act on it: the per-record gate cannot
+/// see a sibling, and `build_equivalent` is reachable only from
+/// [`classify_across`], whose answer nothing carried back. So a release binary
+/// against a local build - which never install the same bytes - was refused for
+/// a reason no amount of capturing could address.
+///
+/// ⛔ **Every comparable sibling is read, not the first that agrees.** A record
+/// with one sibling that agrees and one that conflicts has conflicting
+/// evidence, and publishing on the agreeable half would bury the finding. A
+/// divergence anywhere in the set refuses the record.
+///
+/// ⚠ **`others` may hold anything the store does.** [`classify_across`] is what
+/// decides which of them are comparable - the same target, version, platform and
+/// architecture, a different run, and a different observed route - so a caller
+/// passes the store rather than pre-selecting, and the selection stays in one
+/// place.
+///
+/// # Errors
+///
+/// As [`routes_publishable`], and `E-PUB-04`'s message additionally says
+/// whether any sibling was comparable at all, because "no second capture" and
+/// "a second capture that settled nothing" are different states of the store.
+pub fn routes_publishable_among(profile: &Profile, others: &[&Profile]) -> Result<(), Violations> {
     let comparison = classify(profile);
     let mut out = Vec::new();
     match comparison.outcome {
@@ -307,14 +352,45 @@ pub fn routes_publishable(profile: &Profile) -> Result<(), Violations> {
                 comparison.reasons.join("; ")
             ),
         )),
-        Equivalence::Unresolved => out.push(SchemaError::new(
-            "E-PUB-04",
-            "acquisition",
-            format!(
-                "the routes are unresolved: {}",
-                comparison.reasons.join("; ")
-            ),
-        )),
+        Equivalence::Unresolved => {
+            let mut settled = 0_usize;
+            let mut conflicts = Vec::new();
+            for other in others {
+                let across = classify_across(&[profile, other]);
+                match across.outcome {
+                    // Not a pair at all: a different build, the same run twice,
+                    // or the same route watched twice. Those say nothing about
+                    // this record, so they are not held against it either.
+                    Equivalence::Unresolved => {}
+                    Equivalence::Divergent => conflicts.push(SchemaError::new(
+                        "E-PUB-03",
+                        "acquisition",
+                        format!(
+                            "{} watched {} and the two captures disagree: {}",
+                            other.capture.id,
+                            other.capture.observed_route,
+                            across.reasons.join("; ")
+                        ),
+                    )),
+                    Equivalence::ByteIdentical | Equivalence::BuildEquivalent => settled += 1,
+                }
+            }
+            // ⛔ A conflict anywhere refuses the record, whatever else agreed.
+            // Reporting only the agreement would publish a measurement while
+            // the store holds the evidence against it.
+            if !conflicts.is_empty() {
+                out.extend(conflicts);
+            } else if settled == 0 {
+                out.push(SchemaError::new(
+                    "E-PUB-04",
+                    "acquisition",
+                    format!(
+                        "the routes are unresolved and no capture of another route settles it: {}",
+                        comparison.reasons.join("; ")
+                    ),
+                ));
+            }
+        }
         Equivalence::ByteIdentical | Equivalence::BuildEquivalent => {}
     }
     Violations::from_errors(out)

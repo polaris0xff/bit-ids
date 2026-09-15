@@ -394,9 +394,15 @@ today because both documents list the same routes; a manifest that recorded
 which install was driven would let `bind` compare it directly, and `CI-03` is
 where a capture matrix would produce one.
 
-Residual: `classify_across` is not yet called by anything that assembles a
-publication. `CORPUS-02` owns the whole-store invariants and is where the
-cross-record comparison becomes a gate rather than a function.
+⭐ **Residual closed, 2026-09-15: `classify_across` is a gate now rather than a
+function.** It said `CORPUS-02` was where the cross-record comparison would stop
+being something nobody calls, and the reason it mattered turned out to be
+sharper than the residual put it: **`E-PUB-04` could not be closed by any
+capture at all**, because `classify` never reaches `build_equivalent` and every
+publication gate asked the per-record question one record at a time.
+`agreement::publishable_among` asks it with the store, and the three gates that
+hold a corpus plus `assemble-capture` all use it. [`ci.md`](ci.md) under `CI-09`
+carries the cases and the mutation pass.
 
 ⛔ **Residual, found 2026-09-08 and half-fixed: this whole classification assumes
 each route installed something, and nothing established that.** A route that

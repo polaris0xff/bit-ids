@@ -103,11 +103,13 @@ left, which is arithmetic rather than measurement; it is timed here.
    produced - and two lanes then agree. ⚠ What is missing is the samples: the
    capture path runs the build once per lane, so `assemble-capture` still has
    one to fold. That is a capture-path change and a dispatch.
-   ⛔ **The `E-PUB-04` half is structural and the closer this file used to name
-   does not exist.** A capture observes one route, `classify` can never answer
-   `build_equivalent`, and the per-record gate never sees the sibling record.
-   `TODO/PROGRESS.md` carries the three facts and the store-level rule that
-   would close it.
+   ⭐ **The `E-PUB-04` half is closed.** It was unclosable by any capture: a
+   capture observes one route, `classify` can never answer `build_equivalent`,
+   and every publication gate asked the per-record question one record at a
+   time. `publishable_among` asks it with the store, which is what
+   `routes_publishable`'s own wording had always described. ⚠ So a two-route
+   pair whose observations agree PUBLISHES now, proved on the assembler's own
+   synthetic lanes; what a real one still needs is the samples above.
 1. **`CLIENT-01`, `CLIENT-06`**, the remaining vertical captures. `aria2-next`
    is the worked example: three dispatches took it from four refusals to two
    written records.

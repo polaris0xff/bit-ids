@@ -2433,17 +2433,76 @@ What a record carries, read back out of the written JSON:
 | connectors | two, `bit-ids-probe` and `cpython-stdlib`, reporting the same bytes |
 | evidence | eight entries with sizes and `sha256`, every one resolving into `raw/` |
 
-⛔ **BOTH RECORDS ARE `provisional` AND NOT PUBLISHABLE**, for two reasons, both
-correct:
+⛔ **BOTH RECORDS WERE `provisional` AND NOT PUBLISHABLE**, for two reasons,
+both correct at the time and neither a defect in the capture:
 
 - `E-PUB-04` at acquisition: the two routes installed different digests and the
   capture put only ONE of them on the wire, so equal version labels are all that
-  connects them.
+  connects them. ⭐ **Closed 2026-09-15**, in the section below.
 - `classify_across: divergent`: a peer ID's tail is per connection, so two
   captures necessarily disagree - which is the section above, now measured on
-  real bytes rather than argued.
+  real bytes rather than argued. ⚠ It is a report rather than a publication
+  gate: `publishable` never asked it. `SCHEMA-04` carries the join that closes
+  it and the samples it still needs.
 
 ⛔ **The store is scratch state rather than the tree, and nothing is published.**
+
+### ⭐ `E-PUB-04` was unclosable by any capture, and is closed. 2026-09-15
+
+⛔ **A record whose routes installed different bytes could not publish however
+many captures existed.** `equivalence::classify` reaches `byte_identical` or
+`unresolved` and never `build_equivalent`; `build_equivalent` is reachable only
+from `classify_across`, which takes two records; and every publication gate
+asked the per-record question one record at a time. ⚠ So the closer this
+project's own record named - *a capture that observes both installs* - was not
+expressible: `Capture::observed_route` is one route, deliberately.
+
+⭐ **`agreement::publishable_among` is the same gate asked where the store is
+visible**, and `routes_publishable`'s own wording had named it all along: *an
+unresolved record needs a second capture through the other route*. Nothing could
+act on that, because the second capture is a different record.
+
+⛔ **The door sweep is what made it real rather than theoretical.** Four callers
+gate publication and three of them hold a corpus: `index::chains`,
+`index::build` and `corpus::publishable_view`. ⚠ **And a fourth had both records
+in hand and asked the one-record question**: `assemble-capture` reported
+publishability inside its per-lane loop, before the other lane existed, then
+compared the pair two statements later. It asks once every lane is written now.
+
+⛔ **Every comparable sibling is read, not the first that agrees.** A store
+holding one capture that agrees and one that conflicts refuses the record, and
+the refusal is `E-PUB-03` rather than `E-PUB-04`: the store held a comparable
+capture and it disagreed, which is a different finding from holding none.
+
+Guard mutation, five plants, each verified to have changed the file, clean
+control either side:
+
+| plant | verdict |
+| --- | --- |
+| the store ignored, as the per-record gate was | ⭐ refused, 3 cases |
+| the first agreeing sibling wins, conflicts ignored | ⭐ refused, 1 case |
+| an incomparable record counted as settling it | ⭐ refused, 1 case |
+| a diverging sibling treated as saying nothing | ⭐ refused, 2 cases |
+| the record left in its own sibling list | ⛔ **SURVIVED** |
+
+⚠ **The survivor is a guard nothing can refute and it is kept.**
+`classify_across` already answers `unresolved` for a record paired with itself -
+*two records of one run are one record* - so removing the filter changes no
+verdict. Recorded rather than deleted, and `corpus.rs` says which rule really
+refuses it.
+
+⛔ **AND THE FIRST RUN OF THAT PASS REPORTED FIVE REFUSALS OVER NOTHING.** The
+harness named a `--test corpus` target that does not exist, so every plant
+exited non-zero and it read each one as REFUSED - with `0 case(s)` beside it and
+an empty control, which is what gave it away. ⚠ A harness exit is *could not
+run*, never *refused*, and this is that rule arriving in the instrument written
+to apply it. It prints the control first and refuses a non-zero exit with no red
+case now.
+
+Driven pass: `sh scripts/capture/check-assemble.sh`, **26 cases, 26 passed**.
+⭐ Its control pair already installs two different digests, so those two records
+were provisional and now publish; a plant that ignores the store turns exactly
+the two new cases red and nothing else.
 
 #### ⛔ Three scope defects stood between run 14 and that record
 
