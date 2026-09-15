@@ -17,6 +17,19 @@
 # unverified is a disposition and not a gap. It means redistribution stays
 # refused, which it is anyway, and that nobody may treat the target as
 # permissively licensed on this file's authority.
+#
+# A ROW IS REQUIRED FOR EVERY LOCKED PACKAGE, INCLUDING ONE THAT NEVER BUILDS
+# HERE. Cargo.lock lists a package for every target, so a dependency gated to
+# another architecture is still something a build could fetch, and the register
+# records a decision about it rather than an outcome of one.
+#
+# Measured on 2026-09-15 with `cargo tree -e normal --target ...`, after
+# rusqlite 0.37.0 moved to 0.40.2: on x86_64-unknown-linux-gnu this workspace
+# pulls rusqlite and libsqlite3-sys and nothing else new, while
+# bumpalo, js-sys, rsqlite-vfs, sqlite-wasm-rs and the four wasm-bindgen
+# packages appear only under wasm32-unknown-unknown. So the LOCKFILE surface
+# grew by nine packages and the COMPILED surface grew by none, and both facts
+# belong here because only the first is what this file is a register of.
 
 schema = "bit-ids/licences/1"
 artifact_policy = "measurements-only"
@@ -157,6 +170,14 @@ redistribute = "refused"
 notice = ""
 
 [[dependencies]]
+name = "bumpalo"
+version = "3.20.3"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
 name = "cc"
 version = "1.4.5"
 licence = "MIT OR Apache-2.0"
@@ -230,7 +251,7 @@ notice = ""
 
 [[dependencies]]
 name = "foldhash"
-version = "0.1.5"
+version = "0.2.0"
 licence = "Zlib"
 licence_source = "crate-manifest"
 redistribute = "refused"
@@ -238,7 +259,15 @@ notice = ""
 
 [[dependencies]]
 name = "hashbrown"
-version = "0.15.5"
+version = "0.16.1"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "hashbrown"
+version = "0.17.1"
 licence = "MIT OR Apache-2.0"
 licence_source = "crate-manifest"
 redistribute = "refused"
@@ -246,7 +275,7 @@ notice = ""
 
 [[dependencies]]
 name = "hashlink"
-version = "0.10.0"
+version = "0.12.2"
 licence = "MIT OR Apache-2.0"
 licence_source = "crate-manifest"
 redistribute = "refused"
@@ -269,6 +298,14 @@ redistribute = "refused"
 notice = ""
 
 [[dependencies]]
+name = "js-sys"
+version = "0.3.105"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
 name = "libc"
 version = "0.2.189"
 licence = "MIT OR Apache-2.0"
@@ -278,16 +315,24 @@ notice = ""
 
 [[dependencies]]
 name = "libsqlite3-sys"
-version = "0.35.0"
+version = "0.38.2"
 licence = "MIT"
 licence_source = "crate-manifest"
 redistribute = "refused"
-notice = "The crate is MIT and it VENDORS SQLite 3.50.2, whose own source says the author disclaims copyright. Read out of the amalgamation in the package rather than from a summary of it. PUB-05 compiles that copy, so the published database is written by code this row covers."
+notice = "The crate is MIT and it VENDORS SQLite 3.53.2, whose own source says the author disclaims copyright. Read out of the amalgamation in the package rather than from a summary of it. PUB-05 compiles that copy, so the published database is written by code this row covers."
 
 [[dependencies]]
 name = "memchr"
 version = "2.8.3"
 licence = "Unlicense OR MIT"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "once_cell"
+version = "1.21.4"
+licence = "MIT OR Apache-2.0"
 licence_source = "crate-manifest"
 redistribute = "refused"
 notice = ""
@@ -317,9 +362,25 @@ redistribute = "refused"
 notice = ""
 
 [[dependencies]]
-name = "rusqlite"
-version = "0.37.0"
+name = "rsqlite-vfs"
+version = "0.1.1"
 licence = "MIT"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "rusqlite"
+version = "0.40.2"
+licence = "MIT"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "rustversion"
+version = "1.0.23"
+licence = "MIT OR Apache-2.0"
 licence_source = "crate-manifest"
 redistribute = "refused"
 notice = ""
@@ -389,8 +450,32 @@ redistribute = "refused"
 notice = ""
 
 [[dependencies]]
+name = "sqlite-wasm-rs"
+version = "0.5.5"
+licence = "MIT"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
 name = "syn"
 version = "3.0.4"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "thiserror"
+version = "2.0.20"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "thiserror-impl"
+version = "2.0.20"
 licence = "MIT OR Apache-2.0"
 licence_source = "crate-manifest"
 redistribute = "refused"
@@ -416,6 +501,38 @@ notice = ""
 name = "vcpkg"
 version = "0.2.15"
 licence = "MIT/Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "wasm-bindgen"
+version = "0.2.128"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "wasm-bindgen-macro"
+version = "0.2.128"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "wasm-bindgen-macro-support"
+version = "0.2.128"
+licence = "MIT OR Apache-2.0"
+licence_source = "crate-manifest"
+redistribute = "refused"
+notice = ""
+
+[[dependencies]]
+name = "wasm-bindgen-shared"
+version = "0.2.128"
+licence = "MIT OR Apache-2.0"
 licence_source = "crate-manifest"
 redistribute = "refused"
 notice = ""

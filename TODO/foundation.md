@@ -321,6 +321,47 @@ one.
   licence keeps its `unverified` row until somebody measures again, which is
   honest and stale in the safe direction.
 
+### ⭐ The register turned a dependency bot red, which is the register working. 2026-09-15
+
+⛔ **A dependabot pull request went red on every job of run 126** - both gates
+and all four acceptance shards - and the cause was this file. Bumping `rusqlite`
+0.37.0 to 0.40.2 left **18 locked packages with no register row** and **5
+register rows naming no locked package**, and `check-licences` compares the two
+directions separately, so both fired.
+
+⭐ **That is the entry's whole point arriving unprompted.** A dependency bump is
+a decision about somebody else's code, and the failure is what makes it one
+rather than a rubber stamp. ⚠ Nothing about it was a flake, an infrastructure
+problem, or somebody else's branch to worry about: the same red appears on
+`main` the moment the lockfile moves.
+
+⛔ **THE SURFACE GREW IN THE LOCKFILE AND NOT IN THE BUILD, AND BOTH ARE
+RECORDED.** `rusqlite` 0.40 brings a WASM backend chain - `sqlite-wasm-rs`,
+`rsqlite-vfs`, `js-sys`, `bumpalo` and four `wasm-bindgen` packages. Measured
+with `cargo tree -e normal --target ...` rather than assumed: on
+`x86_64-unknown-linux-gnu` this workspace pulls `rusqlite` and `libsqlite3-sys`
+and nothing else new, and the nine others appear only under
+`wasm32-unknown-unknown`. ⚠ They still need rows, because `Cargo.lock` is what a
+build fetches from and a target gate is not a licence.
+
+⭐ **Every new row's licence was read from that crate's own `Cargo.toml` at that
+exact version**, which is what `licence_source = "crate-manifest"` asserts, and
+the rows were rebuilt from `Cargo.lock` rather than typed - so the two cannot
+disagree by a transcription. ⚠ `foldhash` is the one that is not
+`MIT OR Apache-2.0`: it is `Zlib`, which is why reading beats assuming.
+
+⛔ **AND `libsqlite3-sys`'s NOTICE WAS RE-READ RATHER THAN CARRIED.** The row
+said the crate vendors SQLite **3.50.2**; 0.38.2 vendors **3.53.2**, read out of
+`#define SQLITE_VERSION` in the packaged amalgamation, whose own text still
+disclaims copyright. A notice copied forward would have been a measurement with
+the wrong number in it.
+
+Acceptance, run on 2026-09-15: `cargo build --workspace --locked --all-targets`,
+`cargo test --workspace --locked`, `cargo clippy --all-targets --locked`,
+`bit-check check-licences`, `bit-check check-licences --permitted`,
+`sh scripts/acquisition/check-cache.sh`, and the full gate at 37 checks, 36
+passed, 0 failed, 1 skipped.
+
 ## FOUND-05: The session host, provisioned by something rather than by memory
 
 Source: three tools installed by hand at the start of every session

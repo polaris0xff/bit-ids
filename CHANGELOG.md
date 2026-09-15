@@ -5,6 +5,29 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-15T03:21:16Z
+
+- ⭐ **`rusqlite` 0.37.0 to 0.40.2, with the licence register updated in the same
+  change**, which is what turns a dependency bump into a decision somebody
+  recorded. A dependabot pull request had been red on every job since 2026-09-11
+  for exactly this: 18 locked packages with no register row and 5 register rows
+  naming no locked package.
+- ⛔ **The surface grew in the lockfile and not in the build.** `rusqlite` 0.40
+  brings a WASM backend chain; measured with `cargo tree -e normal --target ...`,
+  `x86_64-unknown-linux-gnu` pulls `rusqlite` and `libsqlite3-sys` and nothing
+  else new, and the nine others appear only under `wasm32-unknown-unknown`. They
+  still need rows: `Cargo.lock` is what a build fetches from, and a target gate
+  is not a licence.
+- ⭐ **Every new row's licence was read from that crate's own manifest at that
+  version** and the rows were rebuilt from `Cargo.lock` rather than typed. ⚠
+  `foldhash` is `Zlib`, not the `MIT OR Apache-2.0` the rest of the batch shares,
+  which is why reading beats assuming.
+- ⛔ **`libsqlite3-sys`' notice was re-read, not carried.** It said the crate
+  vendors SQLite 3.50.2; 0.38.2 vendors **3.53.2**, read out of
+  `#define SQLITE_VERSION` in the packaged amalgamation.
+- Record: [`TODO/foundation.md`](TODO/foundation.md), `FOUND-04`. No version bump
+  and no deploy.
+
 ### 2026-09-15T02:48:33Z
 
 - ⭐ **`capture-client` run 17 produced a record with nothing recovered from a
