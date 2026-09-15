@@ -121,11 +121,15 @@ fn main() {
     // at all: the peer surface is reached by dialling below, and a compact
     // peer list naming an address this lab does not serve would put a
     // connection refusal in the build's log and change what it does next.
+    //
+    // ⛔ THE INTERVAL IS DERIVED FROM THE DEADLINE, NOT WRITTEN HERE. It was a
+    // literal 60 under a 45-second deadline, so `capture-client` run 18 never
+    // had a re-announce fall due and every `tracker_http/*` field rested on one
+    // sample. `TrackerResponse::within` is the one derivation and its own tests
+    // pin it; a second reading of the rule here is how the two drift.
     let tracker = HttpTracker::new(TrackerResponse {
-        interval: 60,
-        complete: 0,
         incomplete: 1,
-        peers: Vec::new(),
+        ..TrackerResponse::within(Duration::from_secs(seconds))
     });
 
     // ⚠ Offered, and recorded as offered. A build's extension map may differ
@@ -194,6 +198,11 @@ fn main() {
     println!("info-hash {}", hex(torrent.info_hash()));
     println!("fixture-sha256 {}", torrent.digest());
     println!("offered-reserved {}", hex(&offer.reserved()));
+    // ⚠ A condition of the run, printed where a reader of the log finds it. A
+    // build that announced once under an interval longer than the deadline was
+    // never asked again; one that announced once under a shorter interval
+    // declined, and that is a measurement.
+    println!("offered-interval {}", tracker.response().interval);
     match peer_port {
         Some(port) => println!("peer-dial 127.0.0.1:{port}"),
         None => println!("peer-dial none"),

@@ -286,14 +286,44 @@ chmod +x "$STUB"
 # peer ID it prints on the way out. ⚠ The transcript is left alone: a stub that
 # edited the file would fire the digest check first, and this guard would never
 # be reached.
+# ⭐ AND THE SAME STUB CARRIES THE ANNOUNCE INTERVAL, which is the other run
+# condition the runner reads out of this log. Each term is its own variable with
+# an empty default meaning *leave it alone*, so one case plants one thing: a stub
+# that always rewrote the peer ID could not reach a guard that sits before the
+# peer-ID one.
 STUB_OBS="$WORK/stub-observer.sh"
 cat >"$STUB_OBS" <<'OBS'
 #!/bin/sh
 set -u
+FAKE=${BIT_IDS_STUB_FAKE_PEER_HEX:-}
+INTERVAL=${BIT_IDS_STUB_INTERVAL:-}
+SERVING=${BIT_IDS_STUB_SERVING:-}
 "$BIT_IDS_STUB_REAL" "$@" | while IFS= read -r line; do
   case "$line" in
     'announce '*' peer-id '*)
-      printf '%s peer-id %s\n' "${line% peer-id *}" "$BIT_IDS_STUB_FAKE_PEER_HEX"
+      if [ -n "$FAKE" ]; then
+        printf '%s peer-id %s\n' "${line% peer-id *}" "$FAKE"
+      else
+        printf '%s\n' "$line"
+      fi
+      ;;
+    'offered-interval '*)
+      # `drop` removes the line entirely, which is the absent case; any other
+      # value is substituted, which is the too-long one.
+      case "$INTERVAL" in
+        '') printf '%s\n' "$line" ;;
+        drop) : ;;
+        *) printf 'offered-interval %s\n' "$INTERVAL" ;;
+      esac
+      ;;
+    'serving for '*)
+      # ⚠ The prefix survives every substitution, because it is the line the
+      # runner waits on before it starts the client. A stub that dropped it
+      # would hang the wait rather than plant the guard below it.
+      case "$SERVING" in
+        '') printf '%s\n' "$line" ;;
+        *) printf 'serving for %ss\n' "$SERVING" ;;
+      esac
       ;;
     *) printf '%s\n' "$line" ;;
   esac
@@ -720,6 +750,80 @@ if [ "$_rc" = 1 ] && grep -q -F -e "the transcript does not carry the peer ID" "
   pass "a peer ID the transcript does not hold is refused"
 else
   fail "a peer ID the transcript does not hold is refused (exit $_rc)"
+fi
+
+# -- ⛔ 4b. the run must be able to outlive the interval it answered -----------
+#
+# ⛔ `capture-client` run 18 answered 60 under a 45-second deadline, so no
+# re-announce was ever due and every `tracker_http/*` field rested on one sample.
+# ⚠ BOTH ARE exit 2 RATHER THAN 1. A condition of the experiment that was set
+# before the build did anything is *could not run*, and reporting it as the
+# build's behaviour would name the wrong thing - which is the distinction this
+# repository keeps confusing in the other direction.
+#
+# ⭐ The control is the case above and every case before it: they run the real
+# observer, whose interval is derived from the deadline, and they pass.
+OUTS=$((OUTS + 1))
+BIT_IDS_STUB_LONGER=$((SECS + 1))
+BIT_IDS_STATE_DIR="$STATE" BIT_IDS_STUB_REAL="$OBSERVER" \
+  BIT_IDS_STUB_INTERVAL="$BIT_IDS_STUB_LONGER" \
+  sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" --observer "$STUB_OBS" \
+  --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" --route-table "$WORK/route-loopback" \
+  >"$WORK/out" 2>"$WORK/err"
+_rc=$?
+if [ "$_rc" = 2 ] && grep -q -F -e "no re-announce can fall due" "$WORK/err"; then
+  pass "an interval longer than the run is refused"
+else
+  fail "an interval longer than the run is refused (exit $_rc)"
+fi
+
+# ⚠ AND THE INTERVAL EXACTLY EQUAL TO THE DEADLINE IS ACCEPTED, because the
+# derivation's floor is five seconds and this harness runs a five-second
+# capture: there is no shorter interval to ask for. ⛔ Without this case the
+# refusal above could be tightened to `<` and every correct short run would be
+# refused - which is what the first draft of that guard did, and the whole
+# harness went red on a tree with no defect in it.
+OUTS=$((OUTS + 1))
+BIT_IDS_STATE_DIR="$STATE" BIT_IDS_STUB_REAL="$OBSERVER" \
+  BIT_IDS_STUB_INTERVAL="$SECS" \
+  sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" --observer "$STUB_OBS" \
+  --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" --route-table "$WORK/route-loopback" \
+  >"$WORK/out" 2>"$WORK/err"
+_rc=$?
+if [ "$_rc" = 0 ]; then
+  pass "an interval equal to the deadline is accepted, because the floor is there"
+else
+  fail "an interval equal to the deadline is accepted (exit $_rc)"
+fi
+
+OUTS=$((OUTS + 1))
+BIT_IDS_STATE_DIR="$STATE" BIT_IDS_STUB_REAL="$OBSERVER" \
+  BIT_IDS_STUB_INTERVAL=drop \
+  sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" --observer "$STUB_OBS" \
+  --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" --route-table "$WORK/route-loopback" \
+  >"$WORK/out" 2>"$WORK/err"
+_rc=$?
+if [ "$_rc" = 2 ] && grep -q -F -e "reported no announce interval" "$WORK/err"; then
+  pass "an observer that reports no announce interval is refused"
+else
+  fail "an observer that reports no announce interval is refused (exit $_rc)"
+fi
+
+# ⛔ AND THE DEADLINE IS COMPARED AGAINST THE ONE THIS RUN PASSED. The interval
+# guard above is read against what the observer says it served for, so an
+# observer serving a different span would make that comparison true over the
+# wrong pair of numbers.
+OUTS=$((OUTS + 1))
+BIT_IDS_STATE_DIR="$STATE" BIT_IDS_STUB_REAL="$OBSERVER" \
+  BIT_IDS_STUB_SERVING=$((SECS * 100)) \
+  sh "$RUNNER" --run-id "$RUN" --out "$WORK/out-$OUTS" --observer "$STUB_OBS" \
+  --adapter "$STUB" --connector "$CONNECTOR" --seconds "$SECS" --route-table "$WORK/route-loopback" \
+  >"$WORK/out" 2>"$WORK/err"
+_rc=$?
+if [ "$_rc" = 2 ] && grep -q -F -e "it was given" "$WORK/err"; then
+  pass "an observer serving a span it was not given is refused"
+else
+  fail "an observer serving a span it was not given is refused (exit $_rc)"
 fi
 
 # -- 5. the host state guards -------------------------------------------------

@@ -5,6 +5,23 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-15T12:34:13Z
+
+- ⭐ **The announce interval is derived from the deadline.** It was a literal 60
+  under a 45-second deadline, so no re-announce was ever due and every
+  `tracker_http/*` field rested on one sample. `TrackerResponse::within` is the
+  one derivation, floored at five seconds and capped at the default's own 1800.
+- ⛔ **`capture-client.sh` refuses an interval longer than the run**, reading
+  both numbers out of the observer's own log rather than recomputing either.
+  ⚠ Equality is permitted: below fifteen seconds the floor is the answer.
+- ⛔ **A plant survived `cargo test` and was refused by `check-capture-client`.**
+  A guard proved only from outside the crate that owns it is one that crate
+  leaves unproven, so the case was added rather than the plant counted.
+- ⚠ **The door sweep found the adapter's `stop` running after the deadline**, so
+  a `stopped` announce reaches a tracker that has gone. Filed as its own unit.
+- Record: [`TODO/observer.md`](TODO/observer.md), `OBS-02`. No version bump and
+  no deploy.
+
 ### 2026-09-15T12:05:20Z
 
 - ⭐ **The observer offers a different peer ID on every connection.**

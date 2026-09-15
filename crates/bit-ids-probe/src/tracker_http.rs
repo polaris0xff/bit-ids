@@ -28,6 +28,7 @@
 
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::sync::{Arc, Mutex, PoisonError};
+use std::time::Duration;
 
 use bit_ids_lab::{ConnectionId, StreamReply, bind};
 use bit_ids_wire::WireError;
@@ -262,9 +263,30 @@ pub struct TrackerResponse {
     pub peers: Vec<OfferedPeer>,
 }
 
+/// The shortest interval this observer will answer with.
+///
+/// ⚠ Five seconds. A tracker may answer any interval BEP 3 permits, and the
+/// floor is here so a very short capture cannot ask a build to announce in a
+/// loop - which would measure this code's arithmetic rather than the build.
+pub const MIN_ANNOUNCE_INTERVAL: i64 = 5;
+
+/// How many intervals a run is asked to fit.
+///
+/// ⭐ Three, so a re-announce falls due at a third and at two thirds of the
+/// deadline and TWO are safely inside it. Two intervals would put the second
+/// announce on the deadline itself, racing the shutdown.
+const INTERVALS_PER_RUN: u64 = 3;
+
 impl Default for TrackerResponse {
     /// 1800 seconds, which is far longer than any capture deadline, so a
     /// client re-announces only because the run made it, and no peers.
+    ///
+    /// ⛔ **That is the right default and the wrong answer for a capture**, and
+    /// `capture-client` run 18 is what measured the difference: it answered 60
+    /// under a 45-second deadline, so no re-announce was ever due, every
+    /// `tracker_http/*` field rested on one sample, and the record could state
+    /// them only as constants. [`TrackerResponse::within`] is what a capture
+    /// asks for instead.
     fn default() -> Self {
         Self {
             interval: 1800,
@@ -276,6 +298,37 @@ impl Default for TrackerResponse {
 }
 
 impl TrackerResponse {
+    /// The default answer, with an interval a run of `deadline` can outlive.
+    ///
+    /// ⛔ **A SECOND SAMPLE IS WHAT TURNS A CONSTANT INTO A PATTERN.**
+    /// `SCHEMA-04` can state a field as `patterned` only over more than one
+    /// observation, and two captures of one build that each state a different
+    /// constant are `divergent` - which is what kept a measured record
+    /// unpublishable. An interval longer than the run means the build is never
+    /// asked again.
+    ///
+    /// ⚠ **It makes a re-announce DUE and cannot make one happen.** A build with
+    /// a floor of its own - libtorrent clamps to its own minimum announce
+    /// interval whatever a tracker says - will not honour a short one, and that
+    /// is a measurement of the build rather than a defect here. What this
+    /// removes is the case where the observer guaranteed the answer.
+    ///
+    /// ⚠ The interval is a CONDITION of the run, so a capture prints it beside
+    /// what it observed rather than leaving a reader to infer it.
+    #[must_use]
+    pub fn within(deadline: Duration) -> Self {
+        let seconds = deadline.as_secs() / INTERVALS_PER_RUN;
+        let interval = i64::try_from(seconds).unwrap_or(i64::MAX);
+        let default = Self::default();
+        Self {
+            // ⛔ Clamped at BOTH ends. Without the ceiling a very long capture
+            // would answer a longer interval than the tracker's own default,
+            // which is a run asking for fewer samples the longer it lasts.
+            interval: interval.clamp(MIN_ANNOUNCE_INTERVAL, default.interval),
+            ..default
+        }
+    }
+
     /// The bencoded body for one announce, in the shape that announce asked for.
     #[must_use]
     pub fn body_for(&self, announce: &Announce) -> Vec<u8> {
@@ -379,6 +432,15 @@ impl HttpTracker {
     pub const fn with_max_announces(mut self, max_announces: usize) -> Self {
         self.max_announces = max_announces;
         self
+    }
+
+    /// What this observer answers with, which a record cites as a run condition.
+    ///
+    /// ⚠ Read from the observer rather than from the value a caller built, so a
+    /// capture reporting its interval reports the one that went on the wire.
+    #[must_use]
+    pub const fn response(&self) -> &TrackerResponse {
+        &self.response
     }
 
     /// Every announce kept, in the order it arrived.
@@ -524,5 +586,77 @@ fn content_length(request: &HttpRequest) -> Result<usize, &'static str> {
     match text.parse::<usize>() {
         Ok(length) if length <= MAX_HEAD => Ok(length),
         _ => Ok(0),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use core::time::Duration;
+
+    use super::{MIN_ANNOUNCE_INTERVAL, TrackerResponse};
+
+    #[test]
+    fn the_interval_leaves_room_for_two_re_announces_inside_the_deadline() {
+        // ⛔ The run-18 case, as an assertion. A 45-second deadline answered 60,
+        // so the first re-announce fell due fifteen seconds after the observer
+        // had already shut down.
+        let answer = TrackerResponse::within(Duration::from_secs(45));
+        assert_eq!(answer.interval, 15);
+        assert!(
+            answer.interval * 2 < 45,
+            "two re-announces fall due inside the run"
+        );
+        assert!(
+            TrackerResponse::default().interval > 45,
+            "and the default does not, which is why a capture asks for this one"
+        );
+    }
+
+    #[test]
+    fn the_interval_scales_with_the_deadline_rather_than_being_a_constant() {
+        // A capture asked for longer is not a capture asked for fewer samples.
+        let short = TrackerResponse::within(Duration::from_secs(60));
+        let long = TrackerResponse::within(Duration::from_secs(600));
+        assert_eq!(short.interval, 20);
+        assert_eq!(long.interval, 200);
+        assert!(long.interval > short.interval);
+    }
+
+    #[test]
+    fn a_very_short_deadline_is_floored_rather_than_asking_for_an_announce_loop() {
+        for seconds in [0_u64, 1, 5, 12, 14] {
+            let answer = TrackerResponse::within(Duration::from_secs(seconds));
+            assert!(
+                answer.interval >= MIN_ANNOUNCE_INTERVAL,
+                "{seconds}s answered {}",
+                answer.interval
+            );
+        }
+        assert_eq!(
+            TrackerResponse::within(Duration::from_secs(15)).interval,
+            MIN_ANNOUNCE_INTERVAL,
+            "the floor and the derivation meet at fifteen seconds"
+        );
+    }
+
+    #[test]
+    fn a_very_long_deadline_never_answers_longer_than_the_default() {
+        // ⚠ The ceiling, which is the half a floor alone would miss: without it
+        // a capture of an hour would ask for fewer samples than one of a minute.
+        let capped = TrackerResponse::within(Duration::from_hours(24));
+        assert_eq!(capped.interval, TrackerResponse::default().interval);
+        let huge = TrackerResponse::within(Duration::from_secs(u64::MAX));
+        assert_eq!(huge.interval, TrackerResponse::default().interval);
+    }
+
+    #[test]
+    fn nothing_else_about_the_answer_moves_with_the_deadline() {
+        // The interval is the only term this derivation touches; the peer list
+        // and the counts are the run's own choices and stay the default's.
+        let answer = TrackerResponse::within(Duration::from_secs(45));
+        let default = TrackerResponse::default();
+        assert_eq!(answer.complete, default.complete);
+        assert_eq!(answer.incomplete, default.incomplete);
+        assert_eq!(answer.peers, default.peers);
     }
 }

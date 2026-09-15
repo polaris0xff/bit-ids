@@ -637,3 +637,38 @@ fn http_tracker_leaves_the_bytes_of_a_refused_request_in_the_lab_journal() {
         "the evidence survives the refusal"
     );
 }
+
+#[test]
+fn the_interval_a_capture_reports_is_the_interval_that_goes_on_the_wire() {
+    // ⛔ A GUARD PROVED ONLY BY ANOTHER HARNESS IS ONE THIS SUITE LEAVES
+    // UNPROVEN. `HttpTracker::response` is what a capture prints as its
+    // `offered-interval`, and a run condition reported from anywhere but the
+    // bytes is a condition a reader cannot check. Planting a `response` that
+    // answers the default was refused by `check-capture-client` and by nothing
+    // here, which is the same finding `OBS-11` records about `check_offered`.
+    let tracker = HttpTracker::new(TrackerResponse::within(Duration::from_secs(45)));
+    let reported = tracker.response().interval;
+    let lab = lab_with(&tracker);
+    let answer = announce(
+        &lab,
+        b"GET /announce?info_hash=%01&peer_id=-QB5000-abcdefghijkl&compact=1 HTTP/1.1\r\n\
+          Host: 127.0.0.1\r\n\r\n",
+    );
+    drop(lab);
+
+    let decoded = bencode::decode(&body_of(&answer)).expect("a bencoded body");
+    let Value::Dictionary(entries) = decoded else {
+        panic!("a tracker answers a dictionary");
+    };
+    let on_the_wire = entries
+        .iter()
+        .find(|(key, _)| key == b"interval")
+        .map(|(_, value)| value.clone())
+        .expect("the body names an interval");
+    assert_eq!(on_the_wire, Value::integer(reported));
+    // ⚠ And the control on the control: a value that moves. Comparing a
+    // reported 1800 against a wire 1800 holds over a `within` that ignored its
+    // argument, because the default is what it would answer too.
+    assert_eq!(reported, 15);
+    assert_ne!(reported, TrackerResponse::default().interval);
+}

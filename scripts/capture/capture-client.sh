@@ -366,6 +366,39 @@ ANNOUNCES=$(awk '$1 == "announces" { print $2; exit }' "$LOG")
 [ -n "$ANNOUNCES" ] || refuse "the observer reported no announce count"
 [ "$ANNOUNCES" -gt 0 ] || refuse "the build announced nothing; there is no measurement here"
 
+# ⛔ AND THE INTERVAL MUST NOT OUTLIVE THE RUN. `capture-client` run 18 answered
+# 60 under a 45-second deadline, so no re-announce was ever due: the tracker
+# surface rested on one sample, `SCHEMA-04` could state every field only as a
+# constant, and two lanes then stated two different constants. These are
+# CANNOT-RUN rather than refusals, because they are conditions of the experiment
+# set before the build did anything, and reporting either as the build's
+# behaviour would name the wrong thing.
+#
+# ⚠ BOTH VALUES ARE READ OUT OF THE OBSERVER'S OWN LOG, never recomputed here. A
+# second reading of the derivation would agree with itself while the observer
+# answered something else, which is the rule `check-workflow.sh` is built on;
+# what the suite pins is `TrackerResponse::within`, and what this pins is that
+# the observer was given this run's deadline and answered under it.
+#
+# ⚠ EQUALITY IS PERMITTED AND THAT IS NOT A WEAKENING. The derivation has a
+# five-second floor, so a capture asked for five seconds or fewer answers an
+# interval equal to its own deadline and no shorter one exists. The case this
+# refuses is an interval LONGER than the run, which is the only one a different
+# deadline could have fixed.
+SERVING_FOR=$(awk '$1 == "serving" && $2 == "for" { sub(/s$/, "", $3); print $3; exit }' "$LOG")
+case "$SERVING_FOR" in
+  '' | *[!0-9]*) cannot "the observer did not report how long it served" ;;
+esac
+[ "$SERVING_FOR" = "$SECONDS_TO_SERVE" ] ||
+  cannot "the observer served for ${SERVING_FOR}s, not the ${SECONDS_TO_SERVE}s it was given"
+
+OFFERED_INTERVAL=$(awk '$1 == "offered-interval" { print $2; exit }' "$LOG")
+case "$OFFERED_INTERVAL" in
+  '' | *[!0-9]*) cannot "the observer reported no announce interval" ;;
+esac
+[ "$OFFERED_INTERVAL" -le "$SERVING_FOR" ] ||
+  cannot "the tracker answered interval ${OFFERED_INTERVAL}s under a ${SERVING_FOR}s deadline; no re-announce can fall due"
+
 # -- the evidence, checked by something else ----------------------------------
 #
 # ⭐ THE ROWS ARE THE OBSERVER'S OWN CLAIMS AND sha256sum IS WHAT TESTS THEM.

@@ -525,6 +525,90 @@ entry landed. The fields are private now and `OfferedPeer::new` is the only
 constructor; `a_tracker_cannot_offer_a_peer_outside_the_lab` is the case.
 ⚠ The type is shared with `OBS-03`, so one constructor closed both surfaces.
 
+### ⭐ The announce interval is derived from the deadline, 2026-09-15
+
+⛔ **`capture-client` run 18 answered `interval: 60` under a 45-second deadline,
+so no re-announce was ever due.** Every `tracker_http/*` field therefore rested
+on one sample, `SCHEMA-04` could state each only as a `constant`, and two lanes
+then stated two different constants - which is half of why the pair is refused.
+
+⭐ **`TrackerResponse::within(deadline)` is the one derivation**: the interval is
+a third of the deadline, clamped to a five-second floor and to the default's own
+1800-second ceiling. `client-capture` calls it instead of writing a literal, and
+prints `offered-interval` beside `offered-reserved`, because both are conditions
+of the run rather than observations.
+
+⛔ **Three intervals per run rather than two.** Two would put the only
+re-announce on the deadline itself, racing the shutdown; a third leaves two
+safely inside. ⚠ **The CEILING is the half a floor alone would miss**: without
+it a capture asked for an hour would answer a longer interval than the tracker's
+own default, which is a longer run asking for fewer samples.
+
+⚠ **It makes a re-announce DUE and cannot make one happen.** libtorrent clamps
+to its own minimum announce interval whatever a tracker says, and a build that
+declines is a measurement of the build. What is removed is the case where the
+observer guaranteed the silence.
+
+⛔ **`capture-client.sh` refuses an interval longer than the run**, and both
+values are read out of the observer's own log rather than recomputed - the rule
+`check-workflow.sh` is built on. ⚠ **Equality is PERMITTED and that is not a
+weakening**: below fifteen seconds the floor is the answer, so a five-second
+capture offers five and there is no shorter interval to ask for. ⛔ The first
+draft used `<` and turned the whole 113-case harness red on a tree with no
+defect in it; the accepting case is a permanent row now, because a rule that
+refuses a correct short run is a rule somebody switches off.
+
+⚠ **The deadline is compared too.** The interval guard reads what the observer
+says it served for, so an observer serving a different span would make that
+comparison true over the wrong pair of numbers.
+
+⚠ **Both new refusals are exit 2 rather than 1.** A condition of the experiment
+set before the build did anything is *could not run*; reporting it as the
+build's behaviour would name the wrong thing, which is this repository's own
+distinction applied in the direction it usually gets wrong.
+
+Guard mutation, six plants over `tracker_http.rs`, each verified to have changed
+the file, each exit code read unpiped with `--no-fail-fast`, control first and
+again after every restore:
+
+| plant | verdict |
+| --- | --- |
+| `within()` answers the default - run 18's defect itself | ⭐ refused, 3 cases |
+| the floor removed, so a short capture asks for an announce loop | ⭐ refused, 1 case |
+| the ceiling removed, so a long capture asks for fewer samples | ⭐ refused, 1 case |
+| one interval per run, so the only re-announce lands on the deadline | ⭐ refused, 3 cases |
+| the derivation ignores the deadline it was handed | ⭐ refused, 3 cases |
+| `response()` reports something other than what is answered | ⭐ refused, 1 case |
+
+⛔ **THE LAST ONE SURVIVED THE FIRST PASS AND WAS REFUSED BY A DIFFERENT
+HARNESS.** `check-capture-client` went red on it - the capture prints
+`offered-interval` from `response()`, and a lying one trips the runner's new
+guard - while `cargo test` stayed green. ⚠ That is a guard proved from outside
+the crate that owns it, which is what `OBS-11` records about `check_offered`, so
+the gap was closed here rather than counted:
+`the_interval_a_capture_reports_is_the_interval_that_goes_on_the_wire` decodes
+the body the tracker actually answered and compares the integer in it against
+what `response()` reported. ⚠ It carries its own control - the value must be 15
+and must differ from the default - because comparing a reported 1800 against a
+wire 1800 holds over a derivation that ignored its argument.
+
+Driven on this host, 2026-09-15, at the workflow's own 45-second deadline. A
+tracker client written from BEP 3 in Python announced, read the `interval` out
+of the bencoded body and honoured it. ⭐ **Three announces, at 0, 15 and 30
+seconds**, where the literal 60 gave exactly one; the observer recorded
+`offered-interval 15` and `announces 3`. ⚠ Its peer ID is the same on all three
+by construction, which is what the next dispatch asks about a real build: whether
+the twelve-byte tail is per announce as well as per peer connection.
+
+⛔ **Residual, found by the door sweep and deliberately not taken here.**
+`capture-client.sh` runs the adapter's `stop` AFTER `wait "$OBSERVER_PID"`, so a
+build's `stopped` announce - a different event, and a second sample for free -
+arrives at a tracker that has already shut down. ⚠ Moving the stop inside the
+deadline is a second lever on the same measurement, and taking both at once
+would leave a dispatch unable to say which produced the second announce. It is
+its own unit, with its own plants, and it needs a case for the run where a build
+stopped early never announced at all.
+
 ## OBS-03: UDP tracker observer
 
 Source: bit-cli T-234 UDP key and numwant inventory
@@ -758,9 +842,10 @@ drops a second connection from a peer it already has would do exactly this.
 records as part of the measurement, so it was its own unit rather than a tweak.
 ⭐ **That unit is the section below.**
 
-⚠ **The tracker surface has the same shape for a different reason**: one
-announce per lane, because the tracker answers `interval: 60` and the observer's
-deadline was 45 seconds, so no re-announce was ever due.
+⚠ **The tracker surface had the same shape for a different reason**: one
+announce per lane, because the tracker answered `interval: 60` and the
+observer's deadline was 45 seconds, so no re-announce was ever due.
+⭐ **Repaired under `OBS-02`, 2026-09-15**, in that entry's own section.
 
 ⭐ **What run 18 does establish** is that `E-PUB-04` is really gone. Assembled,
 the pair is refused by `E-PUB-03` naming `cap-source`, `cap-release` and the two
