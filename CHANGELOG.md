@@ -5,6 +5,34 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-15T02:08:43Z
+
+- ⭐ **`capture-client` run 15 dispatched, and three of run 14's four refusals are
+  repaired ON A RUNNER**: each lane resolved through its own index, the install
+  record carries `package=elf-binary`, and the attestation declares
+  `connectors=cpython-stdlib` with a connector report in the bundle - which with
+  the observer is the two `E-CAP-01` needs. Run 14 carried no `connectors` key at
+  all, which is the whole of why it was refused as declaring one.
+- ⛔ **The source lane failed, on a guard whose scope was wider than the thing it
+  guards.** `install-client`'s rule-12 scan read every file at every depth of the
+  install workdir, while the artifact takes named files from that directory's top
+  level only - so the scan refused vendored third-party test certificates that
+  nothing can ship. [`TODO/acquisition.md`](TODO/acquisition.md) carries the two
+  scopes and why they diverged.
+- ⭐ **Both halves of the rule are fixed** - the name scan and the value scan -
+  because `grep -r` descends exactly as `find` did, and fixing one would be the
+  gate-on-one-path shape the guard was added to close. ⚠ Narrowing is not a
+  weakening: rule 12 is about what REACHES a remote, and the scan still reads
+  every file at the level that ships.
+- ⚠ **One repair uncovered the next.** A `release` route installs a binary and
+  never clones, so the shape was invisible for fifteen dispatches and appeared
+  the moment `E-ACQ-07`'s repair made the source lane a real source lane.
+- ⛔ **Two claims in `assemble-capture`'s own documentation were false** and are
+  amended: *no capture has yet written that key* and *no capture has written
+  one*. Run 15 wrote both.
+- Record: [`TODO/acquisition.md`](TODO/acquisition.md), `ACQ-03`. No version bump
+  and no deploy.
+
 ### 2026-09-15T01:46:22Z
 
 - ⛔ **A second rule this repository said it had and did not.** `.gitignore`'s own

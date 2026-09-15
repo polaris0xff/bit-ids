@@ -228,8 +228,10 @@ impl Lane {
     ///
     /// ⛔ **The observer is one of them, not a third thing beside them.** The
     /// attestation names it in `observer`; a second connector appears in
-    /// `connectors`, comma-separated, and no capture has yet written that key.
-    /// `OBS-07` is what produces one.
+    /// `connectors`, comma-separated. ⭐ `capture-client` run 15 on 2026-09-15 is
+    /// the first capture to write that key - `connectors=cpython-stdlib` - so a
+    /// lane of it declares TWO and `E-CAP-01` is satisfied. ⚠ Run 14 carried no
+    /// such key, which is the whole of why it was refused as declaring one.
     fn connectors(&self) -> Result<Vec<Connector>, String> {
         let version = Version::parse("0.0.0").map_err(|error| error.to_string())?;
         let mut ids = vec![slug("bit-ids-probe")];
@@ -575,8 +577,19 @@ fn observations_of(lane: &Lane) -> Result<Vec<ObservedField>, String> {
 /// already says silence is not the same as `not_corroborated`, and a connector
 /// this example filled in for would be corroboration the run never produced.
 ///
-/// ⚠ No capture has written one. Every attestation so far names one connector,
-/// which is why `E-CAP-01` refuses the record before this is reached.
+/// ⭐ **A capture HAS written one now, measured on 2026-09-15.**
+/// `capture-client` run 15's release lane carries
+/// `bundle/connector/cpython-stdlib.txt` with four lines, and its attestation
+/// declares `connectors=cpython-stdlib`, so this is reached rather than cut off
+/// by `E-CAP-01`. ⚠ That sentence used to read *no capture has written one*; run
+/// 14 was the last attestation with no `connectors` key at all, which is why it
+/// was refused as declaring a single connector.
+///
+/// ⛔ **AND THE REPORT DISAGREES WITH ITSELF ACROSS SURFACES, CORRECTLY.** Run
+/// 15's connector read two different peer IDs out of one capture - the announce
+/// and the handshake carry different twelve-byte tails after the same
+/// `-qB5230-` prefix - which is the per-connection tail `docs/history/RESUME.md`
+/// records, now measured by a reader this project did not write.
 fn corroboration_of(
     lane: &Lane,
     fields: &[ObservedField],

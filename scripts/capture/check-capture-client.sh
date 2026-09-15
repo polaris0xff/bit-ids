@@ -149,9 +149,15 @@ case "$COMMAND" in
     # A door sweep found `capture-client.yml` uploads this directory's logs as a
     # second artifact, with nothing scanning them - the capture bundle's guard
     # was a gate on one of two paths into the same rule.
-    [ -z "${BIT_IDS_STUB_INSTALL_DROP:-}" ] ||
+    # ⚠ THE DROP MAY NAME A SUBDIRECTORY, because the scan's SCOPE is a branch
+    # and a drop that could only land at the top level could not reach it. A
+    # source route clones into this workdir, so the tree below it is where
+    # somebody else's vendored test fixtures live.
+    [ -z "${BIT_IDS_STUB_INSTALL_DROP:-}" ] || {
+      mkdir -p "$(dirname "$2/$BIT_IDS_STUB_INSTALL_DROP")" || exit 2
       od -An -tx1 -N16 /dev/urandom 2>/dev/null | tr -d ' \n' \
         >"$2/$BIT_IDS_STUB_INSTALL_DROP"
+    }
     printf 'route=%s\n' "$1" >"$2/installed"
     printf 'a route that hung would leave this\n' >"$2/install.log"
     # ⭐ A SOURCE ROUTE NAMES THE COMMIT IT BUILT, beside its log, because the
@@ -900,6 +906,29 @@ else
     "an install whose file merely contains the word is not refused" \
     --adapter "$STUB" --route package --workdir "$WORK/inst-nearmiss" \
     --record "$WORK/inst-nearmiss.txt"
+
+  # ⛔ AND THE SCOPE, WHICH IS THE BRANCH A REAL CAPTURE FOUND. The scan reads
+  # this workdir's TOP LEVEL, because that is what `capture-client.yml` uploads:
+  # `install-<route>/*.log` and `*.err`, globs with no `**`. Run 15 on
+  # 2026-09-15 refused its `source` lane over openssl's and nghttp2's vendored
+  # test fixtures, `src/third_party/openssl/apps/server.pem` and
+  # `src/third_party/nghttp2/integration-tests/server.key`, which the route
+  # clones and nothing ships.
+  #
+  # ⚠ BOTH DIRECTIONS ARE PLANTED, because they are different branches and a
+  # scan that stopped descending entirely would pass this one and lose the case
+  # above. The same name at the top level is still refused; below it is not.
+  BIT_IDS_STUB_INSTALL_DROP=src/third_party/openssl/apps/server.pem
+  install_case 0 "" \
+    "a credential-named file in a subtree no artifact ships is not refused" \
+    --adapter "$STUB" --route package --workdir "$WORK/inst-subtree" \
+    --record "$WORK/inst-subtree.txt"
+
+  BIT_IDS_STUB_INSTALL_DROP=server.pem
+  install_case 1 "name says it holds a credential" \
+    "the same name at the workdir's top level, which does ship, is refused" \
+    --adapter "$STUB" --route package --workdir "$WORK/inst-toplevel" \
+    --record "$WORK/inst-toplevel.txt"
   BIT_IDS_STUB_INSTALL_DROP=""
 
   # ⛔ THE RECORD IS A CLAIM AND IT IS READ BACK. A step that installed and

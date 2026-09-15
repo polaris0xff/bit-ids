@@ -132,6 +132,37 @@ published. `docs/publishing.md` carries the forms and says they are unexercised.
 ⚠ **Nothing schedules the staleness monitor.** `CI-02` built the comparison and
 its driving surface; no capture request has ever been opened.
 
+⭐ **THREE OF THE FOUR REPAIRS ARE NOW PROVED ON A RUNNER, AND THE FOURTH LANE
+IS THE ONLY THING LEFT. `capture-client` run 15, 2026-09-15.** It is the first
+dispatch since run 14 and the first pressed from a session rather than by hand.
+
+| what run 14 was refused for | what run 15 measured |
+| --- | --- |
+| both lanes resolved through one listing (`E-ACQ-07`) | ⭐ each lane resolved through its own index and SKIPPED the other's step |
+| nothing recorded the package format | ⭐ `package=elf-binary` in the install record |
+| the attestation declared one connector (`E-CAP-01`) | ⭐ `connectors=cpython-stdlib` plus `bundle/connector/cpython-stdlib.txt`; with the observer that is two |
+| the source route recorded no commit (`E-ACQ-06`) | ⛔ unproved: the source lane never reached the step that writes it |
+
+⛔ **THE RELEASE LANE IS GREEN AND THE SOURCE LANE IS NOT**, and the reason is a
+guard whose scope was wider than the thing it guards rather than anything about
+the client. `install-client`'s rule-12 scan read every file at every depth of the
+install workdir; the source route CLONES into that workdir, and the clone
+vendors openssl's and nghttp2's own test certificates. ⚠ The upload ships
+`*.log` and `*.err` from that directory's top level and nothing below it, so the
+scan refused files no artifact can carry. `TODO/acquisition.md` carries the fix
+and its mutation proof.
+
+⭐ **ONE REPAIR UNCOVERED THE NEXT, which is what a dispatch buys.** A `release`
+route installs a binary and never clones, so this shape was invisible for fifteen
+dispatches; it appeared the moment `E-ACQ-07`'s repair made the source lane a
+real source lane.
+
+⚠ **STILL NO RECORD.** Assembling run 15's one green lane answers
+*`E-ACQ-01` needs two routes, so a record needs a lane per route* and exits 2.
+⭐ And assembling **run 14**'s four artifacts reproduced all four refusals in the
+table below exactly, which is what says this path works end to end from a
+session: dispatch, download, assemble.
+
 ⛔ **THE TWO-ROUTE CAPTURE IS NOT TWO ROUTES, MEASURED BY ASSEMBLING IT.**
 `capture-client` run 14 on 2026-09-09 acquired `aria2-next` through its
 `release` and `source` routes on two hosts. Both report **2.7.5**, both

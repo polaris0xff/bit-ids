@@ -514,6 +514,72 @@ nothing. ⚠ Putting it on the route type is a schema change across every fixtur
 every rendering and every validator, and it is worth doing when a record exists
 to migrate rather than while every record in the tree is synthetic.
 
+### ⛔ The rule-12 install scan read more than the install ships, and a real capture is what said so. 2026-09-15
+
+⛔ **`capture-client` run 15 refused its `source` lane over somebody else's test
+fixtures.** The failing step is *Install the client*, and the files it named are
+`src/third_party/openssl/apps/server.pem` and
+`src/third_party/nghttp2/integration-tests/server.key` - openssl's and nghttp2's
+own test certificates, vendored in the tree the source route clones, public by
+construction, and uploaded by nothing.
+
+⛔ **THE GUARD'S SCOPE AND THE ARTIFACT'S SCOPE DISAGREED.** `install-client`
+scanned `find "$WORKDIR" -type f`, every file at every depth.
+`capture-client.yml` uploads `install-<route>/*.log` and `install-<route>/*.err`
+- globs with no `**`, which do not descend - plus the install record and the
+release resolution. ⚠ The workflow's own comment says why it is named rather
+than wholesale: run 5 uploaded a build tree, **42.6 megabytes and 1867 entries**,
+for a step called *Upload the install logs*.
+
+⚠ **So the scan was written against an upload that no longer exists.** The
+upload narrowed on run 5; the guard did not follow. It went on reading a subtree
+nothing can ship, and the first time a route actually populated that subtree it
+refused a capture that was correct.
+
+⛔ **AND IT WAS INVISIBLE FOR FIFTEEN DISPATCHES.** A `release` route installs a
+binary and never clones, so its workdir has no subtree at all. The shape
+appeared the moment the source route first resolved its own tag - which is to
+say, the moment `E-ACQ-07`'s repair made the source lane a real source lane.
+⭐ One repair uncovering the next is what a capture buys that a reading does not.
+
+⭐ **Both halves of the rule had the defect and both are fixed**: the name scan
+and the value scan now read the workdir's top level. `grep -r` descends exactly
+as `find` did, and fixing one while leaving the other is the gate-on-one-path
+shape this guard was added to close.
+
+⚠ **NARROWING IS NOT A WEAKENING HERE, AND THE DIRECTION IS WHAT SAYS SO.** Rule
+12 is about what REACHES a remote. What ships from this directory is `*.log` and
+`*.err` at its top level; the scan still reads EVERY file at that level, which is
+deliberately wider than those two globs. The only thing it stops reading is a
+subtree no artifact carries.
+
+Guard mutation, the plant verified to have changed the file before it was judged:
+
+| plant | verdict |
+| --- | --- |
+| a credential-named file in `src/third_party/.../server.pem` | ⭐ accepted, exit 0 |
+| the same name at the workdir's top level | ⭐ refused, exit 1 |
+| `-maxdepth 1` reverted, subtree case re-run | ⭐ the case FAILS, so it can fire |
+| `-maxdepth 1` reverted, top-level case re-run | ⭐ still refused, so the two branches are separate |
+
+#### Residuals of this fix
+
+- ⛔ **The dangerous direction is unguarded.** An upload path that gained a `**`
+  under the install workdir would ship a subtree this scan no longer reads, and
+  nothing compares the two. Acceptance for closing it: a check that reads
+  `capture-client.yml`'s `Upload the install logs` path block and refuses a
+  pattern reaching below the workdir's top level, mutation-proved by planting
+  `install-${{ matrix.route }}/**` and requiring a refusal.
+- ⛔ **`$RUNNER_TEMP/release/` ships and NOTHING scans it.** That upload also
+  names `release/*.txt`, `release/*.json` and `release/*.err`, which the
+  resolver writes and `install-client` never sees - it is handed `--workdir` and
+  nothing else. A resolution document carrying a credential in a URL would
+  travel. ⚠ No such route exists today, which is the condition
+  `docs/methodology/reviews.md` names as the easiest place to get a scope wrong.
+- ⚠ **The source lane has still never reached *Capture*.** This fix removes the
+  refusal that stopped it; whether the build then completes inside the step's
+  bound is a separate question no dispatch has answered.
+
 ## ACQ-04: Disposable-host execution boundary
 
 Source: proprietary installers and active network client execution

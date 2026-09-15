@@ -370,7 +370,35 @@ fi
 # ⛔ THE RULES ARE `capture-client`'s, DELIBERATELY IDENTICAL. Two spellings of
 # "what a credential looks like" would drift, and the day they did, the one a
 # reader trusts would be whichever they saw first.
-SECRET_NAMED=$(find "$WORKDIR" -type f 2>/dev/null | awk -F/ '
+#
+# -- ⛔ AND THE SCOPE IS THIS DIRECTORY'S TOP LEVEL, NOT THE TREE BELOW IT ----
+#
+# ⛔ THE GUARD'S SCOPE AND THE ARTIFACT'S SCOPE DISAGREED, AND A REAL CAPTURE IS
+# WHAT SAID SO. `capture-client.yml` uploads `install-<route>/*.log` and
+# `install-<route>/*.err` - globs with no `**`, which do not descend - and its
+# own comment says why: run 5 uploaded a build tree, 42.6 megabytes and 1867
+# entries, for a step called *Upload the install logs*. ⚠ This scan was written
+# when that step took the whole directory. The upload narrowed and the guard did
+# not follow, so it went on reading a subtree that nothing ships.
+#
+# ⛔ RUN 15 ON 2026-09-15 IS THE MEASUREMENT. Its `source` lane was refused over
+# `src/third_party/openssl/apps/server.pem` and
+# `src/third_party/nghttp2/integration-tests/server.key` - openssl's and
+# nghttp2's own test fixtures, vendored in the tree this route clones, public by
+# construction, and uploaded by nothing. ⚠ A `release` route never meets them
+# because it installs a binary, so the shape was invisible for fifteen dispatches
+# and appeared the moment the source route first resolved its own tag.
+#
+# ⚠ NARROWING TO THE TOP LEVEL IS NOT A WEAKENING, AND THE DIRECTION IS WHAT
+# SAYS SO. Rule 12 is about what REACHES a remote. What ships from here is
+# `*.log` and `*.err` at this level; this scan still reads EVERY file at this
+# level, which is deliberately wider than those two globs, and the only thing it
+# stops reading is a subtree no artifact can carry.
+#
+# ⛔ THE DANGEROUS DIRECTION IS THE OTHER ONE, and it is filed rather than
+# guarded: an upload path that gained a `**` would ship a subtree this no longer
+# reads. `TODO/acquisition.md` carries it with the command that would settle it.
+SECRET_NAMED=$(find "$WORKDIR" -maxdepth 1 -type f 2>/dev/null | awk -F/ '
   {
     name = tolower($NF)
     if (name ~ /(^|[^a-z])(token|secret|passwd|password|credential)([^a-z]|$)/ ||
@@ -383,9 +411,13 @@ SECRET_NAMED=$(find "$WORKDIR" -type f 2>/dev/null | awk -F/ '
   refuse "the install would ship a file whose name says it holds a credential; rule 12"
 }
 
-SECRET_VALUED=$(grep -rIlE \
+# ⚠ THE SAME SCOPE, FOR THE SAME REASON. `grep -r` descends and this one did
+# too, so a source tree's own test configuration was in scope for a scan over
+# documents that ship. ⛔ Both halves of the rule had the defect; fixing one and
+# leaving the other is the gate-on-one-path shape this guard was added to close.
+SECRET_VALUED=$(find "$WORKDIR" -maxdepth 1 -type f -exec grep -IlE \
   '"[A-Za-z0-9_-]*(secret|token|password)[A-Za-z0-9_-]*"[[:space:]]*:[[:space:]]*"[^"]{8,}"|--[A-Za-z0-9-]*(secret|token|password)[A-Za-z0-9-]*=[^[:space:]"]{8,}' \
-  "$WORKDIR" 2>/dev/null)
+  {} + 2>/dev/null)
 [ -z "$SECRET_VALUED" ] || {
   printf '%s\n' "$SECRET_VALUED" | sed 's/^/          /' >&2
   refuse "the install would ship a document carrying a secret-shaped value; rule 12"
