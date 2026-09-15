@@ -209,6 +209,15 @@ agree() { # label check sh-rel expected-code [sh-flags...]
     return
   fi
 
+  # ⛔ A RULE THAT NEVER HAD A SHELL HALF IS NOT A RULE WHOSE HALF AGREED, and it
+  # is not one whose half was deleted either. `-` says so explicitly rather than
+  # letting a new Go-only rule borrow the wording of a completed port: there is
+  # no predecessor to compare, which is a different fact from having outlived one.
+  if [ "$_rel" = "-" ]; then
+    pass "$_label: go (exit $_want); a Go-only rule, so there is no half to compare"
+    return
+  fi
+
   # ⛔ A HALF THAT IS GONE IS NOT A HALF THAT AGREED. Once a twin is deleted this
   # case has one fewer implementation to compare, and saying so in the row is the
   # difference between a comparison that shrank and one that passed.
@@ -812,6 +821,42 @@ agree "no-secrets a longer run after the infohash field is refused" check-no-sec
 unplant tools/check/plant.md
 
 agree "no-secrets clean tree again, public" check-no-secrets common/check-no-secrets 0 --public
+
+# ============================================================================
+# check-ignores
+# ============================================================================
+#
+# ⭐ THE FIRST RULE HERE THAT WAS NEVER A SHELL CHECK, so its cases name `-` for
+# the predecessor rather than a path: there is nothing to compare, which is a
+# different fact from a half that has been deleted, and the row says which.
+#
+# ⚠ WHAT THESE CASES CANNOT REACH is the specimen self-check - the branch that
+# fires when a shape is narrowed OUT of check-no-secrets while its specimen stays
+# behind. That plant is a change to Go source, and this harness builds the binary
+# once before the first case, so a case cannot rebuild it. ⛔ It is mutation-proved
+# in TODO/ci.md against a plant verified to have changed the file, and recorded as
+# a measurement rather than claimed as a case here.
+
+agree "ignores clean tree" check-ignores - 0
+
+# ⛔ A HOLE IN THE IGNORE LIST. This is the defect the rule exists for, and it is
+# exactly the shape found by hand on 2026-09-15: a name check-no-secrets refuses
+# that `git add -A` would stage anyway.
+GI="$TREE/.gitignore"
+cp "$GI" "$WORK/gitignore.orig" || exit 2
+grep -v '^\*\.pem$' "$WORK/gitignore.orig" >"$GI"
+agree "ignores a credential shape missing from .gitignore is refused" check-ignores - 1
+cp "$WORK/gitignore.orig" "$GI"
+
+# ⚠ AND MORE THAN ONE HOLE IS STILL ONE REFUSAL, which is worth a case because
+# the report counts problems and the verdict is a single code. A port or a rewrite
+# that stopped after the first finding would pass the case above and lose the rest
+# of the report.
+grep -vE '^(\*\.pem|id_rsa|credentials\.json)$' "$WORK/gitignore.orig" >"$GI"
+agree "ignores several holes at once are still one refusal" check-ignores - 1
+cp "$WORK/gitignore.orig" "$GI"
+
+agree "ignores clean tree again" check-ignores - 0
 
 # ============================================================================
 

@@ -67,6 +67,24 @@ arrived with a different filename, and it sat tracked for three days.
 ⚠ **Re-exclude credentials last** in a `.gitignore`, by name rather than by
 pattern precedence, so no re-inclusion rule above can reach them.
 
+⛔ **AND THE IGNORE LIST IS CHECKED AGAINST THE REFUSAL LIST, because the two
+went out of step and nothing said so.** `check-no-secrets` refuses a tracked
+credential file by name, `.gitignore` is supposed to stop that name being
+staged at all, and until 2026-09-15 `*.jks` and `id_ecdsa` were in the first
+list and in neither line of the second. A Java keystore and an ECDSA private
+key were takeable by `git add -A`, with the gate as the only thing in front of
+them - which is a backstop firing after the file is already staged rather than
+a defence that acts before it exists.
+
+⭐ `bit-check check-ignores` is what compares them now. It asks
+`git check-ignore --no-index` rather than re-reading the ignore format, because
+a second parser of it would be a second answer to what git ignores; and every
+specimen it asks about is first asserted to be a name `check-no-secrets` really
+refuses, so a shape narrowed out of that rule is a finding here rather than a
+case that quietly stops meaning anything. ⚠ What it cannot see is a shape ADDED
+to the refusal rule with no specimen added beside it: nothing derives a filename
+from a regular expression, so that direction stays with the reviewer.
+
 ---
 
 ## Logging

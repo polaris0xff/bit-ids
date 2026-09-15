@@ -5,6 +5,27 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-15T01:46:22Z
+
+- ⛔ **A second rule this repository said it had and did not.** `.gitignore`'s own
+  header claims a name is listed *before the files exist, so one can never be
+  staged by accident*; `check-no-secrets` refuses a tracked credential file by
+  name. Two defences, and **nothing compared their lists**.
+- ⚠ **`*.jks` and `id_ecdsa` were in the refusal list and in neither ignore
+  line**, so a Java keystore and an ECDSA private key were takeable by
+  `git add -A` with the gate as the only thing in front of them. Both lines added.
+- ⭐ **`check-ignores` is the rule that keeps them together**, a gate row on both
+  lanes. It asks `git check-ignore --no-index` rather than re-reading the ignore
+  format, because a second parser would be a second answer to what git ignores;
+  and every specimen is first asserted to be a name the refusal rule really
+  refuses, so a shape narrowed out of it is a finding rather than a case that
+  stops meaning anything.
+- ⚠ **One plant reported NOT-PLANTED and that is a third status.** A `sed`
+  expected `jks)$` where the source reads `jks)|id_rsa`, so nothing changed and
+  the binary answered 0 - which reads as a surviving plant to anybody who has not
+  diffed the file. Re-aimed, the guard refuses.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-01`. No version bump and no deploy.
+
 ### 2026-09-15T01:39:49Z
 
 - ⭐ **`check-no-secrets` is in the Go binary and both shell halves are deleted**,

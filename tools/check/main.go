@@ -84,6 +84,7 @@ type check func(r *repo) (verdict, error)
 var checks = map[string]check{
 	"check-changelog":     checkChangelog,
 	"check-control-bytes": checkControlBytes,
+	"check-ignores":       checkIgnores,
 	"check-licences":      checkLicences,
 	"check-markers":       checkMarkers,
 	"check-no-secrets":    checkNoSecrets,

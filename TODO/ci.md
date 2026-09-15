@@ -246,8 +246,69 @@ and a matrix id renamed away from the catalogue - which fires BOTH directions at
 once and is the case that says the two comparisons are separate. All three
 refused, the twins agreeing character for character, and the clean tree accepted.
 
+### ⭐ A SECOND rule this repository said it had and did not, closed 2026-09-15
+
+⛔ **`.gitignore`'s own header claims a property it did not have.** It reads
+*listed BEFORE the files exist, so one can never be staged by accident* - and
+`check-no-secrets` rule 1 refuses a tracked credential file by name. Two
+defences, one acting before the file exists and one after it is staged, and
+**nothing compared their lists**.
+
+⚠ **Two names were in the refusal list and in neither ignore line**, found by a
+door sweep while writing this port's plants rather than by any check: `*.jks`
+and `id_ecdsa`. Asked of git directly, thirteen of the fifteen credential shapes
+were ignored and those two were not, so a Java keystore and an ECDSA private key
+were takeable by `git add -A` with the gate as the only thing in front of them.
+
+⭐ **`check-ignores` is the rule, in `../tools/check/`, and it asks git.**
+`git check-ignore --no-index` answers whether the RULES would ignore a name, the
+way `git add` will; a second parser of the ignore format here would be a second
+answer to what git ignores, and two answers drift in the direction that keeps a
+check green. ⚠ It is the same argument `repo.go` makes for asking `git ls-files`
+what is in the tree.
+
+⛔ **THE SPECIMENS ARE TIED TO THE RULE THEY STAND FOR.** A list of filenames is
+a second list and a second list goes stale, so each one is first asserted to be a
+name `check-no-secrets` rule 1 would actually refuse, using that rule's own
+expressions. ⚠ What it cannot see is a shape ADDED to the regex with no specimen
+beside it: nothing derives a filename from a regular expression, and that
+direction stays with the reviewer.
+
+Guard mutation, each plant verified to have changed the file before it was
+judged, each exit code read unpiped:
+
+| plant | verdict |
+| --- | --- |
+| `*.jks` dropped from `.gitignore` | ⭐ refused, exit 1, naming `release.jks` |
+| `*.jks` and `id_ecdsa` both dropped | ⭐ refused, exit 1, `"problems":2` |
+| `jks` narrowed OUT of `check-no-secrets`' own expression | ⭐ refused, exit 1, *stale specimen* |
+| the tree restored | ⭐ accepted, exit 0, 15 shapes |
+
+⚠ **AND THE FIRST ATTEMPT AT THE THIRD PLANT REPORTED NOT-PLANTED**, which is a
+third status and is counted as neither. The `sed` expected `jks)$` and the source
+reads `jks)|id_rsa`, so nothing changed and the binary answered 0 - which would
+have read as a surviving plant to anybody who had not diffed the file first.
+⭐ Re-aimed, it is the row above. Read what a plant actually changed before
+believing either answer.
+
+⚠ **`check-bitcheck` carries the first two and not the third**, and says so
+where the cases sit: the third is a change to Go source, and that harness builds
+the binary once before its first case, so a case cannot rebuild it. ⛔ It is the
+first rule there that never had a shell half, so its cases name `-` for the
+predecessor - there is nothing to compare, which is a different fact from a half
+that has been deleted, and the row prints which.
+
 ### Residuals
 
+- ⚠ `check-ignores` asks about names at the repository ROOT. `.gitignore`
+  patterns with no slash match at every level, so a root answer covers the tree;
+  a nested `.gitignore` that re-permitted one of these names deeper down is
+  outside what it asks.
+- ⚠ **The other direction is unchecked**: `.gitignore` deliberately re-permits
+  `.env.example` and `.dev.vars.example`, and nothing refuses a change that
+  swallowed them. A project that lost those exceptions would find its committed
+  template silently untrackable, which is a different defect from this one and
+  needs its own specimens.
 - ⚠ `check-workflow.sh` is not in `check-gate.sh` and cannot be, so a
   contributor's local gate does not run it. The workflow runs it on every push
   and it is this entry's acceptance; a gate runner that listed it would re-enter

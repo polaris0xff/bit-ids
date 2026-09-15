@@ -159,7 +159,14 @@ whoever next opens `CI-01`.
 ## How this project is checked
 
 ⛔ **Run the gate with one command, `sh scripts/common/check-gate.sh`, after the
-last edit.** ⭐ It is **36 checks** and about **130 seconds** on this host.
+last edit.** ⭐ It is **37 checks** on 2026-09-15, and its wall clock is
+`max(concurrent batch) + max(check-capture, check-capture-client)` rather than a
+sum - the last two run alone, after the batch, on purpose.
+
+⛔ **AND DO NOT EDIT THE TREE WHILE IT RUNS.** The `tree-unchanged` row compares
+the tree before and after, so an edit made during a run fails that row and the
+failure names a check rather than the editor. It happened on 2026-09-15 and cost
+a whole gate run to work out.
 
 **A count of its rows goes stale.** `sh scripts/common/check-gate.sh --rows`
 prints the list, and `check-gate-rows` compares it against the other lane's.
