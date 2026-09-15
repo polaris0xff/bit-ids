@@ -38,6 +38,33 @@ images; this host had 1.24.7 with nothing to install.
 **In flight:** `CI-10`, with all three of its named deliverables landed and the
 rest of the port open. See below.
 
+### ⭐ THE CAPTURE VERTICAL MOVED, AND A SESSION CAN PRESS THE BUTTON
+
+⛔ **This file used to say *nothing in this tree can press that button*. That is
+false of a session with the GitHub tooling this one had.** Three
+`capture-client` dispatches were made on 2026-09-15 - runs **15, 16 and 17** -
+and each one taught something no reading had:
+
+| run | what it measured |
+| --- | --- |
+| 15 | release lane green; source lane refused by `install-client`'s rule-12 scan over openssl's and nghttp2's **vendored test certificates**, because the scan read the whole workdir and the artifact ships its top level |
+| 16 | both lanes green; `assemble-capture` refused - the source route's resolution **is never uploaded**, and the reader looked for every lane's at a literal `release/resolution.txt` |
+| 17 | ⭐ **two `Profile`s and eight raw evidence files written, exit 0** |
+
+⭐ **The whole loop runs from a session**: dispatch through the Actions tooling,
+artifacts through rule 8's route (`.../actions/artifacts/<id>/zip` answers 200),
+then `assemble-capture` locally. ⛔ Do not record the dispatch as a blocker
+again without trying it.
+
+⛔ **AND EVERY DEFECT IT FOUND WAS SCOPE, THREE TIMES IN ONE DAY**: a guard
+reading more than ships, an upload shipping less than is read, and a reader
+looking in one route's directory for every route's document. ⚠ Each was complete
+until `E-ACQ-07`'s repair made the source lane a real source lane. One repair
+uncovering the next is what a dispatch buys and a reading does not.
+
+⚠ **The records are provisional, not in the tree, and nothing is published.**
+`TODO/ci.md` under `CI-09` carries the two refusals, both correct.
+
 ⭐ **Measured at the start of the 2026-09-15 session, rather than carried:** the
 container started on `claude/jolly-rubin-eb5zs9` with `user.name=Claude` and a
 shallow clone - all three, for the ninth session running. Corrected to `main`,
@@ -73,19 +100,35 @@ the failure was the SCOPE claimed for a correct measurement, not the measurement
 
 ### What the checking layer looks like now
 
-**Six rules are one Go binary** in `tools/check/`: `check-changelog`,
-`check-control-bytes`, `check-licences`, `check-markers`, `check-one-home`,
-`check-placeholders`. Both gate runners invoke it, so those rows are the SAME row
-on both lanes rather than an `sh` row here and a hand-written twin there.
-⛔ **Twelve files are deleted, not translated.** `check-twins` went from 69
-seconds to about 15 and from twelve pairs to **eight**.
+**Eight rules are one Go binary** in `tools/check/`, and `bit-check --rows` is
+the measurement rather than this sentence: `check-changelog`,
+`check-control-bytes`, `check-ignores`, `check-licences`, `check-markers`,
+`check-no-secrets`, `check-one-home`, `check-placeholders`. Both gate runners
+invoke it, so those rows are the SAME row on both lanes rather than an `sh` row
+here and a hand-written twin there.
+⛔ **Fourteen files are deleted, not translated.** `check-twins` went from 69
+seconds to about 15, and from twelve file pairs to **six**.
+
+⭐ **`check-ignores` is the one that was never a shell rule.** A new checking
+rule goes into the binary; a new `.ps1` twin is work added to a layer that is
+being removed.
 
 ⛔ **A PAIR MAY ONLY LEAVE THAT LIST ONE WAY.**
 `sh scripts/common/check-bitcheck.sh --compare` runs every case against BOTH
 deleted halves and refuses any difference in exit code or in the `--json` line.
-It has run at 50 cases with all three implementations agreeing. It takes about
-nine minutes, because it starts a PowerShell half once per case; the default mode
-is 1.1 seconds and is the permanent gate row.
+⛔ **AND THE WINDOW CLOSES WHEN THE HALVES GO.** Measured on 2026-09-15: run
+BEFORE the deletion, `--compare` was 70 cases of which **20 ran all three
+implementations** - the `check-no-secrets` ones, whose halves still existed - and
+the other 50 printed *the sh half is gone, not compared*. Run AFTER, it is 74
+cases and **not one of them compares three**, because there is nothing left to
+compare against. ⚠ The row says which of the two it did, and that distinction is
+the only thing standing between a real proof and a harness agreeing with itself.
+
+⭐ **It costs 10 seconds now, not the nine minutes this file used to record**,
+for the same reason: the PowerShell halves it started once per case are the ones
+already deleted. ⛔ So cheapness here is evidence of nothing being checked, which
+is why the pre-deletion run is the one that counts and must be recorded in
+`TODO/ci.md` when it happens.
 
 ⚠ **The module has an empty require list and therefore no `go.sum`.** Nothing is
 fetched at build time, so a build needs no network and `CI-04`'s dependency
@@ -123,19 +166,25 @@ with `printf`, the way the marker harness already did.
 
 **Next, in order:**
 
-0. **`CI-10` continues where it is cheapest, not first.** Its three named
-   deliverables are landed and proved on runners. What remains is seven file
-   pairs, which `check-twins` prints as eight rows.
-1. **`CLIENT-01`, `CLIENT-06`, `CLIENT-05`**, the first complete vertical
-   captures.
-2. ⛔ **THE ONE THING STILL BETWEEN A CAPTURE AND A RECORD IS A DISPATCH.** Every
-   refusal that stopped `capture-client` run 14 is repaired in the tree and NOT
-   ONE is proved on a runner: the source route's own resolution, the recorded
-   package format, the source commit, and the second connector. ⭐ A dispatch of
-   `capture-client` on `aria2-next` is what turns four repairs into a measured
-   record, and `assemble-capture` over its artifacts is the acceptance.
-   Nothing in this tree can press that button.
-3. **`CI-09`**, which sits behind that dispatch.
+0. ⛔ **WHAT A RECORD STILL LACKS, AND IT IS TWO NAMED THINGS.** Run 17's records
+   are `provisional` for two reasons, both correct and both closable:
+   `E-PUB-04` because only ONE of the two installs was put on the wire, so equal
+   version labels are all that connects them; and `classify_across: divergent`
+   because a peer ID's tail is per connection. ⭐ The first is a capture-design
+   question - a lane that observed BOTH installs, or `ACQ-03` reaching
+   `byte_identical` - and the second is `SCHEMA-04`'s sampling model, which turns
+   several captures into a `patterned` field and has never been run. Neither is a
+   defect; both are the next real work.
+1. **`CI-10` continues where it is cheapest, not first.** Its three named
+   deliverables are landed and proved on runners. What remains is **six file
+   pairs and six rows**, `check-project` being its own unit at 997 lines.
+2. **`CLIENT-01`, `CLIENT-06`**, the remaining vertical captures. ⭐ `aria2-next`
+   is the worked example now: three dispatches in one session took it from four
+   refusals to two written records.
+3. **`CI-09`'s** remaining residuals, which are no longer about reaching a
+   record: the `RunManifest` a record needs beside it, and the publisher, which
+   still cannot run at all because it downloads an artifact named `bundle` that
+   nothing produces.
 4. **`CI-07`**, whose class-A backlog keeps shrinking as `CI-10` ports pairs
    rather than writing twins for them.
 5. **`CI-08`'s** load-sensitive `check-step-bodies` row.
@@ -159,7 +208,8 @@ whoever next opens `CI-01`.
 ## How this project is checked
 
 ⛔ **Run the gate with one command, `sh scripts/common/check-gate.sh`, after the
-last edit.** ⭐ It is **37 checks** on 2026-09-15, and its wall clock is
+last edit.** ⭐ It is **37 checks and 125 seconds** on this host on 2026-09-15,
+and its wall clock is
 `max(concurrent batch) + max(check-capture, check-capture-client)` rather than a
 sum - the last two run alone, after the batch, on purpose.
 

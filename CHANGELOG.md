@@ -5,6 +5,30 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-15T02:48:33Z
+
+- ⭐ **`capture-client` run 17 produced a record with nothing recovered from a
+  log.** Its source lane carries its own resolution, both lanes are green, and
+  `assemble-capture` wrote two `Profile`s and eight raw evidence files, exit 0.
+  Read back out of the JSON: two routes with two genuinely different resolvers,
+  four observations, two connectors whose corroboration agrees byte for byte.
+- ⛔ **The record is not in the tree, nothing is published, and both records are
+  provisional**, so the settled decision that a green capture publishes
+  automatically did not fire and could not have.
+- ⛔ **The door sweep found the same mistake behind three more doors.** Five
+  refusals in the assembler named `release/resolution.txt` as the file they read;
+  one was fixed and the rest were left. All five name what was actually read now.
+- ⛔ **The claim audit found two stale counts**: the binary carries **eight**
+  checks and two documents still said six and seven.
+- ⛔ **And `check-no-secrets --public` refused this very entry's source.** Writing
+  a user agent out as thirty-four hex digits is the shape of a fingerprint; the
+  citation is narrowed, never the rule, which is what the refusal message asks
+  for.
+- ⚠ **Filed, not fixed**: a gate row could stop passing `--public` and stay green,
+  because the default question also passes on a clean tree.
+  [`TODO/ci.md`](TODO/ci.md) carries the acceptance command.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-09`. No version bump and no deploy.
+
 ### 2026-09-15T02:32:27Z
 
 - ⭐ **`assemble-capture` wrote TWO `Profile`s from `capture-client` run 16's

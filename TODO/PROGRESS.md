@@ -16,9 +16,30 @@ unreflected.
 
 ## Current state
 
-⭐ **One identity has now been observed from a running build**, and it is not
-in the store: the first client capture ran on 2026-09-08 and left an evidence
-bundle and an attestation, not a `Profile`. Nothing has been published. Every
+⭐ **A `Profile` HAS NOW BEEN ASSEMBLED FROM A DISPATCH'S OWN ARTIFACTS,
+2026-09-15.** `capture-client` run 17 uploaded two green lanes and
+`assemble-capture` wrote **two records and their raw evidence** out of them,
+exit 0. Each carries two acquisition routes with genuinely independent
+resolvers, four measured observations, eight evidence entries with digests, and
+**two connectors whose corroboration agrees byte for byte**.
+
+⛔ **THREE THINGS THAT RECORD IS NOT.** It is not in the tree - it was written
+into a scratch store, and every record this repository tracks is still
+synthetic. It is not published, and nothing has been. And it is **not
+publishable**: both records are `provisional`, for two separate and correct
+reasons the store states, so the settled decision that a green capture publishes
+automatically did not fire and could not have.
+
+⚠ **Regenerating it is one command over run 17's four artifacts**, which is what
+makes this a measurement rather than a claim. `TODO/ci.md` under `CI-09` carries
+the command, the two refusals and how they were reached.
+
+⭐ **And the identity it measured is not the product's own**, corroborated by a
+reader this project did not write: `tracker_http/user_agent` decodes to
+`qBittorrent/5.2.3` and every peer ID begins `-qB5230-`, out of a stock
+`aria2-next`.
+
+Nothing has been published. Every
 record in the tree is still synthetic and says so: the schema fixtures under
 [`../crates/bit-ids/tests/fixtures/`](../crates/bit-ids/tests/fixtures/) describe
 a target that does not exist, and the wire fixtures under
@@ -296,8 +317,9 @@ nothing is. The clone question under *Settled decisions* is spent too.
    deleted, and the longest of four shards is **11.8** on run 124, which is
    green on every job. The acceptance bound came DOWN to 20 from the 45 a
    previous session had raised it to.
-   ⛔ **WHAT IS NOT DONE IS THE REST OF THE PORT.** Seven checks are in
-   `../tools/check/` and **six twin file pairs remain, which `check-twins` prints
+   ⛔ **WHAT IS NOT DONE IS THE REST OF THE PORT.** **Eight** checks are in
+   `../tools/check/` - seven ported plus `check-ignores`, which was never a shell
+   rule - and **six twin file pairs remain, which `check-twins` prints
    as six rows**, together about 11 seconds of PowerShell against the 96 the
    layer started at. ⚠ So the remaining
    wall-clock value is small and the DRIFT value is unchanged, which is the

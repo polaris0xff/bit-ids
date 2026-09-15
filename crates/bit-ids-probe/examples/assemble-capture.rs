@@ -215,7 +215,7 @@ impl Lane {
     fn resolver(&self) -> Result<Slug, String> {
         match &self.resolution {
             Some(record) => {
-                let url = need(record, "source_url", Path::new("release/resolution.txt"))?;
+                let url = need(record, "source_url", &self.resolution_path)?;
                 slugify_source(url)
             }
             // ⚠ A route with no resolution document consulted the host's own
@@ -373,10 +373,13 @@ fn source_identity(lane: &Lane) -> Result<SourceIdentity, String> {
     match lane.kind() {
         RouteKind::GithubRelease => {
             let record = resolution.ok_or_else(|| {
-                "the release route has no resolution document, so nothing names the asset it took"
-                    .to_owned()
+                format!(
+                    "the release route has no resolution document at {}, so nothing names the \
+                     asset it took",
+                    lane.resolution_path.display()
+                )
             })?;
-            let path = Path::new("release/resolution.txt");
+            let path = lane.resolution_path.as_path();
             Ok(SourceIdentity::ReleaseAsset {
                 repository: label(need(record, "repository", path)?)?,
                 tag: label(need(record, "selected_tag", path)?)?,
@@ -384,9 +387,14 @@ fn source_identity(lane: &Lane) -> Result<SourceIdentity, String> {
             })
         }
         RouteKind::SourceBuild => {
-            let record =
-                resolution.ok_or_else(|| "the source route has no resolution".to_owned())?;
-            let path = Path::new("release/resolution.txt");
+            let record = resolution.ok_or_else(|| {
+                format!(
+                    "the source route has no resolution document at {}. \
+                         `capture-client` uploads it from the resolver's own workdir",
+                    lane.resolution_path.display()
+                )
+            })?;
+            let path = lane.resolution_path.as_path();
             let commit = lane
                 .install
                 .get("source_commit")

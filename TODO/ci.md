@@ -2496,13 +2496,66 @@ it contains an example of.
 
 #### ⚠ How run 16 was assembled, stated exactly
 
-⛔ **The store above was written in a REHEARSAL and is not evidence.** Run 16
+⛔ **The run 16 store was written in a REHEARSAL and is not evidence.** Run 16
 uploaded no source resolution - that is the defect - so the document was
 recovered from the job log, where *Resolve the source tag* `cat`s it. Every
 other byte is run 16's own artifact and the code path is the one the next
 dispatch runs, so it establishes that the assembler is correct and does NOT
-establish that a dispatch produces a record. ⚠ The workflow change that uploads
-it is unproved on a runner at the time of writing.
+establish that a dispatch produces a record.
+
+### ⭐ AND RUN 17 IS THE ONE THAT DOES. 2026-09-15, no rehearsal
+
+⭐ **`capture-client` run 17 carries `install-source/source/resolution.txt` in
+its own artifact**, both lanes green, and the assembler wrote two records and
+their raw evidence out of it with nothing recovered from a log:
+
+```sh
+./target/debug/examples/assemble-capture \
+  --lane "$CAP_RELEASE,$INST_RELEASE" \
+  --lane "$CAP_SOURCE,$INST_SOURCE" \
+  "$STORE"
+```
+
+where each `CAP_*` is an unpacked `capture-client-aria2-next-<route>-...`
+artifact and each `INST_*` the matching `install-aria2-next-<route>-...` one.
+
+⭐ **Exit 0, two `Profile`s and eight raw files.** The store is
+
+```text
+profiles/v1/aria2-next/2.7.5/linux/x86-64/elf-binary/cap-{release,source}.json
+raw/v1/aria2-next/2.7.5/linux/x86-64/elf-binary/cap-{release,source}/{release,source}/...
+```
+
+What a record carries, read back out of the written JSON rather than asserted:
+
+| part | what run 17's `cap-source.json` holds |
+| --- | --- |
+| routes | **two**, `route-release` (`github_release`) and `route-source` (`source_build`) |
+| resolvers | `https-api-gh-pkgforge-dev-repos-aninsomniacy-aria2-next-releases` and `https-github-com-aninsomniacy-aria2-next-git` - ⭐ two, which is `E-ACQ-07` satisfied by two indexes rather than by a lane name |
+| deliveries | `https-release-asset` and `git-clone-and-local-build` |
+| observations | **four**, each `constant` with `samples: 1`, each naming its evidence |
+| connectors | **two**, `bit-ids-probe` and `cpython-stdlib` |
+| corroboration | both connectors report one peer_id `2d7142353233302d66333049717569772d69774d` for `peer_wire` - ⭐ the same bytes, from two readers |
+| evidence | **eight** entries with sizes and `sha256`, every one resolving to a file in `raw/` |
+
+⛔ **AND THE IDENTITY IS NOT THE PRODUCT'S OWN, NOW CORROBORATED.**
+`tracker_http/user_agent` decodes to `qBittorrent/5.2.3`, and every peer ID
+begins `2d714235323330`, which is `-qB5230`. ⚠ A
+stock `aria2-next` announcing as qBittorrent 5.2.3.0 was already measured on run
+11; what is new is that a reader this project did not write agrees.
+
+⚠ **THE USER AGENT IS CITED DECODED RATHER THAN AS ITS BYTES, AND THAT IS THIS
+CHECK'S DOING.** Writing the thirty-four hex digits out turned
+`check-no-secrets --public` red, correctly: a bare long hex run is the shape of
+a fingerprint, and the allowances this project grants are anchored to named
+shapes - a peer ID or an info hash cited with its phrase, a digest under a key
+that says what it holds. ⭐ The fix is to narrow the citation, never the rule,
+which is what the check's own refusal message asks for.
+
+⛔ **THE RECORD IS NOT IN THE TREE AND NOTHING IS PUBLISHED.** The store is
+scratch state. ⚠ A provisional record is not publishable, so the settled
+decision that a green capture publishes automatically did not fire and could not
+have.
 
 ### ⭐ What was repaired here rather than only recorded
 
@@ -3119,6 +3172,29 @@ reads every tracked file, this harness is one, and its literals were findings.
 ⭐ The needles are assembled with `printf` now, the way `check-markers`' harness
 already built its marker bytes - and the check's own Go file is exempt from
 itself, exactly as both shell halves already were.
+
+### ⛔ A gate row could silently ask the wrong question, and nothing would say so
+
+⚠ **Filed 2026-09-15 by the guard-mutation pass, not fixed.** The gate runs
+`check-no-secrets` twice, and the second row exists only because `--public` is a
+different question. ⛔ **If either lane stopped passing that flag, the row would
+still be green**, because the default question also passes on a clean tree - so
+the lane would run one question twice and report two rows.
+
+⚠ `check-gate-rows` cannot see it: it compares row NAMES, and the name is
+`check-no-secrets (public)` either way. `check-bitcheck` cannot either: it proves
+the BINARY honours the flag - an email is accepted without it and refused with it
+- and says nothing about what the runner passes.
+
+⛔ **It is not new and the port did not cause it.** Before, each lane spelled its
+own flag, `--public` here and `-Public` there, and the same silence applied to
+both. What the port changes is that there is now one spelling, so a check could
+assert it once rather than twice.
+
+Acceptance for closing it: a row that runs the public question and asserts
+`"public_rules":true` in the answer it gets - the JSON field exists precisely so
+the answer says which question it answered - mutation-proved by removing the flag
+from one runner and requiring a refusal rather than a pass.
 
 ### ⭐ `check-no-secrets` ported and both halves deleted, 2026-09-15
 
