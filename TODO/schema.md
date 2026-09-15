@@ -349,12 +349,17 @@ connector reports what it saw on one connection, so the observer reports the
 same one. ⚠ That is the golden fixture's own shape, whose `peer_wire/peer_id`
 is `patterned` beside byte-level corroboration.
 
-Residual: ⚠ **the capture connects to the peer surface once**, so
-`peer_wire/*` still rests on one sample on a real run whatever the tracker
-carries: `client-capture` dials the listen port on the first announce and
-returns. Two lanes therefore still disagree on `peer_wire/peer_id`. `CLIENT-01`
-carries the dial, and it is the last thing between a dispatch and a publishable
-measured record.
+⭐ **And the capture connects twice, 2026-09-15.** `client-capture` dialled the
+peer surface once, so `peer_wire/*` rested on one sample whatever the tracker
+carried; `Lab::dial_again` opens another connection into the same endpoint and
+the observer takes two by default. `OBS-04` carries it.
+
+⭐ **Driven on this host: a record is publishable.** Two captures against a stub
+that announces twice and accepts two peer connections assembled into two records
+stating `patterned`, `fixed 8 + varying 12`, `samples: 2` on both peer-ID
+surfaces, with `classify_across` answering `build_equivalent` and both records
+**publishable**, exit 0. ⚠ The two lanes installed different digests, which is
+the shape `E-PUB-04` used to refuse outright.
 
 ⚠ **A connector corroborates an observation, not the pattern.** It reports one
 value per field, so a field resting on four samples is corroborated on one of

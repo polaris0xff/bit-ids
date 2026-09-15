@@ -35,7 +35,16 @@ automatically did not fire and could not have.
 | refusal | where it stands |
 | --- | --- |
 | `E-PUB-04`: only ONE of the two installs was put on the wire | ⭐ **closed, 2026-09-15.** The other route's capture settles it, and the gate is asked with the store |
-| `classify_across: divergent`: a peer ID's tail is per connection | ⭐ **closed for any surface the build connects to twice**, `SCHEMA-04`; what is left is the capture's single peer-wire dial |
+| `classify_across: divergent`: a peer ID's tail is per connection | ⭐ **closed.** The capture connects twice, the assembler folds both, and the pattern is what two lanes agree on |
+
+⭐ **BOTH REFUSALS ARE GONE AND A RECORD HAS BEEN PRODUCED PUBLISHABLE**, driven
+on this host on 2026-09-15: two captures whose lanes installed **different
+digests** assembled into two records, each stating `patterned` with a fixed
+eight-byte prefix and a varying twelve over two samples, `classify_across`
+answering `build_equivalent`, and `publishable` holding for both. ⛔ **What it
+measured is a stub**, written to announce twice and accept two peer connections,
+so what is established is the path rather than a product. A dispatch is what says
+whether a stock build accepts the second connection.
 
 ⛔ **`E-PUB-04` WAS STRUCTURAL AND THIS FILE NAMED A CLOSER THAT COULD NOT
 EXIST.** It said "a capture that observes both installs", and a capture cannot:

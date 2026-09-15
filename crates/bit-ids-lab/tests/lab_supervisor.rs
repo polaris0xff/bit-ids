@@ -717,3 +717,140 @@ fn a_connection_that_never_completes_a_unit_is_closed_at_the_pending_cap() {
         "it kept reading well past the cap: {recorded} bytes"
     );
 }
+
+#[test]
+fn a_second_connection_to_one_endpoint_is_one_transcript_with_two_connections() {
+    // ⛔ ONE CONNECTION CANNOT ESTABLISH ANYTHING BUT A CONSTANT. A peer ID
+    // carries a tail the build regenerates per connection, so a surface dialled
+    // once yields one observation and two captures of one build then state two
+    // different constants - which `classify_across` reads as `divergent`.
+    // `dial_again` is what puts a second observation in the SAME transcript, so
+    // the segments differ in their connection identifier and not in their
+    // endpoint.
+    let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).expect("a listener");
+    let address = listener.local_addr().expect("an address");
+    let answering = std::thread::spawn(move || {
+        for reply in [b"one".to_vec(), b"two".to_vec()] {
+            let (mut stream, _) = listener.accept().expect("a connection");
+            let mut seen = [0_u8; 5];
+            let _ = std::io::Read::read(&mut stream, &mut seen);
+            std::io::Write::write_all(&mut stream, &reply).expect("a reply");
+        }
+    });
+
+    let mut lab = Lab::builder()
+        .stream("tracker-http", echo_once(b"ok"))
+        .expect("a canonical name")
+        .start()
+        .expect("loopback binds");
+    lab.dial("peer-dial", address, b"hello".to_vec(), echo_once(b"ok"))
+        .expect("the first connection opens");
+    lab.dial_again("peer-dial", address, b"hello".to_vec(), echo_once(b"ok"))
+        .expect("and so does the second");
+    answering.join().expect("the stub answered both");
+
+    assert_eq!(
+        lab.endpoints().len(),
+        2,
+        "a second connection is not a second endpoint: the tracker and the dial"
+    );
+    lab.stop();
+    let journal = lab.shutdown();
+
+    let name = Slug::parse("peer-dial").expect("a canonical name");
+    let mut connections: Vec<u64> = journal
+        .for_endpoint(&name)
+        .iter()
+        .filter_map(|segment| segment.connection().map(ConnectionId::get))
+        .collect();
+    connections.sort_unstable();
+    connections.dedup();
+    assert_eq!(
+        connections.len(),
+        2,
+        "one endpoint, two connections: {connections:?}"
+    );
+}
+
+#[test]
+fn a_second_connection_is_refused_on_an_endpoint_this_lab_never_dialled() {
+    // ⚠ `dial_again` is a separate method rather than a relaxation of `dial`'s
+    // duplicate check, and this is the half that says so: it will not open a
+    // connection to a name the lab does not already hold as a dial.
+    let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).expect("a listener");
+    let address = listener.local_addr().expect("an address");
+
+    let mut lab = Lab::builder()
+        .stream("tracker-http", echo_once(b"ok"))
+        .expect("a canonical name")
+        .start()
+        .expect("loopback binds");
+
+    let refused = lab.dial_again("peer-dial", address, Vec::new(), echo_once(b"ok"));
+    assert!(
+        matches!(refused, Err(LabError::UnknownEndpoint(_))),
+        "{refused:?}"
+    );
+    // ⛔ And a name the lab DOES hold, as something other than a dial, is
+    // refused too: a listener is not a thing another connection can be made to.
+    let bound = lab
+        .endpoint("tracker-http")
+        .expect("the tracker is bound")
+        .address();
+    let refused = lab.dial_again("tracker-http", bound, Vec::new(), echo_once(b"ok"));
+    assert!(
+        matches!(refused, Err(LabError::UnknownEndpoint(_))),
+        "{refused:?}"
+    );
+
+    listener
+        .set_nonblocking(true)
+        .expect("a nonblocking listener");
+    assert!(
+        listener.accept().is_err(),
+        "neither refusal opened a connection"
+    );
+}
+
+#[test]
+fn a_second_connection_is_refused_at_an_address_the_endpoint_was_not_opened_on() {
+    // ⛔ THE MUTATION PASS FOUND THIS ONE. Dropping the address comparison left
+    // every case green, because nothing varied the address - so `dial_again`
+    // would have opened a connection to somewhere else entirely and filed its
+    // segments under an endpoint that names a different peer. An endpoint is a
+    // name AND an address; a transcript that mixed two of them would read as one
+    // surface observed twice.
+    let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).expect("a listener");
+    let address = listener.local_addr().expect("an address");
+    let elsewhere = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).expect("a second listener");
+    let other = elsewhere.local_addr().expect("a second address");
+    assert_ne!(address, other, "two listeners, two ports");
+    let answering = std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("a connection");
+        let mut seen = [0_u8; 5];
+        let _ = std::io::Read::read(&mut stream, &mut seen);
+        std::io::Write::write_all(&mut stream, b"one").expect("a reply");
+    });
+
+    let mut lab = Lab::builder()
+        .stream("tracker-http", echo_once(b"ok"))
+        .expect("a canonical name")
+        .start()
+        .expect("loopback binds");
+    lab.dial("peer-dial", address, b"hello".to_vec(), echo_once(b"ok"))
+        .expect("the first connection opens");
+    answering.join().expect("the stub answered");
+
+    let refused = lab.dial_again("peer-dial", other, b"hello".to_vec(), echo_once(b"ok"));
+    assert!(
+        matches!(refused, Err(LabError::UnknownEndpoint(_))),
+        "{refused:?}"
+    );
+    elsewhere
+        .set_nonblocking(true)
+        .expect("a nonblocking listener");
+    assert!(
+        elsewhere.accept().is_err(),
+        "the refusal opened no connection to the other address"
+    );
+}

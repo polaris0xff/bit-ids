@@ -696,8 +696,47 @@ its payload. The dialled side recorded reserved `0000000000100001` and peer ID
 different peer IDs, which is the role dependence this entry exists for. Both
 transcripts rebuilt byte for byte.
 
+### ⭐ The dialled role connects more than once now, 2026-09-15
+
+⛔ **ONE CONNECTION CANNOT ESTABLISH ANYTHING BUT A CONSTANT.** A peer ID carries
+a tail the build regenerates per connection, so a surface dialled once yields one
+observation - and two captures of one build then state two different constants,
+which `classify_across` reads as `divergent`. That was one of the two reasons no
+measured record was publishable.
+
+⭐ **`Lab::dial_again` opens another connection to an endpoint the lab already
+dialled**, and the segments land in the SAME transcript with their own connection
+identifiers. So a reader gets one document per surface with a segment per
+connection, which is the shape `Journal` and the transcript writer already have -
+nothing downstream changed. ⚠ It is a separate method rather than a relaxation of
+`dial`'s duplicate check, because that check is what stops two *different*
+endpoints sharing a name.
+
+⚠ **`client-capture` dials twice by default**, settable by a fifth argument, and
+a refused re-dial ends the dialling rather than the run: a build that accepts one
+connection and not a second has been measured once, which is weaker than was
+asked for and better than nothing. The count is printed as `peer-connections`.
+
+Guard mutation, four plants into `dial_again`, each verified to have changed the
+file, clean control either side: the endpoint need not exist, a listener counts
+as something to re-dial, a second connection pushes a second endpoint, and the
+address is not compared. ⛔ **The last one SURVIVED the first pass**, because no
+case varied the address - so a re-dial to somewhere else would have filed its
+segments under an endpoint naming a different peer. A case varies it now and all
+four are refused.
+
+Driven on this host, 2026-09-15: `client-capture` against a stub that announces
+twice and accepts two peer connections reported `peer-connections 2` and
+`peer-streams 2`, and both transcripts carry two `from_target` segments whose
+peer IDs share an eight-byte prefix and differ over twelve. Two such captures
+assembled into two records stating `patterned`, `fixed 8 + varying 12`,
+`samples: 2` - and `classify_across` answered `build_equivalent` with both
+records **publishable**.
+
 Residual: the same one `OBS-02` and `OBS-03` carry. No stock `BitTorrent` client
-has driven this, and none can on a session host.
+has driven this, and none can on a session host. ⚠ **And nothing has yet shown a
+stock build accepting the second connection**: the drive above is a stub that
+was written to accept two. A dispatch is what answers it.
 
 ## OBS-05: BEP 10 and early-message observer
 

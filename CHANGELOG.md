@@ -5,6 +5,26 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-15T07:46:42Z
+
+- ⭐ **A RECORD HAS BEEN PRODUCED PUBLISHABLE.** Two captures whose lanes
+  installed different digests assembled into two records, each stating a
+  pattern - a fixed eight-byte prefix and a varying twelve over two samples -
+  with `classify_across` answering `build_equivalent` and `publishable` holding
+  for both, exit 0. Both of the refusals the work order named are gone.
+- ⛔ **What it measured is a stub**, written to announce twice and accept two
+  peer connections. The path is established and the product is not.
+- ⭐ **`Lab::dial_again` opens another connection to an endpoint the lab already
+  dialled**, so the segments land in the same transcript with their own
+  connection identifiers and nothing downstream changed. `client-capture` takes
+  two by default, and a refused re-dial ends the dialling rather than the run.
+- ⛔ **A mutation plant survived and found a real gap**: the address comparison
+  in `dial_again` could be removed with every case still green, because nothing
+  varied the address - so a re-dial to somewhere else would have filed segments
+  under an endpoint naming a different peer. A case varies it now.
+- Record: [`TODO/observer.md`](TODO/observer.md), `OBS-04`. No version bump and
+  no deploy.
+
 ### 2026-09-15T07:34:08Z
 
 - ⛔ **The assembler took the first segment of each transcript and called it

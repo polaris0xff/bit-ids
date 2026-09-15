@@ -90,6 +90,9 @@ pub enum LabError {
     Name(CanonicalError),
     /// Two endpoints were given the same name.
     DuplicateEndpoint(Slug),
+    /// Another connection was asked for on an endpoint this lab has not dialled
+    /// at that address.
+    UnknownEndpoint(Slug),
     /// A lab with no endpoint is a lab nothing can reach.
     NoEndpoints,
     /// The lab has already stopped, so a new connection would serve nothing.
@@ -110,6 +113,12 @@ impl fmt::Display for LabError {
             Self::Name(error) => write!(f, "endpoint name: {error}"),
             Self::DuplicateEndpoint(name) => {
                 write!(f, "two endpoints are both called {name:?}")
+            }
+            Self::UnknownEndpoint(name) => {
+                write!(
+                    f,
+                    "this lab has no dialled endpoint {name:?} at that address"
+                )
             }
             Self::NoEndpoints => f.write_str("a lab with no endpoint observes nothing"),
             Self::Stopped => f.write_str("the lab has stopped, so nothing would serve this dial"),
@@ -470,6 +479,71 @@ impl Lab {
         self.workers.push(worker);
         self.endpoints.push(endpoint.clone());
         Ok(endpoint)
+    }
+
+    /// Opens **another** connection to an endpoint this lab already dialled.
+    ///
+    /// ⛔ **One connection cannot establish anything but a constant.** A peer ID
+    /// carries a tail the build regenerates per connection, so a surface dialled
+    /// once yields one observation, and `SCHEMA-04`'s classifier can only report
+    /// what one sample supports. Two connections are what turn that into the
+    /// pattern the value actually has - a fixed client prefix and a span that
+    /// moves - and a pattern is the only thing two captures of one build can
+    /// agree on.
+    ///
+    /// ⚠ **The segments land in the SAME endpoint**, so they land in the same
+    /// transcript, each with its own connection identifier. That is the whole
+    /// reason this is not a second endpoint with a second name: a reader of the
+    /// evidence gets one document per surface, with a segment per connection,
+    /// which is the shape [`Journal`] and the transcript writer already have.
+    ///
+    /// ⛔ **It is a separate method rather than a relaxation of [`Self::dial`]'s
+    /// duplicate check.** That check is what stops two *different* endpoints
+    /// sharing a name, and weakening it would buy this at the cost of the thing
+    /// it guards. This one asks for another connection to an endpoint that
+    /// exists, at the address it was opened on, and refuses anything else.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`LabError::Stopped`] on a stopped lab, [`LabError::Name`] for a
+    /// name that is not canonical, [`LabError::UnknownEndpoint`] when this lab
+    /// has no dialled endpoint of that name at `address`, [`LabError::Bind`]
+    /// when the connection is refused, and [`LabError::Thread`] when the host
+    /// will not start a worker.
+    pub fn dial_again<R>(
+        &mut self,
+        name: &str,
+        address: SocketAddr,
+        opening: Vec<u8>,
+        responder: R,
+    ) -> Result<(), LabError>
+    where
+        R: Fn(ConnectionId, &[u8]) -> crate::StreamReply + Send + Sync + 'static,
+    {
+        if self.shared.stopped() {
+            return Err(LabError::Stopped);
+        }
+        let name = Slug::parse(name).map_err(LabError::Name)?;
+        let known = self.endpoints.iter().any(|one| {
+            one.name() == &name && one.address() == address && one.transport() == Transport::Dialled
+        });
+        if !known {
+            return Err(LabError::UnknownEndpoint(name));
+        }
+        let stream = bind::dial(address, self.dial_timeout)?;
+
+        let shared = Arc::clone(&self.shared);
+        let responder: Arc<StreamResponder> = Arc::new(responder);
+        let worker = std::thread::Builder::new()
+            .name(format!("bit-ids-lab-dial-{name}"))
+            .spawn(move || {
+                serve_dialled(&shared, &name, stream, &opening, responder.as_ref());
+            })
+            .map_err(LabError::Thread)?;
+        self.workers.push(worker);
+        // ⚠ No endpoint is pushed. The lab already has this one, and a second
+        // entry would make `endpoints()` report a surface twice.
+        Ok(())
     }
 
     /// How long a dial waits before giving up.

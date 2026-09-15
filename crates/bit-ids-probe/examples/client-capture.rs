@@ -101,6 +101,15 @@ fn main() {
     // surface alone and says so, rather than reporting a peer surface nobody
     // could reach.
     let peer_port: Option<u16> = arguments.next().and_then(|value| value.parse().ok());
+    // ⛔ TWO BY DEFAULT, because one is the number that cannot describe a value
+    // the build regenerates per connection. ⚠ It is an argument rather than a
+    // constant so a capture can ask for more, and so a harness can ask for one
+    // and get exactly what this did before.
+    let dials: u32 = arguments
+        .next()
+        .and_then(|value| value.parse().ok())
+        .filter(|count| *count > 0)
+        .unwrap_or(2);
 
     // ⚠ What the tracker answers is a condition of the run. It offers no peer
     // at all: the peer surface is reached by dialling below, and a compact
@@ -189,10 +198,15 @@ fn main() {
     println!("serving for {seconds}s");
 
     let peer_wire = PeerWire::offering(offer, *torrent.info_hash());
-    println!(
-        "peer-dialled {}",
-        dial_when_announced(&mut lab, &tracker, &peer_wire, peer_port, seconds)
-    );
+    let (dialled, connections) =
+        dial_when_announced(&mut lab, &tracker, &peer_wire, peer_port, seconds, dials);
+    println!("peer-dialled {dialled}");
+    // ⛔ ONE CONNECTION CANNOT ESTABLISH ANYTHING BUT A CONSTANT, so the count is
+    // part of what a run reports. A peer ID carries a tail the build regenerates
+    // per connection; a surface dialled once yields one observation, two captures
+    // of one build then state two different constants, and the pair is
+    // `divergent`. `SCHEMA-04` turns several into the pattern they share.
+    println!("peer-connections {connections}");
 
     lab.wait();
     let expired = lab.deadline_expired();
@@ -210,22 +224,29 @@ fn main() {
 /// ⚠ Polling the observer rather than the socket. An announce is the first
 /// evidence that the build read the torrent, and it is the earliest moment its
 /// own listener is up for this info hash.
+/// ⛔ **And it dials `dials` times, into ONE endpoint.** Each connection is its
+/// own segment of the same transcript, so a value the build regenerates per
+/// connection is observed more than once and can be stated as the pattern it is
+/// rather than as one connection's bytes. ⚠ The connections are opened back to
+/// back on purpose: they are the `connections` dimension of a sampling plan, not
+/// the `sessions` one, and nothing here restarts the build.
 fn dial_when_announced(
     lab: &mut Lab,
     tracker: &HttpTracker,
     peer_wire: &PeerWire,
     peer_port: Option<u16>,
     seconds: u64,
-) -> String {
+    dials: u32,
+) -> (String, u32) {
     let Some(port) = peer_port else {
-        return "none".to_owned();
+        return ("none".to_owned(), 0);
     };
     let address: SocketAddr = ([127, 0, 0, 1], port).into();
     let waiting_since = Instant::now();
     let wait_for = Duration::from_secs(seconds).min(Duration::from_secs(60));
     loop {
         if !tracker.announces().is_empty() {
-            return match lab.dial(
+            let first = match lab.dial(
                 "peer-wire-dialled",
                 address,
                 peer_wire.opening(),
@@ -236,11 +257,29 @@ fn dial_when_announced(
                 // tracker surface is already measured by this point, and
                 // throwing it away because a peer port was wrong would lose a
                 // measurement to a detail of the driver.
-                Err(error) => format!("refused: {error}"),
+                Err(error) => return (format!("refused: {error}"), 0),
             };
+            let mut opened = 1;
+            for _ in 1..dials {
+                // ⚠ A refused RE-dial ends the dialling and not the run, for the
+                // same reason: a build that accepts one connection and not a
+                // second has been measured once, which is a weaker record than
+                // was asked for and a better one than none. The count says so.
+                if let Err(error) = lab.dial_again(
+                    "peer-wire-dialled",
+                    address,
+                    peer_wire.opening(),
+                    peer_wire.dialling(),
+                ) {
+                    println!("peer-redial refused: {error}");
+                    break;
+                }
+                opened += 1;
+            }
+            return (first, opened);
         }
         if waiting_since.elapsed() >= wait_for {
-            return "no announce arrived".to_owned();
+            return ("no announce arrived".to_owned(), 0);
         }
         std::thread::sleep(Duration::from_millis(200));
     }
