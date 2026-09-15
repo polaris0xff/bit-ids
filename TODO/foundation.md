@@ -321,46 +321,31 @@ one.
   licence keeps its `unverified` row until somebody measures again, which is
   honest and stale in the safe direction.
 
-### ⭐ The register turned a dependency bot red, which is the register working. 2026-09-15
+### ⚠ The `rusqlite` 0.40.2 bump, offered and declined again. 2026-09-15
 
-⛔ **A dependabot pull request went red on every job of run 126** - both gates
-and all four acceptance shards - and the cause was this file. Bumping `rusqlite`
-0.37.0 to 0.40.2 left **18 locked packages with no register row** and **5
-register rows naming no locked package**, and `check-licences` compares the two
-directions separately, so both fired.
+A dependabot pull request has been red since 2026-09-11, on every job. The cause
+is this register: the bump leaves **18 locked packages with no row** and **5 rows
+naming no locked package**, and `check-licences` compares the two directions
+separately.
 
-⭐ **That is the entry's whole point arriving unprompted.** A dependency bump is
-a decision about somebody else's code, and the failure is what makes it one
-rather than a rubber stamp. ⚠ Nothing about it was a flake, an infrastructure
-problem, or somebody else's branch to worry about: the same red appears on
-`main` the moment the lockfile moves.
+⭐ **That is the register working.** A dependency bump is a decision about
+somebody else's code, and this red is what makes it one.
 
-⛔ **THE SURFACE GREW IN THE LOCKFILE AND NOT IN THE BUILD, AND BOTH ARE
-RECORDED.** `rusqlite` 0.40 brings a WASM backend chain - `sqlite-wasm-rs`,
-`rsqlite-vfs`, `js-sys`, `bumpalo` and four `wasm-bindgen` packages. Measured
-with `cargo tree -e normal --target ...` rather than assumed: on
-`x86_64-unknown-linux-gnu` this workspace pulls `rusqlite` and `libsqlite3-sys`
-and nothing else new, and the nine others appear only under
-`wasm32-unknown-unknown`. ⚠ They still need rows, because `Cargo.lock` is what a
-build fetches from and a target gate is not a licence.
+⛔ **The bump was taken and then reverted, because `PUB-05` had already measured
+and rejected it.** [`publishing.md`](publishing.md) and
+[`../docs/supply-chain.md`](../docs/supply-chain.md) record the reasoning:
+0.40.2 resolves thirteen further packages - a WebAssembly stack this project
+never builds for - for the same API and the same bundled library. ⚠ Re-measured
+here with `cargo tree -e normal --target ...`, which agrees: on
+`x86_64-unknown-linux-gnu` nothing new compiles, and the whole chain appears only
+under `wasm32-unknown-unknown`. The recorded decision weighed that and declined
+it; taking the bump to make a bot green would have overridden a measured
+judgement with a notification.
 
-⭐ **Every new row's licence was read from that crate's own `Cargo.toml` at that
-exact version**, which is what `licence_source = "crate-manifest"` asserts, and
-the rows were rebuilt from `Cargo.lock` rather than typed - so the two cannot
-disagree by a transcription. ⚠ `foldhash` is the one that is not
-`MIT OR Apache-2.0`: it is `Zlib`, which is why reading beats assuming.
-
-⛔ **AND `libsqlite3-sys`'s NOTICE WAS RE-READ RATHER THAN CARRIED.** The row
-said the crate vendors SQLite **3.50.2**; 0.38.2 vendors **3.53.2**, read out of
-`#define SQLITE_VERSION` in the packaged amalgamation, whose own text still
-disclaims copyright. A notice copied forward would have been a measurement with
-the wrong number in it.
-
-Acceptance, run on 2026-09-15: `cargo build --workspace --locked --all-targets`,
-`cargo test --workspace --locked`, `cargo clippy --all-targets --locked`,
-`bit-check check-licences`, `bit-check check-licences --permitted`,
-`sh scripts/acquisition/check-cache.sh`, and the full gate at 37 checks, 36
-passed, 0 failed, 1 skipped.
+⚠ **One fact the original decision did not have** is the vendored SQLite version,
+which differs between the two. That is a reason to revisit and not a reason to
+override: [`PROGRESS.md`](PROGRESS.md) carries it as an open operator decision,
+with the numbers and where they were read from.
 
 ## FOUND-05: The session host, provisioned by something rather than by memory
 

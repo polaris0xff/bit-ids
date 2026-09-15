@@ -16,45 +16,45 @@ unreflected.
 
 ## Current state
 
-⭐ **A `Profile` HAS NOW BEEN ASSEMBLED FROM A DISPATCH'S OWN ARTIFACTS,
-2026-09-15.** `capture-client` run 17 uploaded two green lanes and
-`assemble-capture` wrote **two records and their raw evidence** out of them,
-exit 0. Each carries two acquisition routes with genuinely independent
-resolvers, four measured observations, eight evidence entries with digests, and
-**two connectors whose corroboration agrees byte for byte**.
+⭐ **A `Profile` HAS BEEN ASSEMBLED FROM A DISPATCH'S OWN ARTIFACTS, 2026-09-15.**
+`capture-client` run 17 uploaded two green lanes and `assemble-capture` wrote
+**two records and their raw evidence** out of them, exit 0. Each carries two
+acquisition routes with independent resolvers, four measured observations, eight
+evidence entries with digests, and two connectors whose corroboration agrees byte
+for byte. ⚠ Regenerating it is one command over run 17's four artifacts;
+[`ci.md`](ci.md) under `CI-09` carries it.
 
 ⛔ **THREE THINGS THAT RECORD IS NOT.** It is not in the tree - it was written
-into a scratch store, and every record this repository tracks is still
-synthetic. It is not published, and nothing has been. And it is **not
-publishable**: both records are `provisional`, for two separate and correct
-reasons the store states, so the settled decision that a green capture publishes
+into a scratch store, and every record this repository tracks is still synthetic.
+Nothing has been published. And it is **not publishable**: both records are
+`provisional`, so the settled decision that a green capture publishes
 automatically did not fire and could not have.
 
-⚠ **Regenerating it is one command over run 17's four artifacts**, which is what
-makes this a measurement rather than a claim. `TODO/ci.md` under `CI-09` carries
-the command, the two refusals and how they were reached.
+⛔ **What makes them provisional is the next real work**, and neither is a defect:
 
-⭐ **And the identity it measured is not the product's own**, corroborated by a
-reader this project did not write: `tracker_http/user_agent` decodes to
+| refusal | what would close it |
+| --- | --- |
+| `E-PUB-04`: only ONE of the two installs was put on the wire, so equal version labels are all that connects the routes | a capture that observes both installs, or `ACQ-03` reaching `byte_identical` - which a release binary and a local build never will |
+| `classify_across: divergent`: a peer ID's tail is per connection, so two captures necessarily disagree | `SCHEMA-04`'s sampling model, which turns several captures into a `patterned` field and has never been run |
+
+⭐ **The identity measured is not the product's own**, corroborated by a reader
+this project did not write: `tracker_http/user_agent` decodes to
 `qBittorrent/5.2.3` and every peer ID begins `-qB5230-`, out of a stock
 `aria2-next`.
 
-Nothing has been published. Every
-record in the tree is still synthetic and says so: the schema fixtures under
-[`../crates/bit-ids/tests/fixtures/`](../crates/bit-ids/tests/fixtures/) describe
-a target that does not exist, and the wire fixtures under
+⭐ **A SESSION CAN DRIVE THE WHOLE LOOP.** Dispatch `capture-client` through the
+Actions tooling on `ref: main`, download artifacts through rule 8's route
+(`.../actions/artifacts/<id>/zip` answers 200), then assemble locally. ⛔ This
+file and `RESUME.md` recorded the dispatch as something nothing could press; that
+was false, and three dispatches on 2026-09-15 are the measurement.
+
+Every record in the tree is still synthetic and says so: the schema fixtures
+under [`../crates/bit-ids/tests/fixtures/`](../crates/bit-ids/tests/fixtures/)
+describe a target that does not exist, and the wire fixtures under
 [`../crates/bit-ids-wire/tests/fixtures/`](../crates/bit-ids-wire/tests/fixtures/)
-were written by hand from published BEPs. Nothing has been published.
-⚠ **Three FIXTURE captures have run on hosted runners** and not one of them
-measured a build: no client is installed, and each of those attestations says
-`kind=fixture`, `measured_build=none`, `stock_client=false`.
-⭐ **The CLIENT capture workflow is a different path and it has now measured
-builds**: runs 11 and 12 on 2026-09-09 each attest `kind=client`,
-`stock_client=true`, `measured_build=2.7.5` for `aria2-next`, with an evidence
-bundle that verifies outside the run that wrote it. ⛔ Still not a `Profile`, and
-the reason is no longer `E-ACQ-01`: run 14 gained a second lane, and assembling
-it found `E-ACQ-07`, `E-CAP-01`, an unrecorded package format and `E-ACQ-06`
-instead. The table under *Limits* carries all four.
+were written by hand from published BEPs.
+⚠ **Three FIXTURE captures have run on hosted runners** and not one measured a
+build: each attests `kind=fixture`, `measured_build=none`, `stock_client=false`.
 
 What exists is every layer a capture passes through, and each one is closed:
 
@@ -153,59 +153,25 @@ published. `docs/publishing.md` carries the forms and says they are unexercised.
 ⚠ **Nothing schedules the staleness monitor.** `CI-02` built the comparison and
 its driving surface; no capture request has ever been opened.
 
-⭐ **THREE OF THE FOUR REPAIRS ARE NOW PROVED ON A RUNNER, AND THE FOURTH LANE
-IS THE ONLY THING LEFT. `capture-client` run 15, 2026-09-15.** It is the first
-dispatch since run 14 and the first pressed from a session rather than by hand.
+⭐ **ALL FOUR OF RUN 14's REFUSALS ARE REPAIRED AND PROVED ON RUNNERS.** Run 14
+acquired `aria2-next` through its `release` and `source` routes on two hosts and
+could not become a `Profile`; run 17 can, and each repair is measured rather than
+argued:
 
-| what run 14 was refused for | what run 15 measured |
+| what refused run 14 | what run 17 carries |
 | --- | --- |
-| both lanes resolved through one listing (`E-ACQ-07`) | ⭐ each lane resolved through its own index and SKIPPED the other's step |
-| nothing recorded the package format | ⭐ `package=elf-binary` in the install record |
-| the attestation declared one connector (`E-CAP-01`) | ⭐ `connectors=cpython-stdlib` plus `bundle/connector/cpython-stdlib.txt`; with the observer that is two |
-| the source route recorded no commit (`E-ACQ-06`) | ⛔ unproved: the source lane never reached the step that writes it |
+| `E-ACQ-07`: both lanes' resolutions differed only in their timestamps | each lane resolves through its own index and skips the other's step |
+| `E-CAP-01` at the VALIDITY gate: one connector declared | `connectors=cpython-stdlib` plus its report in the bundle; with the observer that is two |
+| nothing recorded the **package** format, which is in `StoreKey` | `package=elf-binary`, declared per route by the adapter |
+| `E-ACQ-06`: no full commit object name for the source route | `source_commit`, forty hex digits, refused by `install-client` if absent or abbreviated |
 
-⛔ **THE RELEASE LANE IS GREEN AND THE SOURCE LANE IS NOT**, and the reason is a
-guard whose scope was wider than the thing it guards rather than anything about
-the client. `install-client`'s rule-12 scan read every file at every depth of the
-install workdir; the source route CLONES into that workdir, and the clone
-vendors openssl's and nghttp2's own test certificates. ⚠ The upload ships
-`*.log` and `*.err` from that directory's top level and nothing below it, so the
-scan refused files no artifact can carry. `TODO/acquisition.md` carries the fix
-and its mutation proof.
+⚠ **Three dispatches were needed and each found what the previous repair
+uncovered**: run 15's source lane was refused by `install-client`'s rule-12 scan
+over vendored third-party test certificates; run 16's source resolution was never
+uploaded; run 17 assembled. ⛔ Every one of those was a SCOPE defect, and each
+list was complete until `E-ACQ-07`'s repair made the source lane a real source
+lane. [`ci.md`](ci.md) and [`acquisition.md`](acquisition.md) carry them.
 
-⭐ **ONE REPAIR UNCOVERED THE NEXT, which is what a dispatch buys.** A `release`
-route installs a binary and never clones, so this shape was invisible for fifteen
-dispatches; it appeared the moment `E-ACQ-07`'s repair made the source lane a
-real source lane.
-
-⚠ **STILL NO RECORD.** Assembling run 15's one green lane answers
-*`E-ACQ-01` needs two routes, so a record needs a lane per route* and exits 2.
-⭐ And assembling **run 14**'s four artifacts reproduced all four refusals in the
-table below exactly, which is what says this path works end to end from a
-session: dispatch, download, assemble.
-
-⛔ **THE TWO-ROUTE CAPTURE IS NOT TWO ROUTES, MEASURED BY ASSEMBLING IT.**
-`capture-client` run 14 on 2026-09-09 acquired `aria2-next` through its
-`release` and `source` routes on two hosts. Both report **2.7.5**, both
-`acquired=yes`, the installed binaries have different digests, and both bundles
-verify with `sha256sum -c` outside the runs that wrote them.
-⛔ **And it cannot become a `Profile`.** `assemble-capture` was driven over its
-four artifacts and refuses. Four reasons, none of them in an attestation:
-
-| what the artifacts say | what refuses it |
-| --- | --- |
-| both lanes' `resolution.txt` differed **only in their timestamps** | ⛔ `E-ACQ-07` - ⭐ **repaired**: the source route resolves its own tag from git refs |
-| every attestation declares **one** connector | ⛔ `E-CAP-01`, at the **validity** gate - ⭐ **repaired**: `capture-client` runs a second connector and declares it in `connectors=` |
-| nothing recorded how the artifact was **packaged**, and `package` is in `StoreKey` | ⛔ a guessed one files two packagings of a version at one path - ⭐ **repaired**: every adapter declares it per route |
-| nothing the capture path writes carries the source route's commit | ⛔ `E-ACQ-06`: a source identity needs a full object name |
-
-⭐ **Three of the four are repaired now**: the adapter records `rev-parse HEAD`
-and `install-client` refuses a `source` route without a full object name, every
-adapter declares its package format per route, and a second connector reads the
-bundle and is declared in the attestation. ⛔ **The remaining one is the shared
-resolution**, and it is repaired in the tree and unproved on a runner.
-⚠ **Every one of the four is a prerequisite for a record existing at all**, and
-`CI-09` carries each with the command that measured it.
 ⚠ **`BuildEquivalent` is unreachable for a real client through this path**, and
 `CI-09` carries why and what was measured instead.
 
@@ -411,6 +377,28 @@ nothing is. The clone question under *Settled decisions* is spent too.
    bind attestations to.
 8. The remaining client and engine breadth, then refinements.
 
+## Open decision, for the operator
+
+⚠ **Whether to take `rusqlite` 0.40.2.** `PUB-05` measured both and chose
+**0.37.0**, because 0.40.2 resolves thirteen further packages - a WebAssembly
+stack this project never builds for - for the same API and the same bundled
+library. [`../docs/supply-chain.md`](../docs/supply-chain.md) carries the counts.
+A dependabot pull request offers the bump and has been red on the licence
+register since 2026-09-11; ⭐ that red is the register working, not a fault.
+
+⚠ **One fact the original decision did not have**: 0.40.2 carries
+`libsqlite3-sys` 0.38.2, which vendors **SQLite 3.53.2** against 0.35.0's
+**3.50.2**, both read out of `#define SQLITE_VERSION` in the packaged
+amalgamation. ⛔ Re-measured on 2026-09-15 with `cargo tree`: nothing new
+compiles for this project's targets, so the lockfile surface grows by nine and
+the compiled surface by none.
+
+**Recommendation: keep 0.37.0 and close the pull request.** The recorded
+reasoning still holds and the SQLite delta is a currency question rather than a
+known defect. ⛔ A session took the bump on 2026-09-15 to make CI green and
+reverted it on reading this decision; taking a bot's suggestion over a measured
+judgement is the shape to avoid.
+
 ## Settled decisions
 
 ⭐ **All four were settled by the operator on 2026-09-08 and none blocks
@@ -441,8 +429,8 @@ info hash. ⚠ Run `sh scripts/common/check-gate.sh`, which is the list; a subse
 chosen by hand is not the same gate twice.
 
 ⭐ **THE CHECKING LAYER IS MOVING TO GO AND `go` IS NOW A GATE DEPENDENCY.**
-`CI-10`. Six rules live in [`../tools/check/`](../tools/check/) and are run by one
-binary on both lanes; `check-bitcheck`, `check-cache` and `check-defaults` build
+`CI-10`. Nine rules live in [`../tools/check/`](../tools/check/) and are run by one
+binary on both lanes, and `bit-check --rows` is the list; `check-bitcheck`, `check-cache` and `check-defaults` build
 it themselves. ⛔ Without `go` those rows are a SKIP rather than a pass, and the
 CI lanes run `--strict`, so an absent toolchain turns a lane red rather than
 quietly shrinking it. ⚠ Both hosted runner images carry Go - the workflow already

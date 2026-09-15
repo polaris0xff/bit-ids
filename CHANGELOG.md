@@ -5,6 +5,26 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-15T04:07:40Z
+
+- ⛔ **`rusqlite` 0.40.2 was taken and then REVERTED to 0.37.0.** `PUB-05` had
+  already measured both and chosen 0.37.0, for thirteen fewer locked packages;
+  taking the bump to make a dependabot pull request green overrode a recorded
+  judgement with a notification. The lockfile and manifest are byte-identical to
+  their previous state.
+- ⚠ **The pull request stays red and that is the licence register working.**
+  [`TODO/PROGRESS.md`](TODO/PROGRESS.md) carries it as an open operator decision,
+  with the one fact the original decision did not have: the two versions vendor
+  different SQLite releases.
+- ⭐ **Documentation amended in place rather than appended to.** The session's
+  narrative was compressed out of `TODO/ci.md`, `TODO/acquisition.md`,
+  `TODO/foundation.md` and `TODO/PROGRESS.md`, leaving current truth,
+  measurements and residuals; `docs/history/RESUME.md` was rewritten as one
+  coherent handoff. Stale counts corrected against `bit-check --rows` and
+  `check-twins`: nine ported rules, five twin file pairs, five rows.
+- Record: [`TODO/foundation.md`](TODO/foundation.md), `FOUND-04`. No version bump
+  and no deploy.
+
 ### 2026-09-15T03:44:22Z
 
 - ⭐ **`check-docs` is in the Go binary and both shell halves are deleted**,
@@ -168,11 +188,8 @@ Nothing is released yet. Entries accumulate here until the first
   ⚠ It was the two-row pair, so one deletion removed two rows: `--public` is a
   different question from the default run rather than a stricter one.
 - ⛔ **The patterns were the easy half.** Two properties of the pipeline they sat
-  in decide verdicts, and both are carried: the allow expressions run over the
-  grep OUTPUT line `path:lineno:text`, because the lockfile allowance is anchored
-  to that prefix; and an allowed item is deleted FROM the line rather than the
-  line being dropped, because `grep -v` drops lines and would take a real
-  credential out of the report beside an allowed digest.
+  in decide verdicts and both are carried; [`TODO/ci.md`](TODO/ci.md) names them
+  under `CI-10`.
 - ⭐ **Twenty cases over both halves before either was deleted**, all three
   implementations agreeing on the exit code and byte for byte on `--json`. Eight
   of them plant something that must be ACCEPTED, which is where a port fails.

@@ -4,251 +4,139 @@
 in order, committing and pushing each green unit to `main`.
 
 ⛔ **Nothing is blocked.** Every question an earlier session recorded as needing
-the operator is answered in that file under *Settled decisions*. Do not re-raise
-them, and do not record a new blocker without running the command that would
-settle it.
+the operator is answered in that file under *Settled decisions*, except the one
+open decision named there. Do not record a new blocker without running the
+command that would settle it.
 
-**Tree:** Re-measure it. This file is a claim about a tree that has moved. Check
+---
+
+## Starting
+
+**Re-measure the tree.** This file is a claim about a tree that has moved: check
 the branch, the remote, the clone depth, `git status` and `HEAD..origin/main`
 before editing anything.
 
-**The container may start on a `claude/*` branch with `user.name` set to an
-agent and a shallow clone.** All three were true at the start of the last nine
-sessions. Correct them before any edit: the branch to `main` per rule 7, the
-identity to the operator's own per rule 11, and the clone with
-`git fetch --unshallow`. ⛔ Read the identity out of the history with
+⚠ **The container may start on a `claude/*` branch, with `user.name` set to an
+agent, and a shallow clone.** All three were true at the start of the last ten
+sessions. Correct them first: the branch to `main` per rule 7, the identity to
+the operator's own per rule 11, and the clone with `git fetch --unshallow`.
+⛔ Read the identity out of the history with
 `git log --format='%an <%ae>' | sort -u`; never type it into a tracked file,
 which is what `check-no-secrets --public` refuses.
 
-**Install the three tools with one command:** `sh scripts/doctor/provision.sh`.
-About four seconds on a host with none of them, every download verified against a
-pinned digest first. ⛔ **Without `pwsh` the gate does not merely shrink - it goes
-RED**: `check-capture` FAILS and `check-twins` skips.
+**Install the tools with one command:** `sh scripts/doctor/provision.sh`. About
+four seconds, every download verified against a pinned digest first. ⛔ Without
+`pwsh` the gate goes RED rather than shrinking: `check-capture` fails and
+`check-twins` skips.
 
-**AND `go` IS A GATE DEPENDENCY NOW.** `CI-10` moved six rules into
-[`../../tools/check/`](../../tools/check/), and `check-bitcheck`, `check-cache`
-and `check-defaults` each build that binary themselves. Without it those rows are
-a SKIP, which `--strict` turns into a red lane. Go was already on both runner
-images; this host had 1.24.7 with nothing to install.
+**`go` is a gate dependency.** `check-bitcheck`, `check-cache` and
+`check-defaults` each build [`../../tools/check/`](../../tools/check/)
+themselves; without it those rows SKIP, which `--strict` turns into a red lane.
+Both runner images carry it.
 
 ---
 
 ## Where the work is
 
-**In flight:** `CI-10`, with all three of its named deliverables landed and the
-rest of the port open. See below.
+**In flight:** `CI-10`, with its three named deliverables landed and the rest of
+the port open.
 
-### ⭐ THE CAPTURE VERTICAL MOVED, AND A SESSION CAN PRESS THE BUTTON
+### ⭐ A record exists, and a session can produce another
 
-⛔ **This file used to say *nothing in this tree can press that button*. That is
-false of a session with the GitHub tooling this one had.** Three
-`capture-client` dispatches were made on 2026-09-15 - runs **15, 16 and 17** -
-and each one taught something no reading had:
+`capture-client` run 17 on 2026-09-15 uploaded two green lanes and
+`assemble-capture` wrote **two `Profile`s and eight raw evidence files** out of
+them, exit 0. ⛔ The store is scratch state, not the tree; nothing is published;
+and both records are `provisional`, so the publish-on-green decision did not fire
+and could not have. [`../../TODO/ci.md`](../../TODO/ci.md) under `CI-09` carries
+the command and what the records hold.
 
-| run | what it measured |
-| --- | --- |
-| 15 | release lane green; source lane refused by `install-client`'s rule-12 scan over openssl's and nghttp2's **vendored test certificates**, because the scan read the whole workdir and the artifact ships its top level |
-| 16 | both lanes green; `assemble-capture` refused - the source route's resolution **is never uploaded**, and the reader looked for every lane's at a literal `release/resolution.txt` |
-| 17 | ⭐ **two `Profile`s and eight raw evidence files written, exit 0** |
+⭐ **The whole loop runs from a session**: dispatch `capture-client` through the
+Actions tooling on `ref: main`, download artifacts through rule 8's route
+(`.../actions/artifacts/<id>/zip` answers 200), then assemble locally. ⛔ This
+file used to say nothing in the tree could press that button. That was false.
+Do not record it as a blocker again without trying it.
 
-⭐ **The whole loop runs from a session**: dispatch through the Actions tooling,
-artifacts through rule 8's route (`.../actions/artifacts/<id>/zip` answers 200),
-then `assemble-capture` locally. ⛔ Do not record the dispatch as a blocker
-again without trying it.
-
-⛔ **AND EVERY DEFECT IT FOUND WAS SCOPE, THREE TIMES IN ONE DAY**: a guard
-reading more than ships, an upload shipping less than is read, and a reader
-looking in one route's directory for every route's document. ⚠ Each was complete
-until `E-ACQ-07`'s repair made the source lane a real source lane. One repair
-uncovering the next is what a dispatch buys and a reading does not.
-
-⚠ **The records are provisional, not in the tree, and nothing is published.**
-`TODO/ci.md` under `CI-09` carries the two refusals, both correct.
-
-⭐ **Measured at the start of the 2026-09-15 session, rather than carried:** the
-container started on `claude/jolly-rubin-eb5zs9` with `user.name=Claude` and a
-shallow clone - all three, for the ninth session running. Corrected to `main`,
-to the operator identity read out of `git log`, and unshallowed. The tree was
-clean and level with `origin/main` at `dfc1821`, and the baseline gate over it was
-**36 checks, 35 passed, 0 failed, 1 skipped**, the skip being
-`check-remote-items`. `provision.sh` installed the three tools; this host carries
-`go` 1.24.7, `pwsh` 7.4.6, `shellcheck` 0.10.0, `shfmt` 3.14.0, `cargo` 1.98.0
-and **four processors**.
-
-### ⭐ CI IS 2.8x FASTER AND EVERY NUMBER IS FROM A RUNNER
-
-| run | what changed | *Workflow acceptance* |
-| --- | --- | ---: |
-| 122 | the layer as it stood | **32.6 min** |
-| 123 | four twin pairs deleted | **22.2 min** |
-| 124 | sharded across four runners | **11.8 min** (longest of 9.6, 11.2, 11.7, 11.8) |
-
-The whole run's wall clock is now that shard: the Linux gate is 4.4 minutes and
-the Windows gate 2.5. ⛔ **And the acceptance bound came DOWN to 20** from the 45
-a previous session raised it to, which is `CI-10`'s own Prove.
-
-### ⛔ THE MEASUREMENT THAT WAS WRITTEN UP WRONG, AND HOW IT WAS CAUGHT
-
-Mid-session this file's entry said deleting the twin layer bought nothing,
-because the local gate went from 119 seconds to 129.7. **That is true of this host
-and false of a runner**, where the same change bought 10.4 minutes. This session
-host has **four** processors and a hosted `ubuntu-24.04` runner has **two**, so a
-gate that runs its checks concurrently is CPU-bound there and not here.
-⭐ `docs/methodology/gate.md` already names it - *local is not production* - and
-the failure was the SCOPE claimed for a correct measurement, not the measurement.
-⛔ Read a wall clock on the machine whose wall clock you are claiming.
+⛔ **Every defect three dispatches found was SCOPE**: a guard reading more than
+ships, an upload shipping less than is read, and a reader looking in one route's
+directory for every route's document. ⚠ Each list was complete until
+`E-ACQ-07`'s repair made the source lane a real source lane. **One repair
+uncovers the next, and only a dispatch shows it.**
 
 ### What the checking layer looks like now
 
-**Nine rules are one Go binary** in `tools/check/`, and `bit-check --rows` is
-the measurement rather than this sentence: `check-changelog`,
-`check-control-bytes`, `check-docs`, `check-ignores`, `check-licences`,
-`check-markers`, `check-no-secrets`, `check-one-home`, `check-placeholders`. Both gate runners
-invoke it, so those rows are the SAME row on both lanes rather than an `sh` row
-here and a hand-written twin there.
-⛔ **Sixteen files are deleted, not translated.** `check-twins` went from 69
-seconds to about 15, and from twelve file pairs to **five**.
+**Nine rules are one Go binary** in [`../../tools/check/`](../../tools/check/),
+and `bit-check --rows` is the measurement rather than this sentence. Both gate
+runners invoke it, so those rows are the SAME row on both lanes.
 
-⭐ **`check-ignores` is the one that was never a shell rule.** A new checking
-rule goes into the binary; a new `.ps1` twin is work added to a layer that is
-being removed.
+⛔ **Sixteen files are deleted, not translated.** `check-twins` went from twelve
+file pairs to **five**, and from 69 seconds to about 15.
+
+⭐ **`check-ignores` is the one that was never a shell rule.** A new checking rule
+goes into the binary; a new `.ps1` twin is work added to a layer being removed.
 
 ⛔ **A PAIR MAY ONLY LEAVE THAT LIST ONE WAY.**
 `sh scripts/common/check-bitcheck.sh --compare` runs every case against BOTH
-deleted halves and refuses any difference in exit code or in the `--json` line.
-⛔ **AND THE WINDOW CLOSES WHEN THE HALVES GO.** Measured on 2026-09-15: run
-BEFORE the deletion, `--compare` was 70 cases of which **20 ran all three
-implementations** - the `check-no-secrets` ones, whose halves still existed - and
-the other 50 printed *the sh half is gone, not compared*. Run AFTER, it is 74
-cases and **not one of them compares three**, because there is nothing left to
-compare against. ⚠ The row says which of the two it did, and that distinction is
-the only thing standing between a real proof and a harness agreeing with itself.
+halves and refuses any difference in exit code or in the `--json` line.
+⛔ **The window closes when the halves go**: after a deletion those cases print
+*the sh half is gone, not compared*, and the run gets cheaper precisely because
+it is checking less. The pre-deletion run is the one that counts, and
+`TODO/ci.md` records it.
 
-⭐ **It costs 10 seconds now, not the nine minutes this file used to record**,
-for the same reason: the PowerShell halves it started once per case are the ones
-already deleted. ⛔ So cheapness here is evidence of nothing being checked, which
-is why the pre-deletion run is the one that counts and must be recorded in
-`TODO/ci.md` when it happens.
+⭐ **It has earned that rule.** `check-docs`' comparison caught the two shell
+halves DISAGREEING about whether a page cited only inside backticks is an orphan
+- on a shape this tree does not contain, which `check-twins` could never see.
 
-⚠ **The module has an empty require list and therefore no `go.sum`.** Nothing is
-fetched at build time, so a build needs no network and `CI-04`'s dependency
-surface does not grow by a language. Keep it that way.
+**The five pairs left** are `check-project`, 997 lines and its own unit, plus
+`check-cache`, `check-catalogue`, `check-remote-items` and `mine-repo`. Together
+about **10 seconds** of PowerShell against the **96** the layer started at, ⛔ so
+the remaining wall-clock value is small and the DRIFT value is unchanged.
 
-### ⚠ What is left of the port, and why it is not urgent
+### Next, in order
 
-⛔ **FIVE FILE PAIRS REMAIN AND `check-twins` PRINTS FIVE ROWS**, and those two
-numbers were not equal until 2026-09-15. `check-no-secrets` was compared TWICE -
-once plain and once `--public`, which is a different question rather than a
-stricter one - so seven file pairs produced eight rows. ⚠ Both numbers were in
-this tree and neither said which it counted: this file said eight and then named
-seven files, and `TODO/ci.md`'s own residual said seven. ⭐ Say which unit a
-count is in, or it is the value-in-two-places defect this repository names
-everywhere else. `sh scripts/common/check-twins.sh` is the measurement, and it
-is what reconciled them rather than a choice between the two.
-
-⭐ **TWO PAIRS LEFT ON 2026-09-15.** `check-no-secrets` was the two-row one, so a
-single deletion took the list from seven pairs and eight rows to six and six;
-`check-docs` took it to five and five. ⚠ `--compare` ran twenty cases and then
-fifteen over both halves before either went.
-
-⛔ **AND `check-docs` IS WHY THAT RULE EXISTS.** Its comparison found the two
-shell halves DISAGREEING - a page cited only inside backticks was an orphan to
-the PowerShell twin and not to the `sh` half - on a shape this tree does not
-contain and `check-twins` could never have seen. The twin was correct; both other
-implementations were changed to match before the pair left.
-
-The five that remain are `check-project`, which is 997 lines and is its own unit,
-plus `check-cache`, `check-catalogue`, `check-remote-items` and
-`mine-repo`. Together they are about **10 seconds** of PowerShell against the
-**96** the layer started at, ⛔ so the remaining WALL-CLOCK value is small and
-the DRIFT value is unchanged.
-
-**Two things bit while porting and will bite again.** A check's own
-implementation must be exempt from itself where it spells the patterns it looks
-for - all three implementations of `check-placeholders` are. And a HARNESS that
-plants a pattern cannot spell it either: `check-bitcheck` assembles its needles
-with `printf`, the way the marker harness already did.
-
-**Next, in order:**
-
-0. ⛔ **WHAT A RECORD STILL LACKS, AND IT IS TWO NAMED THINGS.** Run 17's records
-   are `provisional` for two reasons, both correct and both closable:
-   `E-PUB-04` because only ONE of the two installs was put on the wire, so equal
-   version labels are all that connects them; and `classify_across: divergent`
-   because a peer ID's tail is per connection. ⭐ The first is a capture-design
-   question - a lane that observed BOTH installs, or `ACQ-03` reaching
-   `byte_identical` - and the second is `SCHEMA-04`'s sampling model, which turns
-   several captures into a `patterned` field and has never been run. Neither is a
-   defect; both are the next real work.
-1. **`CI-10` continues where it is cheapest, not first.** Its three named
-   deliverables are landed and proved on runners. What remains is **five file
-   pairs and five rows**, `check-project` being its own unit at 997 lines.
-2. **`CLIENT-01`, `CLIENT-06`**, the remaining vertical captures. ⭐ `aria2-next`
-   is the worked example now: three dispatches in one session took it from four
-   refusals to two written records.
-3. **`CI-09`'s** remaining residuals, which are no longer about reaching a
-   record: the `RunManifest` a record needs beside it, and the publisher, which
-   still cannot run at all because it downloads an artifact named `bundle` that
-   nothing produces.
-4. **`CI-07`**, whose class-A backlog keeps shrinking as `CI-10` ports pairs
-   rather than writing twins for them.
+0. ⛔ **Make a record publishable.** Run 17's are `provisional` for two reasons,
+   both correct: `E-PUB-04`, because only ONE of the two installs was put on the
+   wire, so equal version labels are all that connects the routes; and
+   `classify_across: divergent`, because a peer ID's tail is per connection. The
+   first is a capture-design question - a lane that observes BOTH installs - and
+   the second is `SCHEMA-04`'s sampling model, which turns several captures into
+   a `patterned` field and has never been run.
+1. **`CLIENT-01`, `CLIENT-06`**, the remaining vertical captures. ⭐ `aria2-next`
+   is the worked example: three dispatches took it from four refusals to two
+   written records.
+2. **`CI-10`**, five pairs left, `check-project` its own unit.
+3. **`CI-09`'s** remaining residuals, no longer about reaching a record: the
+   `RunManifest` a record needs beside it, and the publisher, which cannot run at
+   all because it downloads an artifact named `bundle` that nothing produces.
+4. **`CI-07`**, whose class-A backlog shrinks as `CI-10` ports pairs.
 5. **`CI-08`'s** load-sensitive `check-step-bodies` row.
-
----
-
-## ⛔ The gate's wall clock is NOT where this project's prose said it was
-
-⚠ **`check-capture-client` is 105 seconds** and `CI-01` recorded 47.9. Nothing
-changed its `SECS=5` deadline; it has grown to **111 cases** one at a time while
-the number in the record stood still. It and `check-capture` run AFTER the
-concurrent batch, alone and on purpose, so the local gate is
-`max(batch) + max(those two)` and the second term is four fifths of it.
-
-That is why deleting 53 seconds of twin layer moved the local gate by nothing.
-It is unowned by `CI-10` - a harness that grew is not a defect - and it belongs to
-whoever next opens `CI-01`.
 
 ---
 
 ## How this project is checked
 
 ⛔ **Run the gate with one command, `sh scripts/common/check-gate.sh`, after the
-last edit.** ⭐ It is **37 checks and 125 seconds** on this host on 2026-09-15,
-and its wall clock is
-`max(concurrent batch) + max(check-capture, check-capture-client)` rather than a
-sum - the last two run alone, after the batch, on purpose.
+last edit.** ⭐ **37 checks, about 127 seconds** on a four-processor host. Its
+wall clock is `max(concurrent batch) + max(check-capture, check-capture-client)`
+rather than a sum: those two run alone, after the batch, on purpose.
 
-⛔ **AND DO NOT EDIT THE TREE WHILE IT RUNS.** The `tree-unchanged` row compares
-the tree before and after, so an edit made during a run fails that row and the
-failure names a check rather than the editor. It happened on 2026-09-15 and cost
-a whole gate run to work out.
+⛔ **DO NOT EDIT THE TREE WHILE IT RUNS.** `tree-unchanged` compares before and
+after, so an edit during a run fails that row and the failure names a check
+rather than the editor.
 
-**A count of its rows goes stale.** `sh scripts/common/check-gate.sh --rows`
-prints the list, and `check-gate-rows` compares it against the other lane's.
+⛔ **DO NOT RUN THE GATE OR `git add` WHILE `check-workflow` IS RUNNING**, which
+corrupts its plant-and-restore accounting. ⚠ `check-workflow` unsharded is about
+21 minutes; use `--shard 1/4`.
+
+⛔ **`git checkout -- <dir>` DISCARDS UNSTAGED WORK IN THAT DIRECTORY.** It cost
+four files of edits this session. Stage first, or name the exact file.
+
+**A count of gate rows goes stale.** `check-gate.sh --rows` prints the list and
+`check-gate-rows` compares it against the other lane's.
 
 **The gate is not the whole of part (a).** `cargo clippy`, `cargo fmt --check`,
 the test suite and `sh scripts/ci/check-workflow.sh` are separate.
 
-⭐ **`check-workflow` SHARDS NOW.** `--shard i/N` selects units by `index mod N`,
-`--units` lists the names and runs nothing, and CI runs four shards.
-⛔ **The controls are NOT sharded**: a shard carrying only plants goes green over
-a tree where every step is broken, so every shard runs all three. That is a floor
-on what a shard costs, paid on purpose, and it is why four shards are 2.1x rather
-than 4x on this host - 1282 seconds unsharded against a longest shard of 606.
-
-**`sh scripts/ci/check-shards.sh` is what keeps the partition honest** and it
-costs seconds. It asserts coverage and disjointness for every N from 1 to 6, that
-each shard names every control, that no variable is assigned in one unit and read
-in another, and that six malformed selectors are refused rather than clamped.
-⛔ **It found three real defects the moment it existed**, all in the sharding: a
-`--units` mode that ignored `--shard`, and two variables crossing a unit boundary.
-Both of those were loud only because of `set -u`.
-
-⛔ **DO NOT RUN THE GATE WHILE `check-workflow` IS RUNNING**, or `git add` while
-it is, which corrupts its plant-and-restore accounting.
-
 ⛔ **TWO CHECKS JOINED BY `&&` ARE ONE CHECK.** Run each and read each status.
-
 ⛔ **Read exit codes from the process that produced them, unpiped.**
 
 ---
@@ -257,102 +145,84 @@ it is, which corrupts its plant-and-restore accounting.
 
 These are the defect classes this project has shipped and caught.
 
-⛔ **A guard that sees ONE SPELLING of the thing it forbids reports clean over the
-others.** The unit-coupling check matched `NAME=` at the start of a line, so it
-missed a `for` variable and an assignment inside a `case` branch - and both were
-real couplings in the file it was reading.
+⛔ **A guard whose SCOPE is wider or narrower than the thing it guards.** Three
+instances in one day, all in the capture path. Ask what actually ships.
 
-⛔ **A one-gated-door defect arrives in the change that fixes something else.**
-`check-defaults` gated the Go build in front of one subject and left its sibling
-outside; a missing command answers 127 under every environment, so that row would
-have reported *the same answer under all 6* over a subject that never started.
+⛔ **A guard that sees ONE SPELLING of the thing it forbids reports clean over
+the others.**
+
+⛔ **A one-gated-door defect arrives in the change that fixes something else.** A
+subject left outside a build gate answers 127 under every environment, which
+reads as *the same answer under all 6*.
+
+⛔ **A corpus only tests the defects it contains an example of.** A rule
+differing only on a shape the tree does not contain is invisible to any
+comparison over that tree. Plant the shape.
+
+⛔ **A harness that plants a pattern cannot spell it** - and neither can the
+comment explaining why.
+
+⚠ **A plant that did not APPLY is a third status**, not a survivor. Diff the file
+before believing either answer. ⚠ A harness exit of 2 is *could not run*, never
+*refused*. ⚠ A plant whose expected outcome is a PASS proves nothing, except
+where the rule's risk is over-strictness.
 
 ⛔ **A guard that nothing can refute is still worth keeping, and saying so is the
-work.** Removing the empty-register refusal left every case green, because the
-plant is refused by a different rule first. ⚠ That is *a check that passes because
-a different code path happens to satisfy it*; the case label now says which rule
-refuses it rather than claiming a proof.
+work.** Label the case with the rule that really refuses it.
 
-⚠ **A plant that does not COMPILE is a third status.** One did here, the harness
-answered 2, and it is counted as neither refused nor survived.
+⛔ **A global regex replace where the pattern also matches what it preserves.**
+Reproduced this session in a Go port of a defect already written down.
 
-⛔ **A step does not end when its command exits.**
-
-⛔ **A shell applies redirections left to right.** ⛔ **`timeout 0` MEANS NO LIMIT.**
-
-⛔ **A PowerShell `[switch]` collides with a local differing only in case.**
-
-**A count in prose is a value in two places with nothing comparing them.**
-
-**An in-place `sed` edits every line that matches, not the one you meant.**
+⛔ **A step does not end when its command exits.** ⛔ **A shell applies
+redirections left to right.** ⛔ **`timeout 0` MEANS NO LIMIT.** ⛔ **A PowerShell
+`[switch]` collides with a local differing only in case**, and `$args` inside a
+function is automatic.
 
 ⛔ **A Python text-mode rewrite of a `.ps1` silently converts CRLF to LF**, and
-`git diff` shows nothing for it. `git ls-files --eol` is the only thing that does.
-It happened this session and was caught that way.
+`git diff` shows nothing. `git ls-files --eol` is the only thing that does.
 
-⛔ **An apostrophe inside a single-quoted `awk` program ends the string.** A
-comment written inside one turned the rest of a harness into shell that `shfmt`
-refused to parse. `docs/conventions/shell.md` section 1 names the class.
-
-**A gate run must leave the working tree as it found it.**
-
-⛔ **A green local gate does not mean a green lane, because a DEFAULT can change
-under you**, and **a step's exit status is whatever the block LEFT BEHIND**
-unless it is a decision.
-
-⚠ **A surviving plant is a question, not a verdict**, a harness exit of 2 is
-*could not run*, and a plant that did not **apply** is a third status.
-
-**A plant whose expected outcome is a PASS proves nothing.** ⚠ Except where the
-rule's risk is over-strictness: six of `check-bitcheck`'s cases plant something
-that must be ACCEPTED, because that is where a port fails.
+**A count in prose is a value in two places with nothing comparing them.**
+**An in-place `sed` edits every line that matches, not the one you meant.**
 
 ⛔ **A rule a document says this repository has is not a rule it has.** Grep for
-the check before believing it runs.
+the check before believing it runs. Three were found missing this way.
 
 **The strongest control available is a reader this project did not write.**
 
 ⛔ **A CAPTURE'S WORKDIR IS ITS EVIDENCE BUNDLE**, so rule 12 applies to what an
-adapter writes there.
+adapter writes there - bounded by what the artifact actually ships.
 
 ---
 
 ## Facts a session must not restate wrongly
 
+⭐ **A `Profile` exists**, assembled from run 17's own artifacts. ⛔ It is not in
+the tree, nothing is published, and both records are `provisional`.
+
 ⛔ **The publisher cannot run at all.** It downloads an artifact named `bundle`
 and nothing in this tree produces that name.
 
-⛔ **Nothing has been published and no measured record exists.** ⭐ Builds HAVE
-been measured: Transmission 4.0.5 four times, qBittorrent 4.6.3 once, and
-`aria2-next` 2.7.5 on runs 11, 12 and 14. ⚠ Those are evidence bundles and
-attestations, not `Profile`s.
-
 ⛔ **A capture declaring ONE connector is INVALID, not merely unpublishable.**
-`E-CAP-01` fires inside `validate`. ⭐ Since 2026-09-10 the capture path declares
-two and refuses to run otherwise.
+`E-CAP-01` fires inside `validate`. The capture path declares two.
 
-⛔ **THE PEER ID DIFFERS BETWEEN SURFACES INSIDE ONE RUN.** The tracker announce
-and the peer-wire handshake of a single capture carry different twelve-byte tails
-after `-qB5230-`, so the tail is per-CONNECTION rather than per-run, and a
-`constant` on either field would be false.
+⛔ **THE PEER ID DIFFERS BETWEEN SURFACES INSIDE ONE RUN.** The announce and the
+handshake carry different twelve-byte tails after `-qB5230-`, so the tail is
+per-CONNECTION, and that is why `classify_across` answers `divergent` over two
+routes.
 
-⛔ **A stock `aria2-next` announces as qBittorrent 5.2.3.0**, observed on the wire
-rather than read from a table.
+⛔ **A stock `aria2-next` announces as qBittorrent 5.2.3**, observed on the wire
+and corroborated by a connector this project did not write.
 
-⛔ **Two lanes of one dispatch are not two routes if one resolution fed both.**
-
-⛔ **A single capture can only state a varying field as `constant` with one
-sample**, so `BuildEquivalent` is unreachable for a real client through this path.
-
-⛔ **A hosted Windows runner's fingerprint is not a freshness signal.** The claim
-marker is what detects a survived host.
+⛔ **`rusqlite` is pinned at 0.37.0 deliberately**, measured against 0.40.2 and
+chosen for thirteen fewer locked packages. A dependabot pull request offers the
+bump and is red on the licence register; that red is the register working. ⚠ Do
+not take the bump to make a bot green - `PROGRESS.md` carries it as an open
+operator decision.
 
 ⛔ **The nine commit stamps before 2026-09-06T07:56Z are fabricated**, and so are
-the subjects of `62e1a68`, `d64c51c`, `facf9a9`, `e2d1891` and `aba7142` on
-2026-09-10. They are not retro-corrected. ⚠ The lesson is narrower than "read the
-clock": one read at the start of a session is not a stamp for the commits that
-follow it. ⭐ Every stamp in this session's five commits was read immediately
-before its commit.
+the subjects of `62e1a68`, `d64c51c`, `facf9a9`, `e2d1891` and `aba7142`. They
+are not retro-corrected. ⚠ One clock read at the start of a session is not a
+stamp for the commits that follow it.
 
 **No repository owner or name is hardcoded anywhere in this tree.**
 

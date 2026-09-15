@@ -1479,14 +1479,12 @@ nothing about what they do.
 
 ### ⚠ What this entry still does not claim
 
-⛔ **Two captures are not a `Profile`.** Something has now tried: nothing
-validated, nothing was stored and nothing was published. ⚠ `ACQ-03`'s
-`classify_across` has still not been run over this pair and cannot be - it takes
-two `Profile`s and neither exists. What is measured is that the pair's **shape**
-reaches `Divergent`: `check-assemble` builds two records differing only in their
-peer-ID tails and reads that verdict off them. ⚠ The assembly is `CI-09`'s, and
-what it needs is not a store - it is a second connector, a second resolution and
-a recorded commit.
+⭐ **Two captures ARE a `Profile` now, since 2026-09-15.** `capture-client` run 17
+assembled into two records and `classify_across` ran over the real pair,
+answering `Divergent` on their peer-ID tails - the verdict `check-assemble` had
+only ever read off synthetic records. ⚠ Nothing is stored in the tree and nothing
+is published: both records are `provisional`. [`ci.md`](ci.md) under `CI-09`
+carries what they hold and what makes them provisional.
 
 ⭐ **A SECOND CAPTURE ANSWERED THE SAMPLE QUESTION. capture-client run 12** ran
 the fixed adapter - `adapter_sha256` differs from run 11's, which is how the

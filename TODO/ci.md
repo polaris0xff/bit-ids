@@ -246,57 +246,35 @@ and a matrix id renamed away from the catalogue - which fires BOTH directions at
 once and is the case that says the two comparisons are separate. All three
 refused, the twins agreeing character for character, and the clean tree accepted.
 
-### ⭐ A SECOND rule this repository said it had and did not, closed 2026-09-15
+### ⭐ The ignore list and the secret-file rule, compared. 2026-09-15
 
-⛔ **`.gitignore`'s own header claims a property it did not have.** It reads
-*listed BEFORE the files exist, so one can never be staged by accident* - and
-`check-no-secrets` rule 1 refuses a tracked credential file by name. Two
-defences, one acting before the file exists and one after it is staged, and
-**nothing compared their lists**.
+`.gitignore` acts before a credential file exists; `check-no-secrets` rule 1
+refuses one that is already tracked. ⛔ **Nothing compared their lists**, and two
+names were in the second and neither line of the first: `*.jks` and `id_ecdsa`.
+Both lines are added.
 
-⚠ **Two names were in the refusal list and in neither ignore line**, found by a
-door sweep while writing this port's plants rather than by any check: `*.jks`
-and `id_ecdsa`. Asked of git directly, thirteen of the fifteen credential shapes
-were ignored and those two were not, so a Java keystore and an ECDSA private key
-were takeable by `git add -A` with the gate as the only thing in front of them.
+⭐ **`check-ignores` in [`../tools/check/`](../tools/check/) is the rule.** It
+asks `git check-ignore --no-index` rather than re-reading the ignore format,
+because a second parser of it would be a second answer to what git ignores. Each
+specimen is first asserted to be a name rule 1 really refuses, using that rule's
+own expressions, so a shape narrowed out of it is a finding here rather than a
+case that quietly stops meaning anything.
 
-⭐ **`check-ignores` is the rule, in `../tools/check/`, and it asks git.**
-`git check-ignore --no-index` answers whether the RULES would ignore a name, the
-way `git add` will; a second parser of the ignore format here would be a second
-answer to what git ignores, and two answers drift in the direction that keeps a
-check green. ⚠ It is the same argument `repo.go` makes for asking `git ls-files`
-what is in the tree.
-
-⛔ **THE SPECIMENS ARE TIED TO THE RULE THEY STAND FOR.** A list of filenames is
-a second list and a second list goes stale, so each one is first asserted to be a
-name `check-no-secrets` rule 1 would actually refuse, using that rule's own
-expressions. ⚠ What it cannot see is a shape ADDED to the regex with no specimen
-beside it: nothing derives a filename from a regular expression, and that
-direction stays with the reviewer.
-
-Guard mutation, each plant verified to have changed the file before it was
-judged, each exit code read unpiped:
+Guard mutation, each plant verified to have changed the file:
 
 | plant | verdict |
 | --- | --- |
-| `*.jks` dropped from `.gitignore` | ⭐ refused, exit 1, naming `release.jks` |
-| `*.jks` and `id_ecdsa` both dropped | ⭐ refused, exit 1, `"problems":2` |
-| `jks` narrowed OUT of `check-no-secrets`' own expression | ⭐ refused, exit 1, *stale specimen* |
-| the tree restored | ⭐ accepted, exit 0, 15 shapes |
+| `*.jks` dropped from `.gitignore` | refused, naming `release.jks` |
+| `*.jks` and `id_ecdsa` dropped | refused, `"problems":2` |
+| `jks` narrowed out of `check-no-secrets`' expression | refused, *stale specimen* |
+| restored | accepted, 15 shapes |
 
-⚠ **AND THE FIRST ATTEMPT AT THE THIRD PLANT REPORTED NOT-PLANTED**, which is a
-third status and is counted as neither. The `sed` expected `jks)$` and the source
-reads `jks)|id_rsa`, so nothing changed and the binary answered 0 - which would
-have read as a surviving plant to anybody who had not diffed the file first.
-⭐ Re-aimed, it is the row above. Read what a plant actually changed before
-believing either answer.
-
-⚠ **`check-bitcheck` carries the first two and not the third**, and says so
-where the cases sit: the third is a change to Go source, and that harness builds
-the binary once before its first case, so a case cannot rebuild it. ⛔ It is the
-first rule there that never had a shell half, so its cases name `-` for the
-predecessor - there is nothing to compare, which is a different fact from a half
-that has been deleted, and the row prints which.
+⚠ An earlier attempt at the third plant reported NOT-PLANTED - the `sed` expected
+`jks)$` where the source reads `jks)|id_rsa` - which is a third status and is
+counted as neither. ⛔ `check-bitcheck` carries the first two and not the third:
+that one changes Go source and the harness builds the binary once before its
+first case. It is also the first rule there that never had a shell half, so its
+cases name `-` for the predecessor.
 
 ### Residuals
 
@@ -2420,94 +2398,10 @@ both ways in `check-assemble`: a pair whose observations agree reaches
 `divergent`. ⭐ `SCHEMA-04`'s sampling model is where several captures become a
 `patterned` field; it sits above the record and nothing has run it.
 
-### ⭐ RECORDS EXIST. `capture-client` run 16 assembled, 2026-09-15
+### ⭐ A RECORD EXISTS. `capture-client` run 17, 2026-09-15
 
-⭐ **`assemble-capture` wrote TWO `Profile`s from real capture artifacts and
-exited 0.** Both lanes of run 16 are green, both attest `measured_build=2.7.5`
-and `stock_client=true`, the two installed binaries have different digests, and
-every one of run 14's four refusals is gone.
-
-⛔ **THE RECORDS ARE `provisional, not publishable`, FOR TWO SEPARATE AND
-CORRECT REASONS**, and neither is a defect:
-
-| what the store says | why it is right |
-| --- | --- |
-| `E-PUB-04` at acquisition: *the routes are unresolved* | the two routes installed different digests, both reported `2.7.5`, and the capture put only ONE of them on the wire - so equal version labels are all that connects them. `ACQ-03` refusing to call that agreement is the whole point of it |
-| `classify_across: divergent`, 2 of 4 overlapping fields | `peer_wire/peer_id` and `tracker_http/peer_id` are each `constant` within a lane and differ between lanes, which is the per-connection tail this record already predicted |
-
-⭐ **So `BuildEquivalent` being unreachable through this path is now MEASURED
-rather than argued**, on real bytes, exactly as the section above says.
-⚠ And nothing was published: a provisional record is not publishable, so the
-settled decision that a green capture publishes automatically did not fire.
-
-#### ⛔ Two defects stood between run 16 and this, and both were scope
-
-⛔ **THE SOURCE ROUTE'S RESOLUTION WAS NEVER UPLOADED.** *Resolve the source tag*
-writes `$RUNNER_TEMP/source/resolution.txt`; the artifact's path list named
-`$RUNNER_TEMP/release/*` and nothing else. ⚠ That list was COMPLETE for as long
-as the source lane resolved through the release listing - which is precisely
-what `E-ACQ-07` refused run 14 for - and it stopped being complete the moment
-that was repaired. ⭐ One repair uncovering the next, twice in one day: the same
-sentence describes the rule-12 scan in `TODO/acquisition.md`.
-
-⛔ **AND THE ASSEMBLER LOOKED FOR EVERY LANE'S RESOLUTION AT
-`release/resolution.txt`**, a literal path, for the same reason: no source lane
-had ever had its own. It reads `<route>/resolution.txt` now and falls back to
-the release name, because a `package` lane has no directory of its own.
-
-⛔ **THE ORIGIN FIELD DIFFERS BY ROUTE KIND AND THE READER ASKED EVERY ROUTE FOR
-`asset_url`.** A release resolution names the asset it selected; a source
-resolution has no asset at all and names the repository it will clone in
-`source_url` - deliberately, so the two slugify into different resolvers and
-`E-ACQ-07` can tell them apart. ⚠ Asking a source lane for `asset_url` refused
-it for a field its document is not supposed to carry, which reads as a
-capture-path gap and is a reader's assumption.
-
-⚠ **AND THE MESSAGE THAT SAID SO NAMED THE WRONG ROUTE KIND.** A lane with no
-resolution was told *a package route has no origin URL in the record* - true of
-a package route, which legitimately has none, and actively misleading for a
-release or source lane whose document did not ship. It names the route and the
-path it looked for now, and that one change is what turned a hunt through a
-healthy lane into a single run that said where to look.
-
-#### ⛔ Twenty-four cases passed over a shape no source lane has ever had
-
-`check-assemble` wrote a **release** resolution for every lane it built,
-`asset_url` and all. ⚠ So the branch that refuses a source route for a missing
-`asset_url` was unreachable, and so was the one that looks under the route's own
-directory: every fixture satisfied both. ⛔ **The fixture was wrong in the
-direction that hides a defect**, which is why twenty-four green cases said
-nothing about either.
-
-⭐ **A source lane is now built the way `resolve-source.sh` really writes one** -
-`source/resolution.txt`, banner `bit-ids/source-resolution/1`, `refs_sha256`
-rather than a listing digest, and no `asset_url` at all. Guard mutation over the
-corrected fixture, each plant verified to have changed the file:
-
-| plant | verdict |
-| --- | --- |
-| the per-route origin field dropped, every route asked for `asset_url` | ⭐ refused, 8 cases fail |
-| the per-route resolution path dropped, back to the literal `release/` | ⭐ refused, 5 cases fail |
-| both restored | ⭐ 24 cases, 24 passed |
-
-⚠ **Neither plant needed a NEW case.** The fixture is what made the existing
-ones able to fail, which is the sharper lesson: a corpus only tests the defects
-it contains an example of.
-
-#### ⚠ How run 16 was assembled, stated exactly
-
-⛔ **The run 16 store was written in a REHEARSAL and is not evidence.** Run 16
-uploaded no source resolution - that is the defect - so the document was
-recovered from the job log, where *Resolve the source tag* `cat`s it. Every
-other byte is run 16's own artifact and the code path is the one the next
-dispatch runs, so it establishes that the assembler is correct and does NOT
-establish that a dispatch produces a record.
-
-### ⭐ AND RUN 17 IS THE ONE THAT DOES. 2026-09-15, no rehearsal
-
-⭐ **`capture-client` run 17 carries `install-source/source/resolution.txt` in
-its own artifact**, both lanes green, and the assembler wrote two records and
-their raw evidence out of it with nothing recovered from a log:
+⭐ **`assemble-capture` wrote two `Profile`s and eight raw evidence files out of
+run 17's own artifacts, exit 0**, with nothing recovered from a log:
 
 ```sh
 ./target/debug/examples/assemble-capture \
@@ -2519,43 +2413,50 @@ their raw evidence out of it with nothing recovered from a log:
 where each `CAP_*` is an unpacked `capture-client-aria2-next-<route>-...`
 artifact and each `INST_*` the matching `install-aria2-next-<route>-...` one.
 
-⭐ **Exit 0, two `Profile`s and eight raw files.** The store is
+What a record carries, read back out of the written JSON:
 
-```text
-profiles/v1/aria2-next/2.7.5/linux/x86-64/elf-binary/cap-{release,source}.json
-raw/v1/aria2-next/2.7.5/linux/x86-64/elf-binary/cap-{release,source}/{release,source}/...
-```
-
-What a record carries, read back out of the written JSON rather than asserted:
-
-| part | what run 17's `cap-source.json` holds |
+| part | run 17's `cap-source.json` |
 | --- | --- |
-| routes | **two**, `route-release` (`github_release`) and `route-source` (`source_build`) |
-| resolvers | `https-api-gh-pkgforge-dev-repos-aninsomniacy-aria2-next-releases` and `https-github-com-aninsomniacy-aria2-next-git` - ⭐ two, which is `E-ACQ-07` satisfied by two indexes rather than by a lane name |
-| deliveries | `https-release-asset` and `git-clone-and-local-build` |
-| observations | **four**, each `constant` with `samples: 1`, each naming its evidence |
-| connectors | **two**, `bit-ids-probe` and `cpython-stdlib` |
-| corroboration | both connectors report one peer_id `2d7142353233302d66333049717569772d69774d` for `peer_wire` - ⭐ the same bytes, from two readers |
-| evidence | **eight** entries with sizes and `sha256`, every one resolving to a file in `raw/` |
+| routes | two: `route-release` (`github_release`), `route-source` (`source_build`) |
+| resolvers | two, a releases listing and a clone URL - `E-ACQ-07` satisfied by two indexes rather than by a lane name |
+| observations | four, each `constant` with `samples: 1`, each naming its evidence |
+| connectors | two, `bit-ids-probe` and `cpython-stdlib`, reporting the same bytes |
+| evidence | eight entries with sizes and `sha256`, every one resolving into `raw/` |
 
-⛔ **AND THE IDENTITY IS NOT THE PRODUCT'S OWN, NOW CORROBORATED.**
-`tracker_http/user_agent` decodes to `qBittorrent/5.2.3`, and every peer ID
-begins `2d714235323330`, which is `-qB5230`. ⚠ A
-stock `aria2-next` announcing as qBittorrent 5.2.3.0 was already measured on run
-11; what is new is that a reader this project did not write agrees.
+⛔ **BOTH RECORDS ARE `provisional` AND NOT PUBLISHABLE**, for two reasons, both
+correct:
 
-⚠ **THE USER AGENT IS CITED DECODED RATHER THAN AS ITS BYTES, AND THAT IS THIS
-CHECK'S DOING.** Writing the thirty-four hex digits out turned
-`check-no-secrets --public` red, correctly: a bare long hex run is the shape of
-a fingerprint, and the allowances this project grants are anchored to named
-shapes - a peer ID or an info hash cited with its phrase, a digest under a key
-that says what it holds. ⭐ The fix is to narrow the citation, never the rule,
-which is what the check's own refusal message asks for.
+- `E-PUB-04` at acquisition: the two routes installed different digests and the
+  capture put only ONE of them on the wire, so equal version labels are all that
+  connects them.
+- `classify_across: divergent`: a peer ID's tail is per connection, so two
+  captures necessarily disagree - which is the section above, now measured on
+  real bytes rather than argued.
 
-⛔ **THE RECORD IS NOT IN THE TREE AND NOTHING IS PUBLISHED.** The store is
-scratch state. ⚠ A provisional record is not publishable, so the settled
-decision that a green capture publishes automatically did not fire and could not
-have.
+⛔ **The store is scratch state rather than the tree, and nothing is published.**
+
+#### ⛔ Three scope defects stood between run 14 and that record
+
+Each list was complete until `E-ACQ-07`'s repair made the source lane resolve its
+own tag, and each defect was found by a dispatch rather than by a reading.
+
+| what | where it is recorded |
+| --- | --- |
+| the rule-12 install scan read the whole workdir while the artifact ships its top level | [`acquisition.md`](acquisition.md), `ACQ-03` |
+| the source route's resolution was never uploaded - the path list named `release/` alone | fixed in `capture-client.yml` |
+| the reader looked for every lane's resolution at a literal `release/resolution.txt`, and asked every route for `asset_url` | fixed in `assemble-capture` |
+
+⚠ A release resolution names its asset; a source resolution has no asset and
+names the clone URL in `source_url`, deliberately, so the two slugify into
+different resolvers. ⛔ The refusal for a missing resolution said *a package route
+has no origin URL*, which is true of a package route and misleading for a lane
+whose document did not ship; it names the route and the path it looked for now.
+
+⚠ **`check-assemble` wrote a RELEASE resolution for every lane**, so twenty-four
+cases passed over a shape no source lane has ever had. A source lane is built the
+way `resolve-source.sh` really writes one now, and with that fixture alone - and
+no new case - dropping the per-route origin fails 8 cases and dropping the
+per-route resolution path fails 5.
 
 ### ⭐ What was repaired here rather than only recorded
 
@@ -3173,139 +3074,74 @@ reads every tracked file, this harness is one, and its literals were findings.
 already built its marker bytes - and the check's own Go file is exempt from
 itself, exactly as both shell halves already were.
 
-### ⭐ `check-docs` ported, and the comparison earned its keep. 2026-09-15
+### ⭐ `check-no-secrets` and `check-docs` ported, both halves of each deleted. 2026-09-15
 
-The binary carries **nine** checks and `check-twins` is down to **five file
-pairs and five rows**. ⛔ **This is the pair that justified the whole
-pre-deletion discipline**, because `--compare` found the two shell halves
-DISAGREEING on their first run together.
+The binary carries **nine** checks and `check-twins` is down to **five file pairs
+and five rows**. ⚠ `check-no-secrets` was the two-row pair, because `--public` is
+a different question rather than a stricter one.
 
-⛔ **THE TWO HALVES READ LINKS DIFFERENTLY AND NOTHING COULD SEE IT.** The `sh`
-half used TWO awk programs - the broken-link pass stripped inline code spans and
-the orphan pass did not - while the PowerShell twin has ONE extractor that strips
-them and feeds both. ⚠ So a page cited only inside backticks was an orphan to one
-half and not to the other, and they agreed on every `check-twins` run for as long
-as both existed, because no page in this tree is cited only that way. That is
-`check-twins`' own documented blind spot: a rule differing only on a shape the
-tree does not contain.
+⛔ **What a port of `check-no-secrets` loses silently is not the patterns.** Two
+properties of the pipeline they sat in decide verdicts and both are carried: the
+allow expressions run over the grep OUTPUT line `path:lineno:text`, because the
+lockfile allowance is anchored to that prefix; and an allowed item is deleted
+FROM the line rather than the line being dropped, because `grep -v` drops lines
+and would take a real credential out of the report beside an allowed digest.
+⚠ The home-path rule is the opposite shape, and that difference is inherited
+rather than tidied.
 
-⭐ **The twin is correct, on the rule's own reasoning.** A code span is not a
-hyperlink; a reader following links never arrives; *an unlinked page is not read,
-so it is not corrected* is exactly what that describes. ⛔ So this is a verdict
-changed DELIBERATELY and recorded, which is what the port contract exists to
-distinguish from one changed by accident: the `sh` half was fixed in the same
-change, and only then did all three agree.
+⛔ **`check-docs` is the pair that justified the pre-deletion comparison.**
+`--compare` found the two shell halves DISAGREEING: the `sh` half read links with
+two awk programs and only the broken-link one stripped inline code spans, so a
+page cited only inside backticks was an orphan to the PowerShell twin and not to
+it. ⚠ No page in this tree is cited that way, so `check-twins` saw them agree for
+as long as both existed - its own documented blind spot.
 
-⛔ **AND THE PORT REPRODUCED A DEFECT THIS REPOSITORY HAD ALREADY WRITTEN DOWN.**
-`docs/conventions/forbidden-patterns.md` records `check-docs.ps1` collapsing
-`a/../` with a GLOBAL replace, where `[^/]+` matches `..` as readily as a
-directory name, so
-`crates/bit-ids/tests/fixtures/../../../../docs/x.md` resolved to
-`crates/bit-ids/docs/x.md`. ⚠ The first Go `collapse` was the same global
-spelling, and it was green over the whole tree and over fourteen planted cases,
-because it is only wrong once a link climbs more than two levels.
+⭐ **The twin is correct** - a code span is not a hyperlink, so a reader following
+links never arrives - and the `sh` half was fixed in the same change. That is a
+verdict changed deliberately and recorded, which is what the port contract exists
+to tell apart from one changed by accident.
 
-⭐ **The repair is not a better regex.** The hand-rolled collapse is deleted and
-`path.Join` does it, which is Go's own and correct - the same argument `repo.go`
-makes for asking `git ls-files` what is in the tree rather than walking it.
+⛔ **And the port reproduced a defect already written down here.**
+[`../docs/conventions/forbidden-patterns.md`](../docs/conventions/forbidden-patterns.md)
+records a GLOBAL replace collapsing `a/../` where `[^/]+` also matches `..`. The
+first Go spelling was the same, and was green over the tree and fourteen cases,
+because it is only wrong past two levels. ⭐ The hand-rolled collapse is deleted
+and `path.Join` does it. ⚠ The case written to prove that cannot refute it,
+measured by planting: `path.Join` normalises first, so the differing branch is
+unreachable. It is kept as a regression guard with its label saying so.
 
-⚠ **AND THE CASE WRITTEN TO PROVE THAT CANNOT REFUTE IT.** Measured by planting:
-with the global spelling restored and the plant verified to have changed the
-file, the four-level case still PASSED, because `path.Join` normalises before any
-collapse runs and the differing branch is unreachable. ⛔ It is kept as a
-regression guard on the ANSWER, with its label saying so rather than claiming a
-proof - the same correction the empty-register case took.
+Cases compared before either half was deleted: **20** for `check-no-secrets` and
+**15** for `check-docs`, all three implementations agreeing on the exit code and
+byte for byte on `--json`. ⚠ The last `check-docs` case was compared against
+halves restored from `git show HEAD:`, because the collapse defect was found
+after the deletion.
 
-⛔ **Fifteen cases, all three implementations agreeing**, run before either half
-was deleted. ⚠ The last of them was compared against halves restored from
-`git show HEAD:`, because the defect above was found after the deletion; a
-comparison that cannot be re-run is a comparison that has to be re-created
-honestly rather than skipped.
+⛔ **The callers moved with them.** `check-defaults`' `secrets` subject moved
+INSIDE the block that gates on the Go build rather than beside it - the
+one-gated-door shape that block's own comment records - and `Invoke-Ported`
+gained a row label separate from the check name, because one row is no longer one
+check.
 
-⚠ **Two things bit while writing the harness.** The placeholder needle used the
-stand-in word `check-placeholders` also looks for, so the harness became that
-rule's finding and five of its cases went red over a clean tree - and then the
-comment explaining the mistake spelled the same literal and did it again. ⭐ A
-harness that plants a pattern cannot spell it, and neither can the comment that
-says so.
+⚠ **A harness that plants a pattern cannot spell it, and neither can the comment
+that says so.** The placeholder needle used the stand-in word
+`check-placeholders` looks for, turning the harness into that rule's finding; the
+comment explaining it then did the same thing again.
 
-### ⛔ A gate row could silently ask the wrong question, and nothing would say so
+### ⛔ Residual: a gate row could ask the wrong question and stay green
 
-⚠ **Filed 2026-09-15 by the guard-mutation pass, not fixed.** The gate runs
-`check-no-secrets` twice, and the second row exists only because `--public` is a
-different question. ⛔ **If either lane stopped passing that flag, the row would
-still be green**, because the default question also passes on a clean tree - so
-the lane would run one question twice and report two rows.
+The gate runs `check-no-secrets` twice and the second row exists only because
+`--public` is a different question. ⛔ **If either lane stopped passing that flag
+the row would still be green**, because the default question also passes on a
+clean tree. `check-gate-rows` compares row NAMES; `check-bitcheck` proves the
+BINARY honours the flag and says nothing about what the runner passes.
 
-⚠ `check-gate-rows` cannot see it: it compares row NAMES, and the name is
-`check-no-secrets (public)` either way. `check-bitcheck` cannot either: it proves
-the BINARY honours the flag - an email is accepted without it and refused with it
-- and says nothing about what the runner passes.
-
-⛔ **It is not new and the port did not cause it.** Before, each lane spelled its
-own flag, `--public` here and `-Public` there, and the same silence applied to
-both. What the port changes is that there is now one spelling, so a check could
-assert it once rather than twice.
+⚠ Not new and not caused by the port: each lane used to spell its own flag, with
+the same silence. What the port changes is that there is one spelling now, so a
+check could assert it once rather than twice.
 
 Acceptance for closing it: a row that runs the public question and asserts
-`"public_rules":true` in the answer it gets - the JSON field exists precisely so
-the answer says which question it answered - mutation-proved by removing the flag
+`"public_rules":true` in the answer it gets, mutation-proved by removing the flag
 from one runner and requiring a refusal rather than a pass.
-
-### ⭐ `check-no-secrets` ported and both halves deleted, 2026-09-15
-
-The binary carries **seven** checks now and `check-twins` is down to **six file
-pairs and six rows**. ⚠ It was the two-row pair - `--public` is a different
-question from the default run rather than a stricter one, so the two modes were
-compared separately - which is why one deletion took eight rows to six.
-
-⛔ **THE PATTERNS WERE THE EASY HALF.** What a port of this check loses silently
-is the SHAPE of the pipeline the patterns were built into, and two properties of
-it decide verdicts:
-
-| the property | what a port that missed it would do |
-| --- | --- |
-| the allow expressions run over the grep OUTPUT LINE, `path:lineno:text` | refuse every registry lockfile digest in the tree: that allowance is anchored `^(.*Cargo\.lock:[0-9]+:checksum = )` and cannot match without the path prefix |
-| an allowed item is DELETED from the line; the line is not dropped | lose a real credential sitting beside an allowed digest, which is the `grep -v` defect `docs/conventions/forbidden-patterns.md` records |
-
-⚠ **And the home-path rule is the opposite shape**: its two exclusions really
-are `grep -v` over the whole line. A port that unified the two would be changing
-a verdict while claiming only to change a language, so the difference is
-inherited rather than tidied.
-
-⛔ **Twenty cases, all three implementations agreeing**, run by
-`check-bitcheck.sh --compare` over both halves before either was deleted: nine
-in the default mode and eleven under `--public`. Eight of the twenty plant
-something that must be ACCEPTED, because over-strictness is where a port fails
-and this rule's accept branches are the narrow ones - a pinned action commit, a
-lockfile digest, a generic `/home/runner/` path, an announce infohash, an
-`.example` credential template, an email without `--public`, a key inside a
-binary file.
-
-⭐ **Three of the cases exist because a port could pass every other one and
-still be wrong**, and each was written against a specific way to get it wrong:
-the lockfile digest is the one that says the allowances read the output line;
-the allowed-digest-beside-a-bare-one is the one that says an allowed item is
-deleted rather than the line dropped; and a forty-six digit run after an
-`Infohash:` field is what the trailing class on that expression is for - without
-it `{40}` blanks the first forty of a longer run and leaves a remainder too
-short to reach the threshold.
-
-⛔ **THE CALLERS MOVED WITH IT, WHICH IS THE LESSON `check-licences` ALREADY
-TAUGHT.** `check-defaults` runs this check as one of its subjects, and it moved
-INSIDE the block that gates on the Go build rather than beside it - a subject
-left outside that condition runs a binary that is not there, a missing command
-answers 127 under every environment, and `run_subject` reports *the same answer
-under all 6* over a subject that never started. ⚠ Both gate lanes moved too, and
-`Invoke-Ported` gained a row label separate from the check name, because one row
-is no longer one check.
-
-⚠ **The PowerShell lane was DRIVEN rather than argued**, on this host: both
-`check-no-secrets` rows run through the binary and pass, which is what
-establishes that the new parameter list binds and that `@ExtraArgs` splats. ⛔
-The extra arguments are not called `$Args` - that is an automatic variable
-inside a function and PowerShell names are case-insensitive, so `$args` collides
-too.
 
 ### The three deep reviews, 2026-09-10
 
@@ -3369,19 +3205,17 @@ written up as a property of the change rather than of the host.
   harness that grew, not a defect, and shrinking it is a decision about how many
   cases a gate should carry rather than a port. Recorded here because the
   measurement was taken here; it belongs to whoever next opens `CI-01`.
-- ⚠ **Seven FILE pairs remain and `check-twins` prints EIGHT rows**, together
-  12.3 seconds of PowerShell against the 96.1 the layer started at. ⛔ The
+- ⚠ **Five file pairs remain and `check-twins` prints five rows**, together about
+  10 seconds of PowerShell against the 96.1 the layer started at. ⛔ The
   remaining wall-clock value of porting them is therefore small and the DRIFT
   value is unchanged, which is the honest ordering argument for doing them after
   sharding rather than before.
-  ⛔ **The two numbers are both real and neither said which unit it was in**,
-  which is this repository's own value-in-two-places defect arriving in its own
-  record. `check-no-secrets` is compared TWICE - once plain and once `--public`,
-  a different question rather than a stricter one - so seven pairs of files
-  produce eight comparison rows. This residual said seven and
-  `docs/history/RESUME.md` said eight while naming seven files. Corrected
-  2026-09-15 by running `sh scripts/common/check-twins.sh` rather than by
-  picking one of the two.
+  ⛔ **SAY WHICH UNIT A COUNT IS IN.** This residual once said seven pairs and
+  `docs/history/RESUME.md` said eight while naming seven files; both were real,
+  because `check-no-secrets` was compared TWICE and seven pairs of files produced
+  eight rows. ⚠ Reconciled by running `sh scripts/common/check-twins.sh` rather
+  than by picking one. It is **five pairs and five rows** now, and the two are
+  equal only because the two-row pair has gone.
 - ⚠ **`check-defaults` runs the Go binary as a subject now.** A Go program
   inherits a different set of host values than a shell script - no `IFS`, and
   `TMPDIR` through the runtime rather than a shell expansion - so that row is
