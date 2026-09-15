@@ -281,6 +281,18 @@ from any working directory.
   comparison costs two process starts and cannot re-enter the gate. ⚠ It compares
   SETS: the two halves schedule differently on purpose, so the order a row
   appears in is not a fact about what either lane runs.
+- [`common/check-public-row.sh`](common/check-public-row.sh) asks whether each
+  gate runner really passes `--public` on the row that exists to ask the public
+  question. ⛔ A row can ask the WRONG question and stay green: the default
+  question also holds on a clean tree, so a runner that stopped passing the flag
+  would keep a row verifying nothing about emails, absolute home paths or long
+  hex. ⚠ `check-gate-rows` compares row NAMES and both runners would go on
+  naming it; `check-bitcheck` proves the BINARY honours the flag and says nothing
+  about what the runner passes. ⭐ The flags are READ OUT OF the two runners and
+  then run, and the binary's own `"public_rules"` is the answer - so a harness
+  spelling the flag itself could not have caught the defect being guarded
+  against. Its control is the default invocation, which must answer
+  `public_rules:false` or the field is not one that moves.
 - `tools/check/licences.go` checks the register in `catalogue/licences.toml`
   against the catalogue and the lockfile in both directions, refuses a row with no
   disposition, and refuses an installer-shaped file in the tree. ⭐ Ported from a

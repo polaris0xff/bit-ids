@@ -3209,7 +3209,7 @@ this project had not met it. ⭐ `path.Dir` is slash-based and is what the map k
 need; `filepath.Join` stays where the code touches the filesystem, because that
 one must be the host's.
 
-### ⛔ Residual: a gate row could ask the wrong question and stay green
+### ⭐ Residual closed: a gate row could ask the wrong question and stay green
 
 The gate runs `check-no-secrets` twice and the second row exists only because
 `--public` is a different question. ⛔ **If either lane stopped passing that flag
@@ -3218,12 +3218,46 @@ clean tree. `check-gate-rows` compares row NAMES; `check-bitcheck` proves the
 BINARY honours the flag and says nothing about what the runner passes.
 
 ⚠ Not new and not caused by the port: each lane used to spell its own flag, with
-the same silence. What the port changes is that there is one spelling now, so a
+the same silence. What the port changed is that there is one spelling now, so a
 check could assert it once rather than twice.
 
-Acceptance for closing it: a row that runs the public question and asserts
-`"public_rules":true` in the answer it gets, mutation-proved by removing the flag
-from one runner and requiring a refusal rather than a pass.
+⭐ **[`../scripts/common/check-public-row.sh`](../scripts/common/check-public-row.sh)
+is that check, 2026-09-15**, and it is a gate row on both lanes - a real row on
+the `sh` one and a declared `n/a` on the PowerShell one, because it reads both
+runners itself and a second implementation would answer the same thing from the
+same two files. The gate is **38 checks** now.
+
+⛔ **The flags are READ OUT OF the runners and then RUN.** A harness that spelled
+`--public` itself could not catch the defect being guarded against, which is a
+runner that stopped passing it - the rule `check-workflow.sh` is built on,
+applied to the gate's own queue. The verdict is the binary's own
+`"public_rules"` field rather than the text of a line in a script.
+
+⚠ **Its control is the half that matters**: the default invocation must answer
+`public_rules:false`, or the field is not one that moves and the assertion would
+hold over a runner passing nothing at all.
+
+Guard mutation, four plants into the runners, each verified to have changed the
+file, clean control either side. All four refused:
+
+| plant | what it reported |
+| --- | --- |
+| the `sh` runner stops passing `--public` | names no flags for that row |
+| the PowerShell runner stops passing `--public` | names no flags for that row |
+| the row is renamed in the `sh` runner | names no flags for that row |
+| the PowerShell runner passes `--all-history` instead | ran it and got `"public_rules":false` |
+
+⛔ **AND ITS FIRST DRAFT BUILT TWO `awk` PROGRAMS OUT OF SHELL STRINGS**, which
+is [`../docs/conventions/shell.md`](../docs/conventions/shell.md) section 1
+exactly: one half died with `awk: syntax error` and the other matched the row's
+LABEL rather than its invocation, reporting the flags as
+`(public)" "$GOBIN" check-no-secrets --public`. ⚠ Both halves read with parameter
+expansion now, which crosses no boundary.
+
+⛔ **AND EDITING THE `.ps1` WITH A TEXT-MODE READ COLLAPSED ITS LINE ENDINGS.**
+`git ls-files --eol` reported `w/mixed` under `attr/text eol=crlf` and `git diff`
+showed nothing, which is the same document's section 5. The edit was redone on
+bytes; `check-project`'s line-ending row is what would have caught it.
 
 ### The three deep reviews, 2026-09-10
 

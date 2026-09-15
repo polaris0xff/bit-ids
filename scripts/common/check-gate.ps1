@@ -352,6 +352,14 @@ Add-Unavailable 'check-staleness' 'a portable Rust subject; it needs store-lib.p
 # implementation of a comparison rather than a second platform's answer.
 Add-Unavailable 'check-gate-rows' 'it runs the sh runner itself, so there is no half to write; CI-07 class D'
 
+# ⛔ AND THIS ONE ASKS WHETHER THIS RUNNER PASSES THE FLAG IT SAYS IT DOES.
+# check-public-row reads the --public flag out of BOTH runners and runs it, so a
+# lane that quietly stopped asking the public question is caught rather than
+# reported green by the default question. ⚠ It reads this file, which is why it
+# is declared here rather than written twice: a PowerShell half would read the
+# same two files and answer the same thing.
+Add-Unavailable 'check-public-row' 'it reads both runners itself, so there is no half to write; CI-07 class D'
+
 # ⛔ AND THIS ONE'S REASON IS AN ENTRY IN FLIGHT RATHER THAN A PLATFORM FACT.
 # check-bitcheck plants defects against the Go binary that CI-10 is porting the
 # checking layer into. ⭐ That binary runs natively on this platform - it is the

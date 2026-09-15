@@ -5,6 +5,26 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-15T07:57:25Z
+
+- ⭐ **A gate row could ask the wrong question and stay green, and now cannot.**
+  `check-no-secrets` runs twice and the second row exists only because
+  `--public` is a different question; a runner that stopped passing the flag
+  kept a green row verifying nothing, because the default question also holds on
+  a clean tree. `check-public-row` reads the flag out of BOTH runners and runs
+  it, and the binary's own `"public_rules"` is the verdict. The gate is **38
+  checks**.
+- ⛔ **A harness that spelled the flag itself could not have caught it**, which
+  is why the flags are read out of the runners - the rule `check-workflow.sh` is
+  built on, applied to the gate's own queue.
+- ⚠ **Its first draft built two `awk` programs out of shell strings** and lost
+  its quoting: one half died with a syntax error, the other matched the row's
+  label rather than its invocation. Parameter expansion crosses no boundary.
+- ⚠ **And editing the `.ps1` with a text-mode read collapsed its line endings**
+  to `w/mixed` under `attr/text eol=crlf`, which `git diff` does not show. Redone
+  on bytes.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-10`. No version bump and no deploy.
+
 ### 2026-09-15T07:46:42Z
 
 - ⭐ **A RECORD HAS BEEN PRODUCED PUBLISHABLE.** Two captures whose lanes
