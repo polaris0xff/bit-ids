@@ -161,9 +161,25 @@ while kill -0 "$INSTALL_PID" 2>/dev/null; do
   [ "$WAITED" -lt "$STEP_SECONDS" ] || break
   sleep "$INTERVAL"
   WAITED=$((WAITED + INTERVAL))
+  # ⛔ `ps` IS BOUNDED, AND IT WAS THE LAST UNBOUNDED COMMAND IN THIS SHELL.
+  # `ps -e` reads `/proc` for every process on the host, including
+  # `/proc/<pid>/cmdline` for `args`, and a read of `/proc` for a task wedged in
+  # the kernel can block in exactly the way this loop exists to observe. ⚠ So the
+  # instrument could hang on the condition it was written to record, and the loop
+  # would never reach the deadline two lines above - which is precisely what
+  # `capture-client` run 26 looked like from outside.
+  # ⛔ THIS ENTRY'S OWN RECORD SAID THE LOOP "ONLY SLEEPS AND COMPARES TWO
+  # INTEGERS", WRITTEN ON 2026-09-16 WITHOUT RE-READING IT. It also runs this,
+  # which is the one thing in it that can block. The claim is corrected where it
+  # was made rather than only here.
+  # ⚠ A `ps` that times out leaves its sample headed and empty, which is itself
+  # the measurement: a timeline that stops having process tables while still
+  # having timestamps says the host stopped answering, not that the loop stopped.
   {
     printf '## +%ss %s\n' "$WAITED" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-    ps -eo pid,ppid,pgid,stat,etimes,comm,args 2>&1 || :
+    timeout "${BIT_IDS_PS_TIMEOUT:-20}" \
+      ps -eo pid,ppid,pgid,stat,etimes,comm,args 2>&1 ||
+      printf '## ps did not answer within %ss\n' "${BIT_IDS_PS_TIMEOUT:-20}"
   } >>"$WORKDIR/watchdog.log"
 done
 

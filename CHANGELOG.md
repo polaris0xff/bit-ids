@@ -37,6 +37,19 @@ Nothing is released yet. Entries accumulate here until the first
   1080, so the killing would have happened outside with nothing to read. Each
   bound outlasts the one inside it: inner sum < `BIT_IDS_STEP_TIMEOUT` < the
   step's `timeout` < the job's `timeout-minutes`, which is 35 rather than 25.
+- ⭐ **RUN 27 LOCALISED THE HANG IN ONE SECOND, USING NAMES RATHER THAN A BOUND.**
+  Three named probes walk the release route's own operations, and all three
+  passed before the wedge: the whole artifact fetched in 1s, staging (`chmod`,
+  `mkdir`, a `cp` across filesystems into `/usr/local/bin`) in 0s, and an `exec`
+  of the downloaded binary in 0s. ⛔ The vendor's endpoint, the network, the
+  filesystem and the binary are ruled out by measurement; *Install the client*
+  performs those same operations and still never returns.
+- ⛔ **`ps -e` WAS THE LAST UNBOUNDED COMMAND IN THE STEP'S OWN SHELL.** It reads
+  `/proc` for every process, so the watchdog could block on the very condition it
+  was written to record, and the deadline two lines above it would never be
+  reached. It is bounded now, and a headed, empty sample is itself a measurement.
+  ⚠ This changelog's earlier claim that the loop "only sleeps and compares two
+  integers" was written without re-reading the loop; it is corrected in the entry.
 - ⛔ **THE `ps` TIMELINE WAS NOT OBTAINED.** Runs 24, 25 and 26 each hung in
   *Install the client* and each uploaded **zero** artifacts, read back from the
   API. ⭐ Run 26 is the sharpest measurement the entry has: three independent

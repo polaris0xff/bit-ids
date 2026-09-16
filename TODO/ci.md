@@ -2463,12 +2463,18 @@ without the step ending - the step's own 780s at 04:26:57, the outer 900s at
 
 ⛔ **A SHELL THAT DOES NOT REACH ITS OWN `[ -lt ]` IS NOT A SHELL THAT IS
 WAITING.** Every previous reading treated this as a bound failing to fire. Run 26
-says the step's process is not *running*: a loop that only sleeps and compares two
-integers cannot overrun its deadline by fourteen minutes while executing. ⭐ That
-is consistent with the step's tree sitting in uninterruptible sleep, which no
-signal clears and which would explain thirteen dispatches failing identically -
-and it is a HYPOTHESIS, named as one, because the thing that would confirm it is
-the `stat` column of the timeline nobody has yet read.
+says the step's process is not getting there.
+
+⛔ **AND THE FIRST VERSION OF THIS PARAGRAPH WAS WRONG ABOUT WHY.** It said *a
+loop that only sleeps and compares two integers cannot overrun its deadline while
+executing*, which was written without re-reading the loop. ⚠ **It also runs
+`ps -eo … args` every iteration**, and that was the last UNBOUNDED command in
+this shell: `ps -e` reads `/proc` for every process on the host, and a read of
+`/proc` for a task wedged in the kernel blocks in exactly the way this loop exists
+to observe. ⭐ **So the instrument could hang on the condition it was written to
+record**, and the deadline two lines above it would never be reached - which is
+precisely what run 26 looked like from outside. The `ps` carries `timeout` now,
+and a sample that is headed and empty is itself the measurement.
 
 ⭐ **THE NEXT INSTRUMENT IS NAMES, NOT BOUNDS, and this workflow already argues
 it.** Its three probe steps exist because *"when nothing inside a job survives,
@@ -2494,6 +2500,33 @@ writes `.probe-only.new` and removes it, a name `binary()` can never find.
 ⭐ **A job that walks all three and still wedges in *Install the client* has
 exonerated the whole release route**, which is a different and equally useful
 answer.
+
+#### ⭐ RUN 27 GAVE EXACTLY THAT ANSWER, IN ONE SECOND. 2026-09-16
+
+⛔ **The release route is exonerated and the wedge is in the plumbing around it.**
+`capture-client` run 27 on `c98ad6d` walked all three probes and then wedged in
+*Install the client*:
+
+| step | started | finished |
+| --- | --- | --- |
+| *Probe the release fetch* | 05:52:48 | 05:52:49 (**1s**, whole artifact) |
+| *Probe staging the fetched artifact* | 05:52:49 | 05:52:49 (**0s**) |
+| *Probe executing the fetched artifact* | 05:52:49 | 05:52:49 (**0s**) |
+| *Install the client* | 05:52:49 | ⛔ **never** |
+
+⭐ **Every operation the route performs completes instantly**: the fetch of the
+whole artifact from the vendor, `chmod`, `mkdir`, a `cp` across filesystems into
+`/usr/local/bin`, and an `exec` of the downloaded binary. ⛔ So the vendor's
+endpoint, the network, the filesystem and the binary are all ruled OUT by
+measurement rather than by argument - and *Install the client*, which performs
+those same operations, still does not return.
+
+⚠ **What is left is what the install does and the probes do not**: the `sudo`
+plumbing, `install-client`'s guard and its rule-12 scan over the workdir, the
+holder report's walk of `/proc`, and the watchdog's own `ps`. ⭐ **The last of
+those was unbounded until this change**, and it is the only one of them that runs
+in the step's own shell - which makes it the first thing the next dispatch
+should be able to exclude.
 
 #### ⛔ The door sweep found the same class behind THREE more doors
 

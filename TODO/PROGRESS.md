@@ -323,11 +323,19 @@ them. The `ps` timeline separates the three.
 
 ⛔ **THE TIMELINE WAS NOT OBTAINED: runs 24, 25 and 26 each hung and uploaded
 ZERO artifacts.** ⭐ Run 26 carried three independent endings, one of which needs
-no signal to reach anything, and all three passed without the step ending. ⛔ A
-loop that only sleeps and compares two integers cannot overrun its deadline by
-fourteen minutes while executing, so the step's process is **not running** - which
-no bound repairs. ⭐ The next instrument is step NAMES rather than a twelfth
-bound; [`ci.md`](ci.md) under `CI-08` carries the argument.
+no signal to reach anything, and all three passed without the step ending, so the
+step's process is not reaching its own deadline check - which no bound repairs.
+
+⭐ **RUN 27 THEN LOCALISED IT IN ONE SECOND, WITH NAMES RATHER THAN A BOUND.**
+Three named probes walk the release route's own operations and all three passed
+before the wedge: the whole artifact fetched in **1s**, staging in **0s**, and an
+`exec` of the downloaded binary in **0s**. ⛔ The vendor's endpoint, the network,
+the filesystem and the binary are ruled OUT by measurement, and *Install the
+client* performs those same operations and still never returns. ⚠ What is left is
+the plumbing around the route - and the watchdog's own `ps -e`, which reads
+`/proc` for every process, was the last **unbounded** command in that shell, so
+the instrument could block on the condition it exists to record.
+[`ci.md`](ci.md) under `CI-08` carries the table.
 
 ⛔ **AND RUN 24 REFUTED BOTH BOUNDS, WHICH NAMES THE OTHER HALF.** The first
 dispatch after the repair hung the same way: *Install the client* was still open

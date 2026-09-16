@@ -165,15 +165,24 @@ left, which is arithmetic rather than measurement; it is timed here.
    measurement this entry has**: it carried three independent endings, one of
    which - `install-step.sh`'s own loop deadline - depends on no signal reaching
    anything, and all three passed without the step ending.
-   ⛔ **So stop reading this as a bound that fails to fire.** A loop that only
-   sleeps and compares two integers cannot overrun its deadline by fourteen
-   minutes *while executing*. The step's process is not running, which no bound
-   can repair. ⚠ Uninterruptible sleep would explain all thirteen dispatches and
-   is a HYPOTHESIS; the `stat` column of the unread timeline is what settles it.
-   ⭐ **THE NEXT INSTRUMENT IS NAMES, NOT BOUNDS**, and `capture-client.yml`
-   already argues it in its probe steps: when nothing inside a job survives, the
-   one signal that does is WHICH STEP the API last reported in progress. Split
-   *Install the client* into named sub-steps. ⛔ Do that before an eleventh bound.
+   ⛔ **So stop reading this as a bound that fails to fire.** The step's process
+   is not reaching its own deadline check, which no bound repairs.
+   ⭐ **RUN 27 THEN LOCALISED IT, IN ONE SECOND.** Three named probes now walk the
+   release route's own operations, and all three passed before the wedge:
+   the fetch of the whole artifact took **1s**, staging (`chmod`, `mkdir`, a `cp`
+   across filesystems into `/usr/local/bin`) **0s**, and an `exec` of the
+   downloaded binary **0s**. ⛔ The vendor's endpoint, the network, the filesystem
+   and the binary are ruled OUT by measurement. *Install the client* performs
+   those same operations and still never returns.
+   ⚠ **What is left is what the install does and the probes do not**: the `sudo`
+   plumbing, `install-client`'s guard and rule-12 scan, the holder report's walk
+   of `/proc`, and the watchdog's own `ps`.
+   ⛔ **`ps -e` WAS THE LAST UNBOUNDED COMMAND IN THAT SHELL** and it reads
+   `/proc` for every process - so the instrument could block on the very condition
+   it was written to record, and the deadline two lines above it would never be
+   reached. It is bounded now. ⚠ An earlier version of this page said the loop
+   "only sleeps and compares two integers"; that was written without re-reading
+   the loop and is corrected here and in `ci.md`.
    ⚠ A residual is filed in `TODO/ci.md`: nested `timeout`s each make their own
    process group, so an orphan survives the bound.
 1. ⛔ **Make a MEASURED record publishable, which is one dispatch away.** Runs 19
