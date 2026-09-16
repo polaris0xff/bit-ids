@@ -337,6 +337,13 @@ the plumbing around the route - and the watchdog's own `ps -e`, which reads
 the instrument could block on the condition it exists to record.
 [`ci.md`](ci.md) under `CI-08` carries the table.
 
+⛔ **Run 28 carries that bound and hung anyway**, twenty-five minutes, so the `ps`
+is **excluded** - and it REPRODUCED run 27's localisation, its three probes
+completing inside one second. ⭐ **The next instrument is the same one, a level
+deeper**: split `install-step.sh`'s work into *Start the install detached* and
+*Await the install*, so the API names which. ⛔ Names localised in one run what
+twelve bounds could not; do not add a thirteenth.
+
 ⛔ **AND RUN 24 REFUTED BOTH BOUNDS, WHICH NAMES THE OTHER HALF.** The first
 dispatch after the repair hung the same way: *Install the client* was still open
 **twenty minutes** in, past its privileged 780s bound and its outer 900s one -

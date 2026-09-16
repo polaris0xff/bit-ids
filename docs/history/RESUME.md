@@ -183,6 +183,15 @@ left, which is arithmetic rather than measurement; it is timed here.
    reached. It is bounded now. ⚠ An earlier version of this page said the loop
    "only sleeps and compares two integers"; that was written without re-reading
    the loop and is corrected here and in `ci.md`.
+   ⛔ **RUN 28 CARRIES THAT BOUND AND HUNG ANYWAY**, twenty-five minutes, past the
+   loop's own 780s and the outer 900s - so the `ps` is **excluded**. ⭐ It also
+   REPRODUCED run 27: its three probes completed inside the same second, so two
+   runs agree the route is instantaneous while the step performing it does not
+   return.
+   ⭐ **NEXT INSTRUMENT: the same one, one level deeper.** Split what
+   `install-step.sh` does into two named steps, *Start the install detached* and
+   *Await the install*. ⛔ Names localised in one run what twelve bounds could not;
+   do not add a thirteenth bound.
    ⚠ A residual is filed in `TODO/ci.md`: nested `timeout`s each make their own
    process group, so an orphan survives the bound.
 1. ⛔ **Make a MEASURED record publishable, which is one dispatch away.** Runs 19

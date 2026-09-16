@@ -2528,6 +2528,36 @@ those was unbounded until this change**, and it is the only one of them that run
 in the step's own shell - which makes it the first thing the next dispatch
 should be able to exclude.
 
+#### ⛔ RUN 28 EXCLUDED THE `ps`, AND REPRODUCED THE LOCALISATION
+
+⚠ **`capture-client` run 28 on `ae76d03` carries the bounded `ps` and hung
+anyway**: install began 06:05:12 and the step was still open **twenty-five
+minutes** later, past the loop's own 780s deadline at 06:18:12 and past the outer
+900s at 06:20:12. ⛔ So the watchdog's `ps` is **not** the wedge, which is what
+bounding it was for - a candidate excluded by measurement rather than argued away.
+
+⭐ **And run 28 REPRODUCED run 27's localisation.** Its three probes completed
+inside the same second, 06:05:12, so two independent runs agree that the release
+route's own operations are instantaneous while the step that performs them does
+not return.
+
+⛔ **THE CANDIDATE SET IS NOW SMALL AND NAMED.** What *Install the client* does
+that the probes do not, minus the excluded `ps`:
+
+| candidate | where it runs |
+| --- | --- |
+| the `setsid`/`sudo` plumbing that launches the install | `install-step.sh`, this shell |
+| `assert-disposable --marker`, the claim guard | `install-client.sh`, as root |
+| the rule-12 secret scan: `find` plus `grep -IlE` over the workdir | `install-client.sh`, as root |
+| `report-holders.sh` walking `/proc/[0-9]*/fd/*` | after the loop, already bounded at 60s |
+
+⭐ **THE NEXT INSTRUMENT IS THE SAME ONE, ONE LEVEL DEEPER.** Run 27 proved that
+names localise where twelve bounds could not. Split what `install-step.sh` does
+into two named steps - *Start the install detached* and *Await the install* - so
+the API says which of them the job last reported. ⛔ A job that wedges in the
+first has the `sudo`/`setsid` launch; one that wedges in the second has the
+install itself, and `install-client`'s own work can then be split the same way.
+
 #### ⛔ The door sweep found the same class behind THREE more doors
 
 ⚠ **`install-client` was not the only caller, and the enumeration written from

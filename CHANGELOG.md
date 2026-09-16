@@ -44,6 +44,13 @@ Nothing is released yet. Entries accumulate here until the first
   of the downloaded binary in 0s. ⛔ The vendor's endpoint, the network, the
   filesystem and the binary are ruled out by measurement; *Install the client*
   performs those same operations and still never returns.
+- ⛔ **RUN 28 EXCLUDED THE `ps` AND REPRODUCED THE LOCALISATION.** It carries the
+  bound and hung anyway - twenty-five minutes, past the loop's own 780s and the
+  outer 900s - so the watchdog's `ps` is not the wedge. ⭐ Its three probes
+  completed inside the same second, so two independent runs agree that the
+  route's operations are instantaneous while the step performing them does not
+  return. ⭐ The next instrument is the same one a level deeper: split
+  `install-step.sh`'s work into two named steps.
 - ⛔ **`ps -e` WAS THE LAST UNBOUNDED COMMAND IN THE STEP'S OWN SHELL.** It reads
   `/proc` for every process, so the watchdog could block on the very condition it
   was written to record, and the deadline two lines above it would never be
