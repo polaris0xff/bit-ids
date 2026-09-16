@@ -532,19 +532,31 @@ if lift "$CLIENT_WF" linux "Install the client" "$WORK/install.sh"; then
   # hang not happening over a plant that had duplicated the wrong file. Written
   # before the redirection, `3>&1` is the step's own pipe.
   #
-  # ⚠ IT PLANTS IN THE TREE'S COPY OF THE STEP SCRIPT rather than in the lifted
-  # body, because the body is now one `timeout` around that script. The tracked
-  # file is never touched: the copy under the scratch tree is.
-  # ⛔ THE DOLLAR SIGNS ARE THE POINT. This is the script's own text, matched and
+  # ⛔ IT PLANTS IN THE LIFTED BODY NOW, AND THAT MOVE IS THE 2026-09-16 REPAIR.
+  # It used to plant in the tree's copy of `install-step.sh`, on the reasoning
+  # that the body was one `timeout` around that script. ⚠ That reasoning was
+  # correct and the LEVEL was wrong: the step's pipe was reachable from
+  # `install-step.sh` at all only because that script inherited it, which is
+  # exactly the defect run 24 measured - a step still open twenty minutes in,
+  # having passed both its bounds. The body hands the whole subtree a FILE now,
+  # so `install-step.sh` can no longer reach the step's pipe and a plant there
+  # would duplicate a log rather than the pipe, reporting no hang over a tree
+  # that had genuinely stopped being able to hang.
+  # ⭐ So the plant goes where the pipe actually is: the body's own redirection.
+  # ⚠ THE ORDER OF THE REDIRECTIONS IS STILL THE WHOLE PLANT. Written BEFORE the
+  # `>`, `3>&1` duplicates the step's own pipe; written after, it would duplicate
+  # the log and prove nothing.
+  # ⛔ THE DOLLAR SIGNS ARE THE POINT. This is the body's own text, matched and
   # replaced literally; a shell that expanded them would look for a line the file
   # does not contain and the plant would not apply.
+  cp "$WORK/install.sh" "$WORK/install-leaky.sh"
   # shellcheck disable=SC2016
-  if replace_once "$TREE/scripts/acquisition/install-step.sh" \
-    '>"$WORKDIR/step.log" 2>&1 &' \
-    '3>&1 >"$WORKDIR/step.log" 2>&1 &'; then
+  if replace_once "$WORK/install-leaky.sh" \
+    '>"$RUNNER_TEMP/install-step.log" 2>&1 </dev/null' \
+    '3>&1 >"$RUNNER_TEMP/install-step.log" 2>&1 </dev/null'; then
     stub_adapter "sleep $LEAK_SECONDS &"
     rm -rf "$TREE/temp/install-package" "$TREE/temp/install-package.txt"
-    run_body "$WORK/install.sh" default "$TREE"
+    run_body "$WORK/install-leaky.sh" default "$TREE"
     hangs "sh       one leaked descriptor onto the step's output brings it back" 0
   else
     fail "sh       the leaked-descriptor plant did not apply"

@@ -2391,6 +2391,40 @@ for 600s under a 20s step bound: **exit 124 at 21 seconds, with
 ⛔ That is the whole deliverable - a hung step that ENDS and leaves its timeline
 on the runner for the upload to collect.
 
+#### ⛔ RUN 24 REFUTED THE BOUNDS AND NAMED THE OTHER HALF. 2026-09-16
+
+⭐ **The first dispatch after the repair hung too, and that is the measurement
+rather than a setback.** `capture-client` run 24 on `14f4acd`, one release lane:
+*Install the client* started at 02:50:45 and was **still open twenty minutes
+later**, having passed BOTH of its bounds - the privileged 780s at 03:03:45 and
+the outer 900s at 03:05:45. ⛔ That takes this entry's tally of bounds measured
+not to end this step from seven to **ten**.
+
+⛔ **AND TEN BOUNDS FAILING THE SAME WAY IS NOT TEN PROBLEMS.** A `run:` step ends
+when its command has exited **AND** its output pipe has reached end of file. Every
+bound this entry has ever added acts on the first condition. Not one of them can
+act on the second, so a held pipe defeats all ten identically - and adding an
+eleventh would too.
+
+⛔ **THIS WORKFLOW ALREADY STATED THE GUARANTEE AND HELD IT ONE LEVEL TOO LOW.**
+Its own comment reads *"nothing the route spawns inherits this step's output"*,
+and `install-step.sh` does redirect everything IT starts - then inherits the
+step's pipe **itself**. So the promise covered the route's children and not the
+shell holding the door open for them. ⚠ That is this project's recurring class
+again, a guard whose scope is narrower than the thing it guards, this time inside
+the sentence that claims otherwise.
+
+⭐ **The repair is structural rather than another bound.** The step body hands
+`install-step.sh` and its whole subtree a **file**, and cats it afterwards, so the
+step's pipe is held by the step's own shell and by nothing else. The step then
+ends when that shell does, whatever the route left running - which is the first
+version of this guarantee that does not depend on a signal reaching anything.
+
+⚠ **`report-holders.sh` has been aimed at the wrong descriptor the whole time.**
+It is pointed at `step.log`, and `holders.log` duly reported `0 holder(s)` on
+every green run. The file that keeps a step open is the step's own **stdout**,
+which nothing has ever asked about.
+
 #### ⛔ The door sweep found the same class behind THREE more doors
 
 ⚠ **`install-client` was not the only caller, and the enumeration written from

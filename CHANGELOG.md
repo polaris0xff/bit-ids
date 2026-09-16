@@ -37,6 +37,21 @@ Nothing is released yet. Entries accumulate here until the first
   1080, so the killing would have happened outside with nothing to read. Each
   bound outlasts the one inside it: inner sum < `BIT_IDS_STEP_TIMEOUT` < the
   step's `timeout` < the job's `timeout-minutes`, which is 35 rather than 25.
+- ⛔ **RUN 24 REFUTED BOTH BOUNDS AND NAMED THE OTHER HALF.** The first dispatch
+  after the repair hung identically - *Install the client* still open twenty
+  minutes in, past its privileged 780s bound and its outer 900s one - taking the
+  tally of bounds measured not to end this step to **ten**. ⭐ Ten bounds failing
+  the same way is one problem: a step ends when its command has exited **and**
+  its output pipe has reached end of file, and every bound ever added acts on the
+  first condition only.
+- ⭐ **So the repair stopped being a bound.** The step body hands
+  `install-step.sh` and its whole subtree a file and cats it afterwards, so the
+  step's pipe is held by the step's own shell and nothing else. ⚠ The workflow
+  had claimed that guarantee in a comment while holding it one level too low.
+  The leaked-descriptor control moved up with it, to where the pipe actually is.
+- ⚠ **`report-holders.sh` is aimed at the wrong descriptor**, which is why
+  `holders.log` reported `0 holder(s)` on every green run: the file that keeps a
+  step open is the step's own stdout, and nothing has ever asked about it.
 - ⚠ **A residual is filed rather than rushed**: nested `timeout`s each create
   their own process group, so the privileged bound does not reach the adapter's,
   and an orphan survives. It does not block the deliverable and the fix changes

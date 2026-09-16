@@ -135,10 +135,23 @@ left, which is arithmetic rather than measurement; it is timed here.
    the repaired tree exited **0 in 0s** with a full record. ⭐ Driven as uid 1001
    against a 600s install under a 20s step bound: **124 at 21s, `watchdog.log`
    with four samples, `holders.log` naming the survivor.**
-   ⚠ **What is NOT established is that this is the whole of run 21's hang.** It
-   is a defect that reproduces that exact signature and it is the prerequisite
-   for any hung run reaching an upload. **A dispatch is what settles it**, and
-   the timeline now survives to be read.
+   ⛔ **RUN 24 THEN REFUTED BOTH BOUNDS, AND THAT IS THE REAL FINDING.** The
+   first dispatch after the repair hung identically: *Install the client* still
+   open **twenty minutes** in, past the privileged 780s and the outer 900s. The
+   tally of bounds measured not to end this step is **ten**.
+   ⭐ **Ten bounds failing the same way is ONE problem.** A `run:` step ends when
+   its command has exited AND its output pipe has reached end of file; every
+   bound ever added here acts on the first condition only, so a held pipe defeats
+   all ten and would defeat an eleventh.
+   ⭐ **So the repair stopped being a bound.** The step body hands
+   `install-step.sh` and its whole subtree a FILE and cats it afterwards, so the
+   step's pipe is held by the step's own shell and nothing else. ⚠ The workflow
+   had claimed that guarantee in a comment while holding it one level too low -
+   `install-step.sh` redirected everything it started and then inherited the pipe
+   itself.
+   ⚠ **`report-holders.sh` is aimed at the wrong descriptor** and has reported
+   `0 holder(s)` on every green run: the file that keeps a step open is the
+   step's own stdout, which nothing asks about.
    ⚠ A residual is filed in `TODO/ci.md`: nested `timeout`s each make their own
    process group, so an orphan survives the bound.
 1. ⛔ **Make a MEASURED record publishable, which is one dispatch away.** Runs 19

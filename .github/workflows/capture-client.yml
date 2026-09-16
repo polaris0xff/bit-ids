@@ -269,6 +269,20 @@ jobs:
       # that pipe keeps the step open with an exit code of 0 sitting in it.
       # `scripts/ci/check-step-bodies.sh` runs this step's body and measures both
       # halves of that.
+      #
+      # ⛔ THAT CLAIM WAS NARROWER THAN THE TRUTH UNTIL 2026-09-16, AND RUN 24 IS
+      # THE MEASUREMENT. `install-step.sh` redirected everything IT started, and
+      # then inherited the step's own pipe itself - so the guarantee stopped one
+      # level above where it was written. Run 24's install step was still open
+      # **twenty minutes** in, having passed BOTH its bounds: the privileged 780s
+      # at 03:03:45 and the outer 900s at 03:05:45. A bound that fires cannot end
+      # a step whose pipe is still held, which is this file's own sentence used
+      # against it.
+      #
+      # ⭐ SO THE WHOLE SUBTREE GETS A FILE. `install-step.sh` and everything
+      # beneath it write to `install-step.log`; this shell cats it afterwards.
+      # The step's pipe is then held by THIS shell and nothing else, so the step
+      # ends when this shell does, whatever the route left running.
       - name: Install the client
         env:
           ADAPTER: scripts/capture/adapters/${{ matrix.adapter }}.sh
@@ -335,7 +349,21 @@ jobs:
         # resort that gets the job to its uploads.
         # ⚠ `${OUTER_TIMEOUT:-1080}` keeps this line runnable OUTSIDE a dispatch,
         # which is what `check-step-bodies` does with it.
-        run: timeout -k 30 "${OUTER_TIMEOUT:-1080}" sh scripts/acquisition/install-step.sh
+        #
+        # ⛔ THE REDIRECTION IS THE POINT AND ITS ORDER MATTERS. `>file 2>&1`
+        # hands the whole subtree a regular file, so no descendant can hold this
+        # step's pipe. ⚠ `</dev/null` too: a descendant inheriting the step's
+        # stdin is the same class through the door nobody watches.
+        # ⚠ AND THE EXIT CODE IS CARRIED BY HAND, because the last command here
+        # is the `cat` and a step that reported the cat's status would call a
+        # refused install green.
+        run: |
+          set -u
+          timeout -k 30 "${OUTER_TIMEOUT:-1080}" sh scripts/acquisition/install-step.sh \
+            >"$RUNNER_TEMP/install-step.log" 2>&1 </dev/null
+          rc=$?
+          cat "$RUNNER_TEMP/install-step.log" || true
+          exit "$rc"
         # ⚠ The body this replaced is in that file, unchanged in what it does.
 
       # ⛔ BOTH ADDRESS FAMILIES. A host with IPv4 unplugged and IPv6 up still
@@ -484,6 +512,7 @@ jobs:
             ${{ runner.temp }}/install-${{ matrix.route }}/*.log
             ${{ runner.temp }}/install-${{ matrix.route }}/*.err
             ${{ runner.temp }}/install-${{ matrix.route }}.txt
+            ${{ runner.temp }}/install-step.log
             ${{ runner.temp }}/release/*.txt
             ${{ runner.temp }}/release/*.json
             ${{ runner.temp }}/release/*.err

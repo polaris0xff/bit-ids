@@ -311,6 +311,17 @@ what no local drive had ever been - every session host here is `root`.
 | a bound inside `$( )` is not a bound: a substitution ends on PIPE end-of-file, not on the child's exit | an adapter leaving one `sleep` behind still blocked its substitution at **25s** under a **4s** bound | `adapter_run` hands the adapter a FILE; all four adapter calls go through it, three of which had carried **no bound at all** |
 | an unprivileged bound cannot signal a root tree | `timeout -k 2 5` around `sudo … sleep 120` exited **124 on schedule** and left the root process alive with **PPID 1** | the bound is inside the `sudo` now, which is the one place seven bounds had not been put |
 
+⛔ **AND RUN 24 REFUTED BOTH BOUNDS, WHICH NAMES THE OTHER HALF.** The first
+dispatch after the repair hung the same way: *Install the client* was still open
+**twenty minutes** in, past its privileged 780s bound and its outer 900s one -
+taking the tally of bounds measured not to end this step to **ten**. ⛔ Ten bounds
+failing identically is one problem: a `run:` step ends when its command has exited
+**and** its output pipe has reached end of file, and every bound ever added here
+acts only on the first. ⭐ So the step body now hands `install-step.sh` and its
+whole subtree a **file** and cats it afterwards; the step's pipe is held by the
+step's own shell alone, and the step ends when that shell does. ⚠ The workflow had
+claimed exactly this guarantee while holding it one level too low.
+
 ⭐ **Mutation-proved over the real script, same plant against both halves**:
 `HEAD` exited **124 still blocked at 70s with no output at all** - runs 21, 22
 and 23's exact signature - and the repaired tree exited **0 in 0s** with a full
