@@ -2641,10 +2641,41 @@ reach its target. This one is GitHub's own supervisor, which owns the step's
 process tree and is the thing that cancels jobs. It could not end the step either.
 
 ⭐ **So the step cannot be made to end, and the artifact cannot be collected
-through any path that requires it to.** Combined with the byte-identical finding
-above - the same install code ran green at six seconds and then hung, with no
-change in between - that is a defect in the host rather than in this tree, and it
-is why no thirteenth, fourteenth or fifteenth bound is worth writing.
+through any path that requires it to.**
+
+#### ⛔ AND THE HANG IS INTERMITTENT ON IDENTICAL BYTES, WHICH REFUTES TWO READINGS
+
+⛔ **Read the digests before believing either of the readings above.** The install
+record a green run writes carries `adapter_sha256`, and the green run 20 attempt 2
+recorded `a90c0441...`:
+
+| commit | adapter sha256 | install-client | install-step | runs |
+| --- | --- | --- | --- | --- |
+| `c3c9f6c` | `a90c0441` | `db3044b9` | `1e3cf608` | 19 ⭐ green |
+| `95e90f5` | `a90c0441` | `db3044b9` | `1e3cf608` | 20 a1 and a2 ⭐ green |
+| `40ed628` | `a90c0441` | `db3044b9` | `1e3cf608` | 21, 22 ⛔ hung |
+
+⛔ **Runs 21 and 22 ran the SAME INSTALL BYTES as the green run 20 attempt 2**,
+which finished at **15:59:43** - between run 21 ending at 15:15 and run 23
+starting at 16:07. So a green run and two hung runs, on identical code, inside one
+hour.
+
+⛔ **TWO THINGS THIS ENTRY RECORDED TODAY ARE THEREFORE WRONG.** *The cause is not
+in this repository* was read as a defect in the host, and a host-wide defect does
+not go green at 15:50 between two hangs. *The commit is the variable* is refuted
+by the digest table above. ⭐ What is actually established is narrower and
+stronger: **the same bytes hang sometimes and not others**, three green then nine
+consecutive hangs, with no code difference between the two groups.
+
+⚠ **AND THE `aria2` LEAD DOES NOT FIT THESE RUNS**, checked on 2026-09-16 because
+the operator remembered the original hang being resolved by replacing `aria2`
+with `aria2-next` - which is true and is `CLIENT-14`. Every run from 19 to 31
+dispatched `aria2-next`, by job name; the adapter references bare `aria2` only as
+JSON-RPC method names; `aria2c-next` appears nowhere in this repository's history;
+and the vendor binary prints its version in 0s under **any** `argv[0]`, measured
+over `aria2c-next`, `aria2-next`, `aria2c` and an unrelated name. ⛔ The real
+`install-client`, driven here against the real adapter and the real release URL,
+exits 0 in **one second**.
 
 #### ⛔ The door sweep found the same class behind THREE more doors
 

@@ -142,8 +142,18 @@ left, which is arithmetic rather than measurement; it is timed here.
    and 23 hung for thirty minutes on **byte-identical install code**. The window's
    commits moved `capture-client.sh` and the assembler, neither of which
    *Install the client* reads. ⚠ A correlation with a commit window is not a
-   correlation with a change. What is left is the runner image, the vendor's
-   endpoint, or the network - and the timeline separates them.
+   correlation with a change.
+   ⛔ **AND IT IS INTERMITTENT ON IDENTICAL BYTES.** The adapter,
+   `install-client.sh` and `install-step.sh` are byte-identical at `95e90f5` and
+   `40ed628`, by digest, and the green run 20 attempt 2 on the first finished at
+   **15:59:43** - between run 21 ending at 15:15 and run 23 starting at 16:07,
+   both hung on the second. ⚠ So it is neither the commit nor a host-wide defect:
+   a host defect does not go green in the middle of the hung window. ⭐ **The same
+   bytes hang sometimes and not others.** Do not record a code cause without a
+   digest comparison first.
+   ⚠ **The `aria2` vs `aria2-next` lead is checked and does not fit runs 19-31**:
+   all dispatched `aria2-next`, `aria2c-next` is nowhere in this history, and the
+   vendor binary answers `--version` in 0s under any `argv[0]`.
    ⛔ **RUN 24 THEN REFUTED BOTH BOUNDS, AND THAT IS THE REAL FINDING.** The
    first dispatch after the repair hung identically: *Install the client* still
    open **twenty minutes** in, past the privileged 780s and the outer 900s. The

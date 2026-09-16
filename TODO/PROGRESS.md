@@ -317,9 +317,17 @@ green run and the hung ones ran the same install bytes; [`ci.md`](ci.md) under
 `CI-08` carries the two diffs. ⚠ The recorded lead - *the hang correlates with
 this session's commits* - is refuted by the tree. Those commits moved
 `capture-client.sh` and the assembler, neither of which *Install the client*
-reads. ⛔ So every repair below is a real defect that is **not** the cause, and
-what is left is the runner image, the vendor's endpoint or the network between
-them. The `ps` timeline separates the three.
+reads. ⛔ So every repair below is a real defect that is **not** the cause.
+
+⛔ **AND IT IS INTERMITTENT ON IDENTICAL BYTES, which refutes the host reading
+too.** The adapter, `install-client.sh` and `install-step.sh` are byte-identical
+at `95e90f5` and `40ed628`, by digest - and run 20 attempt 2 on the first finished
+**green at 15:59:43**, between run 21 ending at 15:15 and run 23 starting at
+16:07, both hung on the second. ⚠ A host-wide defect does not go green in the
+middle of the hung window, and *the commit is the variable* is refuted by the same
+table. ⭐ What is established is narrower: **the same bytes hang sometimes and not
+others** - three green, then nine consecutive hangs, with no code difference
+between the groups. [`ci.md`](ci.md) under `CI-08` carries the digests.
 
 ⛔ **THE TIMELINE WAS NOT OBTAINED: runs 24, 25 and 26 each hung and uploaded
 ZERO artifacts.** ⭐ Run 26 carried three independent endings, one of which needs
