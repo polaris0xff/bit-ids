@@ -334,6 +334,13 @@ the subjects of `62e1a68`, `d64c51c`, `facf9a9`, `e2d1891` and `aba7142`. They
 are not retro-corrected. ⚠ One clock read at the start of a session is not a
 stamp for the commits that follow it.
 
+⛔ **AND `cc86999`'s SUBJECT SAYS `05:02:41Z` WHERE ITS AUTHOR DATE IS
+`04:58:19Z`.** The stamp was typed into the message before the `date` in the same
+command had printed, so the clock WAS read and its answer was not the one used.
+It is recorded rather than rewritten, like the others. ⚠ The habit that prevents
+it is reading the clock in a SEPARATE call and copying the value it printed;
+composing both in one command puts the writing before the reading.
+
 **No repository owner or name is hardcoded anywhere in this tree.**
 
 `check-remote-items` cannot run on a session host and installing `gh` does not
