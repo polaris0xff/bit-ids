@@ -559,8 +559,23 @@ if lift "$CLIENT_WF" linux "Install the client" "$WORK/install.sh"; then
   # are not reachable.
   # ⚠ 124 IS coreutils' VERDICT FOR "IT NEVER ANSWERED", and it is the whole
   # point: the step ENDS, so the job goes on to upload the evidence.
+  #
+  # ⛔ THE LITERAL CARRIES THE WHOLE `${OUTER_TIMEOUT:-1080}` AND THAT IS
+  # DELIBERATE. The bound became per route on 2026-09-16 and moved into the
+  # step's `env:`, because a `${{ }}` expression left in the `run:` line is not
+  # shell and this harness LIFTS that line - measured the same day, five cases
+  # failed at once over an unexpanded expression. ⚠ A literal that drifts is
+  # caught rather than skipped: `replace_once` demands exactly one hit and that
+  # the file actually changed, so a stale pattern reports *did not apply* rather
+  # than a plant that silently proved nothing.
   cp "$WORK/install.sh" "$WORK/install-bounded.sh"
-  if replace_once "$WORK/install-bounded.sh" 'timeout -k 30 1080 ' 'timeout -k 1 2 '; then
+  # ⚠ SC2016 is the point rather than an oversight: `replace_once` matches a
+  # LITERAL, so the `${OUTER_TIMEOUT:-1080}` must arrive unexpanded. Expanding it
+  # here would plant against this harness's own environment instead of against
+  # the text the workflow ships.
+  # shellcheck disable=SC2016
+  if replace_once "$WORK/install-bounded.sh" \
+    'timeout -k 30 "${OUTER_TIMEOUT:-1080}" ' 'timeout -k 1 2 '; then
     stub_adapter 'sleep 20'
     rm -rf "$TREE/temp/install-package" "$TREE/temp/install-package.txt"
     run_body "$WORK/install-bounded.sh" default "$TREE"

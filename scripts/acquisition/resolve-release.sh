@@ -125,7 +125,17 @@ WORKDIR=$(CDPATH='' cd -- "$WORKDIR" && pwd)
 # caller learns this target has no second route rather than watching a fetch of
 # `https:///releases` fail with something that names nothing.
 DESCRIBE="$WORKDIR/describe.txt"
-sh "$ADAPTER" describe >"$DESCRIBE" 2>"$WORKDIR/describe.err" ||
+# ⛔ BOUNDED, BECAUSE THIS CALL HAD NO LIMIT AT ALL UNTIL 2026-09-16 and it runs
+# in *Resolve the release artifact* - a step whose job is to answer before the
+# host's route is cut. An adapter that never returned here wedged the job with
+# nothing to read, which is the same way `capture-client` runs 21, 22 and 23 were
+# cancelled with no log and no artifact. ⚠ The redirection was already right: the
+# adapter gets a FILE, so nothing it spawns can hold this shell's pipe.
+DESCRIBE_SECONDS=${BIT_IDS_DESCRIBE_TIMEOUT:-30}
+DESCRIBE_KILL_AFTER=${BIT_IDS_KILL_AFTER:-20}
+command -v timeout >/dev/null 2>&1 || cannot "timeout is not on this host"
+timeout -k "$DESCRIBE_KILL_AFTER" "$DESCRIBE_SECONDS" sh "$ADAPTER" describe \
+  </dev/null >"$DESCRIBE" 2>"$WORKDIR/describe.err" ||
   cannot "the adapter could not describe itself"
 field() {
   awk -F= -v k="$1" '$1 == k { sub(/^[^=]*=/, ""); print; exit }' "$DESCRIBE"

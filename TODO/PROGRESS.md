@@ -301,6 +301,25 @@ host before the route runs now and records `preexisting_version` and `acquired`,
 so the fact is in the record; ⛔ **nothing yet refuses a pair on it**, and
 `ACQ-03` carries that as a residual.
 
+⭐ **THE CAPTURE HANG IS REPRODUCED ON THIS HOST AND REPAIRED, 2026-09-16.** Two
+defects carry it, and neither was findable by reading the install path: both were
+found by driving it as an **unprivileged** user, which is what a runner is and
+what no local drive had ever been - every session host here is `root`.
+
+| defect | measurement | repair |
+| --- | --- | --- |
+| a bound inside `$( )` is not a bound: a substitution ends on PIPE end-of-file, not on the child's exit | an adapter leaving one `sleep` behind still blocked its substitution at **25s** under a **4s** bound | `adapter_run` hands the adapter a FILE; all four adapter calls go through it, three of which had carried **no bound at all** |
+| an unprivileged bound cannot signal a root tree | `timeout -k 2 5` around `sudo … sleep 120` exited **124 on schedule** and left the root process alive with **PPID 1** | the bound is inside the `sudo` now, which is the one place seven bounds had not been put |
+
+⭐ **Mutation-proved over the real script, same plant against both halves**:
+`HEAD` exited **124 still blocked at 70s with no output at all** - runs 21, 22
+and 23's exact signature - and the repaired tree exited **0 in 0s** with a full
+install record. ⭐ And driven as uid 1001 against a 600s install under a 20s step
+bound: **exit 124 at 21s, `watchdog.log` carrying four samples**. ⛔ A hung step
+ENDS now and leaves its timeline for the upload, which is what three cancelled
+dispatches could never do. ⚠ [`ci.md`](ci.md) under `CI-08` carries an orphan
+residual the bound does not reach.
+
 ⭐ **The aria2 hang is bounded and three recorded causes are refuted.** Both
 runs 3 and 4 say `0 newly installed`, so no package operation happened,
 `needrestart` never ran, and the letter in `NEEDRESTART_MODE` could not have been

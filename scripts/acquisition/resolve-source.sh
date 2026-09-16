@@ -121,7 +121,17 @@ mkdir -p "$WORKDIR" || cannot "cannot create $WORKDIR"
 WORKDIR=$(CDPATH='' cd -- "$WORKDIR" && pwd)
 
 DESCRIBE="$WORKDIR/describe.txt"
-sh "$ADAPTER" describe >"$DESCRIBE" 2>"$WORKDIR/describe.err" ||
+# ⛔ BOUNDED, for the reason its release-route sibling gives: this call carried no
+# limit until 2026-09-16 while the `git ls-remote` fifty lines below had carried
+# `timeout 120` all along. ⚠ That is the convention holding on one of two paths
+# through one file, which is the shape `check-adapters` exists for and does not
+# reach - its scope is a fetch INSIDE an adapter, not a call site that invokes
+# one.
+DESCRIBE_SECONDS=${BIT_IDS_DESCRIBE_TIMEOUT:-30}
+DESCRIBE_KILL_AFTER=${BIT_IDS_KILL_AFTER:-20}
+command -v timeout >/dev/null 2>&1 || cannot "timeout is not on this host"
+timeout -k "$DESCRIBE_KILL_AFTER" "$DESCRIBE_SECONDS" sh "$ADAPTER" describe \
+  </dev/null >"$DESCRIBE" 2>"$WORKDIR/describe.err" ||
   cannot "the adapter could not describe itself"
 field() {
   awk -F= -v k="$1" '$1 == k { sub(/^[^=]*=/, ""); print; exit }' "$DESCRIBE"

@@ -26,7 +26,10 @@
 #   ADAPTER=<path> ROUTE=<name> RUNNER_TEMP=<dir> sh scripts/acquisition/install-step.sh
 #
 # Exit codes: 0 installed, 1 the route or a guard refused, 2 could not run,
-# 124 from the caller's `timeout` when this file itself never answered.
+# 124 from a `timeout` that fired. ⚠ TWO DIFFERENT ONES NOW PRODUCE 124, and the
+# watchdog log separates them: this file's own PRIVILEGED bound around the
+# install, which ends the root tree and lets this file print what it has; and the
+# caller's bound around this file, which means even that did not answer.
 #
 # ⛔ Read the exit code from this process, unpiped.
 
@@ -98,8 +101,30 @@ fi
 # the install inherits must be that FILE and not this step's output pipe. ⚠ The
 # workdir is under RUNNER_TEMP and was created by this shell, so there is no
 # privilege question to answer either.
+# ⛔ AND THE BOUND IS INSIDE THE sudo, WHICH IS THE ONE PLACE IT HAD NEVER BEEN
+# PUT. Every bound this entry has measured failing was issued by an UNPRIVILEGED
+# process at a process tree running as ROOT, and the kernel refuses that signal:
+# measured on 2026-09-16, a uid-1001 `timeout -k 2 5` around `sudo -E sh -c
+# 'sleep 120'` exited 124 on schedule and left the root `sleep` alive with PPID 1
+# - orphaned, unkillable by its own bound, and still running after the KILL grace
+# had passed. ⚠ That is the same shape as the job's `timeout-minutes: 25` ending
+# run 21 at THIRTY minutes rather than twenty-five.
+#
+# ⭐ `sudo` execs `timeout`, so the bound runs as root and its signal lands.
+# ⚠ THE RELATION IS WHAT MATTERS, not the number. This must be LARGER than
+# `install-client`'s own inner bounds, so a slow route is refused by that script
+# with a message naming its timeout rather than killed here with nothing to read;
+# and SMALLER than the workflow step's own `timeout`, so this one is reached
+# first. The workflow states both.
+STEP_SECONDS=${BIT_IDS_STEP_TIMEOUT:-1020}
+STEP_KILL_AFTER=${BIT_IDS_KILL_AFTER:-20}
+command -v timeout >/dev/null 2>&1 || {
+  printf 'install-step: timeout is not on this host\n' >&2
+  exit 2
+}
 # shellcheck disable=SC2024
-sudo -E sh "$ROOT/scripts/acquisition/install-client.sh" \
+sudo -E timeout -k "$STEP_KILL_AFTER" "$STEP_SECONDS" \
+  sh "$ROOT/scripts/acquisition/install-client.sh" \
   --adapter "$ADAPTER" \
   --route "$ROUTE" \
   --workdir "$WORKDIR" \

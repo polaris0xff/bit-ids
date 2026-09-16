@@ -2330,6 +2330,113 @@ same workflow without this session's commits: if it hangs too, the cause is
 outside this repository and the bound is still the right fix for a different
 reason. It was still running when this was written.
 
+### ⭐ THE HANG IS REPRODUCED ON THIS HOST, AND TWO DEFECTS CARRY IT. 2026-09-16
+
+⛔ **Thirteen `capture-client` dispatches have been cancelled rather than
+answered** - runs 1, 3 to 10, 13, and 21 to 23, counted from the API on
+2026-09-16 - and the last three are this hang's.
+The instruction was to read the `ps` timeline before theorising again; what the
+timeline needed first was a run that reached an upload, and what stopped that is
+now measured rather than argued. ⚠ **Neither defect was found by reading the
+install path.** Both were found by driving it as an UNPRIVILEGED user, which is
+what a runner is and what no local drive had ever been: every session host here
+is `root`, so every previous local pass ran the step with privileges the runner
+does not have.
+
+⛔ **DEFECT 1: A BOUND INSIDE `$( )` IS NOT A BOUND.** A command substitution ends
+when its PIPE reaches end of file, not when the command exits. `install-client`
+reached its adapter four times and **every one of them handed the adapter a
+pipe**:
+
+| line | call | bound it carried |
+| --- | --- | --- |
+| `TARGET=$(sh "$ADAPTER" describe \| awk …)` | before any other call | ⛔ **none** |
+| `PREEXISTING=$(timeout … version)` | before the route | fires, and `$( )` keeps reading |
+| `adapter_binary()`, called twice | around the install | ⛔ **none** |
+| `VERSION=$(timeout … version)` | after the route | fires, and `$( )` keeps reading |
+
+⚠ **Measured**: an adapter whose `version` leaves one `sleep` behind was still
+blocking its substitution at **25 seconds** under a **4-second** bound. ⛔ **And
+this file's own header claimed the opposite** - *"every adapter call is bounded"*
+and *"this is the one call site every adapter passes through"* - which is this
+project's own recurring class, a rule a document says it has and does not.
+
+⭐ **MUTATION-PROVED, the same plant against both halves.** An adapter whose
+`version` leaves a process behind, driven through the real `install-client`:
+
+| tree | exit | elapsed | output |
+| --- | --- | ---: | --- |
+| `HEAD` (`ff14fe5`) | **124** | still blocked at **70s** | ⛔ none at all |
+| with `adapter_run` | **0** | **0s** | the full install record |
+
+⛔ That control is runs 21, 22 and 23's signature exactly: no log, no artifact,
+and a bound that had fired.
+
+⛔ **DEFECT 2: AN UNPRIVILEGED BOUND CANNOT END A ROOT PROCESS.** Every bound this
+entry has measured failing was issued by a uid-1001 process at a tree running as
+root, and the kernel refuses that signal. Measured here: `timeout -k 2 5` around
+`sudo -E sh -c 'sleep 120'` exited **124 on schedule** and left the root `sleep`
+alive with **PPID 1** - orphaned, past its KILL grace, still running.
+
+⭐ **That predicts the one number this entry could not explain.** Run 21's job
+carried `timeout-minutes: 25` and ended at **thirty**: the runner asked the step
+to stop, the root tree did not answer, and GitHub force-terminated after its own
+grace. ⚠ A cancelled job uploads nothing, which is why runs 21, 22 and 23
+measured nothing.
+
+⭐ **The bound is inside the `sudo` now**, which is the one place seven bounds had
+not been put. Driven as `runnerlike` (uid 1001) against an install that blocks
+for 600s under a 20s step bound: **exit 124 at 21 seconds, with
+`watchdog.log` carrying four samples and `holders.log` naming the survivor.**
+⛔ That is the whole deliverable - a hung step that ENDS and leaves its timeline
+on the runner for the upload to collect.
+
+#### ⛔ The door sweep found the same class behind THREE more doors
+
+⚠ **`install-client` was not the only caller, and the enumeration written from
+memory did not contain them.** Every place this tree hands an adapter to a shell,
+swept on 2026-09-16:
+
+| door | bounded | output |
+| --- | --- | --- |
+| `capture-client.sh` `describe` | ✅ | ✅ a file |
+| `capture-client.sh` `version` | ✅ | ⛔ **a substitution** |
+| `resolve-release.sh` `describe` | ⛔ **none at all** | ✅ a file |
+| `resolve-source.sh` `describe` | ⛔ **none at all** | ✅ a file |
+
+⭐ **All three are repaired in this change**, and the first row is why they are
+defects rather than unknowns: `capture-client.sh` asks the SAME question the
+right way twenty lines above asking it the wrong way, which is the one-gated-door
+shape [`../docs/methodology/reviews.md`](../docs/methodology/reviews.md) calls the
+most recurring hole there is.
+
+⚠ **Two of them are outside *Install the client* entirely.** The resolvers run in
+*Resolve the release artifact* and *Resolve the source tag*, before the host's
+route is cut; `capture-client.sh` runs in *Capture*, after it. So a hang in any
+of the three would have been read as a different defect from the one this entry
+has been chasing.
+
+⛔ **AND `check-adapters` DOES NOT COVER THIS.** Its scope is a network fetch
+*inside* an adapter, stated in its own header; a *call site* that invokes an
+adapter is a different population, and all four defects above live there. That is
+a rule narrower than the class it is about - which is the thing this entry keeps
+finding, now including in its own newest rule.
+
+#### ⚠ Residual, measured 2026-09-16: the bound reaches one process group
+
+⛔ **An orphan survives the privileged bound and it is named rather than assumed
+away.** Nested `timeout`s each create their **own** process group: the outer one
+around `install-client` signals its group, and the inner one around the adapter
+is a different group that never receives it. The driven pass above left
+`sleep 600` running as root with PPID 1, and `holders.log` named it in one line:
+`pid=3160 comm=timeout args=timeout -k 5 600 sh …/hang.sh install release …`.
+
+⚠ **It does not block the deliverable**: the step ends, the evidence ships, and
+the runner is destroyed after the job. ⛔ **It is still host state a capture must
+not inherit**, and the fix changes the signal semantics of a bound that is
+mutation-proven at its current values - which is its own unit, for the reason the
+`mine-repo` revert above gives. Filed rather than rushed.
+
 ### ⚠ Residual, filed 2026-09-09: `check-step-bodies` is a load-sensitive row
 
 ⛔ **A gate row that fails under load and passes alone is the same class this

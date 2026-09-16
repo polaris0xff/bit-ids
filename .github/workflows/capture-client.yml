@@ -77,7 +77,15 @@ jobs:
   linux:
     name: Linux client capture (${{ matrix.adapter }}, ${{ matrix.route }})
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    # ⛔ 35, BECAUSE THE BOUNDS BELOW HAVE TO FIT UNDER IT AND AT 25 THEY DID NOT.
+    # A source lane can spend 1380s in *Install the client* before its own last
+    # resort fires, and the steps ahead of it - checkout, the toolchain, the
+    # cargo build, the resolve - are a further three minutes or so. ⚠ A job
+    # cancelled by THIS number uploads nothing at all, measured on runs 21, 22
+    # and 23, so it must be the bound that never fires rather than the one that
+    # catches a hang. ⭐ The bounds inside the step are what end a hang, and they
+    # end it with the evidence still on the runner.
+    timeout-minutes: 35
     # ⛔ READ ONLY. A capture produces an artifact and never a commit.
     permissions:
       contents: read
@@ -281,6 +289,25 @@ jobs:
           # build took 366 - so a number measured locally is a lower bound on
           # what a runner needs, never an estimate of it.
           BIT_IDS_INSTALL_TIMEOUT: ${{ matrix.route == 'source' && '900' || '420' }}
+          # ⛔ THE PRIVILEGED BOUND, AND THE ARITHMETIC IS STATED BECAUSE IT DID
+          # NOT ADD UP BEFORE. `install-client` can spend its install bound AND
+          # two version bounds (60 each) AND three describe bounds (30 each)
+          # before it is done, which is 630 on a release lane and 1110 on a
+          # source one. ⚠ The outer bound below was 1080 for both, so a source
+          # lane's own inner bounds could sum ABOVE the bound meant to outlast
+          # them - the killing would then happen outside, with nothing to read,
+          # which is the failure mode every number here exists to avoid.
+          #
+          # ⭐ Each bound must outlast the one inside it: inner sum < this <
+          # the step's `timeout` < the job's `timeout-minutes`.
+          BIT_IDS_STEP_TIMEOUT: ${{ matrix.route == 'source' && '1260' || '780' }}
+          # ⛔ THE OUTER BOUND IS AN ENVIRONMENT VALUE AND NOT AN EXPRESSION IN
+          # THE `run:` LINE, because `check-step-bodies` LIFTS that line and runs
+          # it as shell. A `${{ }}` left in the body is not shell, so the harness
+          # that exists to prove this exact step ends would fail on every case
+          # over an unexpanded expression - measured on 2026-09-16, five cases at
+          # once, with the plant reporting *did not apply*.
+          OUTER_TIMEOUT: ${{ matrix.route == 'source' && '1380' || '900' }}
         # ⛔ THE BOUND IS ON THE STEP'S OWN PROCESS, WHICH IS THE ONE PLACE IT HAS
         # NOT BEEN TRIED. `timeout` inside `install-client` ends its own child and
         # cannot end a shell blocked around it; `timeout-minutes` is the runner's
@@ -301,7 +328,14 @@ jobs:
         # its uploads - so this must stay the LARGER of the two.
         # ⚠ A capture takes about 50 seconds and the uploads about 1, so 1080
         # leaves the 25-minute job roughly five minutes of slack.
-        run: timeout -k 30 1080 sh scripts/acquisition/install-step.sh
+        # ⛔ IT WAS A FLAT 1080 AND THAT WAS SMALLER THAN THE SOURCE LANE'S OWN
+        # INNER BOUNDS. Per route now, each 120s above `BIT_IDS_STEP_TIMEOUT`, so
+        # the privileged bound inside `install-step.sh` is always the one that
+        # fires first and this one stays what it was designed to be: the last
+        # resort that gets the job to its uploads.
+        # ⚠ `${OUTER_TIMEOUT:-1080}` keeps this line runnable OUTSIDE a dispatch,
+        # which is what `check-step-bodies` does with it.
+        run: timeout -k 30 "${OUTER_TIMEOUT:-1080}" sh scripts/acquisition/install-step.sh
         # ⚠ The body this replaced is in that file, unchanged in what it does.
 
       # ⛔ BOTH ADDRESS FAMILIES. A host with IPv4 unplugged and IPv6 up still

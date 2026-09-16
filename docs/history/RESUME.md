@@ -17,10 +17,19 @@ the branch, the remote, the clone depth, `git status` and `HEAD..origin/main`
 before editing anything.
 
 ⚠ **The container may start on a `claude/*` branch, with `user.name` set to an
-agent, and a shallow clone.** All three were true again on 2026-09-15, which is
-eleven starts running. Correct them first: the branch to `main` per rule 7, the
+agent, and a shallow clone.** All three were true again on 2026-09-16, which is
+twelve starts running. Correct them first: the branch to `main` per rule 7, the
 identity to the operator's own per rule 11, and the clone with
-`git fetch --unshallow` - which took this one from 50 commits to 151.
+`git fetch --unshallow` - after which `git rev-list --count HEAD` answered **157**
+here. ⚠ Measure the depth before AND after if the pair is going to be quoted; a
+session that reads only the second number is copying the first from this page.
+
+⛔ **AND THE SESSION HOST IS `root`, WHICH A RUNNER IS NOT.** That difference hid
+the capture hang for eight dispatches: a bound that works here is refused by the
+kernel there, because the work runs under `sudo` and the bound did not. ⭐ Drive
+anything that uses `sudo` as an unprivileged user before believing a local pass -
+`useradd -m runnerlike` plus a NOPASSWD line is about ten seconds, and `uid 1001`
+is what a hosted runner uses.
 ⛔ Read the identity out of the history with
 `git log --format='%an <%ae>' | sort -u`; never type it into a tracked file,
 which is what `check-no-secrets --public` refuses.
@@ -105,23 +114,33 @@ left, which is arithmetic rather than measurement; it is timed here.
 
 ### Next, in order
 
-0. ⛔ **THE CAPTURE WORKFLOW HANGS AND THAT IS THE FIRST THING TO SETTLE.**
-   `capture-client` runs **21 and 22** both spent thirty minutes in *Install the
-   client* on the RELEASE lane, which took **six seconds** on runs 19 and 20.
-   Every bound failed: the inner 420s, the outer `timeout -k 30 1080`, and the
-   job's own `timeout-minutes: 25`, which ended it at thirty. ⛔ A cancelled job
-   leaves **no log and no artifact**, so neither run measured anything.
-   ⛔ **A CAUSE WAS LOCATED, FIXED AND REFUTED, AND THE REFUTATION IS THE
-   FINDING.** The adapters fetched with no time limit, which is a real defect
-   and is fixed; run **23** on `80ec75a` carries `--max-time 300` and its
-   release install still ran past **twelve minutes**, so the step is not waiting
-   in the fetch. ⚠ A control re-run at `95e90f5` installed in **six seconds**,
-   so the hang correlates with this session's commits - and the two hangs are
-   contiguous in time, which that control does not separate.
-   ⭐ **The next dispatch that reaches an upload answers it in one file.**
-   `install-step.sh` writes a `ps` timeline into the workdir every five seconds
-   and the workdir ships as the install artifact; runs 21, 22 and 23 were
-   cancelled before any upload. ⛔ Read that timeline before theorising again.
+0. ⭐ **THE HANG IS REPRODUCED ON THIS HOST AND REPAIRED, 2026-09-16.** Eight
+   dispatches had been spent asking a runner what one command answers here.
+   ⛔ **NEITHER DEFECT WAS FINDABLE BY READING THE INSTALL PATH.** Both were
+   found by driving it as an **unprivileged** user, which is what a runner is and
+   what no local drive had ever been: every session host here is `root`, so every
+   previous local pass ran the step with privileges the runner does not have.
+   ⛔ **A bound inside `$( )` is not a bound.** A substitution ends when its PIPE
+   reaches end of file, not when the command exits. `install-client` reached its
+   adapter four times through a pipe and **three carried no bound at all**, while
+   the file's own header claimed every adapter call was bounded. Measured: an
+   adapter leaving one `sleep` behind still blocked at **25s** under a **4s**
+   bound.
+   ⛔ **An unprivileged bound cannot signal a root tree.** `timeout -k 2 5`
+   around `sudo -E sh -c 'sleep 120'` exited **124 on schedule** and left the root
+   process alive with **PPID 1**. ⭐ That predicts the number nothing explained:
+   run 21's `timeout-minutes: 25` ended at **thirty**.
+   ⭐ **Mutation-proved, same plant both halves**: `HEAD` exited **124 still
+   blocked at 70s with NO OUTPUT AT ALL** - runs 21/22/23's exact signature - and
+   the repaired tree exited **0 in 0s** with a full record. ⭐ Driven as uid 1001
+   against a 600s install under a 20s step bound: **124 at 21s, `watchdog.log`
+   with four samples, `holders.log` naming the survivor.**
+   ⚠ **What is NOT established is that this is the whole of run 21's hang.** It
+   is a defect that reproduces that exact signature and it is the prerequisite
+   for any hung run reaching an upload. **A dispatch is what settles it**, and
+   the timeline now survives to be read.
+   ⚠ A residual is filed in `TODO/ci.md`: nested `timeout`s each make their own
+   process group, so an orphan survives the bound.
 1. ⛔ **Make a MEASURED record publishable, which is one dispatch away.** Runs 19
    and 20 refuted both recorded readings: the observer now offers a distinct peer
    per connection and an interval the run can outlive, and `aria2-next` still
@@ -214,6 +233,20 @@ Reproduced this session in a Go port of a defect already written down.
 redirections left to right.** ⛔ **`timeout 0` MEANS NO LIMIT.** ⛔ **A PowerShell
 `[switch]` collides with a local differing only in case**, and `$args` inside a
 function is automatic.
+
+⛔ **A BOUND INSIDE `$( )` IS NOT A BOUND.** A command substitution ends on the
+PIPE's end of file, not on the child's exit, so one process the product leaves
+behind blocks it forever while the bound reports success. Redirect an untrusted
+process to a FILE and read the file.
+
+**AN UNPRIVILEGED BOUND CANNOT END A ROOT PROCESS.** Put the bound inside the
+`sudo`, never around it. A bound outside fires on schedule, reports 124, and
+leaves the work orphaned at PPID 1. And nested `timeout`s each create their own
+process group, so an outer bound does not reach an inner one's children.
+
+**A LOCAL PASS AS `root` SAYS NOTHING ABOUT A RUNNER.** Both of the above were
+invisible to every local drive for eight dispatches, because this host is `root`
+and `ubuntu-24.04`'s runner is uid 1001 with `sudo`.
 
 ⛔ **A Python text-mode rewrite of a `.ps1` silently converts CRLF to LF**, and
 `git diff` shows nothing. `git ls-files --eol` is the only thing that does.

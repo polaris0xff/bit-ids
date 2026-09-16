@@ -542,6 +542,50 @@ Exit 124 is the coreutils verdict and 137 is a kill; **both mean "it never
 answered", which is a different fact from "it is not installed"** and belongs in
 a different field.
 
+### ⛔ A bound inside `$( )` is not a bound
+
+⛔ **A command substitution ends when the PIPE reaches end of file, not when the
+command exits.** So `V=$(timeout 5 thing)` waits for as long as *anything* holds
+that pipe's write end - and the one process `timeout` killed is usually not the
+one holding it. A product that leaves a single child behind blocks the
+substitution forever, with the bound sitting there having fired correctly.
+
+```sh
+V=$(timeout 5 sh "$ADAPTER" version)         # ⛔ blocks past the 5s, silently
+
+timeout 5 sh "$ADAPTER" version >"$out" 2>"$err"   # ⭐ the product gets a FILE
+V=$(cat "$out")                                     # and a file has an end
+```
+
+⚠ **Measured on 2026-09-16**: an adapter whose `version` left one `sleep` behind
+was still blocking its substitution at **25 seconds** under a **4-second** bound.
+That is how `capture-client` spent thirty minutes in a step that takes six
+seconds, on three dispatches that produced no log and no artifact.
+
+⭐ The same rule is why a CI step does not end when its command does: the runner
+is reading a pipe too. Redirect the untrusted process to a file and read the
+file.
+
+### ⛔ An unprivileged bound cannot end a root process
+
+⛔ **`timeout`, and every `kill` it sends, is refused by the kernel when the
+target runs as root and the sender does not.** A bound placed *outside* `sudo`
+fires on schedule, reports 124, and leaves the work running: measured on
+2026-09-16, `timeout -k 2 5 sh -c 'sudo … sleep 120'` from a uid-1001 shell
+exited 124 and left the root `sleep` alive with **PPID 1**, orphaned and past its
+KILL grace.
+
+```sh
+timeout -k 30 900 sudo -E sh install.sh     # ⛔ the bound cannot signal root
+sudo -E timeout -k 30 900 sh install.sh     # ⭐ sudo execs timeout, so it can
+```
+
+⚠ **Put the bound inside the `sudo`, not around it.** And note that nested
+`timeout`s each create their **own** process group, so an outer bound does not
+reach an inner one's children; a survivor is named by
+[`../../scripts/ci/report-holders.sh`](../../scripts/ci/report-holders.sh)
+rather than assumed absent.
+
 ---
 
 ## 10. Waiting inside an agent session

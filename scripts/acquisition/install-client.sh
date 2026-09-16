@@ -108,6 +108,16 @@ done
 # it. ⚠ A convention in each adapter would be a bound the next adapter forgets;
 # this is the one call site every adapter passes through.
 #
+# ⛔ THAT LAST SENTENCE WAS FALSE FOR AS LONG AS IT HAD BEEN WRITTEN, corrected
+# 2026-09-16. Three of this file's four adapter calls carried NO bound at all -
+# one `describe` that ran before any other call, and two more inside
+# `adapter_binary` - and the two that did carry one spent it inside a command
+# substitution, which ends when the PIPE reaches end of file rather than when the
+# child exits. ⭐ `adapter_run` is what makes the claim true: it is the only way
+# to reach an adapter from here, it bounds the call, and it hands the adapter a
+# FILE so nothing the product leaves behind can hold a descriptor this shell is
+# still reading.
+#
 # ⭐ AND STDIN IS /dev/null, so a prompt gets end-of-file rather than a wait.
 # ⚠ THE BOUND SITS WELL UNDER THE WORKFLOW STEP'S OWN TIMEOUT, so this reports
 # rather than being killed with its log. Measured on 2026-09-08: a 900s bound
@@ -117,6 +127,10 @@ done
 # blocks or ignores it is never killed at all, so the bound reports nothing.
 INSTALL_SECONDS=${BIT_IDS_INSTALL_TIMEOUT:-420}
 VERSION_SECONDS=${BIT_IDS_VERSION_TIMEOUT:-60}
+# ⭐ `describe` PRINTS A FEW LINES AND IS THE CHEAPEST CALL AN ADAPTER HAS, which
+# is why it had no bound at all until 2026-09-16 and why the number is small. The
+# workflow's own *Probe the preinstalled product* step already used 30 for it.
+DESCRIBE_SECONDS=${BIT_IDS_DESCRIBE_TIMEOUT:-30}
 KILL_AFTER=${BIT_IDS_KILL_AFTER:-20}
 command -v timeout >/dev/null 2>&1 || cannot "timeout is not on this host"
 
@@ -150,14 +164,62 @@ MARKER=$(sh "$GUARD" --marker) || cannot "the guard could not report its marker 
 mkdir -p "$WORKDIR" || cannot "cannot create $WORKDIR"
 WORKDIR=$(CDPATH='' cd -- "$WORKDIR" && pwd)
 
+# ⛔ EVERY ADAPTER CALL GOES THROUGH HERE, AND A BOUND IS ONLY HALF OF WHY.
+# The other half is that NOTHING THE ADAPTER SPAWNS MAY HOLD A PIPE THIS SHELL IS
+# READING. A command substitution finishes when the pipe reaches end of file, not
+# when the command exits, so a product that leaves one process behind blocks
+# `$( )` for as long as that process lives - and `timeout` firing does not help,
+# because the child it kills is not the one holding the descriptor.
+#
+# ⚠ MEASURED ON 2026-09-16, which is what turned this from a tidy-up into a
+# repair: an adapter whose `version` leaves a `sleep` behind was still blocking
+# its substitution at 25 seconds under a 4-second bound. That is a six-second
+# step becoming a thirty-minute one, which is exactly what `capture-client` runs
+# 21, 22 and 23 did inside *Install the client*.
+#
+# ⛔ THIS FILE'S OWN HEADER CLAIMED THE BOUND WAS ALREADY UNIVERSAL and it was
+# not: `describe` was called three times with no bound at all, and the two
+# `version` calls were bounded inside a substitution that ignored the bound. The
+# claim is true now because one function is the only way to reach an adapter.
+#
+# ⭐ STDOUT GOES TO A FILE AND THE CALLER READS THE FILE. `install-step.sh`
+# already does this for THIS script's output; the door it closed was reopened
+# four times here, one directory down.
+#
+# Usage: adapter_run <seconds> <out-file> <err-file> <subcommand> [args...]
+# Sets no variable; the caller reads <out-file>. Returns the adapter's exit code,
+# or 124 from `timeout`.
+adapter_run() {
+  _bound=$1
+  _out=$2
+  _err=$3
+  shift 3
+  # ⭐ AND STDIN IS /dev/null, so a product that prompts gets end-of-file.
+  timeout -k "$KILL_AFTER" "$_bound" sh "$ADAPTER" "$@" \
+    >"$_out" 2>"$_err" </dev/null
+}
+
+# ⚠ READING THE FILE IS STILL A SUBSTITUTION AND THAT IS SAFE. `awk` is this
+# project's own process over a regular file: it cannot spawn a product, and a
+# file has an end where a pipe held open does not.
+adapter_field() { # <out-file> <key>
+  awk -F= -v k="$2" '$1 == k { sub(/^[^=]*=/, ""); print; exit }' <"$1"
+}
+
 # ⚠ THE WHOLE VALUE, NOT THE SECOND FIELD. `awk -F= '{ print $2 }'` stops at a
 # second `=`, so a value carrying one arrives truncated with nothing saying so.
 # Measured on 2026-09-09 over `weird=a=b`, which that form reads as `a`. ⛔ No key
 # an adapter prints today carries one - `binary` is a path and `target` a slug -
 # which is exactly when a reader is easiest to get wrong, and `release_asset` is
 # a pattern whose future shapes nobody here has fixed.
-TARGET=$(sh "$ADAPTER" describe 2>/dev/null |
-  awk -F= '$1 == "target" { sub(/^[^=]*=/, ""); print; exit }')
+# ⛔ THIS WAS THE FIRST UNBOUNDED ADAPTER CALL AND IT RAN BEFORE EVERY OTHER ONE,
+# so a `describe` that never returned wedged the step before a single bound in
+# this file had been reached.
+adapter_run "$DESCRIBE_SECONDS" "$WORKDIR/describe.log" "$WORKDIR/describe.err" describe
+DESCRIBE_RC=$?
+[ "$DESCRIBE_RC" = 0 ] ||
+  cannot "the adapter would not describe itself (exit $DESCRIBE_RC)"
+TARGET=$(adapter_field "$WORKDIR/describe.log" target)
 [ -n "$TARGET" ] || cannot "the adapter named no target"
 
 STARTED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -193,9 +255,10 @@ STARTED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 # installed is the ORDINARY case here, so the adapter's refusal goes to the
 # workdir, where the install artifact carries it, rather than to a log where it
 # would read as a failure of the step.
-PREEXISTING=$(timeout -k "$KILL_AFTER" "$VERSION_SECONDS" sh "$ADAPTER" version \
-  2>"$WORKDIR/version-before.err" </dev/null)
+adapter_run "$VERSION_SECONDS" "$WORKDIR/version-before.log" \
+  "$WORKDIR/version-before.err" version
 PREEXISTING_RC=$?
+PREEXISTING=$(cat "$WORKDIR/version-before.log")
 [ "$PREEXISTING_RC" = 0 ] || PREEXISTING=""
 
 # ⛔ AND THE EXECUTABLE ITSELF, BECAUSE A VERSION IS NOT AN IDENTITY. Measured on
@@ -208,15 +271,23 @@ PREEXISTING_RC=$?
 # ⭐ `describe` names the executable it would ask, so the digest before and after
 # is available without a sixth subcommand. An adapter that names none simply
 # leaves the field empty and the verdict falls back to the version.
-adapter_binary() {
-  sh "$ADAPTER" describe 2>/dev/null |
-    awk -F= '$1 == "binary" { sub(/^[^=]*=/, ""); print; exit }'
+# ⚠ EACH CALL RE-ASKS THE ADAPTER AND KEEPS ITS OWN FILE. The two calls straddle
+# the install, so they are two different answers about the host and folding them
+# into one file would overwrite the `before` with the `after`.
+# ⛔ AND A `describe` THAT FAILS HERE IS NOT FATAL, unlike the one above: the
+# digest is a refinement on the version comparison and an adapter that names no
+# executable leaves the field empty by design. `cannot` here would refuse a route
+# over a diagnostic.
+adapter_binary() { # <tag>
+  adapter_run "$DESCRIBE_SECONDS" "$WORKDIR/describe-$1.log" \
+    "$WORKDIR/describe-$1.err" describe || return 0
+  adapter_field "$WORKDIR/describe-$1.log" binary
 }
 digest_of() {
   [ -n "$1" ] && [ -f "$1" ] || return 0
   sha256sum "$1" 2>/dev/null | cut -d' ' -f1
 }
-PRE_BINARY=$(adapter_binary)
+PRE_BINARY=$(adapter_binary before)
 PRE_DIGEST=$(digest_of "$PRE_BINARY")
 
 timeout -k "$KILL_AFTER" "$INSTALL_SECONDS" sh "$ADAPTER" install "$ROUTE" "$WORKDIR" </dev/null
@@ -262,8 +333,9 @@ esac
 # refusals fired. ⚠ Measured on 2026-09-08: a client capture reported that and
 # the cause could not be read from the run at all. Silencing the diagnosis and
 # then reporting its absence is one defect, not two.
-VERSION=$(timeout -k "$KILL_AFTER" "$VERSION_SECONDS" sh "$ADAPTER" version 2>"$WORKDIR/version.err" </dev/null)
+adapter_run "$VERSION_SECONDS" "$WORKDIR/version.log" "$WORKDIR/version.err" version
 VERSION_RC=$?
+VERSION=$(cat "$WORKDIR/version.log")
 show_adapter_error() {
   [ -s "$WORKDIR/version.err" ] || return 0
   printf '          -- the adapter said\n' >&2
@@ -288,7 +360,7 @@ esac
 # an install, and reading it as anything else would refuse the ordinary case of a
 # package index carrying a newer build than the image. The same version over a
 # target that was already there is neither, whatever the route reported.
-POST_BINARY=$(adapter_binary)
+POST_BINARY=$(adapter_binary after)
 POST_DIGEST=$(digest_of "$POST_BINARY")
 if [ -z "$PREEXISTING" ]; then
   ACQUIRED=yes

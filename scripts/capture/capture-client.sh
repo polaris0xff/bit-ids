@@ -293,8 +293,20 @@ esac
 # ask it is `could not run`: there is no fixture fallback here, because a run
 # reporting `measured_build=none` beside `kind=client` would be the record
 # claiming a build it never identified.
-MEASURED_BUILD=$(timeout -k "$ADAPTER_KILL_AFTER" "$ADAPTER_SECONDS" sh "$ADAPTER" version </dev/null 2>>"$OUT/adapter.err")
+# ⛔ AND IT GOES TO A FILE, NOT THROUGH A SUBSTITUTION. This read
+# `MEASURED_BUILD=$(timeout -k N M sh "$ADAPTER" version)` until 2026-09-16,
+# which is a bound that
+# cannot bound: a command substitution ends when its PIPE reaches end of file
+# rather than when the child exits, so one process the product leaves behind
+# holds this step open with the bound sitting there having fired correctly.
+# ⚠ The `describe` call twenty lines above already had the right shape, which is
+# what makes this the one-gated-door defect rather than an unknown: the same
+# question, asked two ways, in one file.
+ADAPTER_VERSION="$OUT/adapter.version"
+timeout -k "$ADAPTER_KILL_AFTER" "$ADAPTER_SECONDS" sh "$ADAPTER" version \
+  </dev/null >"$ADAPTER_VERSION" 2>>"$OUT/adapter.err"
 VERSION_RC=$?
+MEASURED_BUILD=$(cat "$ADAPTER_VERSION")
 [ "$VERSION_RC" != 124 ] ||
   cannot "the installed build did not answer --version within ${ADAPTER_SECONDS}s"
 [ "$VERSION_RC" = 0 ] ||

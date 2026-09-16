@@ -5,6 +5,48 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-16T01:43:40Z
+
+- ⭐ **THE CAPTURE HANG IS REPRODUCED ON A SESSION HOST AND REPAIRED.** Thirteen
+  `capture-client` dispatches have been cancelled rather than answered, counted
+  from the API. ⛔ The two defects hid behind a privilege difference this
+  repository had never simulated locally;
+  [`TODO/PROGRESS.md`](TODO/PROGRESS.md) states it.
+- ⛔ **A bound inside `$( )` is not a bound.** A command substitution ends when
+  its PIPE reaches end of file, not when the command exits, so a product that
+  leaves one process behind blocks it forever with the bound sitting there having
+  fired. `install-client` reached its adapter four times through a pipe, and
+  **three of those calls carried no bound at all** - while the file's own header
+  claimed every adapter call was bounded.
+- ⭐ **`adapter_run` is the single call site now**, bounded, and it hands the
+  adapter a FILE. Mutation-proved with one plant against both halves, and the
+  control reproduced the cancelled dispatches' signature precisely; the two
+  columns are in [`TODO/PROGRESS.md`](TODO/PROGRESS.md).
+- ⛔ **An unprivileged bound cannot signal a root process tree.** Measured:
+  `timeout -k 2 5` around `sudo -E sh -c 'sleep 120'` from a uid-1001 shell
+  exited **124 on schedule** and left the root `sleep` alive with **PPID 1**,
+  orphaned and past its KILL grace. ⭐ That predicts the number `CI-08` could not
+  explain: run 21's job carried `timeout-minutes: 25` and ended at **thirty**.
+- ⭐ **The bound is inside the `sudo` now**, the one place seven bounds had not
+  been put. Driven as uid 1001 against a 600s install under a 20s step bound:
+  **exit 124 at 21 seconds, `watchdog.log` carrying four samples and
+  `holders.log` naming the survivor.** A hung step ends and leaves its timeline
+  for the upload to collect.
+- ⛔ **The workflow's bound arithmetic did not add up and now does.** A source
+  lane's own inner bounds could sum to 1110 seconds under an outer bound of
+  1080, so the killing would have happened outside with nothing to read. Each
+  bound outlasts the one inside it: inner sum < `BIT_IDS_STEP_TIMEOUT` < the
+  step's `timeout` < the job's `timeout-minutes`, which is 35 rather than 25.
+- ⚠ **A residual is filed rather than rushed**: nested `timeout`s each create
+  their own process group, so the privileged bound does not reach the adapter's,
+  and an orphan survives. It does not block the deliverable and the fix changes
+  a mutation-proven guard's signal semantics, so it is its own unit.
+- ⚠ **A hypothesis was refuted in forty seconds rather than by a dispatch**: the
+  watchdog's `kill -0` was read as failing across the privilege boundary, and
+  measurement showed `$!` is the `sudo` process, which keeps **ruid 1001** and is
+  signallable. The timeline is written on a runner.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-08`. No version bump and no deploy.
+
 ### 2026-09-15T16:04:12Z
 
 - ⛔ **`capture-client` runs 21 and 22 both hung thirty minutes in *Install the
