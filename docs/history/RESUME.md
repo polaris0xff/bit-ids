@@ -159,7 +159,21 @@ left, which is arithmetic rather than measurement; it is timed here.
    itself.
    ⚠ **`report-holders.sh` is aimed at the wrong descriptor** and has reported
    `0 holder(s)` on every green run: the file that keeps a step open is the
-   step's own stdout, which nothing asks about.
+   step's own stdout, which nothing asks about. It reports both now.
+   ⛔ **THE TIMELINE WAS STILL NOT OBTAINED. Runs 24, 25 and 26 all hung and all
+   uploaded ZERO artifacts**, read back from the API. ⭐ **Run 26 is the sharpest
+   measurement this entry has**: it carried three independent endings, one of
+   which - `install-step.sh`'s own loop deadline - depends on no signal reaching
+   anything, and all three passed without the step ending.
+   ⛔ **So stop reading this as a bound that fails to fire.** A loop that only
+   sleeps and compares two integers cannot overrun its deadline by fourteen
+   minutes *while executing*. The step's process is not running, which no bound
+   can repair. ⚠ Uninterruptible sleep would explain all thirteen dispatches and
+   is a HYPOTHESIS; the `stat` column of the unread timeline is what settles it.
+   ⭐ **THE NEXT INSTRUMENT IS NAMES, NOT BOUNDS**, and `capture-client.yml`
+   already argues it in its probe steps: when nothing inside a job survives, the
+   one signal that does is WHICH STEP the API last reported in progress. Split
+   *Install the client* into named sub-steps. ⛔ Do that before an eleventh bound.
    ⚠ A residual is filed in `TODO/ci.md`: nested `timeout`s each make their own
    process group, so an orphan survives the bound.
 1. ⛔ **Make a MEASURED record publishable, which is one dispatch away.** Runs 19

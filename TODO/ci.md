@@ -2444,6 +2444,40 @@ It is pointed at `step.log`, and `holders.log` duly reported `0 holder(s)` on
 every green run. The file that keeps a step open is the step's own **stdout**,
 which nothing has ever asked about.
 
+#### ⛔ RUNS 24, 25 AND 26 ALL HUNG, AND RUN 26 IS THE SHARPEST MEASUREMENT YET
+
+⚠ **The `ps` timeline was NOT obtained. Three dispatches, three cancellations,
+zero artifacts**, read back from the API rather than assumed:
+
+| run | commit | install step | ended by | artifacts |
+| --- | --- | --- | --- | ---: |
+| 24 | `14f4acd` | 02:50:45, open at 20 min | job cancel | **0** |
+| 25 | `4b6c33d` | 03:24:08, open at 26 min | job cancel | **0** |
+| 26 | `21993d8` | 04:13:57, open at 27 min | job cancel | **0** |
+
+⛔ **RUN 26 IS THE ONE THAT CHANGES THE QUESTION.** It carried THREE independent
+endings, and the third depends on no signal reaching anything: `install-step.sh`'s
+own loop breaks at its deadline and exits without `wait`ing. All three passed
+without the step ending - the step's own 780s at 04:26:57, the outer 900s at
+04:29:27, and even the `:-1080` default at 04:32:27.
+
+⛔ **A SHELL THAT DOES NOT REACH ITS OWN `[ -lt ]` IS NOT A SHELL THAT IS
+WAITING.** Every previous reading treated this as a bound failing to fire. Run 26
+says the step's process is not *running*: a loop that only sleeps and compares two
+integers cannot overrun its deadline by fourteen minutes while executing. ⭐ That
+is consistent with the step's tree sitting in uninterruptible sleep, which no
+signal clears and which would explain thirteen dispatches failing identically -
+and it is a HYPOTHESIS, named as one, because the thing that would confirm it is
+the `stat` column of the timeline nobody has yet read.
+
+⭐ **THE NEXT INSTRUMENT IS NAMES, NOT BOUNDS, and this workflow already argues
+it.** Its three probe steps exist because *"when nothing inside a job survives,
+the one signal that does is WHICH STEP the API last reported in progress"*. Eleven
+bounds have now been spent on a step that does not end; splitting *Install the
+client* into named sub-steps - the fetch, the install of what was fetched, the
+version call - localises the wedge to a handful of commands with no log, no
+artifact and no bound required. ⛔ Do that before adding a twelfth bound.
+
 #### ⛔ The door sweep found the same class behind THREE more doors
 
 ⚠ **`install-client` was not the only caller, and the enumeration written from

@@ -37,6 +37,14 @@ Nothing is released yet. Entries accumulate here until the first
   1080, so the killing would have happened outside with nothing to read. Each
   bound outlasts the one inside it: inner sum < `BIT_IDS_STEP_TIMEOUT` < the
   step's `timeout` < the job's `timeout-minutes`, which is 35 rather than 25.
+- ⛔ **THE `ps` TIMELINE WAS NOT OBTAINED.** Runs 24, 25 and 26 each hung in
+  *Install the client* and each uploaded **zero** artifacts, read back from the
+  API. ⭐ Run 26 is the sharpest measurement the entry has: three independent
+  endings, one needing no signal to reach anything, and all three passed without
+  the step ending. ⛔ That reframes the question from a bound that fails to fire
+  to a step that is not executing, which no bound repairs;
+  [`TODO/PROGRESS.md`](TODO/PROGRESS.md) states the reasoning. ⭐ The next
+  instrument is step names rather than a twelfth bound.
 - ⛔ **THE CAUSE IS NOT IN THIS REPOSITORY, AND ONE COMMAND SETTLES IT.** The
   install path was **byte-identical** across the boundary between a six-second
   install and a thirty-minute hang; the recorded lead about a commit window is

@@ -321,6 +321,14 @@ reads. ⛔ So every repair below is a real defect that is **not** the cause, and
 what is left is the runner image, the vendor's endpoint or the network between
 them. The `ps` timeline separates the three.
 
+⛔ **THE TIMELINE WAS NOT OBTAINED: runs 24, 25 and 26 each hung and uploaded
+ZERO artifacts.** ⭐ Run 26 carried three independent endings, one of which needs
+no signal to reach anything, and all three passed without the step ending. ⛔ A
+loop that only sleeps and compares two integers cannot overrun its deadline by
+fourteen minutes while executing, so the step's process is **not running** - which
+no bound repairs. ⭐ The next instrument is step NAMES rather than a twelfth
+bound; [`ci.md`](ci.md) under `CI-08` carries the argument.
+
 ⛔ **AND RUN 24 REFUTED BOTH BOUNDS, WHICH NAMES THE OTHER HALF.** The first
 dispatch after the repair hung the same way: *Install the client* was still open
 **twenty minutes** in, past its privileged 780s bound and its outer 900s one -
