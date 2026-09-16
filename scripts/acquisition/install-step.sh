@@ -122,19 +122,43 @@ command -v timeout >/dev/null 2>&1 || {
   printf 'install-step: timeout is not on this host\n' >&2
   exit 2
 }
+# ⛔ `setsid` PUTS THE INSTALL IN A SESSION OF ITS OWN, so it shares no process
+# group, no session and no terminal with this shell. ⚠ It is NOT here to make the
+# bound work - the bound above is what does that - it is here so that this shell
+# owes the install NOTHING: nothing to signal, nothing to reap, and no descriptor
+# in common. A detached tree cannot hold the step open however long it runs.
+# ⚠ `setsid` is util-linux and ships on every runner image this project uses; a
+# host without it is a host this file refuses rather than silently attaches to.
+command -v setsid >/dev/null 2>&1 || {
+  printf 'install-step: setsid is not on this host\n' >&2
+  exit 2
+}
 # shellcheck disable=SC2024
-sudo -E timeout -k "$STEP_KILL_AFTER" "$STEP_SECONDS" \
+setsid sudo -E timeout -k "$STEP_KILL_AFTER" "$STEP_SECONDS" \
   sh "$ROOT/scripts/acquisition/install-client.sh" \
   --adapter "$ADAPTER" \
   --route "$ROUTE" \
   --workdir "$WORKDIR" \
   --record "$RECORD" \
-  >"$WORKDIR/step.log" 2>&1 &
+  >"$WORKDIR/step.log" 2>&1 </dev/null &
 INSTALL_PID=$!
 
+# ⛔ THE LOOP HAS A DEADLINE OF ITS OWN AND THAT IS THE WHOLE REPAIR. It used to
+# spin until the install died and then `wait` for it, which makes this shell's
+# exit depend on the install's - so an install that never ends is a step that
+# never ends, whatever any bound does. ⚠ TEN bounds have now been measured not to
+# end this step, on `capture-client` runs 3 to 10, 21 to 23 and 24 to 25; the
+# eleventh would fail the same way, because a step ends when its command has
+# exited AND its pipe has reached end of file, and a bound only ever acts on the
+# first.
+# ⭐ So this shell stops waiting on its own schedule. The install may still be
+# running when it does, and that is deliberate: the runner is destroyed after the
+# job, and a finished step with a timeline in the artifact is worth more than a
+# tidy host nobody can read.
 INTERVAL=${BIT_IDS_INSTALL_INTERVAL:-5}
 WAITED=0
 while kill -0 "$INSTALL_PID" 2>/dev/null; do
+  [ "$WAITED" -lt "$STEP_SECONDS" ] || break
   sleep "$INTERVAL"
   WAITED=$((WAITED + INTERVAL))
   {
@@ -143,7 +167,17 @@ while kill -0 "$INSTALL_PID" 2>/dev/null; do
   } >>"$WORKDIR/watchdog.log"
 done
 
-wait "$INSTALL_PID" && RC=0 || RC=$?
+# ⛔ AND IT NEVER `wait`s ON A PROCESS THAT MAY NOT DIE. `wait` is the one call
+# here with no bound of its own, so it is reached only once the install is known
+# to be gone. ⚠ 124 is coreutils' vocabulary for "it never answered" and this
+# reports the same thing in the same number, from the other side of the bound.
+if kill -0 "$INSTALL_PID" 2>/dev/null; then
+  RC=124
+  printf 'install-step: the install was still running after %ss; it is hung, not slow\n' \
+    "$WAITED" >&2
+else
+  wait "$INSTALL_PID" && RC=0 || RC=$?
+fi
 cat "$WORKDIR/step.log"
 
 # ⭐ AND WHATEVER STILL HOLDS THAT FILE IS NAMED. ⚠ Bounded, because it walks
@@ -152,8 +186,27 @@ cat "$WORKDIR/step.log"
 # exists to explain, wearing its own name. ⚠ Under sudo, because the install ran
 # as root and an unprivileged reader of /proc reports nobody holding a file that
 # root processes are holding.
+#
+# ⛔ AND THIS SHELL'S OWN STDOUT IS ASKED ABOUT TOO, WHICH IT NEVER WAS. The
+# report was pointed at `step.log` alone, so `holders.log` answered `0 holder(s)`
+# on every green run - truthfully, and about the wrong descriptor. The file that
+# keeps a STEP open is the step's own output, and nothing had ever asked who held
+# it. ⚠ `readlink` is resolved HERE rather than inside the reporter, because
+# `/proc/self/fd/1` there would name the reporter's own stdout. ⚠ When it names a
+# pipe rather than a file the reporter says so, which is itself the answer: it
+# means this shell is still talking down a pipe somebody may be holding.
+# ⛔ fd 1 IS DUPLICATED FIRST, BECAUSE INSIDE `$( )` fd 1 IS THE SUBSTITUTION'S
+# OWN PIPE. Reading `/proc/self/fd/1` there names that pipe and never this
+# shell's real output - measured on 2026-09-16, when this line reported a pipe
+# over a step whose stdout was a file. ⚠ It is the same confusion between a pipe
+# and a destination that this whole entry is about, reproduced in the diagnostic
+# written to explain it.
+exec 9>&1
+STEP_STDOUT=$(readlink -f /proc/self/fd/9 2>/dev/null) || STEP_STDOUT=""
+exec 9>&-
 HELD=0
-timeout 60 sudo sh "$ROOT/scripts/ci/report-holders.sh" "$WORKDIR/step.log" \
+timeout 60 sudo sh "$ROOT/scripts/ci/report-holders.sh" \
+  "$WORKDIR/step.log" ${STEP_STDOUT:+"$STEP_STDOUT"} \
   >>"$WORKDIR/holders.log" 2>&1 || HELD=$?
 printf 'the holder report exited %s\n' "$HELD"
 

@@ -311,6 +311,16 @@ what no local drive had ever been - every session host here is `root`.
 | a bound inside `$( )` is not a bound: a substitution ends on PIPE end-of-file, not on the child's exit | an adapter leaving one `sleep` behind still blocked its substitution at **25s** under a **4s** bound | `adapter_run` hands the adapter a FILE; all four adapter calls go through it, three of which had carried **no bound at all** |
 | an unprivileged bound cannot signal a root tree | `timeout -k 2 5` around `sudo … sleep 120` exited **124 on schedule** and left the root process alive with **PPID 1** | the bound is inside the `sudo` now, which is the one place seven bounds had not been put |
 
+⛔ **AND THE CAUSE IS NOT IN THIS REPOSITORY.** `git diff 95e90f5 40ed628` over
+`scripts/acquisition/`, the adapters and `capture-client.yml` is **empty**, so the
+green run and the hung ones ran the same install bytes; [`ci.md`](ci.md) under
+`CI-08` carries the two diffs. ⚠ The recorded lead - *the hang correlates with
+this session's commits* - is refuted by the tree. Those commits moved
+`capture-client.sh` and the assembler, neither of which *Install the client*
+reads. ⛔ So every repair below is a real defect that is **not** the cause, and
+what is left is the runner image, the vendor's endpoint or the network between
+them. The `ps` timeline separates the three.
+
 ⛔ **AND RUN 24 REFUTED BOTH BOUNDS, WHICH NAMES THE OTHER HALF.** The first
 dispatch after the repair hung the same way: *Install the client* was still open
 **twenty minutes** in, past its privileged 780s bound and its outer 900s one -

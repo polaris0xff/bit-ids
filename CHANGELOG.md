@@ -37,6 +37,16 @@ Nothing is released yet. Entries accumulate here until the first
   1080, so the killing would have happened outside with nothing to read. Each
   bound outlasts the one inside it: inner sum < `BIT_IDS_STEP_TIMEOUT` < the
   step's `timeout` < the job's `timeout-minutes`, which is 35 rather than 25.
+- ⛔ **THE CAUSE IS NOT IN THIS REPOSITORY, AND ONE COMMAND SETTLES IT.** The
+  install path was **byte-identical** across the boundary between a six-second
+  install and a thirty-minute hang; the recorded lead about a commit window is
+  refuted by the tree, which shows the window moved files that step never reads.
+  ⚠ What is left is the runner image, the vendor's endpoint, or the network.
+- ⭐ **`install-step.sh` stops waiting on its own schedule**, detaching the
+  install with `setsid` and never `wait`ing on a process that may not die. Driven
+  as uid 1001 against an install that **ignores TERM**: the step returned 124 in
+  **21 seconds** against a job timeout of 35 minutes, with the timeline intact and
+  `holders.log` naming the survivors.
 - ⛔ **RUN 24 REFUTED BOTH BOUNDS AND NAMED THE OTHER HALF.** The first dispatch
   after the repair hung identically - *Install the client* still open twenty
   minutes in, past its privileged 780s bound and its outer 900s one - taking the

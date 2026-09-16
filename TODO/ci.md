@@ -2391,6 +2391,25 @@ for 600s under a 20s step bound: **exit 124 at 21 seconds, with
 ⛔ That is the whole deliverable - a hung step that ENDS and leaves its timeline
 on the runner for the upload to collect.
 
+#### ⛔ THE INSTALL PATH WAS BYTE-IDENTICAL ACROSS THE GREEN/HUNG BOUNDARY
+
+⛔ **The recorded lead - *the hang correlates with this session's commits* - is
+refuted by the tree, in one command.** `git diff 95e90f5 40ed628` over
+`scripts/acquisition/`, `scripts/capture/adapters/` and `capture-client.yml` is
+**empty**, and so is the same diff to `80ec75a`. Run 20 installed in **six
+seconds** and runs 21 and 23 hung for thirty minutes **on byte-identical install
+code**.
+
+⚠ **What those commits did touch** is `capture-client.sh`, `assemble-capture.rs`
+and two check scripts. None of them is read by *Install the client*: the capture
+script runs two steps later, and the assembler never runs on the runner at all.
+
+⭐ **So the cause is not in this repository**, and every repair below is a real
+defect that is not it. What is left is the runner image, the vendor's endpoint, or
+the network between them - and the `ps` timeline is what separates those three.
+⛔ A correlation with a commit window is not a correlation with a change, and
+nothing had asked the tree which files the window actually moved.
+
 #### ⛔ RUN 24 REFUTED THE BOUNDS AND NAMED THE OTHER HALF. 2026-09-16
 
 ⭐ **The first dispatch after the repair hung too, and that is the measurement

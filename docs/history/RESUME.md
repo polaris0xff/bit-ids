@@ -135,6 +135,14 @@ left, which is arithmetic rather than measurement; it is timed here.
    the repaired tree exited **0 in 0s** with a full record. ⭐ Driven as uid 1001
    against a 600s install under a 20s step bound: **124 at 21s, `watchdog.log`
    with four samples, `holders.log` naming the survivor.**
+   ⛔ **AND THE CAUSE IS NOT IN THIS REPOSITORY, WHICH ONE COMMAND SETTLES.**
+   `git diff 95e90f5 40ed628` over `scripts/acquisition/`, the adapters and
+   `capture-client.yml` is **empty**. Run 20 installed in six seconds and runs 21
+   and 23 hung for thirty minutes on **byte-identical install code**. The window's
+   commits moved `capture-client.sh` and the assembler, neither of which
+   *Install the client* reads. ⚠ A correlation with a commit window is not a
+   correlation with a change. What is left is the runner image, the vendor's
+   endpoint, or the network - and the timeline separates them.
    ⛔ **RUN 24 THEN REFUTED BOTH BOUNDS, AND THAT IS THE REAL FINDING.** The
    first dispatch after the repair hung identically: *Install the client* still
    open **twenty minutes** in, past the privileged 780s and the outer 900s. The
