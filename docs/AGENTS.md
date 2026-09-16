@@ -73,7 +73,13 @@ The current state and work order live in
     spent minutes per query while rule 8's route answers the same question in
     one `curl`. The rule was read at the start of that session and not applied,
     which is what makes this an absolute rather than a preference.
-16. Do not run the session-end protocol until the operator says to wrap up or
+16. ⛔ **A hang is a dead end, not a subject.** Record it with its evidence and
+    take a route that does not depend on the hanging thing. Never add a third
+    bound: if two have not ended it, it is unboundable from where you stand.
+    Measured across `capture-client` runs 3 to 31 - thirteen bounds, a dozen
+    dispatches, and a cancelled job leaves no log and no artifact, so most of
+    them measured nothing. [`../TODO/RULES.md`](../TODO/RULES.md) carries it.
+17. Do not run the session-end protocol until the operator says to wrap up or
     the current work order is genuinely exhausted. Genuinely exhausted means
     at least five L-sized entries, or equivalent effort, have been completed or
     driven to measured external blockers. Never end early merely because work
@@ -164,7 +170,7 @@ it, then restoring and confirming the clean case.
 
 ## 7. Session end protocol
 
-Run this only under rule 16 in section 2.
+Run this only under rule 17 in section 2.
 
 1. Finish the last task in flight or checkpoint it coherently. Save current
    progress and leave no unexplained half-edit.

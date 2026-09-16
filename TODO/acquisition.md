@@ -755,3 +755,50 @@ the example and are nobody's installer.
 - ⚠ Certificate metadata and package receipts from the Premise are not modelled.
   `SignatureStatus` records what was done about a signature and the manifest
   carries the rest; a receipt has no producer until a real acquisition runs.
+
+## ACQ-06: Rootless, portable client installation
+
+Source: operator direction on 2026-09-16, after thirteen dispatches hung
+Priority: P0 | Effort: L | Status: OPEN
+
+Problem: Every install this project performs needs `sudo` and writes to
+`/usr/local/bin`, so what an install does depends on a host this project does
+not control. `capture-client` runs 21 to 31 hung inside *Install the client* on
+byte-identical code, across two targets and both routes, and no bound - including
+GitHub's own step supervisor - could end the step.
+
+Premise: A client that is fetched, verified against a published digest and
+unpacked into a prefix the current user already owns needs no privilege, no
+package index and no host state. That install is the same on a runner, a session
+host and a contributor's laptop, which makes it deterministic and ours.
+
+Approach: One rootless installer that every adapter's `release` and `source`
+route goes through. It resolves a prefix under the caller's own workdir, fetches
+with a bound, verifies the digest before anything is executed, unpacks or copies
+into `$PREFIX/bin`, and answers with the absolute path of the executable it
+placed. No `sudo`, no `/usr/local`, no `apt`, no PATH mutation - callers take the
+path the installer returns. The disposable-host state directory moves under the
+same prefix so the claim guard needs no privilege either.
+
+Prove: `sh scripts/acquisition/check-rootless.sh` installs every adapter's
+release route as an unprivileged user into a scratch prefix and asks each
+installed build its version; the run is repeated with `sudo` absent from `PATH`
+entirely and must be byte-identical.
+
+### ⛔ What this replaces, and why the `package` route cannot come with it
+
+⛔ **A package route is privileged by construction** - it writes to directories
+the distribution owns - so it is not portable and cannot be made rootless. ⚠ That
+is a reason to stop treating it as one of the two routes a record needs, not a
+reason to keep `sudo`: `E-ACQ-01` wants two INDEPENDENT routes, and `release`
+plus `source` already are. The package route stays for hosts where it is wanted
+and stops being on the path a capture depends on.
+
+### ⛔ The measurement this entry exists to make impossible
+
+⚠ **Thirteen bounds were spent on a step nobody could end**, and the install
+itself was never the slow part: every operation it performs was measured on a
+real runner at **two seconds or less**, and the whole sequence driven on a
+session host exits 0 in **one second**. ⛔ The difference between those and the
+hung step is `sudo` and the host it reaches into. Removing the privilege removes
+the variable rather than instrumenting it.

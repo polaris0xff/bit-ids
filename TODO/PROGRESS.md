@@ -1,8 +1,8 @@
 # Current progress
 
-State instant: 2026-09-10
-Total: 65
-Open: 21
+State instant: 2026-09-16
+Total: 66
+Open: 22
 In progress: 1
 Blocked: 0
 Done: 43
@@ -404,6 +404,25 @@ needing the operator is answered under *Settled decisions* below, and the captur
 host that nineteen entries were said to wait on was never a blocker. Take these
 in order.
 
+⛔ **THE CAPTURE HANG IS A DEAD END AND IS NOT ON THIS LIST.** `RULES.md` carries
+it as a rule: a hang is a dead end, not a subject; two bounds is the limit; take
+the route that does not depend on the hanging thing. ⭐ `ACQ-06` **is** that route
+and it is item 0 below. ⚠ Do not diagnose the hang, do not instrument it, and do
+not add a fourteenth bound - thirteen have already failed, across two targets and
+both routes, on byte-identical code.
+
+0. ⭐ **`ACQ-06`: ROOTLESS, PORTABLE CLIENT INSTALLATION. P0, and everything a
+   capture needs sits behind it.** Every install today needs `sudo` and writes to
+   `/usr/local/bin`, so what it does depends on a host this project does not
+   control - and that is the one variable left between an install that exits 0 in
+   **one second** here and a step that thirteen bounds could not end on a runner.
+   ⭐ Fetch, verify the digest, unpack into a prefix the current user already
+   owns, and answer with the path. No privilege, no package index, no host state.
+   [`acquisition.md`](acquisition.md) carries the Approach and the Prove.
+   ⚠ **The `package` route does not come with it and should not**: it is
+   privileged by construction. `E-ACQ-01` wants two INDEPENDENT routes and
+   `release` plus `source` already are.
+
 ⭐ **`CI-06` is closed and the button has been pressed.** Both platforms captured
 green on run 2, so nothing below waits on a runner question any more.
 ⭐ **`PUB-05` is closed too**, so every path `docs/publishing.md` promises is
@@ -412,104 +431,33 @@ written and the dependency question under *Settled decisions* is spent.
 every answer it gives about a real client today is *not measured*, because
 nothing is. The clone question under *Settled decisions* is spent too.
 
-0. ⭐ **`CI-10` IS IN FLIGHT AND ITS THREE NAMED DELIVERABLES ARE ALL LANDED,
-   2026-09-10.** The operator's direction was to port the checking scripts to Go,
-   port the slow CI parts to Go, and parallelise CI across multiple runners.
-   ⭐ **All three are measured on real runners**: *Workflow acceptance* was
-   **32.6 minutes** on run 122, **22.2** on run 123 after four twin pairs were
-   deleted, and the longest of four shards is **11.8** on run 124, which is
-   green on every job. The acceptance bound came DOWN to 20 from the 45 a
-   previous session had raised it to.
-   ⛔ **WHAT IS NOT DONE IS THE REST OF THE PORT.** **Nine** checks are in
-   `../tools/check/` - eight ported plus `check-ignores`, which was never a shell
-   rule - and **five twin file pairs remain, which `check-twins` prints
-   as five rows**, whose PowerShell halves together are 5.3 seconds, timed on
-   2026-09-15, against the 96 the layer started at. ⚠ So the remaining
-   wall-clock value is small and the DRIFT value is unchanged, which is the
-   ordering argument for taking them when they are cheapest rather than first.
-   ⭐ **`check-no-secrets` and `check-docs` both left on 2026-09-15.** The first
-   was compared as TWO rows, since `--public` is a different question rather than
-   a stricter one, so one deletion took eight rows to six. ⛔ The second is the
-   one that justified the discipline: `--compare` caught the two shell halves
-   DISAGREEING about whether a page cited only inside backticks is an orphan, on
-   a shape this tree does not contain and `check-twins` could never have seen.
-   ⛔ `check-project` is the big one at 997 lines and is best taken as its own
-   unit.
-   ⭐ Every pair deleted so far went through `check-bitcheck --compare` first:
-   50 cases, all three implementations agreeing on the exit code and byte for
-   byte on `--json`. ⛔ **A pair may not leave the list any other way.**
-0a. ⭐ **`CLIENT-14` IS CLOSED.** It was first by operator direction on 2026-09-09,
-   after ten dispatches produced no aria2 capture: every lane stopped inside
-   *Install the client*, four independent bounds were measured not to fire on
-   that step, five readings of it were refuted, and no such job ever produced a
-   log or an artifact. ⛔ The direction was to change the target rather than to
-   keep diagnosing - `AnInsomniacy/aria2-next`, acquired from its own releases and
-   driven over RPC - and that target captured on the first dispatch.
-   ⭐ **THE CAPTURE RAN AND EVERY STEP PASSED. capture-client run 11 is the
-   ELEVENTH dispatch and the FIRST to reach the *Capture* step**, in 2 minutes 1
-   second, with an install step of one second. It attests `kind=client`,
-   `stock_client=true`, `measured_build=2.7.5`, `acquired=yes`, `egress=closed`,
-   and its evidence bundle verifies with `sha256sum -c` outside the run that
-   wrote it.
-   ⛔ **AND THE IDENTITY IS NOT THE PRODUCT'S OWN**: the measured peer ID is
-   `-qB5230-s2QbzYjt(LOQ`, whose first eight bytes are qBittorrent 5.2.3.0's
-   prefix. A stock `aria2-next` announces as qBittorrent, observed on the wire
-   rather than read from a table.
-   ⛔ **The second route is a measured absence**: no package index carries this
-   fork, so the target has ONE route and `E-ACQ-01` still refuses a record with
-   one. ⚠ So run 11 produced an attestation and an evidence bundle, not a
-   `Profile`. `CLIENT-05` stays open on the hang, which run 11 does not diagnose:
-   a different target installing cleanly is not an explanation of why aria2 does
-   not.
-1. **`CLIENT-01`, `CLIENT-06`, `CLIENT-05`**, the first complete vertical
-   captures. ⭐ Every layer below the product is written and proved, and
-   `capture-client.yml` is the workflow that runs them. ⚠ What remains is a
-   dispatch and what it teaches: no adapter has ever installed a build, and the
-   Windows half of each Prove is untouched because the adapters are `sh`.
-   `TODO/clients.md` carries the routes and what each adapter assumes.
-2. ⭐ **`OBS-07` IS CLOSED, 2026-09-10.** It moved to the front of this order
-   because a single-connector record is refused by `E-CAP-01` as an **invalid
-   document** rather than held back by `E-PUB-02`, which made a second connector
-   a prerequisite for a record existing exactly as a second route is.
-   ⭐ **`scripts/capture/connectors/cpython-stdlib.py` is that connector**, and
-   `capture-client` will not run without one: `--connector` is required, with no
-   default and no fallback, because a capture that warned and carried on would
-   look exactly like a green run. ⚠ **Unproved on a runner** - no dispatch has
-   taken the new step - and the Approach's other half, a stock libtorrent
-   harness on the wire, is a residual that needs a disposable host.
-3. ⭐ **DONE, 2026-09-09.** The source route resolves its own tag from the
-   repository's refs, so the two lanes read two indexes. `ACQ-02` carries the
-   reader and what a refs source cannot do. ⚠ Unproved on a runner: no dispatch
-   has taken the new step.
-4. **`CI-09`**, the capture-to-publisher path, which now sits behind those.
-   ⭐ `assemble-capture` and `check-assemble` are written and the refusals above
-   are its measurement. ⛔ **The v7/v8 question still cannot be reached**, because
-   the publisher downloads `bundle` and nothing in the tree produces that name,
-   and a capture bundle is not a publication bundle in any case: what sits
-   between them is `assemble-release`, which reads a store of records, and no
-   record exists. The gap is declared in the workflow and enforced by
-   `check-project`.
+1. ⭐ **`CI-10`, IN FLIGHT, and its three named deliverables are all landed.**
+   The operator's direction was to port the checking scripts to Go, port the slow
+   CI parts to Go, and parallelise CI across runners; all three are measured on
+   real runners, and the acceptance bound came DOWN to 20 from 45.
+   ⛔ **What is left is the rest of the port**: ten rules are in
+   [`../tools/check/`](../tools/check/) and **five twin file pairs remain**, whose
+   PowerShell halves together are 5.3 seconds against the 96 the layer started at.
+   ⚠ So the wall-clock value is small and the DRIFT value is unchanged, which is
+   the argument for taking them when they are cheapest rather than first.
+   ⛔ `check-project` is the big one at 997 lines and is its own unit.
+   ⛔ **A pair may leave that list ONE WAY ONLY**:
+   `sh scripts/common/check-bitcheck.sh --compare` against BOTH halves, before
+   either is deleted.
+2. **`CLIENT-01` and `CLIENT-06`**, the remaining vertical captures. ⚠ Both sit
+   behind `ACQ-06`: no adapter can be proved on a runner while every install
+   needs a privilege the runner will not complete.
+3. **`CI-09`'s residuals**, which are no longer about reaching a record: the
+   `RunManifest` a record needs beside it; the publisher, which cannot run at all
+   because it downloads an artifact named `bundle` that nothing produces; and
+   `SCHEMA-04`'s field - `sampling::classify` computes a `Lifetime` per span and
+   `field_state` DISCARDS it, so no record can say whether a tail is
+   per-connection or per-session.
+4. **`mine-repo`'s unbounded clone, in both halves.** ⛔ `timeout` is a PAUSE on
+   Windows, so the two halves need two idioms and `check-twins` compares the
+   pair. It is its own unit for that reason.
 5. **`OBS-10`**, which needs a second platform, so it follows the captures.
-6. **`CI-07` and `CI-08`**, which harden the gate rather than extend it: the
-   declared PowerShell rows, and the host defaults the scripts inherit rather
-   than state. ⭐ **`CI-07`'s sweep is done** - the declared rows are four kinds
-   and only one of them is this entry's work - ⭐ **and its first step is built**:
-   `store-lib.ps1` exists and TWO class-A rows have stopped being declared,
-   `check-cache` and `check-catalogue`, the second needing no new library
-   function. ⚠ What is left is the rest of class A, three of which need library
-   functions `store-lib.ps1` deliberately does not carry yet.
-   ⭐ **`CI-08`'s sweep is an instrument now rather than a reading**:
-   `check-defaults` runs five checks under six environments and names any value a
-   script takes from its host without saying so. ⛔ One of its rows is blind on a
-   host that has built before, and it says which state it is in.
-   ⛔ **The second question is still open**: CI pins `shfmt` and takes
-   `shellcheck` and `pwsh` from the runner image, so a session host runs a MORE
-   pinned set of tools than the lane it is meant to match.
-   ⭐ **`FOUND-05` is closed**: `sh scripts/doctor/provision.sh` installs the
-   three tools a session used to install by hand, verifying each download against
-   a pinned digest first.
-   ⭐ **`CI-08` also wrote the harness `CI-06` needed**: a capture workflow's
-   step bodies run as a gate row, under GitHub's own wrapper form.
+6. **`CI-07`**, whose class-A backlog shrinks as `CI-10` ports pairs.
 7. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
    bind attestations to.
 8. The remaining client and engine breadth, then refinements.

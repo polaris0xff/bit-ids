@@ -5,6 +5,35 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-16T09:44:52Z
+
+- ⭐ **`ACQ-06`: ROOTLESS, PORTABLE CLIENT INSTALLATION, P0 and item 0**, by
+  operator direction. Every install today needs `sudo` and writes to
+  `/usr/local/bin`, so what it does depends on a host this project does not
+  control - which is the one variable between an install that exits 0 in **one
+  second** here and a step that thirteen bounds could not end on a runner.
+  ⭐ Fetch, verify the digest, unpack into a prefix the current user already owns,
+  answer with the path: no privilege, no package index, no host state, and the
+  same behaviour on a runner, a session host and a contributor's laptop.
+- ⚠ **The `package` route does not come with it and should not.** It is
+  privileged by construction, so it cannot be portable. `E-ACQ-01` wants two
+  INDEPENDENT routes and `release` plus `source` already are.
+- ⛔ **A HANG IS A DEAD END, NOT A SUBJECT - now a rule.** `TODO/RULES.md` carries
+  it and `AGENTS.md` makes it absolute 16: record the hang with its evidence and
+  take a route that does not depend on the hanging thing. **Two bounds is the
+  limit**; if a second does not end it, no further bound will. ⚠ It is a rule
+  because it was broken expensively - thirteen bounds and a dozen dispatches on
+  one step, and a cancelled job leaves no log and no artifact, so most of them
+  measured nothing at all.
+- ⚠ **The work order was stale and is rewritten.** Three items were closed
+  entries still listed as work, the hang was item 0, and the counts predated
+  `ACQ-06`. `INDEX.md`, `SUMMARY.md` and `PROGRESS.md` now read 66 / 22 open /
+  1 in progress / 43 done, cross-checked by `check-project`, and
+  `docs/history/RESUME.md`'s own list is aligned with it rather than contradicting
+  it.
+- Record: [`TODO/acquisition.md`](TODO/acquisition.md), `ACQ-06`. No version bump
+  and no deploy.
+
 ### 2026-09-16T01:43:40Z
 
 - ⭐ **THE CAPTURE HANG IS REPRODUCED ON A SESSION HOST AND REPAIRED.** Thirteen

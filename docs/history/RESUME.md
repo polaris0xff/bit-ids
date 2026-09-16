@@ -115,137 +115,39 @@ left, which is arithmetic rather than measurement; it is timed here.
 
 ### Next, in order
 
-0. ⭐ **THE HANG IS REPRODUCED ON THIS HOST AND REPAIRED, 2026-09-16.** Eight
-   dispatches had been spent asking a runner what one command answers here.
-   ⛔ **NEITHER DEFECT WAS FINDABLE BY READING THE INSTALL PATH.** Both were
-   found by driving it as an **unprivileged** user, which is what a runner is and
-   what no local drive had ever been: every session host here is `root`, so every
-   previous local pass ran the step with privileges the runner does not have.
-   ⛔ **A bound inside `$( )` is not a bound.** A substitution ends when its PIPE
-   reaches end of file, not when the command exits. `install-client` reached its
-   adapter four times through a pipe and **three carried no bound at all**, while
-   the file's own header claimed every adapter call was bounded. Measured: an
-   adapter leaving one `sleep` behind still blocked at **25s** under a **4s**
-   bound.
-   ⛔ **An unprivileged bound cannot signal a root tree.** `timeout -k 2 5`
-   around `sudo -E sh -c 'sleep 120'` exited **124 on schedule** and left the root
-   process alive with **PPID 1**. ⭐ That predicts the number nothing explained:
-   run 21's `timeout-minutes: 25` ended at **thirty**.
-   ⭐ **Mutation-proved, same plant both halves**: `HEAD` exited **124 still
-   blocked at 70s with NO OUTPUT AT ALL** - runs 21/22/23's exact signature - and
-   the repaired tree exited **0 in 0s** with a full record. ⭐ Driven as uid 1001
-   against a 600s install under a 20s step bound: **124 at 21s, `watchdog.log`
-   with four samples, `holders.log` naming the survivor.**
-   ⛔ **AND THE CAUSE IS NOT IN THIS REPOSITORY, WHICH ONE COMMAND SETTLES.**
-   `git diff 95e90f5 40ed628` over `scripts/acquisition/`, the adapters and
-   `capture-client.yml` is **empty**. Run 20 installed in six seconds and runs 21
-   and 23 hung for thirty minutes on **byte-identical install code**. The window's
-   commits moved `capture-client.sh` and the assembler, neither of which
-   *Install the client* reads. ⚠ A correlation with a commit window is not a
-   correlation with a change.
-   ⛔ **AND IT IS INTERMITTENT ON IDENTICAL BYTES.** The adapter,
-   `install-client.sh` and `install-step.sh` are byte-identical at `95e90f5` and
-   `40ed628`, by digest, and the green run 20 attempt 2 on the first finished at
-   **15:59:43** - between run 21 ending at 15:15 and run 23 starting at 16:07,
-   both hung on the second. ⚠ So it is neither the commit nor a host-wide defect:
-   a host defect does not go green in the middle of the hung window. ⭐ **The same
-   bytes hang sometimes and not others.** Do not record a code cause without a
-   digest comparison first.
-   ⚠ **The `aria2` vs `aria2-next` lead is checked and does not fit runs 19-31**:
-   all dispatched `aria2-next`, `aria2c-next` is nowhere in this history, and the
-   vendor binary answers `--version` in 0s under any `argv[0]`.
-   ⛔ **RUN 24 THEN REFUTED BOTH BOUNDS, AND THAT IS THE REAL FINDING.** The
-   first dispatch after the repair hung identically: *Install the client* still
-   open **twenty minutes** in, past the privileged 780s and the outer 900s. The
-   tally of bounds measured not to end this step is **ten**.
-   ⭐ **Ten bounds failing the same way is ONE problem.** A `run:` step ends when
-   its command has exited AND its output pipe has reached end of file; every
-   bound ever added here acts on the first condition only, so a held pipe defeats
-   all ten and would defeat an eleventh.
-   ⭐ **So the repair stopped being a bound.** The step body hands
-   `install-step.sh` and its whole subtree a FILE and cats it afterwards, so the
-   step's pipe is held by the step's own shell and nothing else. ⚠ The workflow
-   had claimed that guarantee in a comment while holding it one level too low -
-   `install-step.sh` redirected everything it started and then inherited the pipe
-   itself.
-   ⚠ **`report-holders.sh` is aimed at the wrong descriptor** and has reported
-   `0 holder(s)` on every green run: the file that keeps a step open is the
-   step's own stdout, which nothing asks about. It reports both now.
-   ⛔ **THE TIMELINE WAS STILL NOT OBTAINED. Runs 24, 25 and 26 all hung and all
-   uploaded ZERO artifacts**, read back from the API. ⭐ **Run 26 is the sharpest
-   measurement this entry has**: it carried three independent endings, one of
-   which - `install-step.sh`'s own loop deadline - depends on no signal reaching
-   anything, and all three passed without the step ending.
-   ⛔ **So stop reading this as a bound that fails to fire.** The step's process
-   is not reaching its own deadline check, which no bound repairs.
-   ⭐ **RUN 27 THEN LOCALISED IT, IN ONE SECOND.** Three named probes now walk the
-   release route's own operations, and all three passed before the wedge:
-   the fetch of the whole artifact took **1s**, staging (`chmod`, `mkdir`, a `cp`
-   across filesystems into `/usr/local/bin`) **0s**, and an `exec` of the
-   downloaded binary **0s**. ⛔ The vendor's endpoint, the network, the filesystem
-   and the binary are ruled OUT by measurement. *Install the client* performs
-   those same operations and still never returns.
-   ⚠ **What is left is what the install does and the probes do not**: the `sudo`
-   plumbing, `install-client`'s guard and rule-12 scan, the holder report's walk
-   of `/proc`, and the watchdog's own `ps`.
-   ⛔ **`ps -e` WAS THE LAST UNBOUNDED COMMAND IN THAT SHELL** and it reads
-   `/proc` for every process - so the instrument could block on the very condition
-   it was written to record, and the deadline two lines above it would never be
-   reached. It is bounded now. ⚠ An earlier version of this page said the loop
-   "only sleeps and compares two integers"; that was written without re-reading
-   the loop and is corrected here and in `ci.md`.
-   ⛔ **RUN 28 CARRIES THAT BOUND AND HUNG ANYWAY**, twenty-five minutes, past the
-   loop's own 780s and the outer 900s - so the `ps` is **excluded**. ⭐ It also
-   REPRODUCED run 27: its three probes completed inside the same second, so two
-   runs agree the route is instantaneous while the step performing it does not
-   return.
-   ⭐ **FOUR MORE PROBES ARE BUILT AND PUSHED**, one per remaining candidate: the
-   claim guard, a detached `sudo` launch, the rule-12 scan over the real
-   fourteen-megabyte artifact, and the `/proc` holder walk. ⛔ Names localised in
-   one run what twelve bounds could not; do not add a thirteenth bound - read
-   which step the API last reported.
-   ⚠ **Driving those bodies found a defect the reading did not**: GitHub runs a
-   `run:` block as `bash -e`, and `grep` exits 1 on NO MATCH, which is the
-   ordinary outcome for a scan that finds no secret. Two probes would have failed
-   the capture they were written to be harmless to.
-   ⛔ **RUN 29: ALL SEVEN PROBES PASSED IN FOUR SECONDS AND THE STEP STILL
-   WEDGED.** Every operation *Install the client* performs is now measured
-   individually; they sum to four seconds and the step composing them runs for
-   thirty minutes. ⭐ **Each candidate is excluded on its own, so no further probe
-   of a component can reach it** - what is left is the composition.
-   ⭐ **SO BUY THE ARTIFACT RATHER THAN MORE LOCALISATION.** A **step-level**
-   `timeout-minutes` is the RUNNER's bound, not a twelfth shell bound, and a step
-   that exceeds it is marked FAILED rather than cancelling the job - so the
-   `if: always()` upload runs and the timeline ships. ⚠ It was measured once not
-   to fire, on a `uses:` step; this is a `run:` step, which the runner supervises
-   directly. ⛔ And a failed install skips *Cut the route*, so the host still has
-   the network that upload needs.
-   ⚠ A residual is filed in `TODO/ci.md`: nested `timeout`s each make their own
-   process group, so an orphan survives the bound.
-1. ⛔ **Make a MEASURED record publishable, which is one dispatch away.** Runs 19
-   and 20 refuted both recorded readings: the observer now offers a distinct peer
-   per connection and an interval the run can outlive, and `aria2-next` still
-   answered one of two connections and announced once. ⭐ **Run 20 then gave two
-   announces** - `started` and `stopped`, the first pair a stock build has ever
-   given this project - **and both carried the same peer ID**, so the tail is
-   stable within a session.
-   ⭐ **So the last lever is a second SESSION, and it is built.**
-   `capture-client.sh --sessions` defaults to two and starts and stops the build
-   once per session inside the window. ⚠ **No dispatch has taken it**: whether
-   `aria2-next` regenerates its peer ID per run is the open question, and a
-   `patterned` field is what two lanes can agree on.
-2. **`CLIENT-01`, `CLIENT-06`**, the remaining vertical captures. `aria2-next`
-   is the worked example: five dispatches took it from four refusals to two
-   written records and two announces.
-3. **`CI-10`**, five pairs left, `check-project` its own unit.
-4. **`CI-09`'s** remaining residuals, no longer about reaching a record: the
-   `RunManifest` a record needs beside it, and the publisher, which cannot run at
-   all because it downloads an artifact named `bundle` that nothing produces.
-   ⚠ And a third: `sampling::classify` computes a `Lifetime` per span and
-   `field_state` DISCARDS it, so no record can say whether a tail is
-   per-connection or per-session. `SCHEMA-04` owns the field.
+⛔ **THE CAPTURE HANG IS A DEAD END AND IS NOT ON THIS LIST.** `TODO/RULES.md`
+carries it as a rule and `AGENTS.md` as absolute 16: a hang is a dead end, not a
+subject; two bounds is the limit; take the route that does not depend on the
+hanging thing. ⚠ **Thirteen bounds have already failed** - inside the script,
+around it, privileged, a watchdog, the job's `timeout-minutes`, and GitHub's own
+step supervisor - across two targets and both routes, on byte-identical code.
+⛔ Do not diagnose it, instrument it, or add a fourteenth.
+
+0. ⭐ **`ACQ-06`: ROOTLESS, PORTABLE CLIENT INSTALLATION. P0, and the whole
+   capture path sits behind it.** Every install needs `sudo` and writes to
+   `/usr/local/bin`, so what it does depends on a host this project does not
+   control - the one variable between an install that exits 0 in **one second**
+   here and a step no bound could end on a runner. ⭐ Fetch, verify the digest,
+   unpack into a prefix the current user already owns, answer with the path. No
+   privilege, no package index, no host state. ⚠ The `package` route is
+   privileged by construction and does not come with it; `release` and `source`
+   are already the two independent routes `E-ACQ-01` wants.
+1. **`CI-10`**, five twin pairs left, `check-project` its own unit. ⛔ A pair
+   leaves that list only after `check-bitcheck --compare` has run it against
+   BOTH halves.
+2. **`CLIENT-01` and `CLIENT-06`**, the remaining vertical captures - behind
+   `ACQ-06`, because no adapter can be proved on a runner until an install can
+   finish there.
+3. **`CI-09`'s residuals**: the `RunManifest` a record needs beside it; the
+   publisher, which cannot run at all because it downloads an artifact named
+   `bundle` that nothing produces; and `SCHEMA-04`'s field -
+   `sampling::classify` computes a `Lifetime` per span and `field_state`
+   DISCARDS it, so no record can say whether a tail is per-connection or
+   per-session.
+4. **`mine-repo`'s unbounded clone, in both halves.** ⛔ `timeout` is a PAUSE on
+   Windows, so the two halves need two idioms and `check-twins` compares the
+   pair.
 5. **`CI-07`**, whose class-A backlog shrinks as `CI-10` ports pairs.
-6. **`CI-08`'s** load-sensitive `check-step-bodies` row.
 
 ---
 
