@@ -455,6 +455,25 @@ jobs:
           # over an unexpanded expression - measured on 2026-09-16, five cases at
           # once, with the plant reporting *did not apply*.
           OUTER_TIMEOUT: ${{ matrix.route == 'source' && '1380' || '900' }}
+        # ⛔ A STEP-LEVEL BOUND, AND IT IS NOT A TWELFTH SHELL BOUND. Every bound
+        # this entry has spent acts on the step's own process from inside the
+        # step; this one is the RUNNER's, and it differs in the one way that
+        # matters here: exceeding it marks the step FAILED rather than cancelling
+        # the job. ⭐ A failed step still runs the `if: always()` steps after it,
+        # so the install logs - and the `ps` timeline in them - reach an upload.
+        # A cancelled job uploads nothing, measured on runs 21 to 29.
+        #
+        # ⚠ IT HAS BEEN TRIED ONCE AND THE MEASUREMENT DOES NOT COVER THIS CASE.
+        # `timeout-minutes: 5` was measured on run 6 not to fire - on *Upload the
+        # install logs*, which is a `uses:` step whose work happens inside an
+        # action. This is a `run:` step, which the runner supervises directly, and
+        # that difference is why it is worth one measurement rather than none.
+        #
+        # ⚠ THE RELATION, as everywhere here: each bound outlasts the one inside
+        # it. Inner sum < BIT_IDS_STEP_TIMEOUT < OUTER_TIMEOUT < this < the job's
+        # `timeout-minutes`, which is 35. For a release lane that is
+        # 630 < 780 < 900 < 1020 < 2100 seconds.
+        timeout-minutes: ${{ matrix.route == 'source' && 25 || 17 }}
         # ⛔ THE BOUND IS ON THE STEP'S OWN PROCESS, WHICH IS THE ONE PLACE IT HAS
         # NOT BEEN TRIED. `timeout` inside `install-client` ends its own child and
         # cannot end a shell blocked around it; `timeout-minutes` is the runner's

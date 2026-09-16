@@ -198,6 +198,18 @@ left, which is arithmetic rather than measurement; it is timed here.
    `run:` block as `bash -e`, and `grep` exits 1 on NO MATCH, which is the
    ordinary outcome for a scan that finds no secret. Two probes would have failed
    the capture they were written to be harmless to.
+   ⛔ **RUN 29: ALL SEVEN PROBES PASSED IN FOUR SECONDS AND THE STEP STILL
+   WEDGED.** Every operation *Install the client* performs is now measured
+   individually; they sum to four seconds and the step composing them runs for
+   thirty minutes. ⭐ **Each candidate is excluded on its own, so no further probe
+   of a component can reach it** - what is left is the composition.
+   ⭐ **SO BUY THE ARTIFACT RATHER THAN MORE LOCALISATION.** A **step-level**
+   `timeout-minutes` is the RUNNER's bound, not a twelfth shell bound, and a step
+   that exceeds it is marked FAILED rather than cancelling the job - so the
+   `if: always()` upload runs and the timeline ships. ⚠ It was measured once not
+   to fire, on a `uses:` step; this is a `run:` step, which the runner supervises
+   directly. ⛔ And a failed install skips *Cut the route*, so the host still has
+   the network that upload needs.
    ⚠ A residual is filed in `TODO/ci.md`: nested `timeout`s each make their own
    process group, so an orphan survives the bound.
 1. ⛔ **Make a MEASURED record publishable, which is one dispatch away.** Runs 19

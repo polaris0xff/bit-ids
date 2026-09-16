@@ -2577,6 +2577,37 @@ produces it now, and all four were re-driven under `bash -e` to exit 0 together.
 HARMLESS** - reaching it is - and nothing in the gate checks that a probe can be
 reached. Filed here rather than guarded.
 
+#### ⛔ RUN 29: EVERY COMPONENT PASSES AND THE COMPOSITION STILL WEDGES
+
+⭐ **All seven probes completed in FOUR SECONDS**, on `2608ce0`, and the job then
+wedged in *Install the client* exactly as before:
+
+| probe | 07:47:36 to 07:47:40 |
+| --- | ---: |
+| the release fetch, whole artifact | 1s |
+| staging: `chmod`, `mkdir`, `cp` into `/usr/local/bin` | 0s |
+| executing the fetched artifact | 0s |
+| the claim guard | 0s |
+| a detached `sudo -E timeout` launch | 2s |
+| the rule-12 scan over the fourteen-megabyte artifact | 0s |
+| the `/proc` holder walk | 1s |
+
+⛔ **So every operation that step performs has now been measured individually,
+they sum to four seconds, and the step that composes them runs for thirty
+minutes.** Each candidate is excluded on its own; what is left is the
+composition, and no further probe of a component can reach it.
+
+⭐ **WHICH MAKES THE ARTIFACT, NOT THE LOCALISATION, THE THING TO BUY NEXT** - and
+there is one mechanism never tried on this step. A **step-level**
+`timeout-minutes` is the RUNNER's bound rather than a twelfth shell bound, and it
+differs in the one way that matters: exceeding it marks the step **FAILED** rather
+than cancelling the job, and a failed step still runs the `if: always()` steps
+after it. ⚠ It was measured once, on run 6, not to fire - on *Upload the install
+logs*, a `uses:` step whose work happens inside an action. This is a `run:` step,
+which the runner supervises directly. ⛔ And because the install FAILS rather than
+succeeding, *Cut the route* is skipped, so the host still has the network the
+upload needs.
+
 #### ⛔ The door sweep found the same class behind THREE more doors
 
 ⚠ **`install-client` was not the only caller, and the enumeration written from

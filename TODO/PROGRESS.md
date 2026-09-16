@@ -339,10 +339,17 @@ the instrument could block on the condition it exists to record.
 
 ⛔ **Run 28 carries that bound and hung anyway**, twenty-five minutes, so the `ps`
 is **excluded** - and it REPRODUCED run 27's localisation, its three probes
-completing inside one second. ⭐ **The next instrument is the same one, a level
-deeper**: split `install-step.sh`'s work into *Start the install detached* and
-*Await the install*, so the API names which. ⛔ Names localised in one run what
-twelve bounds could not; do not add a thirteenth.
+completing inside one second.
+
+⛔ **RUN 29 THEN EXCLUDED EVERYTHING ELSE. All seven probes passed in FOUR
+SECONDS** - the fetch, the staging, the exec, the claim guard, a detached `sudo`
+launch, the rule-12 scan over the fourteen-megabyte artifact, and the `/proc`
+walk - and the step composing them still ran for thirty minutes. ⭐ Every
+candidate is excluded on its own, so no further probe of a component can reach
+it. ⭐ **The thing to buy next is the ARTIFACT rather than more localisation**: a
+**step-level** `timeout-minutes` is the runner's bound, and a step that exceeds it
+is marked FAILED rather than cancelling the job, so the `if: always()` upload runs
+and the timeline finally ships. [`ci.md`](ci.md) under `CI-08` carries the table.
 
 ⛔ **AND RUN 24 REFUTED BOTH BOUNDS, WHICH NAMES THE OTHER HALF.** The first
 dispatch after the repair hung the same way: *Install the client* was still open

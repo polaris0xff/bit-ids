@@ -44,6 +44,18 @@ Nothing is released yet. Entries accumulate here until the first
   of the downloaded binary in 0s. ⛔ The vendor's endpoint, the network, the
   filesystem and the binary are ruled out by measurement; *Install the client*
   performs those same operations and still never returns.
+- ⛔ **RUN 29: ALL SEVEN PROBES PASSED IN FOUR SECONDS AND THE STEP STILL WEDGED.**
+  Every operation *Install the client* performs is now measured individually - the
+  fetch, the staging, the exec, the claim guard, a detached `sudo` launch, the
+  rule-12 scan over the fourteen-megabyte artifact, and the `/proc` walk. ⭐ Each
+  candidate is excluded on its own, so no further probe of a component can reach
+  it; what is left is the composition.
+- ⭐ **A STEP-LEVEL `timeout-minutes` ON THE INSTALL STEP**, which is the runner's
+  bound rather than a twelfth shell bound. A step that exceeds it is marked
+  **FAILED** rather than cancelling the job, so the `if: always()` upload runs and
+  the timeline ships; and a failed install skips *Cut the route*, so the host
+  still has the network that upload needs. ⚠ It was measured once not to fire, on
+  a `uses:` step; this is a `run:` step, which the runner supervises directly.
 - ⭐ **FOUR MORE NAMED PROBES, one per remaining candidate**: the claim guard, a
   detached `sudo` launch, the rule-12 scan over the real fourteen-megabyte
   artifact, and the `/proc` holder walk. The scan probe carries
