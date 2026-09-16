@@ -44,6 +44,22 @@ Nothing is released yet. Entries accumulate here until the first
   of the downloaded binary in 0s. ⛔ The vendor's endpoint, the network, the
   filesystem and the binary are ruled out by measurement; *Install the client*
   performs those same operations and still never returns.
+- ⭐ **FOUR MORE NAMED PROBES, one per remaining candidate**: the claim guard, a
+  detached `sudo` launch, the rule-12 scan over the real fourteen-megabyte
+  artifact, and the `/proc` holder walk. The scan probe carries
+  `install-client`'s pattern verbatim, compared programmatically rather than by
+  eye.
+- ⛔ **DRIVING THOSE BODIES FOUND A DEFECT THE READING DID NOT.** GitHub runs a
+  `run:` block as `bash -e` and `grep` exits **1 on no match** - the ordinary
+  outcome for a scan that finds no secret - so a bare `_rc=$?` on the next line is
+  never reached and the trailing `true` never runs. ⚠ Two of the four probes would
+  have **failed the capture** they were written to be harmless to. ⭐ A trailing
+  `true` is not what makes a block harmless; reaching it is.
+  `docs/conventions/shell.md` section 9 states the rule.
+- ⭐ **The `rusqlite` question is settled by the operator: the answer is no.**
+  Pull request 1 is closed unmerged and the pin is 0.37.0 in both the manifest
+  and the lockfile, read back. It moves to *Settled decisions*, and the three
+  pages that called it open are amended.
 - ⛔ **RUN 28 EXCLUDED THE `ps` AND REPRODUCED THE LOCALISATION.** It carries the
   bound and hung anyway - twenty-five minutes, past the loop's own 780s and the
   outer 900s - so the watchdog's `ps` is not the wedge. ⭐ Its three probes

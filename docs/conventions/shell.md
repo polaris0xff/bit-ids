@@ -566,6 +566,26 @@ seconds, on three dispatches that produced no log and no artifact.
 is reading a pipe too. Redirect the untrusted process to a file and read the
 file.
 
+### ⛔ `grep` exits 1 on no match, and `set -e` reads that as a failure
+
+⛔ **A status captured on the NEXT line is never captured under `set -e`.** The
+shell exits at the failing command, so the assignment, the report and any
+trailing `true` are all unreachable.
+
+```sh
+timeout 60 grep -lE "$pat" -- *   # ⛔ exits 1 when nothing matches, which is
+_rc=$?                            #    the ordinary case; -e ends the script here
+true
+
+timeout 60 grep -lE "$pat" -- * && _rc=0 || _rc=$?   # ⭐ captured where produced
+```
+
+⚠ This bites hardest in a diagnostic, where **no match is the expected result**.
+Measured on 2026-09-16: two probe steps written to be harmless would have failed
+their job instead, because GitHub runs a `run:` block as `bash -e` and both ended
+in a `true` that could not be reached. ⭐ **A trailing `true` is not what makes a
+block harmless - reaching it is.** Drive the block before trusting it.
+
 ### ⛔ An unprivileged bound cannot end a root process
 
 ⛔ **`timeout`, and every `kill` it sends, is refused by the kernel when the

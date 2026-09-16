@@ -320,6 +320,78 @@ jobs:
           fi
           true
 
+      # ⛔ AND THE PLUMBING AROUND THE ROUTE, WALKED THE SAME WAY. Runs 27 and 28
+      # agree that every operation the release route performs is instantaneous
+      # while the step performing them never returns, so the wedge is in what
+      # *Install the client* does and the probes above do not. ⭐ These four are
+      # that remainder, one named step each, so the API says which.
+      # ⚠ The watchdog's own `ps` was the fifth and run 28 excluded it by carrying
+      # a bound and hanging anyway.
+      - name: Probe the claim guard
+        run: |
+          set -u
+          timeout 30 sudo -n sh scripts/acquisition/assert-disposable.sh --marker ||
+            echo 'the claim guard did not answer'
+          true
+
+      # ⚠ THE LAUNCH SHAPE `install-step.sh` USES, WITH NOTHING TO INSTALL. If a
+      # `setsid sudo -E timeout` started in the background is what wedges, it
+      # wedges here too, over a command that prints and exits.
+      - name: Probe a detached sudo launch
+        run: |
+          set -u
+          mkdir -p "$RUNNER_TEMP/probe-launch"
+          setsid sudo -E timeout -k 5 20 sh -c 'echo the detached shell ran; sleep 1' \
+            >"$RUNNER_TEMP/probe-launch/out.log" 2>&1 </dev/null &
+          _p=$!
+          _n=0
+          while kill -0 "$_p" 2>/dev/null && [ "$_n" -lt 60 ]; do
+            sleep 1
+            _n=$((_n + 1))
+          done
+          printf 'the detached launch settled after %ss\n' "$_n"
+          cat "$RUNNER_TEMP/probe-launch/out.log" 2>/dev/null || true
+          true
+
+      # ⛔ `install-client`'s RULE-12 SCAN, OVER A DIRECTORY HOLDING THE REAL
+      # ARTIFACT. That scan runs `grep -IlE` with two eight-or-more quantified
+      # alternations across every top-level file in the workdir, and on a release
+      # lane one of those files is the fourteen-megabyte binary just fetched. ⚠ The
+      # pattern is copied from `install-client.sh`; if the two drift, this probe
+      # stops being about the thing it names, which is why it says so here.
+      - name: Probe the rule-12 scan over a workdir
+        run: |
+          set -u
+          _d="$RUNNER_TEMP/probe-scan"
+          mkdir -p "$_d"
+          cp "$RUNNER_TEMP/probe-artifact" "$_d/artifact" 2>/dev/null || true
+          printf 'a log line\n' >"$_d/probe.log"
+          # ⛔ THE STATUS IS CAPTURED ON THE SAME LINE, because GitHub runs a
+          # `run:` block as `bash -e` and a bare `_rc=$?` on the NEXT line is
+          # never reached: `grep` exits 1 when it matches nothing, which is the
+          # ORDINARY outcome here, so `-e` would end the step before the `true`
+          # below and a probe would fail a capture. ⚠ Caught by driving this body
+          # on a session host before dispatching it.
+          timeout 180 find "$_d" -maxdepth 1 -type f -exec grep -IlE \
+            '"[A-Za-z0-9_-]*(secret|token|password)[A-Za-z0-9_-]*"[[:space:]]*:[[:space:]]*"[^"]{8,}"|--[A-Za-z0-9-]*(secret|token|password)[A-Za-z0-9-]*=[^[:space:]"]{8,}' \
+            {} + >/dev/null 2>&1 && _rc=0 || _rc=$?
+          printf 'the rule-12 scan exited %s over %s bytes\n' \
+            "$_rc" "$(du -sb "$_d" 2>/dev/null | cut -f1)"
+          true
+
+      # ⚠ THE `/proc` WALK, WHICH READS EVERY PROCESS'S DESCRIPTOR TABLE. It is
+      # already bounded at 60s inside `install-step.sh`; this asks whether the
+      # walk itself is what stops answering on this host.
+      - name: Probe the holder walk of /proc
+        run: |
+          set -u
+          # ⛔ SAME REASON AS THE SCAN ABOVE: captured on the line that produced
+          # it, so `bash -e` cannot end the step before the `true`.
+          timeout 90 sudo -n sh scripts/ci/report-holders.sh \
+            "$RUNNER_TEMP/probe-artifact" >/dev/null 2>&1 && _rc=0 || _rc=$?
+          printf 'the holder walk exited %s\n' "$_rc"
+          true
+
       # ⛔ THE WORK IS IN A FILE SO THE STEP'S OWN PROCESS CAN BE BOUNDED. That is
       # the one place a bound has not been tried here, and every other place has
       # been measured failing: `install-step.sh` says which and why.

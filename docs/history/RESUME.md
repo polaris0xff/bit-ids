@@ -3,10 +3,11 @@
 **Task:** Take the work order in [`../../TODO/PROGRESS.md`](../../TODO/PROGRESS.md)
 in order, committing and pushing each green unit to `main`.
 
-⛔ **Nothing is blocked.** Every question an earlier session recorded as needing
-the operator is answered in that file under *Settled decisions*, except the one
-open decision named there. Do not record a new blocker without running the
-command that would settle it.
+⛔ **Nothing is blocked and there is no open decision.** Every question an earlier
+session recorded as needing the operator is answered in that file under *Settled
+decisions*, the `rusqlite` one included since 2026-09-16. Do not record a new
+blocker without running the command that would settle it, and do not re-raise a
+settled one.
 
 ---
 
@@ -188,10 +189,15 @@ left, which is arithmetic rather than measurement; it is timed here.
    REPRODUCED run 27: its three probes completed inside the same second, so two
    runs agree the route is instantaneous while the step performing it does not
    return.
-   ⭐ **NEXT INSTRUMENT: the same one, one level deeper.** Split what
-   `install-step.sh` does into two named steps, *Start the install detached* and
-   *Await the install*. ⛔ Names localised in one run what twelve bounds could not;
-   do not add a thirteenth bound.
+   ⭐ **FOUR MORE PROBES ARE BUILT AND PUSHED**, one per remaining candidate: the
+   claim guard, a detached `sudo` launch, the rule-12 scan over the real
+   fourteen-megabyte artifact, and the `/proc` holder walk. ⛔ Names localised in
+   one run what twelve bounds could not; do not add a thirteenth bound - read
+   which step the API last reported.
+   ⚠ **Driving those bodies found a defect the reading did not**: GitHub runs a
+   `run:` block as `bash -e`, and `grep` exits 1 on NO MATCH, which is the
+   ordinary outcome for a scan that finds no secret. Two probes would have failed
+   the capture they were written to be harmless to.
    ⚠ A residual is filed in `TODO/ci.md`: nested `timeout`s each make their own
    process group, so an orphan survives the bound.
 1. ⛔ **Make a MEASURED record publishable, which is one dispatch away.** Runs 19
@@ -342,10 +348,10 @@ routes.
 and corroborated by a connector this project did not write.
 
 ⛔ **`rusqlite` is pinned at 0.37.0 deliberately**, measured against 0.40.2 and
-chosen for thirteen fewer locked packages. A dependabot pull request offers the
-bump and is red on the licence register; that red is the register working. ⚠ Do
-not take the bump to make a bot green - `PROGRESS.md` carries it as an open
-operator decision.
+chosen for thirteen fewer locked packages. ⭐ **The operator settled it on
+2026-09-16: the answer is no.** Pull request 1 is closed unmerged, and the pin is
+0.37.0 in both the manifest and the lockfile, read back the same day. ⚠ Do not
+take the bump to make a bot green, and do not re-raise the question.
 
 ⛔ **The nine commit stamps before 2026-09-06T07:56Z are fabricated**, and so are
 the subjects of `62e1a68`, `d64c51c`, `facf9a9`, `e2d1891` and `aba7142`. They

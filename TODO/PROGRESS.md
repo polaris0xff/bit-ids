@@ -499,27 +499,10 @@ nothing is. The clone question under *Settled decisions* is spent too.
    bind attestations to.
 8. The remaining client and engine breadth, then refinements.
 
-## Open decision, for the operator
+## No open decision
 
-⚠ **Whether to take `rusqlite` 0.40.2.** `PUB-05` measured both and chose
-**0.37.0**, because 0.40.2 resolves thirteen further packages - a WebAssembly
-stack this project never builds for - for the same API and the same bundled
-library. [`../docs/supply-chain.md`](../docs/supply-chain.md) carries the counts.
-A dependabot pull request offers the bump and has been red on the licence
-register since 2026-09-11; ⭐ that red is the register working, not a fault.
-
-⚠ **One fact the original decision did not have**: 0.40.2 carries
-`libsqlite3-sys` 0.38.2, which vendors **SQLite 3.53.2** against 0.35.0's
-**3.50.2**, both read out of `#define SQLITE_VERSION` in the packaged
-amalgamation. ⛔ Re-measured on 2026-09-15 with `cargo tree`: nothing new
-compiles for this project's targets, so the lockfile surface grows by nine and
-the compiled surface by none.
-
-**Recommendation: keep 0.37.0 and close the pull request.** The recorded
-reasoning still holds and the SQLite delta is a currency question rather than a
-known defect. ⛔ A session took the bump on 2026-09-15 to make CI green and
-reverted it on reading this decision; taking a bot's suggestion over a measured
-judgement is the shape to avoid.
+⭐ **The `rusqlite` question is answered and nothing here waits on the operator.**
+It is recorded under *Settled decisions* below. Do not re-raise it.
 
 ## Settled decisions
 
@@ -532,6 +515,7 @@ anything.** They are recorded here so no session re-raises them.
 | how `LIB-02` reaches bit-cli's tests | ⭐ **Spent.** The clone works with no credential and no grant, measured; `LIB-02` closed on it and wrote nothing there. ⚠ Its suite was not run: that tree vendors and patches four HTTP crates, so a build there says something about it rather than about the adapter, which touches none of its code. |
 | whether Windows captures are permitted | yes. The guard pair exists and is mutation-proven; a hosted `windows-latest` runner is a fresh virtual machine per job, and its default routes are removed before the capture. `CI-03`. |
 | what happens to a first measured record | it publishes automatically once the capture is green. No manual gate. |
+| whether to take `rusqlite` 0.40.2 | ⭐ **No, settled by the operator on 2026-09-16.** `PUB-05`'s measurement stands: 0.40.2 resolves thirteen further packages - a WebAssembly stack this project never builds for - for the same API and the same bundled library. ⚠ Re-measured 2026-09-15 with `cargo tree` including the SQLite delta (3.53.2 against 3.50.2): the lockfile surface grows by nine and the **compiled** surface by none, so it is a currency question rather than a known defect. ⛔ Pull request 1 is closed unmerged and the pin is 0.37.0 in both the manifest and the lockfile, read back on 2026-09-16. |
 
 ⛔ **A capture host was never the blocker it was recorded as, and that error
 stood for several sessions.** A hosted runner is a fresh virtual machine per job,

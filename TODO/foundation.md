@@ -348,9 +348,11 @@ it; taking the bump to make a bot green would have overridden a measured
 judgement with a notification.
 
 ⚠ **One fact the original decision did not have** is the vendored SQLite version,
-which differs between the two. That is a reason to revisit and not a reason to
-override: [`PROGRESS.md`](PROGRESS.md) carries it as an open operator decision,
-with the numbers and where they were read from.
+which differs between the two. That was a reason to revisit and not a reason to
+override, and it was revisited: ⭐ **the operator settled it on 2026-09-16 and the
+answer is no.** [`PROGRESS.md`](PROGRESS.md) carries it under *Settled decisions*
+with the numbers and where they were read from. ⛔ Pull request 1 is closed
+unmerged and the pin is 0.37.0 in both the manifest and the lockfile.
 
 ## FOUND-05: The session host, provisioned by something rather than by memory
 

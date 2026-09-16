@@ -2551,12 +2551,31 @@ that the probes do not, minus the excluded `ps`:
 | the rule-12 secret scan: `find` plus `grep -IlE` over the workdir | `install-client.sh`, as root |
 | `report-holders.sh` walking `/proc/[0-9]*/fd/*` | after the loop, already bounded at 60s |
 
-⭐ **THE NEXT INSTRUMENT IS THE SAME ONE, ONE LEVEL DEEPER.** Run 27 proved that
-names localise where twelve bounds could not. Split what `install-step.sh` does
-into two named steps - *Start the install detached* and *Await the install* - so
-the API says which of them the job last reported. ⛔ A job that wedges in the
-first has the `sudo`/`setsid` launch; one that wedges in the second has the
-install itself, and `install-client`'s own work can then be split the same way.
+⭐ **THOSE FOUR ARE PROBES NOW, 2026-09-16, one named step each.** The same
+technique that localised the route, applied to the remainder:
+
+| step | what wedging there would mean |
+| --- | --- |
+| *Probe the claim guard* | `assert-disposable --marker` under `sudo` |
+| *Probe a detached sudo launch* | the `setsid sudo -E timeout` shape, over a command that prints and exits |
+| *Probe the rule-12 scan over a workdir* | `grep -IlE` with two quantified alternations across the fourteen-megabyte artifact |
+| *Probe the holder walk of /proc* | reading every process's descriptor table |
+
+⛔ **THE SCAN PROBE CARRIES `install-client`'s PATTERN VERBATIM**, compared
+programmatically rather than by eye; if the two drift the probe stops being about
+the thing it names, and the step says so in its own comment.
+
+⛔ **DRIVING THEM ON THIS HOST FOUND A DEFECT THE READING DID NOT.** GitHub runs a
+`run:` block as `bash -e`, and `grep` exits **1 when it matches nothing** - the
+ORDINARY outcome for a scan that finds no secret. A bare `_rc=$?` on the next line
+is never reached: `-e` ends the step first, so the `true` below it never runs and
+**a probe would fail a capture**, which is exactly what this workflow's own
+comment forbids. ⚠ Two of the four had it. The status is captured on the line that
+produces it now, and all four were re-driven under `bash -e` to exit 0 together.
+
+⚠ **A HANDWRITTEN `true` AT THE END OF A BLOCK IS NOT WHAT MAKES A STEP
+HARMLESS** - reaching it is - and nothing in the gate checks that a probe can be
+reached. Filed here rather than guarded.
 
 #### ⛔ The door sweep found the same class behind THREE more doors
 
