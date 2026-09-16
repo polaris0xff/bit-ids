@@ -2577,6 +2577,25 @@ produces it now, and all four were re-driven under `bash -e` to exit 0 together.
 HARMLESS** - reaching it is - and nothing in the gate checks that a probe can be
 reached. Filed here rather than guarded.
 
+#### ⛔ IT IS NOT THE RELEASE LANE. BOTH ROUTES WEDGE, AND NOBODY LOOKED
+
+⛔ **This entry has said *the RELEASE lane* since run 21 and that is wrong.** The
+source lane wedged in the SAME step, in the same runs, and its jobs were read for
+the first time on 2026-09-16:
+
+| run | source lane's last step | release lane's last step |
+| --- | --- | --- |
+| 21 | *Install the client*, in progress | *Install the client*, in progress |
+| 22 | *Install the client*, in progress | *Install the client*, in progress |
+| 23 | *Install the client*, in progress | *Install the client*, in progress |
+
+⚠ **Both jobs in all three runs are `cancelled`**, which was recorded, and the
+step each of them stopped at was not. ⛔ So every route-shaped reading this entry
+carries - the fetch, the asset, the vendor's endpoint - was reasoning about a lane
+that is not distinguishable from the other one. ⭐ Two routes that share nothing
+but `install-step.sh` and `install-client.sh` wedge identically, which says the
+subject is the step's own machinery rather than anything a route does.
+
 #### ⛔ RUN 29: EVERY COMPONENT PASSES AND THE COMPOSITION STILL WEDGES
 
 ⭐ **All seven probes completed in FOUR SECONDS**, on `2608ce0`, and the job then
@@ -2607,6 +2626,25 @@ logs*, a `uses:` step whose work happens inside an action. This is a `run:` step
 which the runner supervises directly. ⛔ And because the install FAILS rather than
 succeeding, *Cut the route* is skipped, so the host still has the network the
 upload needs.
+
+#### ⛔ RUN 30: THE RUNNER'S OWN STEP SUPERVISOR CANNOT END IT EITHER
+
+⚠ **`timeout-minutes: 17` on the install `run:` step did not fire.** Run 30 on
+`bba735c` began the step at 08:43:52, so the runner's bound was due at
+**09:00:52**; the step was still in progress **thirteen minutes past it**. That is
+the **thirteenth** bound measured not to end this step, and the first that is not
+a shell bound at all.
+
+⛔ **THE DIFFERENCE IS WHAT MAKES IT DECISIVE.** Every bound before it was issued
+by a process inside the step, and could be argued away as a signal that did not
+reach its target. This one is GitHub's own supervisor, which owns the step's
+process tree and is the thing that cancels jobs. It could not end the step either.
+
+⭐ **So the step cannot be made to end, and the artifact cannot be collected
+through any path that requires it to.** Combined with the byte-identical finding
+above - the same install code ran green at six seconds and then hung, with no
+change in between - that is a defect in the host rather than in this tree, and it
+is why no thirteenth, fourteenth or fifteenth bound is worth writing.
 
 #### ⛔ The door sweep found the same class behind THREE more doors
 
