@@ -2478,6 +2478,23 @@ client* into named sub-steps - the fetch, the install of what was fetched, the
 version call - localises the wedge to a handful of commands with no log, no
 artifact and no bound required. ⛔ Do that before adding a twelfth bound.
 
+⭐ **THOSE STEPS ARE BUILT, 2026-09-16.** Three more named probes walk the four
+operations the release route actually performs, between *Resolve the release
+artifact* and *Install the client*:
+
+| step | what wedging there would mean |
+| --- | --- |
+| *Probe the release fetch* | the vendor's endpoint or the network, not this tree |
+| *Probe staging the fetched artifact* | `chmod`, `mkdir`, or a `cp` across filesystems into `/usr/local/bin` |
+| *Probe executing the fetched artifact* | `exec` of the downloaded binary itself |
+
+⚠ **They guard nothing and each ends in `true`**, so a probe cannot fail a
+capture. ⛔ **And none of them touches the install target**: the staging probe
+writes `.probe-only.new` and removes it, a name `binary()` can never find.
+⭐ **A job that walks all three and still wedges in *Install the client* has
+exonerated the whole release route**, which is a different and equally useful
+answer.
+
 #### ⛔ The door sweep found the same class behind THREE more doors
 
 ⚠ **`install-client` was not the only caller, and the enumeration written from

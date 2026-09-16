@@ -259,6 +259,67 @@ jobs:
           timeout 30 sh "$ADAPTER" version || echo 'version did not answer or is not installed'
           true
 
+      # ⛔ AND THE RELEASE ROUTE'S OWN WORK, WALKED ONE NAMED STEP AT A TIME.
+      # ELEVEN bounds have now been measured not to end *Install the client*, and
+      # run 26 ended the argument: it carried three independent endings - one of
+      # which needs no signal to reach anything - and passed all three while the
+      # step stayed open for twenty-seven minutes. A shell that does not reach its
+      # own integer comparison is not a shell that is waiting, and a twelfth bound
+      # would fail the same way.
+      #
+      # ⭐ So these steps buy the one signal a cancelled job still has: WHICH STEP
+      # the API last reported in progress. The three probes above already make
+      # that argument; these apply it to the four operations the release route
+      # actually performs - fetch, stage, and execute - so a wedge localises to a
+      # handful of commands with no log, no artifact and no bound that fires.
+      #
+      # ⚠ THEY ARE DIAGNOSTIC AND GUARD NOTHING. Each ends in a `true` so a probe
+      # cannot fail a capture, and `CI-08` owns them: they come out when the
+      # question is answered.
+      # ⛔ NOTHING HERE TOUCHES THE INSTALL TARGET. The staging probe writes
+      # `.probe-only.new` and removes it, so `binary()` can never find it; the
+      # route's own `aria2-next` is untouched.
+      # ⚠ Executing the fetched artifact is not an expansion of what this job
+      # already does: the route installs and runs the same binary a step later,
+      # with the network still up, which is why the install sits before the cut.
+      - name: Probe the release fetch
+        if: matrix.route == 'release'
+        run: |
+          set -u
+          URL=$(cat "$RUNNER_TEMP/release/url.txt")
+          printf 'fetching %s\n' "$URL"
+          if timeout 180 curl -fsSL --retry 0 --connect-timeout 20 --max-time 150 \
+            --speed-limit 1024 --speed-time 30 \
+            -o "$RUNNER_TEMP/probe-artifact" "$URL" </dev/null; then
+            printf 'fetched %s bytes\n' "$(wc -c <"$RUNNER_TEMP/probe-artifact")"
+          else
+            echo 'the fetch did not answer'
+          fi
+          true
+
+      - name: Probe staging the fetched artifact
+        if: matrix.route == 'release'
+        run: |
+          set -u
+          timeout 30 chmod +x "$RUNNER_TEMP/probe-artifact" || echo 'chmod did not answer'
+          timeout 60 sudo -n mkdir -p /usr/local/bin || echo 'mkdir did not answer'
+          timeout 60 sudo -n cp "$RUNNER_TEMP/probe-artifact" /usr/local/bin/.probe-only.new ||
+            echo 'cp across filesystems did not answer'
+          timeout 30 sudo -n rm -f /usr/local/bin/.probe-only.new || echo 'rm did not answer'
+          true
+
+      - name: Probe executing the fetched artifact
+        if: matrix.route == 'release'
+        run: |
+          set -u
+          if timeout 60 "$RUNNER_TEMP/probe-artifact" --version \
+            </dev/null >"$RUNNER_TEMP/probe-version.txt" 2>&1; then
+            head -2 "$RUNNER_TEMP/probe-version.txt"
+          else
+            echo 'the fetched artifact did not answer --version'
+          fi
+          true
+
       # ⛔ THE WORK IS IN A FILE SO THE STEP'S OWN PROCESS CAN BE BOUNDED. That is
       # the one place a bound has not been tried here, and every other place has
       # been measured failing: `install-step.sh` says which and why.
