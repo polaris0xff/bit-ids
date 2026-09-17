@@ -348,6 +348,62 @@ else
   fail "a pair whose observations agree reaches build_equivalent"
   [ "$JSON" = "1" ] || sed 's/^/          /' "$WORK/good.out" | head -6
 fi
+
+# -- ⛔ AND WHAT IT WROTE IS NOT A VALID CORPUS, WHICH NOTHING USED TO SAY -----
+#
+# ⚠ `CI-09` carried this as *a store of records with no runs, which check-store
+# accepts and a publication would not*. Half of that was never checked:
+# `validate_corpus` refuses it TODAY with `E-CRP-01` per record - a record
+# without its run cannot be replayed - so the gate existed and the assembler
+# simply never asked it. A reader of a green run saw two stars and a path.
+if said good "NOT a valid corpus" && said good "E-CRP-01"; then
+  pass "corpus    the assembler says the store it wrote is not a corpus yet"
+else
+  fail "corpus    a green assembly reported nothing about the corpus it wrote"
+  [ "$JSON" = "1" ] || sed 's/^/          /' "$WORK/good.out" | tail -8
+fi
+
+# ⭐ THE CONTROL: THE LINE IS DERIVED, NOT PRINTED. Without this the case above
+# passes over an assembler that prints one fixed sentence whatever it wrote. A
+# violation names the record it found no run for, so a two-lane assembly names
+# BOTH records - and one fixed line names neither.
+#
+# ⚠ THE PATHS COME OUT OF THE ASSEMBLER'S OWN WRITE LINES rather than being
+# retyped here. A harness that spelled `cap-release` itself would be stating this
+# project's naming a second time, and would still pass over a fixed sentence that
+# happened to carry both names; taken from the write lines, the assertion is that
+# the corpus block followed what this run wrote.
+awk '/ lane / && $NF ~ /\.json$/ { print $NF }' "$WORK/good.out" >"$WORK/good.written"
+_wrote=0
+_named=0
+# ⚠ Redirected rather than piped: a `while read` on the right of a pipe runs in a
+# subshell, and both counters would be discarded with it.
+while IFS= read -r _path; do
+  _wrote=$((_wrote + 1))
+  said good "E-CRP-01 at $_path" && _named=$((_named + 1))
+done <"$WORK/good.written"
+if [ "$_wrote" -ge 2 ] && [ "$_named" = "$_wrote" ]; then
+  pass "corpus    the refusal names every record it found no run for ($_named)"
+else
+  fail "corpus    $_named of $_wrote written record(s) named; a derived line names each"
+  [ "$JSON" = "1" ] || sed 's/^/          /' "$WORK/good.out" | tail -8
+fi
+
+# ⭐ AND THE SECOND CONTROL: THE TREE IS READ OFF THE DISK, NOT LEFT EMPTY. The
+# first version of this check handed `validate_corpus` an empty `StoreTree`,
+# which narrowed the question without saying so: `E-CRP-06` is checked over the
+# TREE, so a store whose evidence no run declares answered clean because the
+# validator was given no evidence to look at. ⚠ With no manifest in the store,
+# NOTHING accounts for a raw-root file, so the count of files the store carries
+# there and the count of lines naming one are the same number - and an empty
+# tree makes the second zero.
+_objects=$(find "$WORK/store-good/raw" -type f | grep -c .)
+_unaccounted=$(grep -c 'E-CRP-06 at raw/' "$WORK/good.out")
+if [ "$_objects" -ge 1 ] && [ "$_unaccounted" = "$_objects" ]; then
+  pass "corpus    every artifact in the store is named, over a tree read off the disk ($_objects)"
+else
+  fail "corpus    $_unaccounted of $_objects stored artifact(s) named; an empty tree names none"
+fi
 # ⛔ AND THE PAIR PUBLISHES, WHICH IT DID NOT UNTIL 2026-09-15. These two lanes
 # install DIFFERENT BYTES - `DIGEST_A` and `DIGEST_B` - which is every
 # release-against-source pair there is, and a capture puts one of them on the
@@ -378,6 +434,46 @@ if [ "$(find "$WORK/store-good" -name 'version.err' -type f | grep -c .)" -ge 1 
   pass "the process output the installed version cites is copied into the store"
 else
   fail "the process output the installed version cites is copied into the store"
+fi
+
+# -- ⛔ AND EVERY ARTIFACT A RECORD CITES IS CARRIED, WHICH IT WAS NOT ---------
+#
+# ⛔ **A record's evidence list is built over ALL the lanes** - a field citing
+# the other route's install record is what makes the pair comparable - and the
+# assembler copied only ITS OWN lane's four files under its evidence root. So
+# each record cited four artifacts at paths in its own store directory that
+# nothing ever wrote to.
+#
+# ⚠ `E-CRP-03` is exactly that refusal and it CANNOT FIRE HERE: it is checked
+# per run manifest and this path writes none. The case above accepted it too -
+# `-ge 1` is satisfied by half the files. It was found on 2026-09-17 by handing
+# `validate_corpus` a tree read back off the disk instead of an empty one, and
+# the assembler now names any citation it did not carry.
+if said good "cited and not carried"; then
+  fail "evidence  a record cites an artifact the store does not carry"
+  [ "$JSON" = "1" ] || grep -F 'cited and not carried' "$WORK/good.out" | sed 's/^/          /'
+else
+  pass "evidence  every artifact a record cites is carried in the store"
+fi
+
+# ⭐ THE CONTROL, AND IT IS STRUCTURAL RATHER THAN A COUNT. A record that got
+# only its own lane's artifacts has ONE route directory under its evidence root;
+# a self-contained one has every route the record's list names. ⚠ Derived by
+# listing the store rather than from a number typed here, so it follows a lane
+# being added or removed.
+_captures=0
+_whole=0
+for _root in "$WORK"/store-good/raw/v1/*/*/*/*/*/*; do
+  [ -d "$_root" ] || continue
+  _captures=$((_captures + 1))
+  if [ "$(find "$_root" -mindepth 1 -maxdepth 1 -type d | grep -c .)" -ge 2 ]; then
+    _whole=$((_whole + 1))
+  fi
+done
+if [ "$_captures" -ge 2 ] && [ "$_whole" = "$_captures" ]; then
+  pass "evidence  each record carries both routes' artifacts, not just its own"
+else
+  fail "evidence  $_whole of $_captures record(s) carry every route's artifacts"
 fi
 
 # -- ⛔ AND THE ONE THAT REFUTES THE WORK ORDER -------------------------------

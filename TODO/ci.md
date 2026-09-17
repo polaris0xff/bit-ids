@@ -3183,8 +3183,53 @@ on `E-PUB-01` for exactly the altered fields.
   plan and the host facts; an attestation carries a start, a finish, a platform
   string and a claim fingerprint. Inventing the rest would produce a document
   `bind` then compares against a record that agrees with it for no reason. ⚠ So
-  the store this writes is a store of records with no runs, which `check-store`
-  accepts and a publication would not.
+  the store this writes is a store of records with no runs.
+
+  ⚠ **Amended 2026-09-17: the second half of that was wrong and is struck.** It
+  read *which `check-store` accepts and a publication would not*, which put the
+  gate in the wrong place and a whole release away. `validate_corpus` refuses
+  such a store TODAY, with `E-CRP-01` per record - *a record without its run
+  cannot be replayed* - so the gate existed all along and was never a
+  publication gate. ⛔ What was true is that nothing on this path **asked** it:
+  a reader of a green assembly saw two stars and a path and took the store for
+  one a consumer could open.
+
+  ⭐ **The asking is what was missing and the assembler now does it.**
+  `report_corpus` builds a `Corpus` from the records that reached the store,
+  runs `validate_corpus` over it, and prints the violations under
+  `⚠ corpus: what was written is NOT a valid corpus yet` followed by the reason
+  a reader is otherwise owed a code lookup for - that no step of the capture
+  path writes a `manifest.json`. ⚠ **It reports rather than refuses**, because
+  validity and publishability are separate gates at every level here and a third
+  gate collapsing them would stop an incomplete corpus being recordable at all.
+  `check-assemble` holds both halves: that a green two-lane assembly says so,
+  and - the control - that every record it wrote is named, taken out of the
+  assembler's own write lines rather than retyped, so one fixed sentence cannot
+  satisfy it. Driven with three plants: a fixed sentence carrying `E-CRP-01`, a
+  corpus built from no records at all reported as `corpus: valid, 2 record(s)`,
+  and a failure branch that says nothing. All three refused, clean either side.
+
+  ⛔ **AND ASKING IT FOUND A REAL DEFECT IN WHAT THE ASSEMBLER WRITES.** The
+  first version built the corpus over an EMPTY `StoreTree`, which narrowed the
+  question without saying so - `E-CRP-06` is checked over the tree, so a store
+  whose evidence no run declares answered clean because the validator had been
+  handed no evidence to look at. ⭐ Reading the tree back **off the disk**, with
+  the length and digest of the bytes that arrived rather than the record's claim
+  about them, is what surfaced it: each record's evidence list is built over ALL
+  the lanes - a field citing the other route's install record is what makes the
+  pair comparable - and the write loop copied only its OWN lane's four files. So
+  every record cited four artifacts at paths under its own evidence root that
+  nothing had ever written to.
+
+  ⛔ **`E-CRP-03` is exactly that refusal and it could not fire**, because it is
+  checked per run manifest and this path writes none. `check-assemble`'s
+  `-ge 1` file count accepted it too: half the files satisfy *at least one*. ⭐ The
+  fix is one loop - every lane's artifacts under every record, which the
+  route-namespaced paths already allow - and the assembler now names any citation
+  it did not carry, since no rule can. Two standing cases hold it, with a fourth
+  plant reverting the loop to its own lane and a fifth restoring the empty tree;
+  both refused, and the empty-tree plant is caught only by the case written for
+  it, which is the point of adding it.
 - ⛔ **The door sweep found two more readers of a transcript, and both are
   `grep`.** `capture-run.sh` and `capture-client.sh` each assert a token appears
   in `tracker-http.transcript.json` with a fixed-string match. ⚠ A substring

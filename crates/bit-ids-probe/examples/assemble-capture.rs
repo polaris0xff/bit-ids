@@ -1289,6 +1289,144 @@ fn independence(lanes: &[Lane]) -> Result<Vec<String>, String> {
     Ok(out)
 }
 
+/// ⛔ **What this wrote is not a valid corpus, which nothing said.**
+///
+/// ⚠ `CI-09` carried this as *the store this writes is a store of records with
+/// no runs, which `check-store` accepts and a publication would not*. Half of
+/// that is right and half was never checked: `validate_corpus` REFUSES such a
+/// store today, with `E-CRP-01` per record - *a record without its run cannot be
+/// replayed* - so it is not a publication gate that would catch it, it is the
+/// corpus validator, and it would have caught it all along. ⛔ What was true is
+/// that nothing on THIS path asked, so a reader of a green run saw two stars and
+/// a path and took the store for one a consumer could open.
+///
+/// ⭐ **So it is asked here, over what was actually written.** The records are
+/// the ones handed to `to_json`, and the manifests are whatever the store
+/// directory already carried - which is nothing on this path, because no step of
+/// a capture writes a `RunManifest`.
+///
+/// ⛔ **The tree is READ BACK OFF THE DISK, not assembled from the records.** A
+/// first version built the corpus over an EMPTY `StoreTree`, which silently
+/// narrowed the question: `E-CRP-06` is checked over the tree, so a store whose
+/// evidence no run declares answered clean because the validator was handed no
+/// evidence to look at. ⚠ Digesting the bytes that arrived is also what keeps
+/// this from being a record agreeing with itself - the failure
+/// `validate-corpus`'s own header names.
+///
+/// ⚠ **It asks about what THIS run wrote and says so.** Only the paths the
+/// records account for are read, so a stray file already in the output directory
+/// is invisible here. `cargo run -p bit-ids --example validate-corpus -- STORE`
+/// is the whole-directory question and walks it.
+///
+/// ⛔ **It is a report and not a refusal**, for the reason `classify` above
+/// gives: validity and publishability are separate gates at every level here,
+/// and a third gate collapsing them would stop an incomplete corpus being
+/// recordable at all. ⚠ The honest state is a store that exists, is not a corpus
+/// yet, and says which document is missing.
+///
+/// Asked from its own function rather than inline because `run` is at clippy's
+/// line limit.
+fn report_corpus(report: &mut String, written: &[Profile], out: &Path) -> Result<(), String> {
+    let mut tree = bit_ids::store::StoreTree::new();
+    let mut filed = Vec::new();
+    let mut absent = Vec::new();
+    for profile in written {
+        let key = StoreKey::of_profile(profile);
+        let path = key.profile_path().map_err(|error| error.to_string())?;
+        if !measure_into(&mut tree, out, &path)? {
+            absent.push(path.to_string());
+        }
+        for entry in &profile.evidence {
+            let rel = key
+                .evidence_path(&entry.path)
+                .map_err(|error| error.to_string())?;
+            if !measure_into(&mut tree, out, &rel)? {
+                absent.push(rel.to_string());
+            }
+        }
+        filed.push((path, profile.clone()));
+    }
+    // ⛔ SAID HERE BECAUSE NO RULE CAN SAY IT. `E-CRP-03` is the refusal for an
+    // artifact a store does not carry and it is checked per run manifest, so
+    // with none in the store a record may cite bytes that are not there and
+    // every gate this project has stays green. That is how the assembler came to
+    // file four citations per record at paths it never wrote to.
+    for path in &absent {
+        writeln!(report, "  ⛔ cited and not carried: {path}").expect("a String cannot fail");
+    }
+    let mut corpus = bit_ids::corpus::Corpus::new(tree);
+    for (path, profile) in filed {
+        corpus.insert_profile(path, profile);
+    }
+    match bit_ids::corpus::validate_corpus(&corpus) {
+        Ok(()) => {
+            writeln!(report, "  corpus: valid, {} record(s)", written.len())
+                .expect("a String cannot fail");
+        }
+        Err(violations) => {
+            writeln!(
+                report,
+                "  ⚠ corpus: what was written is NOT a valid corpus yet"
+            )
+            .expect("a String cannot fail");
+            for line in violations.to_string().lines() {
+                writeln!(report, "       {line}").expect("a String cannot fail");
+            }
+            // ⚠ NAMED RATHER THAN LEFT TO BE INFERRED. Every capture this
+            // project runs lands here, so a reader is owed the reason rather than
+            // a code to look up: no step of the capture path writes a run
+            // manifest, and inventing one would produce a document `bind` then
+            // compares against a record that agrees with it for no reason.
+            //
+            // ⛔ PRINTED ONLY WHEN THE VIOLATIONS ARE ACTUALLY THAT. A first
+            // version printed it under every refusal, so a placement error or an
+            // invalid record would have been explained by a missing manifest -
+            // an explanation attached to a finding it does not fit.
+            if violations.has("E-CRP-01") {
+                writeln!(
+                    report,
+                    "       nothing on the capture path writes a {}; TODO/ci.md, CI-09",
+                    bit_ids::store::MANIFEST_FILE
+                )
+                .expect("a String cannot fail");
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Digests one file the store carries and records what is there.
+///
+/// ⛔ The length and the digest are the bytes' own rather than the record's
+/// claim about them, which is the whole point of handing the validator a tree.
+///
+/// ⚠ **A path that is not there is reported, not refused.** `Ok(false)` says the
+/// store does not carry it and the tree gets no entry, which is what a walk of
+/// the directory would have found. Aborting instead would turn a store this
+/// example can describe into `no record was written`, which is a lie about a run
+/// that wrote two.
+fn measure_into(
+    tree: &mut bit_ids::store::StoreTree,
+    out: &Path,
+    path: &RelPath,
+) -> Result<bool, String> {
+    let full = out.join(path.as_str());
+    let bytes = match std::fs::read(&full) {
+        Ok(bytes) => bytes,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(error) => return Err(format!("{}: {error}", full.display())),
+    };
+    let length = u64::try_from(bytes.len()).map_err(|error| format!("{path}: {error}"))?;
+    tree.insert(
+        path.clone(),
+        bit_ids::store::Entry::Object(bit_ids::store::ObjectRef {
+            bytes: length,
+            sha256: Sha256Digest::of(&bytes),
+        }),
+    );
+    Ok(true)
+}
+
 fn run(lanes: &[Lane], out: &Path) -> Result<String, String> {
     let version = one_version(lanes)?;
 
@@ -1338,17 +1476,34 @@ fn run(lanes: &[Lane], out: &Path) -> Result<String, String> {
                 }
                 std::fs::write(&full, document.as_bytes())
                     .map_err(|error| format!("{}: {error}", full.display()))?;
-                for (entry, source) in evidence_of(&lanes[index])? {
-                    let rel = key
-                        .evidence_path(&entry.path)
-                        .map_err(|error| error.to_string())?;
-                    let target = out.join(rel.as_str());
-                    if let Some(parent) = target.parent() {
-                        std::fs::create_dir_all(parent)
-                            .map_err(|error| format!("{}: {error}", parent.display()))?;
+                // ⛔ EVERY LANE'S ARTIFACTS, NOT THIS LANE'S. The record's
+                // evidence list is built over ALL the lanes, because a field
+                // citing the other route's install record is what makes the pair
+                // comparable at all - and this copied only `lanes[index]`'s four
+                // files, so each record cited four artifacts at paths under its
+                // own evidence root that nothing ever wrote there.
+                //
+                // ⚠ `E-CRP-03` is exactly that refusal and it could not fire,
+                // because it is checked per RUN MANIFEST and no step of this path
+                // writes one. Found on 2026-09-17 by handing `validate_corpus` a
+                // tree read back off the disk rather than an empty one.
+                //
+                // ⭐ The paths are namespaced by route already, so both lanes'
+                // artifacts sit side by side under each capture and neither
+                // record depends on the other one's directory surviving.
+                for lane in lanes {
+                    for (entry, source) in evidence_of(lane)? {
+                        let rel = key
+                            .evidence_path(&entry.path)
+                            .map_err(|error| error.to_string())?;
+                        let target = out.join(rel.as_str());
+                        if let Some(parent) = target.parent() {
+                            std::fs::create_dir_all(parent)
+                                .map_err(|error| format!("{}: {error}", parent.display()))?;
+                        }
+                        std::fs::copy(&source, &target)
+                            .map_err(|error| format!("{}: {error}", target.display()))?;
                     }
-                    std::fs::copy(&source, &target)
-                        .map_err(|error| format!("{}: {error}", target.display()))?;
                 }
                 writeln!(report, "  ⭐ lane {}: {}", lanes[index].route, path)
                     .expect("a String cannot fail");
@@ -1410,6 +1565,7 @@ fn run(lanes: &[Lane], out: &Path) -> Result<String, String> {
             writeln!(report, "       {reason}").expect("a String cannot fail");
         }
     }
+    report_corpus(&mut report, &written, out)?;
     if refusals > 0 {
         return Err(report);
     }

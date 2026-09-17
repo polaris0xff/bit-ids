@@ -469,6 +469,15 @@ nothing is. The clone question under *Settled decisions* is spent too.
    which calls a `SCHEMA-04` **Decision** a defect. ⭐ The pair of documents
    answers it, and `SamplingPlan::lifetime_of` is what a consumer asks; that
    entry in [`schema.md`](schema.md) owns the reasoning.
+   ⭐ **And the manifest residual is half closed, 2026-09-17**: the assembler
+   asks `validate_corpus` about the store it just wrote and reports what comes
+   back, so a green assembly can no longer read as a store a consumer could open.
+   ⚠ The producer is still missing - that is the other half, and it is the work.
+   ⛔ **Asking it found a defect in what the assembler writes**: every record
+   cited four artifacts at paths in its own evidence root that nothing had
+   written there, which `E-CRP-03` refuses and could not, for want of the same
+   missing manifest. Fixed, with the citations now named when they are not
+   carried. [`ci.md`](ci.md) under `CI-09` carries the correction and the plants.
 4. ⭐ **`mine-repo`'s clone is bounded, 2026-09-17, in both halves and with ONE
    idiom.** The recorded blocker was that `timeout` is a PAUSE on Windows, so a
    wrapper would need two idioms; git's own `http.lowSpeedLimit` and

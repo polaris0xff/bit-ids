@@ -5,6 +5,38 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-17T06:51:42Z
+
+- ⛔ **THE ASSEMBLER WROTE A STORE `validate_corpus` REFUSES AND SAID NOTHING.**
+  A green two-lane assembly printed two stars and two paths, and a reader took
+  that for a store a consumer could open. It is not one: every record it writes
+  is a record with no run beside it.
+- ⚠ **`CI-09`'s residual put the gate a whole release away** - it read *which
+  `check-store` accepts and a publication would not*. `validate_corpus` refuses
+  such a store today, `E-CRP-01` per record, so nothing was missing but the
+  asking. The residual is amended in place rather than implemented.
+- ⭐ **`report_corpus` asks it, over the records that reached the store**, and
+  prints the violations plus the reason a reader would otherwise look up: no step
+  of the capture path writes a `manifest.json`. ⚠ It reports rather than refuses,
+  because validity and publishability are separate gates at every level here.
+- ⭐ **The control is the half that matters**: `check-assemble` requires every
+  record the assembler wrote to be NAMED, taken from the assembler's own write
+  lines rather than retyped, so one fixed sentence cannot satisfy it. Five
+  plants, each verified applied, all refused, clean either side.
+- ⛔ **AND ASKING FOUND A DEFECT IN WHAT THE ASSEMBLER WRITES.** A record's
+  evidence list covers every lane, because a field citing the other route's
+  install record is what makes the pair comparable - and the write loop copied
+  only its own lane's four files. Each record cited four artifacts at paths under
+  its own evidence root that nothing had written to.
+- ⚠ **`E-CRP-03` is that refusal and it cannot fire**: it is checked per run
+  manifest and none exists. The harness accepted it too, counting *at least one*
+  copied file where half the files satisfy it. ⭐ Fixed, and the assembler now
+  names a citation it did not carry, because no rule can.
+- ⚠ **The tree is read back off the disk**, digest and length of the bytes that
+  arrived rather than the record's claim about them. An empty one is what hid the
+  defect: `E-CRP-06` is checked over the tree.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-09`. No version bump and no deploy.
+
 ### 2026-09-17T06:34:11Z
 
 - ⛔ **A `CI-09` RESIDUAL CALLED A `SCHEMA-04` DECISION A DEFECT, AND IT IS

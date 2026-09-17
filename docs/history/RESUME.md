@@ -59,7 +59,13 @@ The gate was **39 checks, 38 passed, 0 failed, 1 skipped** at session start -
 `check-remote-items`, the one observed skip on a session host - exit 0, on a
 clean tree level with `origin/main` at `07b2a07`. CI run **157** on that commit
 is green on all six jobs, read back through rule 8's route rather than assumed.
-⚠ The gate is **40 rows** now: `check-rootless` joined it with `ACQ-06`.
+⚠ The gate is **40 rows** now: `check-rootless` joined it with `ACQ-06`, and it
+reads 40 checks, 39 passed, 0 failed, 1 skipped.
+
+⚠ **Five commits landed after that and each was read back the same way.** Runs
+**158** through **162** are green, all six jobs, the last of them on `2525a5b`.
+⛔ The commit this session ends on is the one with no run read back yet, whatever
+its number: confirming it is a starting step rather than an assumption.
 
 ### ⭐ A record exists, and a session can produce another
 
@@ -132,7 +138,10 @@ step supervisor - across two targets and both routes, on byte-identical code.
    `bundle` that nothing produces. ⛔ Its third clause about a discarded
    `Lifetime` was STALE and is struck - that is a `SCHEMA-04` decision rather
    than a defect, and the consumer-side half it really lacked is
-   `SamplingPlan::lifetime_of`.
+   `SamplingPlan::lifetime_of`. ⭐ The manifest clause is half done, 2026-09-17:
+   the assembler now asks `validate_corpus` about the store it wrote and prints
+   what it hears, so the store's incompleteness is stated rather than inferred.
+   ⚠ Writing the document is the other half and is still open.
 4. ⭐ **`mine-repo`'s clone is bounded, 2026-09-17**, in both halves and with one
    idiom: git's own low-speed settings rather than a wrapper.
 5. **`CI-07`**, whose class-A backlog shrinks as `CI-10` ports pairs.
@@ -186,6 +195,16 @@ reads as *the same answer under all 6*.
 ⛔ **A corpus only tests the defects it contains an example of.** A rule
 differing only on a shape the tree does not contain is invisible to any
 comparison over that tree. Plant the shape.
+
+⛔ **A RULE WHOSE PRECONDITION IS ABSENT READS CLEAN, FOREVER.** `E-CRP-03`
+refuses an artifact a store does not carry and is checked per run manifest, so
+with no manifest in the store the assembler filed four citations per record at
+paths nothing had written and every gate stayed green. ⚠ Ask which rules a
+missing document takes with it.
+
+⛔ **A validator handed an EMPTY input answers about nothing and looks green.**
+The same corpus check, given an empty tree instead of one read off the disk,
+found half of what was wrong and said so in the same confident sentence.
 
 ⛔ **A harness that plants a pattern cannot spell it** - and neither can the
 comment explaining why.
