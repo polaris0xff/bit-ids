@@ -118,8 +118,10 @@ step supervisor - across two targets and both routes, on byte-identical code.
    one rootless installer fetches with a bound, settles the digest before
    anything is made executable, and writes into a prefix the current user owns.
    Driven as uid 1001, and repeated with `sudo` absent from `PATH` entirely.
-   ⛔ **Nothing has run it on a runner**, and that is the next thing a dispatch
-   would buy.
+   ⛔ **AND IT HAS BEEN DISPATCHED: THE HANG IS NOT PRIVILEGE.** `capture-client`
+   run 32 wedged in *Install the client* on both lanes and uploaded zero
+   artifacts, where the unprivileged claim took 0s and the resolve step - which
+   fetches through the same installer - took 1s. ⚠ Do not reopen it: absolute 16.
 1. **`CI-10`**, five twin pairs left, `check-project` its own unit. ⛔ A pair
    leaves that list only after `check-bitcheck --compare` has run it against
    BOTH halves.

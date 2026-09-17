@@ -2723,6 +2723,25 @@ not inherit**, and the fix changes the signal semantics of a bound that is
 mutation-proven at its current values - which is its own unit, for the reason the
 `mine-repo` revert above gives. Filed rather than rushed.
 
+#### ⛔ RUN 32 REFUTES THE PRIVILEGE READING, 2026-09-17
+
+⚠ **`ACQ-06` removed `sudo` and `/usr/local` from the install path and the step
+wedges exactly as before.** `capture-client` run 32 on `a709e2d`: both lanes'
+*Install the client* never returned, both jobs cancelled at **forty minutes**,
+**zero artifacts**. ⛔ So *privilege is the variable* joins the four readings this
+entry has already refuted, and it joins them the same way - by a dispatch rather
+than by an argument.
+
+⭐ **The same run narrows it from the other side.** *Resolve the release
+artifact* used `install-rootless.sh`'s bounded fetch to retrieve a document over
+the network in **one second**, on that host, minutes before the install wedged;
+the unprivileged claim took **0s**. So the installer, the fetch, the claim guard
+and the resolver are all exonerated on that machine by its own step timings.
+
+⛔ **AND NOTHING FURTHER IS DONE ABOUT IT.** `TODO/RULES.md` owns that rule and
+`AGENTS.md` makes it absolute 16. ⚠ This paragraph is the record and not the
+start of a fifteenth attempt.
+
 #### ⛔ AND THE PROBES ARE DELETED, 2026-09-17, BECAUSE `ACQ-06` LANDED
 
 ⭐ **Ten diagnostic steps stood in `capture-client.yml` and they are gone.** Their

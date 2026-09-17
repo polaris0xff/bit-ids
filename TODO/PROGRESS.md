@@ -430,9 +430,12 @@ could buy, and four of them measured a privileged path this tree no longer takes
    ⚠ **The `package` route did not come with it and should not**: it is
    privileged by construction. `E-ACQ-01` wants two INDEPENDENT routes and
    `release` plus `source` already are.
-   ⛔ **Nothing has run it on a runner.** A session host at uid 1001 and a hosted
-   `ubuntu-24.04` runner are not the same host, and what a dispatch would
-   establish is whether the step thirteen bounds could not end ends now.
+   ⛔ **AND IT HAS BEEN DISPATCHED. THE HANG IS NOT PRIVILEGE.** `capture-client`
+   run 32 wedged in *Install the client* and uploaded nothing, while the same
+   run's unprivileged claim and its resolve step - which fetches through the
+   rootless installer - both answered in about a second.
+   [`acquisition.md`](acquisition.md) carries the timings and **it stops there**:
+   absolute 16, a hang is a dead end.
 
 ⭐ **`CI-06` is closed and the button has been pressed.** Both platforms captured
 green on run 2, so nothing below waits on a runner question any more.

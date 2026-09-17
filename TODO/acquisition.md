@@ -980,10 +980,34 @@ reading**: an ellipsis outside this project's five markers, a `A && B || C` that
   FIXTURE capture that installs nothing, so the privilege question this entry is
   about does not arise there. It closes when a Windows capture installs a client,
   which is `CLIENT-01`'s.
-- ⚠ **Nothing has run this on a runner.** The install path is driven here as uid
-  1001, which is what a hosted `ubuntu-24.04` runner is, and the two are not the
-  same host. What a dispatch would establish is whether the step that thirteen
-  bounds could not end ends now.
+- ⛔ **IT HAS RUN ON A RUNNER NOW, AND THE ANSWER IS NO.** `capture-client` run
+  32 on `a709e2d`, dispatched 2026-09-17: both lanes' *Install the client* never
+  returned, both jobs were cancelled at **forty minutes** - 05:13:15 to 05:53:15
+  - and the run uploaded **zero artifacts**. ⚠ This residual asked whether the
+  step thirteen bounds could not end ends once the privilege is gone. It does
+  not. **Removing `sudo` and `/usr/local` did not remove the wedge**, which
+  refutes the reading that privilege was the variable.
+
+  ⭐ **What the same run DOES establish, on a real runner, is the rest of this
+  entry:**
+
+  | step | run 32 |
+  | --- | --- |
+  | *Claim the host*, now **unprivileged** | ⭐ success, **0s**, both lanes |
+  | *Resolve the release artifact*, which now also selects and fetches the vendor's checksums document | ⭐ success, **1s** |
+  | *Resolve the source tag* | ⭐ success, 1s |
+  | *Install the client* | ⛔ never returned, either lane |
+
+  ⭐ **So `install-rootless.sh`'s bounded fetch demonstrably works on that host**:
+  the resolve step used it to retrieve a document over the network in one second,
+  on the same machine, minutes before the install wedged. The rootless claim
+  guard and the digest resolution are proved on a runner; the install is not.
+
+  ⛔ **AND THIS IS WHERE IT STOPS.** `TODO/RULES.md` and `AGENTS.md` absolute 16:
+  a hang is a dead end, not a subject. Two bounds is the limit and this entry's
+  tally is far past it. Do not diagnose run 32, do not instrument it, and do not
+  add another bound. What is recorded is the measurement and nothing inferred
+  from it.
 - ⚠ **`check-rootless` is a declared `n/a` on the Windows lane**, and its reason
   is a platform fact rather than a missing twin: Windows has no `sudo`, no uid to
   drop to and no `su`, so the comparison the harness rests on has nothing to

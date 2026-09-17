@@ -5,6 +5,26 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-17T05:55:24Z
+
+- ⛔ **THE HANG IS NOT PRIVILEGE, MEASURED.** `capture-client` run 32 on
+  `a709e2d` is the first dispatch of the rootless install: both lanes' *Install
+  the client* never returned, both jobs were cancelled at **forty minutes**, and
+  the run uploaded **zero artifacts**. ⚠ `ACQ-06`'s residual asked whether the
+  step thirteen bounds could not end ends once `sudo` and `/usr/local` are gone.
+  It does not.
+- ⭐ **The same run proves the REST of `ACQ-06` on a real runner.** The
+  unprivileged *Claim the host* succeeded in **0s** on both lanes, and *Resolve
+  the release artifact* - which now selects and fetches the vendor's checksums
+  document through the rootless installer - succeeded in **1s**. So the
+  installer's bounded fetch, the rootless claim guard and the digest resolution
+  all work on that host, and the install still wedges.
+- ⛔ **And nothing further is being done about it.** `TODO/RULES.md` and
+  `AGENTS.md` absolute 16: a hang is a dead end, not a subject. The measurement
+  is recorded; no fifteenth bound follows it.
+- Record: [`TODO/acquisition.md`](TODO/acquisition.md), `ACQ-06`, and
+  [`TODO/ci.md`](TODO/ci.md), `CI-08`. No version bump and no deploy.
+
 ### 2026-09-17T04:49:43Z
 
 - ⭐ **THE RELEASE LISTING PUBLISHES A DIGEST AND THIS PROJECT WAS NOT READING
