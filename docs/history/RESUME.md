@@ -18,12 +18,13 @@ the branch, the remote, the clone depth, `git status` and `HEAD..origin/main`
 before editing anything.
 
 ⚠ **The container may start on a `claude/*` branch, with `user.name` set to an
-agent, and a shallow clone.** All three were true again on 2026-09-16, which is
-twelve starts running. Correct them first: the branch to `main` per rule 7, the
+agent, and a shallow clone.** All three were true again on 2026-09-17, which is
+thirteen starts running. Correct them first: the branch to `main` per rule 7, the
 identity to the operator's own per rule 11, and the clone with
-`git fetch --unshallow` - after which `git rev-list --count HEAD` answered **157**
-here. ⚠ Measure the depth before AND after if the pair is going to be quoted; a
-session that reads only the second number is copying the first from this page.
+`git fetch --unshallow` - after which `git rev-list --count HEAD` answered **170**
+here, from **50** before. ⚠ Measure the depth before AND after if the pair is
+going to be quoted; a session that reads only the second number is copying the
+first from this page.
 
 ⛔ **AND THE SESSION HOST IS `root`, WHICH A RUNNER IS NOT.** That difference hid
 the capture hang for eight dispatches: a bound that works here is refused by the
@@ -49,8 +50,16 @@ Both runner images carry it.
 
 ## Where the work is
 
-**In flight:** `CI-10`, with its three named deliverables landed and the rest of
-the port open.
+**In flight:** nothing. `ACQ-06` closed on 2026-09-17 and with it every open P0;
+the next unstarted item is `CI-10`'s remaining twin pairs.
+
+### ⚠ The state of the tree, as this was last written
+
+The gate was **39 checks, 38 passed, 0 failed, 1 skipped** at session start -
+`check-remote-items`, the one observed skip on a session host - exit 0, on a
+clean tree level with `origin/main` at `07b2a07`. CI run **157** on that commit
+is green on all six jobs, read back through rule 8's route rather than assumed.
+⚠ The gate is **40 rows** now: `check-rootless` joined it with `ACQ-06`.
 
 ### ⭐ A record exists, and a session can produce another
 
@@ -79,39 +88,21 @@ uncovers the next, and only a dispatch shows it.**
 and `bit-check --rows` is the measurement rather than this sentence. Both gate
 runners invoke it, so those rows are the SAME row on both lanes.
 
-⭐ **`check-adapters` is the tenth, 2026-09-15, and it was never a shell rule
-either.** Every network fetch a capture adapter makes carries a time bound: a
-`curl` that writes a file carries `--max-time`, a `git clone` is wrapped in
-`timeout`. ⛔ It exists because `capture-client` runs 21 and 22 both hung thirty
-minutes in *Install the client* on a lane that had taken six seconds, and
-`docs/conventions/shell.md` section 9 had stated that rule for as long as four
-adapters had been breaking it. ⚠ **It did not fix the hang** - run 23 carries
-the bound and hung anyway - and the rule is kept on its own terms.
-
 ⛔ **Sixteen files are deleted, not translated.** `check-twins` went from twelve
 file pairs to **five**, and from 69 seconds to **10.0**, measured on 2026-09-15.
 
-**`check-ignores` is the one that was never a shell rule.** A new checking rule
-goes into the binary; a new `.ps1` twin is work added to a layer being removed.
+**The five pairs left** are `check-project`, 997 lines and its own unit, plus
+`check-cache`, `check-catalogue`, `check-remote-items` and `mine-repo`. Their
+PowerShell halves together are **5.3 seconds**, timed on 2026-09-15, against the
+**96** the layer started at. ⛔ So the remaining wall-clock value is small and the
+DRIFT value is unchanged.
 
 ⛔ **A PAIR MAY ONLY LEAVE THAT LIST ONE WAY.**
 `sh scripts/common/check-bitcheck.sh --compare` runs every case against BOTH
 halves and refuses any difference in exit code or in the `--json` line.
 ⛔ **The window closes when the halves go**: after a deletion those cases print
 *the sh half is gone, not compared*, and the run gets cheaper precisely because
-it is checking less. The pre-deletion run is the one that counts, and
-`TODO/ci.md` records it.
-
-**It has earned that rule.** `check-docs`' comparison caught the two shell
-halves DISAGREEING about whether a page cited only inside backticks is an orphan
-- on a shape this tree does not contain, which `check-twins` could never see.
-
-**The five pairs left** are `check-project`, 997 lines and its own unit, plus
-`check-cache`, `check-catalogue`, `check-remote-items` and `mine-repo`. Their
-PowerShell halves together are **5.3 seconds**, timed on 2026-09-15, against the
-**96** the layer started at. ⛔ So the remaining wall-clock value is small and the
-DRIFT value is unchanged. That number was carried at 12.3, then decremented to 11 and 10 as pairs
-left, which is arithmetic rather than measurement; it is timed here.
+it is checking less. The pre-deletion run is the one that counts.
 
 ### Next, in order
 
@@ -123,21 +114,17 @@ around it, privileged, a watchdog, the job's `timeout-minutes`, and GitHub's own
 step supervisor - across two targets and both routes, on byte-identical code.
 ⛔ Do not diagnose it, instrument it, or add a fourteenth.
 
-0. ⭐ **`ACQ-06`: ROOTLESS, PORTABLE CLIENT INSTALLATION. P0, and the whole
-   capture path sits behind it.** Every install needs `sudo` and writes to
-   `/usr/local/bin`, so what it does depends on a host this project does not
-   control - the one variable between an install that exits 0 in **one second**
-   here and a step no bound could end on a runner. ⭐ Fetch, verify the digest,
-   unpack into a prefix the current user already owns, answer with the path. No
-   privilege, no package index, no host state. ⚠ The `package` route is
-   privileged by construction and does not come with it; `release` and `source`
-   are already the two independent routes `E-ACQ-01` wants.
+0. ⭐ **`ACQ-06` IS CLOSED.** No install on the capture path needs a privilege:
+   one rootless installer fetches with a bound, settles the digest before
+   anything is made executable, and writes into a prefix the current user owns.
+   Driven as uid 1001, and repeated with `sudo` absent from `PATH` entirely.
+   ⛔ **Nothing has run it on a runner**, and that is the next thing a dispatch
+   would buy.
 1. **`CI-10`**, five twin pairs left, `check-project` its own unit. ⛔ A pair
    leaves that list only after `check-bitcheck --compare` has run it against
    BOTH halves.
-2. **`CLIENT-01` and `CLIENT-06`**, the remaining vertical captures - behind
-   `ACQ-06`, because no adapter can be proved on a runner until an install can
-   finish there.
+2. **`CLIENT-01` and `CLIENT-06`**, the remaining vertical captures. They sat
+   behind `ACQ-06` and no longer do.
 3. **`CI-09`'s residuals**: the `RunManifest` a record needs beside it; the
    publisher, which cannot run at all because it downloads an artifact named
    `bundle` that nothing produces; and `SCHEMA-04`'s field -
@@ -154,7 +141,7 @@ step supervisor - across two targets and both routes, on byte-identical code.
 ## How this project is checked
 
 ⛔ **Run the gate with one command, `sh scripts/common/check-gate.sh`, after the
-last edit.** **39 checks, about 165 seconds** on a four-processor host. Its
+last edit.** **40 checks, about 165 seconds** on a four-processor host. Its
 wall clock is `max(concurrent batch) + max(check-capture, check-capture-client)`
 rather than a sum: those two run alone, after the batch, on purpose.
 
@@ -164,10 +151,11 @@ rather than the editor.
 
 ⛔ **DO NOT RUN THE GATE OR `git add` WHILE `check-workflow` IS RUNNING**, which
 corrupts its plant-and-restore accounting. ⚠ `check-workflow` unsharded is about
-21 minutes; use `--shard 1/4`.
+21 minutes; use `--shard 1/4`, and run all four shards only when a
+`.github/workflows/` file actually changed.
 
 ⛔ **`git checkout -- <dir>` DISCARDS UNSTAGED WORK IN THAT DIRECTORY.** It cost
-four files of edits this session. Stage first, or name the exact file.
+four files of edits one session. Stage first, or name the exact file.
 
 **A count of gate rows goes stale.** `check-gate.sh --rows` prints the list and
 `check-gate-rows` compares it against the other lane's.
@@ -210,7 +198,6 @@ where the rule's risk is over-strictness.
 work.** Label the case with the rule that really refuses it.
 
 ⛔ **A global regex replace where the pattern also matches what it preserves.**
-Reproduced this session in a Go port of a defect already written down.
 
 ⛔ **A step does not end when its command exits.** ⛔ **A shell applies
 redirections left to right.** ⛔ **`timeout 0` MEANS NO LIMIT.** ⛔ **A PowerShell
@@ -237,7 +224,7 @@ and `ubuntu-24.04`'s runner is uid 1001 with `sudo`.
 ⛔ **In Go, `filepath` is the HOST's separator and `path` is slashes.** A
 repo-relative key derived with `filepath.Dir` matches on Linux and misses on
 Windows. ⚠ Running `check-gate.ps1` on Linux does not test Windows: only the
-Windows lane can. CI run 132 caught it where three local passes did not.
+Windows lane can.
 
 **A count in prose is a value in two places with nothing comparing them.**
 **An in-place `sed` edits every line that matches, not the one you meant.**
@@ -249,6 +236,9 @@ the check before believing it runs. Three were found missing this way.
 
 ⛔ **A CAPTURE'S WORKDIR IS ITS EVIDENCE BUNDLE**, so rule 12 applies to what an
 adapter writes there - bounded by what the artifact actually ships.
+
+⚠ **GitHub runs a `run:` block as `bash -e` and `grep` exits 1 on NO MATCH**, so
+a trailing `true` is unreachable unless the status is captured on its own line.
 
 ---
 
@@ -296,3 +286,21 @@ fix it. It is the one observed skip.
 
 Every session record is listed in [`README.md`](README.md), and `check-docs`
 refuses one that page does not link.
+
+---
+
+## The paste
+
+```text
+Read docs/AGENTS.md in full and execute its session-start protocol. Work on main.
+Re-measure identity, write access, working tree, branch, remote and clone depth -
+the container may start you on a claude/* branch, with user.name set to an agent,
+and a shallow clone. Read the operator identity out of history with
+git log --format='%an <%ae>' | sort -u; never credit an agent, model or tool.
+Install tools with sh scripts/doctor/provision.sh; go is a gate dependency.
+The gate is 40 checks, about 165 seconds: sh scripts/common/check-gate.sh.
+Read back CI for the tip commit through AGENTS.md rule 8's route before trusting
+any recorded green. The work order is TODO/PROGRESS.md and nowhere else; item 0
+is ACQ-06. A hang is a dead end, not a subject - do not reopen the capture hang.
+Then read docs/history/RESUME.md and the required reading it names.
+```

@@ -1,11 +1,11 @@
 # Current progress
 
-State instant: 2026-09-16
+State instant: 2026-09-17
 Total: 66
-Open: 22
+Open: 21
 In progress: 1
 Blocked: 0
-Done: 43
+Done: 44
 
 ⚠ Those five counts are compared against
 [`INDEX.md`](INDEX.md) by `check-project.sh` on every gate, so they cannot go
@@ -406,22 +406,33 @@ in order.
 
 ⛔ **THE CAPTURE HANG IS A DEAD END AND IS NOT ON THIS LIST.** `RULES.md` carries
 it as a rule: a hang is a dead end, not a subject; two bounds is the limit; take
-the route that does not depend on the hanging thing. ⭐ `ACQ-06` **is** that route
-and it is item 0 below. ⚠ Do not diagnose the hang, do not instrument it, and do
+the route that does not depend on the hanging thing. ⭐ `ACQ-06` **was** that
+route and it has landed. ⚠ Do not diagnose the hang, do not instrument it, and do
 not add a fourteenth bound - thirteen have already failed, across two targets and
 both routes, on byte-identical code.
 
-0. ⭐ **`ACQ-06`: ROOTLESS, PORTABLE CLIENT INSTALLATION. P0, and everything a
-   capture needs sits behind it.** Every install today needs `sudo` and writes to
-   `/usr/local/bin`, so what it does depends on a host this project does not
-   control - and that is the one variable left between an install that exits 0 in
-   **one second** here and a step that thirteen bounds could not end on a runner.
-   ⭐ Fetch, verify the digest, unpack into a prefix the current user already
-   owns, and answer with the path. No privilege, no package index, no host state.
-   [`acquisition.md`](acquisition.md) carries the Approach and the Prove.
-   ⚠ **The `package` route does not come with it and should not**: it is
+⛔ **AND THE TEN DIAGNOSTIC PROBE STEPS ARE DELETED FROM `capture-client.yml`.**
+They were the instrument of that dead end, run 29 spent the last of what they
+could buy, and four of them measured a privileged path this tree no longer takes
+- one would have printed root's marker path over a host claimed by the runner.
+[`ci.md`](ci.md) under `CI-08` carries it.
+
+0. ⭐ **`ACQ-06` IS CLOSED, 2026-09-17, AND WITH IT EVERY OPEN P0.** No install on
+   the capture path needs a privilege any more: one rootless installer fetches
+   with a bound, settles the digest before anything is made executable, and
+   writes into a prefix the current user already owns. The claim guard's state
+   directory moved with it, so `install-client`'s marker check is unprivileged
+   too. ⭐ Driven as **uid 1001** - 21 cases green, and the same harness repeated
+   with `sudo` absent from `PATH` entirely is byte-identical - and the real
+   *Install the client* body ran end to end in **five seconds**, exit 0.
+   [`acquisition.md`](acquisition.md) carries the closure evidence, what driving
+   it unprivileged found that a root run could not, and the residuals.
+   ⚠ **The `package` route did not come with it and should not**: it is
    privileged by construction. `E-ACQ-01` wants two INDEPENDENT routes and
    `release` plus `source` already are.
+   ⛔ **Nothing has run it on a runner.** A session host at uid 1001 and a hosted
+   `ubuntu-24.04` runner are not the same host, and what a dispatch would
+   establish is whether the step thirteen bounds could not end ends now.
 
 ⭐ **`CI-06` is closed and the button has been pressed.** Both platforms captured
 green on run 2, so nothing below waits on a runner question any more.
@@ -444,9 +455,9 @@ nothing is. The clone question under *Settled decisions* is spent too.
    ⛔ **A pair may leave that list ONE WAY ONLY**:
    `sh scripts/common/check-bitcheck.sh --compare` against BOTH halves, before
    either is deleted.
-2. **`CLIENT-01` and `CLIENT-06`**, the remaining vertical captures. ⚠ Both sit
-   behind `ACQ-06`: no adapter can be proved on a runner while every install
-   needs a privilege the runner will not complete.
+2. **`CLIENT-01` and `CLIENT-06`**, the remaining vertical captures. ⭐ They sat
+   behind `ACQ-06` and no longer do: an install that needs no privilege is one a
+   runner can finish, and the next dispatch is what says whether it does.
 3. **`CI-09`'s residuals**, which are no longer about reaching a record: the
    `RunManifest` a record needs beside it; the publisher, which cannot run at all
    because it downloads an artifact named `bundle` that nothing produces; and

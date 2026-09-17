@@ -26,6 +26,19 @@ from any working directory.
   release publishes two Linux `AppImage` files differing only by an `_lt20`, so a
   selector that took the first match would install whichever the vendor listed
   first.
+- [`acquisition/install-rootless.sh`](acquisition/install-rootless.sh) is the one
+  installer every `release` route goes through: it fetches with a bound, settles
+  the artifact's digest before anything is made executable, writes into a prefix
+  the current user already owns, and prints the path it placed. ⛔ It never
+  escalates - a prefix this user cannot write is a refusal naming it - and
+  `--prefix` is the ONE derivation of that path, so no adapter composes a second
+  one.
+- [`acquisition/check-rootless.sh`](acquisition/check-rootless.sh) is `ACQ-06`'s
+  acceptance: it drives every adapter's release route as an unprivileged user
+  into a scratch prefix, asks each installed build its version, and repeats the
+  whole run with `sudo` absent from `PATH` entirely, refusing any difference.
+  ⚠ The vendor is a `file://` URL, the way `resolve-release --listing` is a
+  recorded response, so a gate row does not depend on four vendors being up.
 - [`corpus/check-store.sh`](corpus/check-store.sh) plants, in a disposable tree,
   every defect the append-only store exists to refuse, and reads each exit code
   from the process that produced it.

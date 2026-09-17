@@ -434,6 +434,15 @@ Add-Unavailable 'check-connector' 'a portable python3 subject; it needs store-li
 # exercise is the shell that composes the fetch and the resolution.
 Add-Unavailable 'check-source-route' 'an sh harness whose subject has no PowerShell half yet; CI-07'
 
+# ⛔ AND A SIXTH REASON, WHICH IS A FACT ABOUT THE PLATFORM RATHER THAN A MISSING
+# TWIN. check-rootless drives every release route under a uid that is not root,
+# with `sudo` absent from PATH, into a prefix the current user owns. ⚠ Windows
+# has no `sudo`, no uid to drop to and no `su`, so the comparison the harness is
+# built on has nothing to remove - and `capture-client.yml`, the only workflow
+# that installs a client, is Linux-only. ⭐ What would close this is a Windows
+# client capture, which is `CLIENT-01`'s, not a PowerShell twin of this file.
+Add-Unavailable 'check-rootless' 'its subject is a POSIX privilege boundary; no Windows capture installs a client yet; ACQ-06'
+
 # ⭐ THE SLOW ONE, and ⚠ it is the one part of this gate that needs a POSIX
 # shell: check-twins runs the sh half of every pair, so it cannot run on a host
 # without one. That is reported as a skip, never as a pass.

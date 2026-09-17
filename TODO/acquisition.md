@@ -759,7 +759,7 @@ the example and are nobody's installer.
 ## ACQ-06: Rootless, portable client installation
 
 Source: operator direction on 2026-09-16, after thirteen dispatches hung
-Priority: P0 | Effort: L | Status: OPEN
+Priority: P0 | Effort: L | Status: DONE
 
 Problem: Every install this project performs needs `sudo` and writes to
 `/usr/local/bin`, so what an install does depends on a host this project does
@@ -802,3 +802,148 @@ real runner at **two seconds or less**, and the whole sequence driven on a
 session host exits 0 in **one second**. ⛔ The difference between those and the
 hung step is `sudo` and the host it reaches into. Removing the privilege removes
 the variable rather than instrumenting it.
+
+### ⭐ What was built, 2026-09-17
+
+[`../scripts/acquisition/install-rootless.sh`](../scripts/acquisition/install-rootless.sh)
+is the one installer, and every release route goes through it. It fetches with a
+bound, settles the digest before anything is made executable, writes into a
+prefix the current user already owns, and prints the path it placed.
+
+⛔ **THE PREFIX HAS ONE DERIVATION AND `--prefix` IS IT.** Every adapter asks
+this file rather than composing a path, for the reason `assert-disposable
+--marker` already exists: a second spelling goes on reading the old place the day
+the first one moves, and an adapter's `binary()` and its `install` route are two
+such spellings inside one file. ⚠ It is
+`$HOME/.local/share/bit-ids` rather than `$HOME/.local`, so a build cannot
+shadow the user's own tools on PATH and one directory holds everything this
+project installed.
+
+⛔ **AND IT NEVER ESCALATES.** A prefix the current user cannot write is a
+refusal naming the prefix. An installer that reaches for privilege when it runs
+out of permission is the thing this entry removes.
+
+#### ⭐ The digest disposition, which is declared rather than defaulted
+
+⛔ **Exactly one of three, and a caller that names none is refused.**
+`--sha256 <hex>`, `--sums <file> --sums-name <name>`, or
+`--digest-unpublished <measured reason>`. ⚠ The third is not a way round the
+first two: it records that the bytes were IDENTIFIED and not VERIFIED, which is
+a different sentence, and `digest_source` in the installer's report is where the
+difference is made rather than left to a reader.
+
+⭐ **The verifier is `sha256sum -c` over the vendor's own document**, so neither
+the digest nor the comparison is this project's code. ⛔ **And it does not pass
+over nothing**: measured 2026-09-17, `--ignore-missing` over a document naming
+only absent files exits **1** with `no file was verified`, which is the refusal a
+hand-written reader would have had to remember to add.
+
+⚠ **Of the four targets, one vendor publishes a digest and three do not**, read
+out of the listings on 2026-09-17: `aria2-next` ships
+`aria2-next-{version}-checksums.sha256`; qBittorrent signs each asset with a
+detached `.asc`; aria2 and Transmission publish neither. Each adapter declares
+which, once, and its route reads its own declaration.
+
+⛔ **`resolve-release.sh` resolves the document out of the same listing** that
+chose the version and the artifact, so one retrieval answers three questions and
+the recorded `listing_sha256` covers all three decisions. ⚠ `--checksums` is
+`--listing`'s pair and the two are refused apart: a recorded listing names real
+vendor URLs, so a digest resolved from one would reach the network out of a
+harness written not to.
+
+#### ⭐ The claim guard moved with it
+
+`assert-disposable.sh`'s state directory is `$HOME/.local/state/bit-ids`.
+⛔ `/var/lib/bit-ids` needs root to create, so `install-client`'s marker check -
+which runs before any route - was itself a reason the install needed privilege.
+⚠ [`../docs/capture-host.md`](../docs/capture-host.md) owns why a home directory
+keeps the two properties the marker rests on.
+
+⛔ **It is per-user, which is a NARROWER claim than `/var/lib` made**, and that
+is recorded rather than hidden: a host where two users each ran a capture carries
+two markers and neither refuses the other. The runner contract is one capture per
+host and `docs/capture-host.md` carries it.
+
+### Closure evidence, 2026-09-17
+
+| what | measured |
+| --- | --- |
+| `BIT_IDS_ROOTLESS_USER=runnerlike sh scripts/acquisition/check-rootless.sh` | **21 cases, 21 passed, 0 failed**, driven as uid **1001** |
+| the same harness as `root` | 21 passed - and its own last row says that run establishes nothing about an unprivileged user |
+| `sh scripts/acquisition/check-release-route.sh` | 33 cases, 33 passed, 0 failed, with nine new digest cases |
+| `sh scripts/common/check-bitcheck.sh` | 94 cases, 94 passed, 0 failed |
+| driven pass, the real step body | `install-step.sh` run end to end as uid 1001 against a `file://` vendor: **exit 0 in 5 seconds**, a complete install record, `acquired=yes`, and the build in a prefix that user owns |
+| guard mutation, the installer | 10 plants, 10 on the intended verdict, plus an acceptance control that still installs |
+
+⭐ **THE PROVE'S SECOND HALF IS THE ONE THAT NEEDED AN INSTRUMENT.** "With `sudo`
+absent from `PATH` entirely" cannot be done by removing PATH entries: `sudo` is
+`/usr/bin/sudo` on this image, so dropping its directory drops `sh`, `sed`,
+`mktemp` and `curl` with it. The first version did exactly that, all four routes
+produced no output at all, and the two runs duly "differed" - which reads exactly
+like the finding the comparison exists to make. ⭐ The harness builds a shadow
+directory holding a link to every executable on PATH except `sudo`, and two
+control rows assert both halves: that `sudo` was really there to remove, and that
+the shadow still resolves every tool the routes need.
+
+#### ⛔ What driving it as uid 1001 found that the root run could not
+
+⚠ **The root run was green on nineteen cases and the uid-1001 run was red on
+eight**, minutes apart, on the same tree. The harness's own workdir was
+root-owned and merely readable, so the drive user could not create the state
+directory, every route refused with *the host was never claimed*, and nothing in
+the root run could have said so. ⭐ The scratch is `chown`ed to the drive user
+now - not made world-writable, which would be a different problem invented to
+solve this one.
+
+⛔ **AND ONE CASE PASSED FOR THE WRONG REASON IN THAT SAME RUN.** *A second claim
+is still refused* asserted an empty stdout, and the FIRST claim had failed too -
+so it went green beside the red row that caused it. It reads the guard's own
+refusal text now. That is a check satisfied by a different code path, which
+[`../docs/methodology/reviews.md`](../docs/methodology/reviews.md) names as one
+of the two shapes to test for.
+
+#### ⛔ And what the gate found that the harness did not
+
+⭐ **`check-adapters` answered 2 and exited `could not run`**, because this
+change moved every release fetch out of the four adapters and into one installer
+the rule did not read. ⛔ **Its floor is what caught it** - *a rule that found
+nothing to ask about has asked nothing* - and without that floor it would have
+reported a clean tree over a path whose every fetch it had stopped reading. The
+scope follows the fetches now, and `check-bitcheck`'s `--max-time` plant is
+re-aimed at the file that holds them.
+
+⚠ **Three more, each mechanical and each found by the gate rather than by
+reading**: an ellipsis outside this project's five markers, a `A && B || C` that
+`shellcheck` refuses, and a plant whose `sed` carried a `$`.
+
+### Residuals
+
+- ⛔ **The `package` route is untouched and still privileged**, deliberately. It
+  writes to directories the distribution owns, so it cannot be made rootless;
+  what changed is that it is no longer on the path a capture depends on.
+  `E-ACQ-01` wants two INDEPENDENT routes and `release` plus `source` already
+  are.
+- ⚠ **`report-holders.sh` now runs unprivileged and its claim is narrower.** It
+  was under `sudo` because the install was, and an unprivileged reader of
+  `/proc` reports nobody holding a file that root processes hold. Every process
+  the step starts is now this uid, so it sees all of them - and a holder
+  belonging to some OTHER user is outside what it can see. Measured on the driven
+  pass: it reported `0 holder(s)` and said in words that one descriptor did not
+  resolve to a path, rather than answering confidently about a pipe.
+- ⚠ **`transmission`'s `daemon()` has no prefix branch and the other three
+  adapters' `binary()` do.** Neither of that target's routes installs into a
+  prefix - the package route writes where the distribution does and the release
+  route refuses before installing - so a branch there would be a path nothing can
+  produce. It lands with the first route that installs one.
+- ⚠ **The Windows guard still writes under `ProgramData`.** `capture.yml` is a
+  FIXTURE capture that installs nothing, so the privilege question this entry is
+  about does not arise there. It closes when a Windows capture installs a client,
+  which is `CLIENT-01`'s.
+- ⚠ **Nothing has run this on a runner.** The install path is driven here as uid
+  1001, which is what a hosted `ubuntu-24.04` runner is, and the two are not the
+  same host. What a dispatch would establish is whether the step that thirteen
+  bounds could not end ends now.
+- ⚠ **`check-rootless` is a declared `n/a` on the Windows lane**, and its reason
+  is a platform fact rather than a missing twin: Windows has no `sudo`, no uid to
+  drop to and no `su`, so the comparison the harness rests on has nothing to
+  remove.

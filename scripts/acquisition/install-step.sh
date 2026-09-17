@@ -60,6 +60,41 @@ if [ "$ROUTE" = release ]; then
   BIT_IDS_RELEASE_URL=$(cat "$RUNNER_TEMP/release/url.txt")
   export BIT_IDS_RELEASE_URL
   printf 'the release route will fetch %s\n' "$BIT_IDS_RELEASE_URL"
+
+  # ⛔ THE VENDOR'S DIGEST TRAVELS AS A DOCUMENT AND A NAME, BOTH OUT OF THE
+  # RESOLUTION. `resolve-release.sh` fetched it while the host still had a route
+  # off itself, which is the containment order; this step only points the route
+  # at what is already on disk. ⚠ A target whose vendor publishes none says so in
+  # `digest_source`, and this block passes nothing rather than inventing a path.
+  _res="$RUNNER_TEMP/release/resolution.txt"
+  [ -f "$_res" ] || {
+    printf 'install-step: the release lane has no resolution to take a digest from\n' >&2
+    exit 2
+  }
+  _dsource=$(sed -n 's/^digest_source=//p' "$_res")
+  case "$_dsource" in
+    vendor-document)
+      BIT_IDS_RELEASE_SUMS=$(sed -n 's/^digest_document=//p' "$_res")
+      BIT_IDS_RELEASE_ASSET=$(sed -n 's/^asset=//p' "$_res")
+      [ -f "${BIT_IDS_RELEASE_SUMS:-}" ] || {
+        printf 'install-step: the resolution names a checksums document that is not on disk\n' >&2
+        exit 2
+      }
+      [ -n "$BIT_IDS_RELEASE_ASSET" ] || {
+        printf 'install-step: the resolution names no asset for the checksums document to cover\n' >&2
+        exit 2
+      }
+      export BIT_IDS_RELEASE_SUMS BIT_IDS_RELEASE_ASSET
+      printf 'the release route will verify against %s\n' "$BIT_IDS_RELEASE_SUMS"
+      ;;
+    unpublished)
+      printf 'the release route has no vendor digest to verify against; the adapter declares why\n'
+      ;;
+    *)
+      printf 'install-step: the resolution declares digest_source=[%s]\n' "$_dsource" >&2
+      exit 2
+      ;;
+  esac
 fi
 
 # ⛔ THE SOURCE ROUTE TAKES ITS TAG FROM ITS OWN RESOLUTION, AND THIS BLOCK USED
@@ -95,22 +130,28 @@ fi
 # not firing - it is the evidence: `stat` beside `etimes` is what separates a
 # command that is slow from one that is stopped, and eight runs of step timings
 # could not tell those apart.
-# ⛔ THE REDIRECTION IS THIS SHELL'S AND NOT sudo's, WHICH IS THE POINT RATHER
-# THAN AN OVERSIGHT. shellcheck warns that sudo does not affect a redirect; here
-# the caller opening the file is exactly what is wanted, because the descriptor
-# the install inherits must be that FILE and not this step's output pipe. ⚠ The
-# workdir is under RUNNER_TEMP and was created by this shell, so there is no
-# privilege question to answer either.
-# ⛔ AND THE BOUND IS INSIDE THE sudo, WHICH IS THE ONE PLACE IT HAD NEVER BEEN
-# PUT. Every bound this entry has measured failing was issued by an UNPRIVILEGED
-# process at a process tree running as ROOT, and the kernel refuses that signal:
+# ⛔ THE REDIRECTION IS THIS SHELL'S, WHICH IS THE POINT RATHER THAN AN
+# OVERSIGHT: the descriptor the install inherits must be that FILE and not this
+# step's output pipe. A runner ends a step when the command has exited AND the
+# step's pipe has reached end of file, so anything the route leaves behind
+# holding that pipe keeps the step open whatever any bound does.
+#
+# -- ⛔ AND THERE IS NO `sudo` HERE ANY MORE. `ACQ-06`. -----------------------
+#
+# Every bound this entry measured failing was issued by an UNPRIVILEGED process
+# at a process tree running as ROOT, and the kernel refuses that signal:
 # measured on 2026-09-16, a uid-1001 `timeout -k 2 5` around `sudo -E sh -c
 # 'sleep 120'` exited 124 on schedule and left the root `sleep` alive with PPID 1
 # - orphaned, unkillable by its own bound, and still running after the KILL grace
-# had passed. ⚠ That is the same shape as the job's `timeout-minutes: 25` ending
-# run 21 at THIRTY minutes rather than twenty-five.
+# had passed. The repair then was to put the bound INSIDE the `sudo`.
 #
-# ⭐ `sudo` execs `timeout`, so the bound runs as root and its signal lands.
+# ⭐ THE PRIVILEGE IS GONE INSTEAD, WHICH REMOVES THE ASYMMETRY RATHER THAN
+# WORKING AROUND IT. The install writes into a prefix this user already owns -
+# `install-rootless.sh --prefix` is the one derivation - so every process in this
+# subtree runs as the same uid as this shell, and a bound issued here can reach
+# every one of them. ⚠ That is not another bound: it is the condition under which
+# the bounds that are already here can work at all.
+#
 # ⚠ THE RELATION IS WHAT MATTERS, not the number. This must be LARGER than
 # `install-client`'s own inner bounds, so a slow route is refused by that script
 # with a message naming its timeout rather than killed here with nothing to read;
@@ -133,8 +174,7 @@ command -v setsid >/dev/null 2>&1 || {
   printf 'install-step: setsid is not on this host\n' >&2
   exit 2
 }
-# shellcheck disable=SC2024
-setsid sudo -E timeout -k "$STEP_KILL_AFTER" "$STEP_SECONDS" \
+setsid timeout -k "$STEP_KILL_AFTER" "$STEP_SECONDS" \
   sh "$ROOT/scripts/acquisition/install-client.sh" \
   --adapter "$ADAPTER" \
   --route "$ROUTE" \
@@ -199,9 +239,16 @@ cat "$WORKDIR/step.log"
 # ⭐ AND WHATEVER STILL HOLDS THAT FILE IS NAMED. ⚠ Bounded, because it walks
 # every process's descriptors and is the one thing added to this step that could
 # itself be slow; a diagnostic that held the step open would be the failure it
-# exists to explain, wearing its own name. ⚠ Under sudo, because the install ran
-# as root and an unprivileged reader of /proc reports nobody holding a file that
-# root processes are holding.
+# exists to explain, wearing its own name.
+#
+# ⛔ AND IT NO LONGER RUNS UNDER `sudo`, BECAUSE THE INSTALL NO LONGER DOES.
+# The reason it was privileged is that an unprivileged reader of `/proc` reports
+# nobody holding a file that ROOT processes are holding - which was a true fact
+# about a privileged install. ⭐ Every process this step starts now runs as this
+# uid, so this reader sees all of them, and the report stops depending on a
+# privilege the step exists to do without. ⚠ A holder belonging to some OTHER
+# user is outside what it can see, and that is a narrower claim than before
+# rather than the same one: `TODO/acquisition.md` carries it under `ACQ-06`.
 #
 # ⛔ AND THIS SHELL'S OWN STDOUT IS ASKED ABOUT TOO, WHICH IT NEVER WAS. The
 # report was pointed at `step.log` alone, so `holders.log` answered `0 holder(s)`
@@ -221,7 +268,7 @@ exec 9>&1
 STEP_STDOUT=$(readlink -f /proc/self/fd/9 2>/dev/null) || STEP_STDOUT=""
 exec 9>&-
 HELD=0
-timeout 60 sudo sh "$ROOT/scripts/ci/report-holders.sh" \
+timeout 60 sh "$ROOT/scripts/ci/report-holders.sh" \
   "$WORKDIR/step.log" ${STEP_STDOUT:+"$STEP_STDOUT"} \
   >>"$WORKDIR/holders.log" 2>&1 || HELD=$?
 printf 'the holder report exited %s\n' "$HELD"

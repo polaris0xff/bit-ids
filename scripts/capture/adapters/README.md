@@ -212,7 +212,7 @@ and never an estimate of it. The workflow raises `BIT_IDS_INSTALL_TIMEOUT` for
 ### The release route's artifact, declared where the target is known
 
 ⛔ **A release route needs an artifact chosen and `describe` is where the target
-says which.** Five more keys, printed by `describe` and read by
+says which.** Six more keys, printed by `describe` and read by
 [`../../acquisition/resolve-release.sh`](../../acquisition/resolve-release.sh).
 An adapter with no release route prints none of them, which is an answer: the
 caller learns this target has no second route rather than watching a fetch fail
@@ -225,6 +225,27 @@ with something that names nothing.
 | `release_min_components` | the fewest dot-separated components a version of this target has |
 | `release_max_components` | the most |
 | `release_asset` | which artifact of a release is the installable one |
+| one of `release_digest_asset` / `release_digest_unpublished` | how this vendor publishes a digest, or the measured reason it publishes none |
+
+⛔ **THE DIGEST DISPOSITION IS DECLARED AND NEVER DEFAULTED, AND EXACTLY ONE OF
+THE TWO IS REQUIRED.** `ACQ-06`. An adapter that named neither would install
+bytes nothing identified, and a default would mean the day a vendor stopped
+publishing digests nothing would say so. `resolve-release.sh` refuses both an
+absent declaration and a doubled one.
+
+⭐ **`release_digest_asset` is an asset pattern like `release_asset`**, selected
+out of the same listing by the same call, so one retrieval answers the version,
+the artifact and the digest and the record's `listing_sha256` covers all three.
+⚠ **`release_digest_unpublished` carries the measured REASON**, not a flag: the
+route reads it from this adapter rather than spelling it a second time, and the
+installer prints it beside the digest of what arrived. Of the four targets here,
+one publishes a checksums document and three do not - qBittorrent signs each
+asset with a detached `.asc` instead, aria2 and Transmission publish neither.
+
+⚠ **AN IDENTIFIED ARTIFACT IS NOT A VERIFIED ONE**, and the installer's report
+says which happened: `digest_source` is `vendor-document` where `sha256sum -c`
+read the vendor's own file, and `unpublished` where the digest was recorded and
+compared against nothing.
 
 ⛔ **They live here because this file is already the only one that knows how
 this product is installed**, and they are on `describe` rather than on a sixth

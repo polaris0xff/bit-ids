@@ -873,15 +873,28 @@ agree "adapters clean tree" check-adapters - 0
 
 # ⛔ A RELEASE FETCH WITH NO TIME LIMIT, which is the exact shape found on
 # 2026-09-15 in four adapters at once.
-AD="$TREE/scripts/capture/adapters/aria2-next.sh"
-cp "$AD" "$WORK/adapter.orig" || exit 2
-sed 's/--connect-timeout 20 --max-time 300/--connect-timeout 20/' \
-  "$WORK/adapter.orig" >"$AD"
+#
+# ⚠ IT IS PLANTED IN THE INSTALLER NOW, BECAUSE THAT IS WHERE THE FETCH WENT.
+# `ACQ-06` moved every release retrieval out of the four adapters and into one
+# rootless installer, so this plant found nothing to change there - and the rule
+# answered 2 over a scope that no longer held a single `curl -o`. ⭐ The rule's
+# own floor is what said so; the scope followed the subject and so does this.
+RL="$TREE/scripts/acquisition/install-rootless.sh"
+cp "$RL" "$WORK/rootless.orig" || exit 2
+# ⚠ THE FLAG ALONE IS DROPPED AND ITS VALUE IS LEFT, which keeps this sed free of
+# a `$` the shell would have to be told not to expand. ⛔ And it must drop the
+# flag rather than rename it: the rule asks whether the line CONTAINS
+# `--max-time`, so a `--no-max-time` would still satisfy it and the plant would
+# report a guard that had not been tested.
+sed 's/--connect-timeout 20 --max-time/--connect-timeout 20/' \
+  "$WORK/rootless.orig" >"$RL"
 agree "adapters a curl that writes a file with no --max-time is refused" check-adapters - 1
-cp "$WORK/adapter.orig" "$AD"
+cp "$WORK/rootless.orig" "$RL"
 
 # ⛔ AND A CLONE THAT NOTHING BOUNDS. `git` has no flag of its own, so the rule
 # is a `timeout` wrapper, and a clone is the other way a capture host hangs.
+AD="$TREE/scripts/capture/adapters/aria2-next.sh"
+cp "$AD" "$WORK/adapter.orig" || exit 2
 sed 's/timeout 600 git clone/git clone/' "$WORK/adapter.orig" >"$AD"
 agree "adapters a git clone with no timeout wrapper is refused" check-adapters - 1
 cp "$WORK/adapter.orig" "$AD"

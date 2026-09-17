@@ -341,9 +341,15 @@ cp "$ROOT/scripts/acquisition/install-step.sh" "$TREE/scripts/acquisition/" || e
 # rather than on what they are about.
 cp "$ROOT/scripts/ci/report-holders.sh" "$TREE/scripts/ci/" || exit 2
 
-# ⚠ A `sudo` THAT IS NOT sudo. The install body runs `sudo -E sh ...`, and this
-# session is not a place to ask for privilege; dropping the flags and running the
-# command is what the runner's passwordless sudo amounts to for this block.
+# ⚠ A `sudo` THAT IS NOT sudo. The RESTORE blocks run `sudo ip route add`, and
+# this session is not a place to ask for privilege; dropping the flags and
+# running the command is what the runner's passwordless sudo amounts to here.
+#
+# ⛔ THE INSTALL BODY NO LONGER REACHES IT, AND THAT IS `ACQ-06`. It ran
+# `setsid sudo -E timeout` until 2026-09-17, which is why this stub was
+# written; the install is rootless now, so the only callers left are the two
+# restore blocks. ⚠ The stub is kept for them rather than deleted, and
+# `check-rootless.sh` is what refuses a `sudo` returning to the install path.
 cat >"$TREE/bin/sudo" <<'STUB'
 #!/bin/sh
 set -u

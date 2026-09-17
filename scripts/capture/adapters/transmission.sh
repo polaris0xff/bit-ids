@@ -52,6 +52,14 @@ cannot() {
   exit 2
 }
 
+# ⛔ THE ROOTLESS INSTALLER, WHICH THIS ADAPTER USES FOR ITS FETCH ALONE.
+# ⚠ `daemon()` deliberately has NO prefix branch, unlike the other three
+# adapters: neither of this target's routes installs into one - the package
+# route writes where the distribution does and the release route refuses before
+# it installs anything - so a branch here would be a path nothing can produce.
+# `TODO/acquisition.md` carries it under `ACQ-06` rather than leaving it implied.
+ROOTLESS=$(CDPATH='' cd -- "$(dirname -- "$0")/../../acquisition" && pwd)/install-rootless.sh
+
 daemon() {
   if [ -n "${BIT_IDS_TRANSMISSION_DAEMON:-}" ]; then
     printf '%s' "$BIT_IDS_TRANSMISSION_DAEMON"
@@ -122,6 +130,12 @@ case "$COMMAND" in
     printf 'release_min_components=3\n'
     printf 'release_max_components=3\n'
     printf 'release_asset=transmission-{version}.tar.xz\n'
+    # ⛔ THE DIGEST DISPOSITION, DECLARED ONCE AND READ BY THE ROUTE. This
+    # release carries installers, debug archives and one source tarball, and no
+    # checksums asset, read out of the listing on 2026-09-17. ⚠ The route
+    # refuses after its fetch either way; the declaration is what stops the
+    # fetch itself being a transfer nothing identified.
+    printf 'release_digest_unpublished=this release publishes installers and a source tarball and no checksums asset\n'
     ;;
 
   install)
@@ -168,7 +182,6 @@ case "$COMMAND" in
       release)
         [ -n "${BIT_IDS_RELEASE_URL:-}" ] ||
           cannot "the release route needs BIT_IDS_RELEASE_URL, resolved before the route was cut"
-        command -v curl >/dev/null 2>&1 || cannot "curl is not on this host"
         #
         # ⛔ THIS ROUTE FETCHES AND REFUSES, RATHER THAN FETCHING AND REPORTING AN
         # INSTALL IT DID NOT PERFORM. It used to leave the artifact in the workdir
@@ -190,17 +203,31 @@ case "$COMMAND" in
         # against upstream 4.1.3, so this target has no same-version pair to
         # compare today and `AGENTS.md` rule 5 forbids backfilling one.
         # `CLIENT-06` carries it.
-        # ⛔ BOUNDED. An unlimited fetch is how `capture-client` runs 21 and
-        # 22 turned a six-second step into thirty minutes, and
-        # `docs/conventions/shell.md` section 9 already stated the rule.
-        # ⚠ The speed floor is what catches a stall: `--max-time` alone has to
-        # be large enough for a slow link to finish, which is large enough to
-        # sit in a dead transfer for minutes. `bit-check check-adapters` is the
-        # rule rather than this comment.
-        curl -fsSL --retry 2 --connect-timeout 20 --max-time 300 \
-          --speed-limit 1024 --speed-time 60 \
-          -o "$WORKDIR/transmission-release" "$BIT_IDS_RELEASE_URL" \
-          </dev/null >"$WORKDIR/install.log" 2>&1 || refuse "the release route could not be fetched"
+        # ⛔ THE FETCH AND THE DIGEST ARE ONE CALL AND IT IS NOT THIS FILE'S.
+        # `install-rootless.sh` bounds the transfer and settles the digest, and
+        # it needs no privilege, so this route reaches its refusal on a host
+        # where nothing can be installed to `/usr/local` at all.
+        #
+        # ⚠ THE REASON IS ASKED OF THIS ADAPTER'S OWN `describe` RATHER THAN
+        # SPELLED AGAIN: a sentence written in two places is one that disagrees
+        # with itself the day a vendor starts publishing digests.
+        _why=$(sh "$0" describe |
+          awk -F= '$1 == "release_digest_unpublished" { sub(/^[^=]*=/, ""); print; exit }')
+        [ -n "$_why" ] ||
+          cannot "this adapter declares no digest disposition for its release route"
+        sh "$ROOTLESS" --fetch \
+          --url "$BIT_IDS_RELEASE_URL" \
+          --into "$WORKDIR/transmission-release" \
+          --digest-unpublished "$_why" \
+          --report "$WORKDIR/rootless-install.txt" \
+          </dev/null >>"$WORKDIR/install.log" 2>&1
+        _rc=$?
+        [ "$_rc" = 0 ] || {
+          tail -20 "$WORKDIR/install.log" >&2
+          [ "$_rc" = 1 ] ||
+            cannot "the rootless installer could not run for the release route (exit $_rc)"
+          refuse "the release route could not fetch the vendor's source archive"
+        }
         refuse "the release route fetched a source archive and this adapter cannot build it; a route that installs nothing must not report an install"
         ;;
       *) cannot "unknown route: $ROUTE" ;;

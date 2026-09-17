@@ -60,19 +60,28 @@ cannot() {
 # ⛔ THE INSTALLED EXECUTABLE, LOOKED UP ONCE. A path composed per subcommand is
 # a second spelling, and the day a route installs somewhere else one subcommand
 # finds the build and another reports it absent.
+# ⛔ THE PREFIX IS ASKED FOR, NEVER COMPOSED. `install-rootless.sh --prefix` is
+# the one derivation in this tree, so this file cannot disagree with the
+# installer about where a build went. ⚠ It defaulted to `/usr/local` until
+# `ACQ-06`, which is a directory a runner needs a privilege to write.
+ROOTLESS=$(CDPATH='' cd -- "$(dirname -- "$0")/../../acquisition" && pwd)/install-rootless.sh
+prefix() {
+  [ -f "$ROOTLESS" ] || cannot "$ROOTLESS is not present"
+  sh "$ROOTLESS" --prefix
+}
+
 binary() {
   if [ -n "${BIT_IDS_ARIA2:-}" ]; then
     printf '%s' "$BIT_IDS_ARIA2"
     return 0
   fi
-  # ⭐ THE RELEASE ROUTE'S OWN PREFIX, BEFORE THE PATH. Its default is
-  # `/usr/local`, which already precedes `/usr` on this platform's PATH, so this
-  # branch changes nothing for a normal install and is what lets a run point the
+  # ⭐ THE RELEASE ROUTE'S OWN PREFIX, BEFORE THE PATH. It lets a run point the
   # route somewhere else and still be measuring the build that route produced.
   # ⛔ Without it the two routes would race on PATH order, which is a property of
   # the host rather than of the acquisition.
-  if [ -n "${BIT_IDS_PREFIX:-}" ] && [ -x "$BIT_IDS_PREFIX/bin/aria2c" ]; then
-    printf '%s' "$BIT_IDS_PREFIX/bin/aria2c"
+  _prefix=$(prefix) || return 1
+  if [ -x "$_prefix/bin/aria2c" ]; then
+    printf '%s' "$_prefix/bin/aria2c"
     return 0
   fi
   command -v aria2c 2>/dev/null
@@ -133,6 +142,12 @@ case "$COMMAND" in
     printf 'release_min_components=3\n'
     printf 'release_max_components=3\n'
     printf 'release_asset=aria2-{version}.tar.bz2\n'
+    # ⛔ THE DIGEST DISPOSITION, DECLARED ONCE AND READ BY THE ROUTE. A vendor
+    # that publishes no checksums document is a fact about the vendor, so it is
+    # stated here rather than spelled a second time inside the route - which is
+    # the value-in-two-places shape this adapter already avoids for its
+    # repository name. Measured from the release listing on 2026-09-17.
+    printf 'release_digest_unpublished=this release publishes six archives and no checksums asset\n'
     ;;
 
   install)
@@ -202,18 +217,35 @@ case "$COMMAND" in
           command -v "$_need" >/dev/null 2>&1 ||
             cannot "the release route builds from source and $_need is not on this host"
         done
-        PREFIX=${BIT_IDS_PREFIX:-/usr/local}
-        # ⛔ BOUNDED. An unlimited fetch is how `capture-client` runs 21 and
-        # 22 turned a six-second step into thirty minutes, and
-        # `docs/conventions/shell.md` section 9 already stated the rule.
-        # ⚠ The speed floor is what catches a stall: `--max-time` alone has to
-        # be large enough for a slow link to finish, which is large enough to
-        # sit in a dead transfer for minutes. `bit-check check-adapters` is the
-        # rule rather than this comment.
-        curl -fsSL --retry 2 --connect-timeout 20 --max-time 300 \
-          --speed-limit 1024 --speed-time 60 \
-          -o "$WORKDIR/aria2.tar.bz2" "$BIT_IDS_RELEASE_URL" \
-          </dev/null >"$WORKDIR/install.log" 2>&1 || refuse "the release route could not be fetched"
+        PREFIX=$(prefix) || cannot "the rootless prefix could not be derived"
+        # ⛔ THE FETCH AND THE DIGEST ARE ONE CALL AND IT IS NOT THIS FILE'S.
+        # This route BUILDS what it fetches rather than placing it, so it asks
+        # the installer for `--fetch` alone - the bounded transfer and the digest
+        # disposition - and unpacks the settled file itself. ⚠ A route that
+        # unpacked bytes whose digest nothing had settled would be running a
+        # vendor's build system over something nobody identified.
+        #
+        # ⚠ THE REASON IS ASKED OF THIS ADAPTER'S OWN `describe` RATHER THAN
+        # SPELLED AGAIN, the way the vendor's repository already is: a sentence
+        # written in two places is one that disagrees with itself the day a
+        # vendor starts publishing digests.
+        _why=$(sh "$0" describe |
+          awk -F= '$1 == "release_digest_unpublished" { sub(/^[^=]*=/, ""); print; exit }')
+        [ -n "$_why" ] ||
+          cannot "this adapter declares no digest disposition for its release route"
+        sh "$ROOTLESS" --fetch \
+          --url "$BIT_IDS_RELEASE_URL" \
+          --into "$WORKDIR/aria2.tar.bz2" \
+          --digest-unpublished "$_why" \
+          --report "$WORKDIR/rootless-install.txt" \
+          </dev/null >>"$WORKDIR/install.log" 2>&1
+        _rc=$?
+        [ "$_rc" = 0 ] || {
+          tail -20 "$WORKDIR/install.log" >&2
+          [ "$_rc" = 1 ] ||
+            cannot "the rootless installer could not run for the release route (exit $_rc)"
+          refuse "the release route could not fetch the vendor's source archive"
+        }
         mkdir -p "$WORKDIR/src" || cannot "cannot create $WORKDIR/src"
         tar -xjf "$WORKDIR/aria2.tar.bz2" -C "$WORKDIR/src" \
           >>"$WORKDIR/install.log" 2>&1 || refuse "the release tarball could not be unpacked"

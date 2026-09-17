@@ -44,9 +44,22 @@ capture on one host means the host survived the first, which means it was never
 disposable whatever anything claimed. The evidence is the marker's existence,
 and a misconfiguration cannot produce its absence.
 
-⚠ **The marker lives in `/var/lib`, and that is load-bearing.** `/run` and
-`/tmp` are cleared by a reboot, so a host that rebooted rather than being
-destroyed would read as fresh.
+⚠ **Where the marker lives is load-bearing.** `/run` and `/tmp` are cleared by a
+reboot, so a host that rebooted rather than being destroyed would read as fresh.
+
+⭐ **It is the capturing user's own state directory, `$HOME/.local/state/bit-ids`,
+and it needs no privilege.** `ACQ-06`. `/var/lib/bit-ids` needs root to create,
+so every caller of this guard needed `sudo` - including the install step, which
+reads the marker before a route runs. A home directory keeps both properties the
+marker rests on: a reboot does not clear it, and it goes when the host does.
+
+⛔ **And it is per-user, which is a narrower claim than `/var/lib` made.** A host
+where two different users each ran a capture carries two markers and neither
+refuses the other. That is a real weakening rather than a tidy-up, and it is
+stated here because the runner contract is one capture per host: a shared host
+was never one this project would capture on. The Windows half still writes under
+`ProgramData`, so the two platforms differ here until a Windows capture installs
+a client.
 
 The manifest records the guard's answer in `isolation.claim`: the fingerprint it
 read and when it claimed the host. `E-MAN-33` refuses a claim stamped after the

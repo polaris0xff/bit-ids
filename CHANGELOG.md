@@ -5,6 +5,30 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-17T03:32:23Z
+
+- ⭐ **`ACQ-06` IS CLOSED AND WITH IT EVERY OPEN P0.** One rootless installer,
+  [`scripts/acquisition/install-rootless.sh`](scripts/acquisition/install-rootless.sh),
+  is what every release route now goes through. `TODO/acquisition.md` carries the
+  closure evidence and the residuals.
+- ⛔ **The digest disposition is declared and never defaulted.** An adapter names
+  either the asset carrying its vendor's checksums or the measured reason there
+  is none, and the installer refuses a caller that names neither. `sha256sum -c`
+  over the vendor's own document is the verifier.
+- ⭐ **The claim guard's state directory is the user's own**, so the marker check
+  that runs before every route needs no privilege either. ⚠ It is per-user, which
+  is a narrower claim than `/var/lib` made, and `docs/capture-host.md` says so.
+- ⛔ **Ten diagnostic probe steps are deleted from `capture-client.yml`.** They
+  were the instrument of a dead end and four of them measured a privileged path
+  this tree no longer takes.
+- ⭐ **`check-adapters`' floor caught its own subject moving.** The fetches left
+  the adapters, the rule answered `could not run` rather than reporting a clean
+  tree over a path it had stopped reading, and its scope followed them.
+- ⚠ **`check-rootless` is the new gate row**, a real row on the `sh` lane and a
+  declared `n/a` on the PowerShell one. The gate is **40 checks**.
+- Record: [`TODO/acquisition.md`](TODO/acquisition.md), `ACQ-06`, which carries
+  the closure evidence and the residuals. No version bump and no deploy.
+
 ### 2026-09-16T09:44:52Z
 
 - ⭐ **`ACQ-06`: ROOTLESS, PORTABLE CLIENT INSTALLATION, P0 and item 0**, by

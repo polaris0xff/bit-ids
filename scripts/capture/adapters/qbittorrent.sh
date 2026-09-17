@@ -59,17 +59,27 @@ cannot() {
   exit 2
 }
 
+# ⛔ THE PREFIX IS ASKED FOR, NEVER COMPOSED. `install-rootless.sh --prefix` is
+# the one derivation in this tree, so this file cannot disagree with the
+# installer about where a build went. ⚠ It defaulted to `/usr/local` until
+# `ACQ-06`, which is a directory a runner needs a privilege to write.
+ROOTLESS=$(CDPATH='' cd -- "$(dirname -- "$0")/../../acquisition" && pwd)/install-rootless.sh
+prefix() {
+  [ -f "$ROOTLESS" ] || cannot "$ROOTLESS is not present"
+  sh "$ROOTLESS" --prefix
+}
+
 binary() {
   if [ -n "${BIT_IDS_QBITTORRENT:-}" ]; then
     printf '%s' "$BIT_IDS_QBITTORRENT"
     return 0
   fi
-  # ⭐ THE RELEASE ROUTE'S OWN PREFIX, BEFORE THE PATH. Its default is
-  # `/usr/local`, which already precedes `/usr` on this platform's PATH, so this
-  # changes nothing for a normal install and is what stops the two routes racing
-  # on PATH order - a property of the host rather than of the acquisition.
-  if [ -n "${BIT_IDS_PREFIX:-}" ] && [ -x "$BIT_IDS_PREFIX/bin/qbittorrent-nox" ]; then
-    printf '%s' "$BIT_IDS_PREFIX/bin/qbittorrent-nox"
+  # ⭐ THE RELEASE ROUTE'S OWN PREFIX, BEFORE THE PATH. Without it the two routes
+  # would race on PATH order, which is a property of the host rather than of the
+  # acquisition.
+  _prefix=$(prefix) || return 1
+  if [ -x "$_prefix/bin/qbittorrent-nox" ]; then
+    printf '%s' "$_prefix/bin/qbittorrent-nox"
     return 0
   fi
   command -v qbittorrent-nox 2>/dev/null
@@ -136,6 +146,12 @@ case "$COMMAND" in
     printf 'release_min_components=3\n'
     printf 'release_max_components=4\n'
     printf 'release_asset=qbittorrent-{version}_x86_64.AppImage\n'
+    # ⛔ THE DIGEST DISPOSITION, DECLARED ONCE AND READ BY THE ROUTE. Every asset
+    # of this release carries a detached `.asc` and none carries a digest, read
+    # out of the listing on 2026-09-17, so the release route identifies its
+    # artifact and does not verify it. Stating it here keeps one fact in one
+    # place; the route asks this adapter rather than repeating it.
+    printf 'release_digest_unpublished=this release signs each asset with a detached .asc and publishes no checksums document\n'
     ;;
 
   install)
@@ -195,23 +211,38 @@ case "$COMMAND" in
         # every call this adapter makes into the build, which costs an extraction
         # per call and works either way. ⛔ Neither branch has been driven: this
         # adapter has never installed through this route.
-        PREFIX=${BIT_IDS_PREFIX:-/usr/local}
-        # ⛔ BOUNDED. An unlimited fetch is how `capture-client` runs 21 and
-        # 22 turned a six-second step into thirty minutes, and
-        # `docs/conventions/shell.md` section 9 already stated the rule.
-        # ⚠ The speed floor is what catches a stall: `--max-time` alone has to
-        # be large enough for a slow link to finish, which is large enough to
-        # sit in a dead transfer for minutes. `bit-check check-adapters` is the
-        # rule rather than this comment.
-        curl -fsSL --retry 2 --connect-timeout 20 --max-time 300 \
-          --speed-limit 1024 --speed-time 60 \
-          -o "$WORKDIR/qbittorrent-nox.AppImage" "$BIT_IDS_RELEASE_URL" \
-          </dev/null >"$WORKDIR/install.log" 2>&1 || refuse "the release route could not be fetched"
-        mkdir -p "$PREFIX/bin" || cannot "cannot create $PREFIX/bin"
-        install -m755 "$WORKDIR/qbittorrent-nox.AppImage" "$PREFIX/bin/qbittorrent-nox" ||
-          refuse "the fetched AppImage could not be installed into $PREFIX/bin"
-        [ -x "$PREFIX/bin/qbittorrent-nox" ] ||
-          refuse "the release route reported an install and left no qbittorrent-nox in $PREFIX/bin"
+        # ⛔ THE FETCH, THE DIGEST AND THE PLACING ARE ONE CALL, AND IT IS NOT
+        # THIS FILE'S. `install-rootless.sh` bounds the transfer, settles the
+        # digest before anything is made executable, writes into a prefix this
+        # user already owns, and prints the path it placed. ⚠ This route used to
+        # `curl` and `install -m755` into `/usr/local/bin` itself, which needs a
+        # privilege `ACQ-06` removed from the capture path.
+        #
+        # ⚠ AND THIS VENDOR PUBLISHES NO DIGEST, WHICH IS DECLARED RATHER THAN
+        # PASSED OVER, so the artifact is IDENTIFIED - its digest is recorded -
+        # and not verified. Those are different sentences and the installer's own
+        # report is where the difference is made.
+        # ⚠ THE REASON IS ASKED OF THIS ADAPTER'S OWN `describe` RATHER THAN
+        # SPELLED AGAIN: a sentence written in two places is one that disagrees
+        # with itself the day a vendor starts publishing digests.
+        _why=$(sh "$0" describe |
+          awk -F= '$1 == "release_digest_unpublished" { sub(/^[^=]*=/, ""); print; exit }')
+        [ -n "$_why" ] ||
+          cannot "this adapter declares no digest disposition for its release route"
+        sh "$ROOTLESS" --install \
+          --url "$BIT_IDS_RELEASE_URL" \
+          --into "$WORKDIR/qbittorrent-nox.AppImage" \
+          --as qbittorrent-nox \
+          --digest-unpublished "$_why" \
+          --report "$WORKDIR/rootless-install.txt" \
+          </dev/null >>"$WORKDIR/install.log" 2>&1
+        _rc=$?
+        [ "$_rc" = 0 ] || {
+          tail -20 "$WORKDIR/install.log" >&2
+          [ "$_rc" = 1 ] ||
+            cannot "the rootless installer could not run for the release route (exit $_rc)"
+          refuse "the release route could not install the vendor's AppImage"
+        }
         ;;
       *) cannot "unknown route: $ROUTE" ;;
     esac

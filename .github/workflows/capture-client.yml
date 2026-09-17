@@ -113,10 +113,14 @@ jobs:
       # installed. The claim refuses a host that already ran a capture, and a
       # product installed before the claim would be state on a machine nothing
       # had established was disposable.
+      # ⛔ AND IT IS UNPRIVILEGED, WHICH IS LOAD-BEARING RATHER THAN TIDY. The
+      # marker is under this user's own state directory now, so a claim written
+      # by root would be a file the unprivileged install step then cannot find -
+      # and `install-client` refuses a host nothing claimed. `ACQ-06`.
       - name: Claim the host
         env:
           RUN_ID: capture-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.adapter }}-${{ matrix.route }}
-        run: sudo sh scripts/acquisition/assert-disposable.sh --claim "$RUN_ID"
+        run: sh scripts/acquisition/assert-disposable.sh --claim "$RUN_ID"
 
       - name: Install pinned Rust toolchain
         run: rustup show active-toolchain
@@ -141,10 +145,15 @@ jobs:
       # in this capture; and an install under containment could not reach a
       # package index at all.
       #
-      # ⚠ sudo -E, because apt needs root and the adapter reads its
-      # configuration out of the environment. The install directory is under
-      # RUNNER_TEMP rather than the workspace, so nothing it leaves behind can
-      # be mistaken for a tracked file.
+      # ⛔ AND THE INSTALL IS UNPRIVILEGED. It used to run `setsid sudo -E
+      # timeout`, because a `package` route needs root and `/usr/local/bin` does
+      # too; `ACQ-06` took both out of the path a capture depends on. The install
+      # directory is under RUNNER_TEMP and the build lands in a prefix this user
+      # owns, so nothing it leaves behind can be mistaken for a tracked file and
+      # nothing it does depends on a host this project does not control.
+      # ⚠ The `package` route is privileged by construction and is NOT on that
+      # path: `E-ACQ-01` wants two independent routes and `release` plus `source`
+      # already are.
       # ⛔ AND THE ARTIFACT IS CHOSEN BEFORE THE ROUTE IS CUT, WHICH IS WHY THIS
       # STEP EXISTS AT ALL. Every `release` route in this tree refuses without
       # `BIT_IDS_RELEASE_URL`, and until now nothing produced one: `resolve-stable`
@@ -212,185 +221,24 @@ jobs:
             >"$RUNNER_TEMP/source/tag.txt"
           cat "$RUNNER_TEMP/source/resolution.txt"
 
-      # ⛔ THREE BOUNDED PROBES, AND THEIR ONLY PURPOSE IS THEIR NAMES. Four
-      # independent bounds have now been measured NOT to end an aria2 install
-      # step - `timeout` inside `install-client`, the runner's `timeout-minutes`,
-      # a watchdog loop in the step's own shell, and `timeout` around the step's
-      # own process - and no such job has ever produced a log or an artifact.
-      # When nothing inside a job survives, the one signal that does is WHICH
-      # STEP the API last reported in progress.
+      # ⛔ TEN DIAGNOSTIC PROBE STEPS STOOD HERE AND THEY ARE DELETED. `ACQ-06`.
+      # They were `CI-08`'s instrument for the install hang: named steps whose
+      # only purpose was that the API reports WHICH one a wedged job stopped in.
+      # Run 29 spent the last of what they could buy - all seven passed in FOUR
+      # seconds while the step composing them ran for thirty minutes - so every
+      # component was excluded on its own and no further probe of a component
+      # could reach the composition.
       #
-      # ⭐ So the work the install step does first is split into steps of its own,
-      # each named and each bounded. A job that wedges in one of these localises
-      # the subject to a handful of commands without needing a log, an artifact or
-      # a bound that fires; a job that walks through all three has exonerated them
-      # and the install itself is the subject.
+      # ⛔ AND FOUR OF THEM MEASURED A PATH THIS TREE NO LONGER TAKES. They
+      # probed `sudo`, a `sudo -n cp` into `/usr/local/bin`, the claim guard
+      # under `sudo`, and the `setsid sudo -E timeout` launch shape. The install
+      # is rootless now, so those four described operations nothing performs, and
+      # one of them would have printed root's marker path over a host claimed by
+      # this user - a diagnostic answering confidently and wrongly.
       #
-      # ⚠ THEY ARE DIAGNOSTIC AND THEY DO NOT GUARD ANYTHING. Each ends in a true
-      # so that a probe cannot fail a capture, and `CI-08` owns them - they come
-      # out when the question is answered.
-      - name: Probe the host resources
-        run: |
-          set -u
-          timeout 20 free -m || echo 'free did not answer'
-          timeout 20 df -h / "$RUNNER_TEMP" || echo 'df did not answer'
-          timeout 20 nproc || echo 'nproc did not answer'
-          true
-
-      - name: Probe sudo
-        run: |
-          set -u
-          timeout 20 sudo -n true && echo 'sudo answers' || echo 'sudo did not answer'
-          timeout 20 sudo -n -E sh -c 'echo sudo runs a shell' || echo 'sudo -E did not answer'
-          true
-
-      # ⚠ THE ONE COMMAND THE aria2 LANES RUN AND THE TRANSMISSION LANES DO NOT.
-      # `install-client` asks the adapter for a version BEFORE the route runs, and
-      # `aria2` ships on this image while `transmission-daemon` does not - so on an
-      # aria2 lane that call executes the preinstalled product and on a
-      # transmission lane it finds no binary and refuses without running anything.
-      # That asymmetry has been in every hung run and in none of the green ones.
-      - name: Probe the preinstalled product
-        env:
-          ADAPTER: scripts/capture/adapters/${{ matrix.adapter }}.sh
-        run: |
-          set -u
-          timeout 30 sh "$ADAPTER" describe || echo 'describe did not answer'
-          timeout 30 sh "$ADAPTER" version || echo 'version did not answer or is not installed'
-          true
-
-      # ⛔ AND THE RELEASE ROUTE'S OWN WORK, WALKED ONE NAMED STEP AT A TIME.
-      # ELEVEN bounds have now been measured not to end *Install the client*, and
-      # run 26 ended the argument: it carried three independent endings - one of
-      # which needs no signal to reach anything - and passed all three while the
-      # step stayed open for twenty-seven minutes. A shell that does not reach its
-      # own integer comparison is not a shell that is waiting, and a twelfth bound
-      # would fail the same way.
-      #
-      # ⭐ So these steps buy the one signal a cancelled job still has: WHICH STEP
-      # the API last reported in progress. The three probes above already make
-      # that argument; these apply it to the four operations the release route
-      # actually performs - fetch, stage, and execute - so a wedge localises to a
-      # handful of commands with no log, no artifact and no bound that fires.
-      #
-      # ⚠ THEY ARE DIAGNOSTIC AND GUARD NOTHING. Each ends in a `true` so a probe
-      # cannot fail a capture, and `CI-08` owns them: they come out when the
-      # question is answered.
-      # ⛔ NOTHING HERE TOUCHES THE INSTALL TARGET. The staging probe writes
-      # `.probe-only.new` and removes it, so `binary()` can never find it; the
-      # route's own `aria2-next` is untouched.
-      # ⚠ Executing the fetched artifact is not an expansion of what this job
-      # already does: the route installs and runs the same binary a step later,
-      # with the network still up, which is why the install sits before the cut.
-      - name: Probe the release fetch
-        if: matrix.route == 'release'
-        run: |
-          set -u
-          URL=$(cat "$RUNNER_TEMP/release/url.txt")
-          printf 'fetching %s\n' "$URL"
-          if timeout 180 curl -fsSL --retry 0 --connect-timeout 20 --max-time 150 \
-            --speed-limit 1024 --speed-time 30 \
-            -o "$RUNNER_TEMP/probe-artifact" "$URL" </dev/null; then
-            printf 'fetched %s bytes\n' "$(wc -c <"$RUNNER_TEMP/probe-artifact")"
-          else
-            echo 'the fetch did not answer'
-          fi
-          true
-
-      - name: Probe staging the fetched artifact
-        if: matrix.route == 'release'
-        run: |
-          set -u
-          timeout 30 chmod +x "$RUNNER_TEMP/probe-artifact" || echo 'chmod did not answer'
-          timeout 60 sudo -n mkdir -p /usr/local/bin || echo 'mkdir did not answer'
-          timeout 60 sudo -n cp "$RUNNER_TEMP/probe-artifact" /usr/local/bin/.probe-only.new ||
-            echo 'cp across filesystems did not answer'
-          timeout 30 sudo -n rm -f /usr/local/bin/.probe-only.new || echo 'rm did not answer'
-          true
-
-      - name: Probe executing the fetched artifact
-        if: matrix.route == 'release'
-        run: |
-          set -u
-          if timeout 60 "$RUNNER_TEMP/probe-artifact" --version \
-            </dev/null >"$RUNNER_TEMP/probe-version.txt" 2>&1; then
-            head -2 "$RUNNER_TEMP/probe-version.txt"
-          else
-            echo 'the fetched artifact did not answer --version'
-          fi
-          true
-
-      # ⛔ AND THE PLUMBING AROUND THE ROUTE, WALKED THE SAME WAY. Runs 27 and 28
-      # agree that every operation the release route performs is instantaneous
-      # while the step performing them never returns, so the wedge is in what
-      # *Install the client* does and the probes above do not. ⭐ These four are
-      # that remainder, one named step each, so the API says which.
-      # ⚠ The watchdog's own `ps` was the fifth and run 28 excluded it by carrying
-      # a bound and hanging anyway.
-      - name: Probe the claim guard
-        run: |
-          set -u
-          timeout 30 sudo -n sh scripts/acquisition/assert-disposable.sh --marker ||
-            echo 'the claim guard did not answer'
-          true
-
-      # ⚠ THE LAUNCH SHAPE `install-step.sh` USES, WITH NOTHING TO INSTALL. If a
-      # `setsid sudo -E timeout` started in the background is what wedges, it
-      # wedges here too, over a command that prints and exits.
-      - name: Probe a detached sudo launch
-        run: |
-          set -u
-          mkdir -p "$RUNNER_TEMP/probe-launch"
-          setsid sudo -E timeout -k 5 20 sh -c 'echo the detached shell ran; sleep 1' \
-            >"$RUNNER_TEMP/probe-launch/out.log" 2>&1 </dev/null &
-          _p=$!
-          _n=0
-          while kill -0 "$_p" 2>/dev/null && [ "$_n" -lt 60 ]; do
-            sleep 1
-            _n=$((_n + 1))
-          done
-          printf 'the detached launch settled after %ss\n' "$_n"
-          cat "$RUNNER_TEMP/probe-launch/out.log" 2>/dev/null || true
-          true
-
-      # ⛔ `install-client`'s RULE-12 SCAN, OVER A DIRECTORY HOLDING THE REAL
-      # ARTIFACT. That scan runs `grep -IlE` with two eight-or-more quantified
-      # alternations across every top-level file in the workdir, and on a release
-      # lane one of those files is the fourteen-megabyte binary just fetched. ⚠ The
-      # pattern is copied from `install-client.sh`; if the two drift, this probe
-      # stops being about the thing it names, which is why it says so here.
-      - name: Probe the rule-12 scan over a workdir
-        run: |
-          set -u
-          _d="$RUNNER_TEMP/probe-scan"
-          mkdir -p "$_d"
-          cp "$RUNNER_TEMP/probe-artifact" "$_d/artifact" 2>/dev/null || true
-          printf 'a log line\n' >"$_d/probe.log"
-          # ⛔ THE STATUS IS CAPTURED ON THE SAME LINE, because GitHub runs a
-          # `run:` block as `bash -e` and a bare `_rc=$?` on the NEXT line is
-          # never reached: `grep` exits 1 when it matches nothing, which is the
-          # ORDINARY outcome here, so `-e` would end the step before the `true`
-          # below and a probe would fail a capture. ⚠ Caught by driving this body
-          # on a session host before dispatching it.
-          timeout 180 find "$_d" -maxdepth 1 -type f -exec grep -IlE \
-            '"[A-Za-z0-9_-]*(secret|token|password)[A-Za-z0-9_-]*"[[:space:]]*:[[:space:]]*"[^"]{8,}"|--[A-Za-z0-9-]*(secret|token|password)[A-Za-z0-9-]*=[^[:space:]"]{8,}' \
-            {} + >/dev/null 2>&1 && _rc=0 || _rc=$?
-          printf 'the rule-12 scan exited %s over %s bytes\n' \
-            "$_rc" "$(du -sb "$_d" 2>/dev/null | cut -f1)"
-          true
-
-      # ⚠ THE `/proc` WALK, WHICH READS EVERY PROCESS'S DESCRIPTOR TABLE. It is
-      # already bounded at 60s inside `install-step.sh`; this asks whether the
-      # walk itself is what stops answering on this host.
-      - name: Probe the holder walk of /proc
-        run: |
-          set -u
-          # ⛔ SAME REASON AS THE SCAN ABOVE: captured on the line that produced
-          # it, so `bash -e` cannot end the step before the `true`.
-          timeout 90 sudo -n sh scripts/ci/report-holders.sh \
-            "$RUNNER_TEMP/probe-artifact" >/dev/null 2>&1 && _rc=0 || _rc=$?
-          printf 'the holder walk exited %s\n' "$_rc"
-          true
+      # ⚠ `TODO/RULES.md` is why they go rather than stay: a hang is a dead end,
+      # not a subject. The route that avoids it is this one, and keeping the
+      # instruments of the dead end in the file is keeping the subject open.
 
       # ⛔ THE WORK IS IN A FILE SO THE STEP'S OWN PROCESS CAN BE BOUNDED. That is
       # the one place a bound has not been tried here, and every other place has
@@ -436,8 +284,13 @@ jobs:
           # build took 366 - so a number measured locally is a lower bound on
           # what a runner needs, never an estimate of it.
           BIT_IDS_INSTALL_TIMEOUT: ${{ matrix.route == 'source' && '900' || '420' }}
-          # ⛔ THE PRIVILEGED BOUND, AND THE ARITHMETIC IS STATED BECAUSE IT DID
-          # NOT ADD UP BEFORE. `install-client` can spend its install bound AND
+          # ⛔ THE STEP'S OWN BOUND, AND THE ARITHMETIC IS STATED BECAUSE IT DID
+          # NOT ADD UP BEFORE. ⚠ It was the PRIVILEGED bound until `ACQ-06`: the
+          # install ran under `sudo` and the bound had to live inside it, because
+          # a uid-1001 `timeout` cannot signal a root tree. The install runs as
+          # this uid now, so the bound and its target are the same user and the
+          # number is all that is left of that paragraph.
+          # `install-client` can spend its install bound AND
           # two version bounds (60 each) AND three describe bounds (30 each)
           # before it is done, which is 630 on a release lane and 1110 on a
           # source one. ⚠ The outer bound below was 1080 for both, so a source
@@ -660,9 +513,16 @@ jobs:
           # gives and `install-client`'s rule-12 scan now depends on: a `*` does
           # not descend, so a resolver workdir that ever held a clone would not
           # ship it.
+          #
+          # ⭐ AND THE ROOTLESS INSTALLER'S OWN REPORT SHIPS, WHICH IS WHERE THE
+          # ARTIFACT'S DIGEST AND ITS DISPOSITION ARE WRITTEN. `ACQ-06`. ⚠ It is
+          # a `.txt` at the workdir's top level, so `install-client`'s rule-12
+          # scan - which reads EVERY file at that level - is still wider than
+          # what this ships.
           path: |
             ${{ runner.temp }}/install-${{ matrix.route }}/*.log
             ${{ runner.temp }}/install-${{ matrix.route }}/*.err
+            ${{ runner.temp }}/install-${{ matrix.route }}/*.txt
             ${{ runner.temp }}/install-${{ matrix.route }}.txt
             ${{ runner.temp }}/install-step.log
             ${{ runner.temp }}/release/*.txt

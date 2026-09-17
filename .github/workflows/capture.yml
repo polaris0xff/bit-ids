@@ -57,7 +57,7 @@ jobs:
       - name: Claim the host
         env:
           RUN_ID: capture-${{ github.run_id }}-${{ github.run_attempt }}-linux
-        run: sudo sh scripts/acquisition/assert-disposable.sh --claim "$RUN_ID"
+        run: sh scripts/acquisition/assert-disposable.sh --claim "$RUN_ID"
 
       - name: Install pinned Rust toolchain
         run: rustup show active-toolchain

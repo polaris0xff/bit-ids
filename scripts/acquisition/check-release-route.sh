@@ -75,13 +75,39 @@ LISTINGS="$HERE/listings"
   exit 2
 }
 
+# ⛔ THE CHECKSUMS DOCUMENT IS BUILT HERE RATHER THAN COMMITTED, AND THAT IS TWO
+# DECISIONS. A stored `.sha256` fixture is a file of bare 64-digit hex, which is
+# exactly what `check-no-secrets --public` refuses and is right to - a digest in
+# this project is spelled with its algorithm. And a document GENERATED from the
+# listing's own asset names is about the resolver's reading rather than about a
+# blob somebody pasted: the case below plants a name into it and watches the
+# refusal.
+#
+# ⚠ The digests are not the vendor's and do not need to be. Nothing here fetches
+# an artifact, so nothing verifies one; what this exercises is whether the
+# resolver finds the document, reads it, and refuses one that does not name the
+# asset it selected. `check-rootless.sh` is where a digest is actually compared.
+sums_for() { # asset-name > document
+  printf '%s  %s\n' \
+    "$(printf 'not-the-vendors-bytes-%s' "$1" | sha256sum | cut -d' ' -f1)" "$1"
+}
+
 # Runs the resolver over one adapter and one recorded listing, keeping the three
 # streams apart. ⛔ The exit code is read from the process that produced it.
-resolve() { # tag adapter listing
+# ⚠ `--checksums` travels with `--listing` because the resolver refuses the pair
+# apart: a recorded listing names real vendor URLs, so resolving a digest from
+# one would reach the network out of a harness written not to.
+resolve() { # tag adapter listing [checksums-asset]
   _out="$WORK/$1.out"
   _err="$WORK/$1.err"
+  _sums="$WORK/$1.sums"
+  if [ $# -ge 4 ] && [ -n "$4" ]; then
+    sums_for "$4" >"$_sums"
+  else
+    : >"$_sums"
+  fi
   sh "$RESOLVE" --adapter "$2" --workdir "$WORK/$1.work" \
-    --record "$WORK/$1.rec" --listing "$3" >"$_out" 2>"$_err"
+    --record "$WORK/$1.rec" --listing "$3" --checksums "$_sums" >"$_out" 2>"$_err"
   return $?
 }
 
@@ -101,7 +127,7 @@ said() { # tag literal
 # discarded, so every row would vanish from the report.
 while read -r target expected; do
   [ -n "$target" ] || continue
-  if ! resolve "$target" "$ADAPTERS/$target.sh" "$LISTINGS/$target.json"; then
+  if ! resolve "$target" "$ADAPTERS/$target.sh" "$LISTINGS/$target.json" "$expected"; then
     fail "asset     $target: the resolver exited $? - $(tail -1 "$WORK/$target.err")"
     continue
   fi
@@ -297,6 +323,133 @@ if [ "$rc" = 2 ] && said garbage "resolve-stable could not run"; then
   pass "refusal   a listing that is not JSON is could-not-run"
 else
   fail "refusal   the unreadable listing exited $rc: $(tail -1 "$WORK/garbage.err")"
+fi
+
+# -- 3b. the digest disposition, which is `ACQ-06`'s half of this file --------
+#
+# ⛔ THE CONTROL COMES FIRST, BECAUSE EVERY REFUSAL BELOW PASSES EQUALLY OVER A
+# RESOLVER THAT NEVER READ A DISPOSITION AT ALL. Section 1 already resolved all
+# four adapters; this reads what each RECORDED, so a digest block that silently
+# did nothing is a red row rather than four green ones.
+while read -r target want; do
+  [ -n "$target" ] || continue
+  got=$(sed -n 's/^digest_source=//p' "$WORK/$target.rec")
+  if [ "$got" = "$want" ]; then
+    pass "digest    $target records digest_source=$got"
+  else
+    fail "digest    $target records digest_source=[$got], expected [$want]"
+  fi
+done <<DISPOSITION_TABLE
+aria2-next vendor-document
+aria2 unpublished
+qbittorrent unpublished
+transmission unpublished
+DISPOSITION_TABLE
+
+# ⭐ AND THE ONE TARGET WITH A DOCUMENT CARRIES THE DOCUMENT'S OWN NAME, which is
+# what says the second `select-asset` call really ran over the same listing.
+digest_asset=$(sed -n 's/^digest_asset=//p' "$WORK/aria2-next.rec")
+if [ "$digest_asset" = "aria2-next-2.7.4-checksums.sha256" ]; then
+  pass "digest    aria2-next selected its checksums asset out of the same listing"
+else
+  fail "digest    aria2-next selected digest_asset=[$digest_asset]"
+fi
+
+# ⛔ A DOCUMENT THAT DOES NOT NAME THE SELECTED ASSET IS REFUSED HERE, NOT AT THE
+# INSTALL. `sha256sum -c --ignore-missing` over such a document exits 1 with `no
+# file was verified`, so the install would refuse anyway - on a host whose route
+# has already been cut, with a message about a checksum rather than about a
+# vendor's document. ⚠ This is the case the generated document exists for: the
+# name is planted and the refusal read.
+sums_for "some-other-asset" >"$WORK/wrong-sums.txt"
+_out="$WORK/wrongsums.out"
+_err="$WORK/wrongsums.err"
+sh "$RESOLVE" --adapter "$ADAPTERS/aria2-next.sh" --workdir "$WORK/wrongsums.work" \
+  --record "$WORK/wrongsums.rec" --listing "$LISTINGS/aria2-next.json" \
+  --checksums "$WORK/wrong-sums.txt" >"$_out" 2>"$_err"
+rc=$?
+if [ "$rc" = 1 ] && said wrongsums "does not name aria2-next-2.7.4-linux-x86_64"; then
+  pass "digest    a checksums document naming another asset is refused"
+else
+  fail "digest    the wrong checksums document exited $rc: $(tail -1 "$_err")"
+fi
+
+# ⛔ AND THE NAME IS COMPARED RATHER THAN MATCHED, WHICH IS A SEPARATE BRANCH.
+# A `.asc` beside an asset is the real shape: `foo.tar.gz` is a substring of
+# `foo.tar.gz.asc`, so a document naming only the signature would satisfy a
+# substring search and verify nothing. ⚠ Without this case the comparison above
+# passes equally over a reader that searches for a substring.
+sums_for "aria2-next-2.7.4-linux-x86_64.asc" >"$WORK/prefix-sums.txt"
+_err="$WORK/prefixsums.err"
+sh "$RESOLVE" --adapter "$ADAPTERS/aria2-next.sh" --workdir "$WORK/prefixsums.work" \
+  --record "$WORK/prefixsums.rec" --listing "$LISTINGS/aria2-next.json" \
+  --checksums "$WORK/prefix-sums.txt" >"$WORK/prefixsums.out" 2>"$_err"
+rc=$?
+if [ "$rc" = 1 ] && said prefixsums "does not name aria2-next-2.7.4-linux-x86_64"; then
+  pass "digest    a document naming only the signature beside the asset is refused"
+else
+  fail "digest    the signature-only document exited $rc: $(tail -1 "$_err")"
+fi
+
+# ⛔ A RECORDED LISTING WITHOUT A RECORDED DOCUMENT IS could-not-run. Without
+# this the resolver would fetch the vendor's checksums over a URL the fixture
+# names, so a harness written to need no network would quietly need one.
+_err="$WORK/nosums.err"
+sh "$RESOLVE" --adapter "$ADAPTERS/aria2-next.sh" --workdir "$WORK/nosums.work" \
+  --record "$WORK/nosums.rec" --listing "$LISTINGS/aria2-next.json" \
+  >"$WORK/nosums.out" 2>"$_err"
+rc=$?
+if [ "$rc" = 2 ] && said nosums "--checksums must record the digest document too"; then
+  pass "digest    a recorded listing with no recorded document is could-not-run"
+else
+  fail "digest    the unrecorded document exited $rc: $(tail -1 "$_err")"
+fi
+
+# ⚠ AND AN ADAPTER THAT DECLARES NEITHER DISPOSITION IS REFUSED, which is the
+# whole reason the declaration is positive rather than defaulted: a target added
+# without one would otherwise install bytes nothing identified.
+if plant nodigest 'release_digest_unpublished=this release publishes six archives and no checksums asset' 'release_note=none'; then
+  resolve nodigest "$WORK/nodigest.sh" "$LISTINGS/aria2.json"
+  rc=$?
+  if [ "$rc" = 2 ] && said nodigest "declares neither release_digest_asset nor release_digest_unpublished"; then
+    pass "digest    an adapter declaring no disposition is could-not-run"
+  else
+    fail "digest    the undeclared disposition exited $rc: $(tail -1 "$WORK/nodigest.err")"
+  fi
+else
+  fail "plant     the removed disposition did not apply"
+fi
+
+# ⚠ AND ONE THAT DECLARES BOTH, because two answers that could disagree are not
+# for this file to choose between.
+#
+# ⛔ A STUB RATHER THAN A PLANT, AND THE FIRST ATTEMPT IS WHY. `replace_once`
+# takes a LITERAL, so a replacement carrying an embedded newline and nested
+# quotes emitted only its first line: the copy declared the asset alone, the run
+# refused for a pattern that matched nothing, and the case read that as its own
+# refusal firing. ⚠ A plant that did not apply is a third status, and this one
+# announced itself only because the message named a different rule.
+BOTH="$WORK/both-digest.sh"
+cat >"$BOTH" <<'BOTH_ADAPTER'
+#!/bin/sh
+[ "${1:-}" = describe ] || exit 2
+printf 'target=stub\n'
+printf 'kind=stub\n'
+printf 'release_repo=aria2/aria2\n'
+printf 'release_tag_prefix=release-\n'
+printf 'release_min_components=3\n'
+printf 'release_max_components=3\n'
+printf 'release_asset=aria2-{version}.tar.bz2\n'
+printf 'release_digest_asset=aria2-{version}.sha256\n'
+printf 'release_digest_unpublished=and also this\n'
+BOTH_ADAPTER
+
+resolve bothdigest "$BOTH" "$LISTINGS/aria2.json" aria2-1.37.0.tar.bz2
+rc=$?
+if [ "$rc" = 2 ] && said bothdigest "declares both release_digest_asset and release_digest_unpublished"; then
+  pass "digest    an adapter declaring both dispositions is could-not-run"
+else
+  fail "digest    the double disposition exited $rc: $(tail -1 "$WORK/bothdigest.err")"
 fi
 
 # -- 4. the control the refusals need ----------------------------------------

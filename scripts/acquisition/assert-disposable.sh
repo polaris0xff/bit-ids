@@ -31,9 +31,25 @@
 # marker's existence and it cannot be faked by getting the configuration wrong.
 #
 # ⚠ The marker therefore lives where a real teardown destroys it and a survived
-# host keeps it. `/var/lib` is deliberate: `/run` and `/tmp` are cleared by a
-# reboot, so a host that rebooted rather than being destroyed would read as
-# fresh. Override with BIT_IDS_STATE_DIR only to test this script.
+# host keeps it. ⛔ `/run` and `/tmp` are cleared by a reboot, so a marker there
+# would report a host that rebooted rather than being destroyed as fresh, and
+# that is the one thing this guard exists to catch.
+#
+# -- ⭐ IT IS THE USER'S OWN STATE DIRECTORY, NOT `/var/lib`. `ACQ-06`. --------
+#
+# `/var/lib/bit-ids` needs root to create, so every caller of this guard needed
+# `sudo` - including `install-client.sh`, which reads the marker before a route
+# runs. `$HOME/.local/state/bit-ids` keeps both properties the marker rests on:
+# it is not cleared by a reboot, and it goes when the host does. What it does not
+# need is a privilege.
+#
+# ⛔ AND IT IS PER-USER, WHICH IS A NARROWER CLAIM THAN `/var/lib` MADE. A host
+# where two different users each ran a capture carries two markers and neither
+# refuses the other. That is a real weakening and it is recorded rather than
+# hidden: the runner contract is one capture per host, `docs/capture-host.md`
+# carries it, and a shared host was never a host this project would capture on.
+#
+# ⚠ Override with BIT_IDS_STATE_DIR only to test this script.
 #
 # Usage:
 #   sh scripts/acquisition/assert-disposable.sh --claim <run-id>
@@ -67,7 +83,22 @@
 
 set -u
 
-STATE_DIR="${BIT_IDS_STATE_DIR:-/var/lib/bit-ids}"
+# ⚠ `$HOME` IS REQUIRED TO BE ABSOLUTE RATHER THAN MERELY SET. An empty or
+# relative value composes into a path relative to whatever directory the caller
+# happened to be in, so `--claim` and the `--marker` a later step reads would
+# name two different files and a claimed host would report as fresh.
+if [ -n "${BIT_IDS_STATE_DIR:-}" ]; then
+  STATE_DIR="$BIT_IDS_STATE_DIR"
+else
+  case "${HOME:-}" in
+    /*) STATE_DIR="$HOME/.local/state/bit-ids" ;;
+    *)
+      printf 'assert-disposable: HOME is [%s], so there is no state directory this user is known to own\n' \
+        "${HOME:-}" >&2
+      exit 2
+      ;;
+  esac
+fi
 MARKER="$STATE_DIR/host-claimed"
 
 usage() {

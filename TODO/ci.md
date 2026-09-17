@@ -2723,6 +2723,28 @@ not inherit**, and the fix changes the signal semantics of a bound that is
 mutation-proven at its current values - which is its own unit, for the reason the
 `mine-repo` revert above gives. Filed rather than rushed.
 
+#### ⛔ AND THE PROBES ARE DELETED, 2026-09-17, BECAUSE `ACQ-06` LANDED
+
+⭐ **Ten diagnostic steps stood in `capture-client.yml` and they are gone.** Their
+own comment said they come out when the question is answered, and run 29 spent
+the last of what they could buy: all seven passed in FOUR seconds while the step
+composing them ran for thirty minutes, so every component was excluded on its own
+and no further probe of a component could reach the composition.
+
+⛔ **AND FOUR OF THEM MEASURED A PATH THIS TREE NO LONGER TAKES.** *Probe sudo*,
+*Probe staging the fetched artifact* - a `sudo -n cp` into `/usr/local/bin` -
+*Probe the claim guard* under `sudo`, and *Probe a detached sudo launch* all
+describe operations `ACQ-06` removed. ⚠ The claim probe would have been worse
+than stale: the marker is under the capturing user's own state directory now, so
+a privileged `--marker` prints ROOT's path over a host claimed by the runner,
+which is a diagnostic answering confidently and wrongly.
+
+⚠ **`TODO/RULES.md` is why they go rather than stay.** A hang is a dead end, not
+a subject; keeping the instruments of the dead end in the file is keeping the
+subject open. ⛔ What is NOT claimed is that the hang is fixed: nothing has
+dispatched the rootless install, and `TODO/acquisition.md` says so under
+`ACQ-06`'s residuals.
+
 ### ⚠ Residual, filed 2026-09-09: `check-step-bodies` is a load-sensitive row
 
 ⛔ **A gate row that fails under load and passes alone is the same class this

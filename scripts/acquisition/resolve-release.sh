@@ -25,19 +25,31 @@
 # orders the versions. `select-asset` picks the artifact. Shell orchestrates and
 # Rust parses, which is the line docs/architecture.md section 3 draws.
 #
-# ⚠ ONE RESPONSE ANSWERS BOTH QUESTIONS. The version and the asset come out of
-# the same body, so the digest this record carries covers both decisions and
-# nothing is fetched twice.
+# ⚠ ONE RESPONSE ANSWERS THREE QUESTIONS. The version, the asset and the name of
+# the vendor's checksums document all come out of the same body, so the digest
+# this record carries covers all three decisions and nothing is resolved twice.
+#
+# ⛔ AND THE DIGEST DISPOSITION IS DECLARED BY THE ADAPTER, NEVER DEFAULTED.
+# A target says either which asset carries the vendor's checksums, or in as many
+# words that the vendor publishes none. An adapter that says neither is refused,
+# because a route that quietly installed bytes nothing identified is exactly what
+# a default would buy. `ACQ-06`.
 #
 # ⚠ `--listing` MAKES THE SOURCE A FILE, the way `assert-disposable --route-table`
 # makes the routing table one, and for the same reason: a rule that can only be
 # exercised by reaching a vendor is a rule the gate cannot run. ⛔ It PRINTS that
 # it read a file, so a run over a recorded response is visible in a log rather
 # than indistinguishable from one that asked the vendor.
+# ⛔ `--checksums` IS ITS PAIR AND IT EXISTS FOR THE SAME REASON. A recorded
+# listing names a real vendor URL, so resolving a digest from one would reach the
+# network out of a harness written not to - which is a rule that can only be
+# exercised by reaching a vendor, arriving one seam later. It prints what it read
+# too.
 #
 # Usage:
 #   sh scripts/acquisition/resolve-release.sh --adapter <path> --workdir <dir>
 #                                             [--record <file>] [--listing <file>]
+#                                             [--checksums <file>]
 #
 # Prints the artifact URL on stdout. Exit codes: 0 resolved, 1 the resolver or
 # the selection refused, 2 could not run.
@@ -50,6 +62,7 @@ ADAPTER=""
 WORKDIR=""
 RECORD=""
 LISTING_IN=""
+CHECKSUMS_IN=""
 
 usage() {
   awk 'NR>1 { if (/^#/) { sub(/^# ?/, ""); print } else exit }' "$0"
@@ -85,6 +98,11 @@ while [ $# -gt 0 ]; do
     --listing)
       [ $# -ge 2 ] || cannot "--listing takes a value"
       LISTING_IN="$2"
+      shift
+      ;;
+    --checksums)
+      [ $# -ge 2 ] || cannot "--checksums takes a value"
+      CHECKSUMS_IN="$2"
       shift
       ;;
     -h | --help)
@@ -154,6 +172,21 @@ MAXC=$(field release_max_components)
 [ -n "$MAXC" ] || cannot "$TARGET declares no release_max_components"
 PATTERN=$(field release_asset)
 [ -n "$PATTERN" ] || cannot "$TARGET declares no release_asset pattern"
+
+# ⛔ THE DIGEST DISPOSITION IS DECLARED, NEVER DEFAULTED. An adapter says either
+# which asset carries the vendor's checksums or, in as many words, that the
+# vendor publishes none - and an adapter that says neither is refused here rather
+# than served a route that quietly installs bytes nothing identified.
+# ⚠ Two declarations is a target whose two answers could disagree, and choosing
+# between them here would be this file deciding which evidence counts.
+DIGEST_PATTERN=$(field release_digest_asset)
+DIGEST_NONE=$(field release_digest_unpublished)
+if [ -n "$DIGEST_PATTERN" ] && [ -n "$DIGEST_NONE" ]; then
+  cannot "$TARGET declares both release_digest_asset and release_digest_unpublished"
+fi
+if [ -z "$DIGEST_PATTERN" ] && [ -z "$DIGEST_NONE" ]; then
+  cannot "$TARGET declares neither release_digest_asset nor release_digest_unpublished"
+fi
 
 # ⚠ THE COMPONENT COUNTS ARE CHECKED AS NUMBERS HERE, because everything after
 # this hands them to a resolver that would refuse them anyway - with a message
@@ -238,6 +271,103 @@ ASSET_URL=$(selected url)
 SIZE=$(selected size)
 [ -n "$ASSET_URL" ] || cannot "select-asset printed no url"
 
+# -- the vendor's digest, out of the same response -----------------------------
+#
+# ⭐ ONE RETRIEVAL ANSWERS THREE QUESTIONS. The listing that chose the version
+# chose the artifact and now names the checksums document beside it, so the
+# digest of that listing already covers all three decisions and none of them was
+# made from a URL somebody composed. ⛔ Composing the checksums URL out of the
+# artifact's would be guessing at a vendor's naming, which is the shape
+# `select-asset` exists to refuse.
+#
+# ⚠ AND IT IS FETCHED HERE RATHER THAN AT INSTALL TIME, because this step runs
+# while the host still has a route off itself. `capture-client.yml`'s step order
+# is the containment: everything a run needs is fetched before the route is cut.
+DIGEST_ASSET=""
+DIGEST_URL=""
+DIGEST_DOC=""
+if [ -n "$DIGEST_PATTERN" ]; then
+  DIGEST_SELECTION="$WORKDIR/digest-selection.txt"
+  "$BIN/select-asset" "$RESOLUTION" "$LISTING" "$DIGEST_PATTERN" \
+    >"$DIGEST_SELECTION" 2>"$WORKDIR/digest-select.err"
+  DIGEST_RC=$?
+  sed 's/^/          /' "$WORKDIR/digest-select.err" >&2
+  case "$DIGEST_RC" in
+    0) : ;;
+    1) refuse "$TARGET declares a checksums asset and no single asset matches [$DIGEST_PATTERN]" ;;
+    *) cannot "select-asset could not run for the checksums asset (exit $DIGEST_RC)" ;;
+  esac
+  DIGEST_ASSET=$(awk -F= '$1 == "asset" { sub(/^[^=]*=/, ""); print; exit }' "$DIGEST_SELECTION")
+  DIGEST_URL=$(awk -F= '$1 == "url" { sub(/^[^=]*=/, ""); print; exit }' "$DIGEST_SELECTION")
+  [ -n "$DIGEST_URL" ] || cannot "select-asset printed no url for the checksums asset"
+
+  # ⛔ A RECORDED LISTING MAY NOT RESOLVE A DIGEST OVER THE NETWORK, AND THAT IS
+  # REFUSED HERE RATHER THAN LEFT TO A CALLER. `--listing` exists so a harness
+  # can exercise this file without a vendor; a listing fixture names real vendor
+  # URLs, so the digest fetch below would reach one anyway and the gate would
+  # depend on an endpoint being up. ⚠ A harness that simply forgot `--checksums`
+  # would get that silently, which is the shape every other guard here exists to
+  # refuse. So the two flags travel together or this stops.
+  if [ -n "$LISTING_IN" ] && [ -z "$CHECKSUMS_IN" ]; then
+    cannot "--listing reads a recorded response, so --checksums must record the digest document too"
+  fi
+
+  DIGEST_DOC="$WORKDIR/checksums.txt"
+  if [ -n "$CHECKSUMS_IN" ]; then
+    # ⛔ SAID OUT LOUD, THE WAY `--listing` ALREADY IS. A run that verified
+    # against a recorded document and one that asked the vendor are otherwise
+    # the same lines in a log, and only the second says what the vendor
+    # publishes today.
+    [ -f "$CHECKSUMS_IN" ] || cannot "the checksums document $CHECKSUMS_IN is not present"
+    cp "$CHECKSUMS_IN" "$DIGEST_DOC" || cannot "cannot copy $CHECKSUMS_IN into the workdir"
+    printf 'resolve-release: read the checksums document from %s, not from %s\n' \
+      "$CHECKSUMS_IN" "$DIGEST_URL" >&2
+  else
+    # ⛔ THE FETCH IS THE INSTALLER'S, WHICH IS WHERE THE BOUND AND THE DIGEST
+    # RULE LIVE. A second `curl` here would be a second copy of a rule four
+    # adapters already broke once. ⚠ A checksums document is a document rather
+    # than a build: it publishes no digest of itself, which is what
+    # `--digest-unpublished` says, and nothing executes it.
+    ROOTLESS="$ROOT/scripts/acquisition/install-rootless.sh"
+    [ -f "$ROOTLESS" ] || cannot "$ROOTLESS is not present"
+    sh "$ROOTLESS" --fetch --url "$DIGEST_URL" --into "$DIGEST_DOC" \
+      --digest-unpublished "a checksums document publishes no digest of itself" \
+      </dev/null >"$WORKDIR/digest-fetch.log" 2>&1
+    DIGEST_FETCH_RC=$?
+    case "$DIGEST_FETCH_RC" in
+      0) : ;;
+      1)
+        sed 's/^/          /' "$WORKDIR/digest-fetch.log" >&2
+        refuse "the checksums document $DIGEST_ASSET could not be retrieved"
+        ;;
+      *)
+        sed 's/^/          /' "$WORKDIR/digest-fetch.log" >&2
+        cannot "install-rootless could not run for the checksums asset (exit $DIGEST_FETCH_RC)"
+        ;;
+    esac
+  fi
+
+  # ⛔ AND THE DOCUMENT IS ASKED WHETHER IT COVERS THE ASSET THAT WAS SELECTED.
+  # `sha256sum -c --ignore-missing` over a document naming none of the files
+  # present exits 1 with `no file was verified`, so the install would refuse
+  # anyway - but it would refuse at install time with a message about a checksum,
+  # on a host whose route has already been cut. This refuses here, naming both.
+  #
+  # ⛔ THE NAME IS COMPARED, NEVER MATCHED. An asset name carries dots - every
+  # version does - and a `.` in a pattern matches any byte, which is the defect
+  # `install-client.sh` records about `reported_version=1.37.0`. It is also a
+  # prefix question: `foo.tar.gz` is a substring of `foo.tar.gz.asc`, so a
+  # substring search would report a document covering the signature as covering
+  # the build. So the digest prefix is stripped and the remainder compared with
+  # `==`, which is neither a regex nor a substring.
+  awk -v want="$ASSET" '
+    { line = $0
+      sub(/^[0-9a-fA-F]+[ \t]+\*?/, "", line)
+      if (line == want) found = 1 }
+    END { exit found ? 0 : 1 }' "$DIGEST_DOC" ||
+    refuse "$DIGEST_ASSET does not name $ASSET, so it cannot verify the artifact this route installs"
+fi
+
 FINISHED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
 # ⚠ Key=value, the shape install-client's own record uses. ⛔ It carries the
@@ -257,6 +387,15 @@ if [ -n "$RECORD" ]; then
     printf 'asset=%s\n' "$ASSET"
     printf 'asset_url=%s\n' "$ASSET_URL"
     printf 'asset_declared_size=%s\n' "$SIZE"
+    # ⛔ WHICH OF THE TWO DISPOSITIONS THIS TARGET HAS, AS A FIELD. A reader
+    # taking an absent `digest_asset` for "the vendor publishes none" would be
+    # reading a truncated record as a measurement, which is why every field here
+    # is printed on every path and `digest_source` is never empty.
+    printf 'digest_source=%s\n' "$([ -n "$DIGEST_PATTERN" ] && printf vendor-document || printf unpublished)"
+    printf 'digest_asset=%s\n' "$DIGEST_ASSET"
+    printf 'digest_asset_url=%s\n' "$DIGEST_URL"
+    printf 'digest_document=%s\n' "$DIGEST_DOC"
+    printf 'digest_unpublished=%s\n' "$DIGEST_NONE"
     printf 'adapter=%s\n' "$ADAPTER"
     printf 'adapter_sha256=%s\n' "$(sha256sum "$ADAPTER" | cut -d' ' -f1)"
     printf 'started_at=%s\n' "$STARTED"
@@ -268,7 +407,7 @@ if [ -n "$RECORD" ]; then
   # target and no URL at all, and a caller reading an absent one as empty is the
   # failure this whole file exists to remove.
   for _field in target repository source_url listing_sha256 selected_version \
-    selected_tag asset_pattern asset asset_url; do
+    selected_tag asset_pattern asset asset_url digest_source; do
     grep -q "^$_field=" "$RECORD" ||
       cannot "the resolution record was written without $_field"
   done

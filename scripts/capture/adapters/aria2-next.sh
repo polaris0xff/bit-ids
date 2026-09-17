@@ -86,6 +86,17 @@ cannot() {
   exit 2
 }
 
+# ⛔ THE PREFIX IS ASKED FOR, NEVER COMPOSED. `install-rootless.sh --prefix` is
+# the one derivation in this tree, so this file cannot disagree with the
+# installer about where a build went. ⚠ It used to default to `/usr/local`,
+# which needs a privilege a runner spends and a session host does not; `ACQ-06`
+# is the entry that removed it.
+ROOTLESS=$(CDPATH='' cd -- "$(dirname -- "$0")/../../acquisition" && pwd)/install-rootless.sh
+prefix() {
+  [ -f "$ROOTLESS" ] || cannot "$ROOTLESS is not present"
+  sh "$ROOTLESS" --prefix
+}
+
 # ⛔ THE INSTALLED EXECUTABLE, LOOKED UP ONCE. A path composed per subcommand is
 # a second spelling, and the day a route installs somewhere else one subcommand
 # finds the build and another reports it absent.
@@ -94,8 +105,9 @@ binary() {
     printf '%s' "$BIT_IDS_ARIA2_NEXT"
     return 0
   fi
-  if [ -n "${BIT_IDS_PREFIX:-}" ] && [ -x "$BIT_IDS_PREFIX/bin/aria2-next" ]; then
-    printf '%s' "$BIT_IDS_PREFIX/bin/aria2-next"
+  _prefix=$(prefix) || return 1
+  if [ -x "$_prefix/bin/aria2-next" ]; then
+    printf '%s' "$_prefix/bin/aria2-next"
     return 0
   fi
   command -v aria2-next 2>/dev/null
@@ -166,6 +178,13 @@ case "$COMMAND" in
     printf 'release_min_components=3\n'
     printf 'release_max_components=3\n'
     printf 'release_asset=aria2-next-{version}-linux-x86_64\n'
+    # ⭐ THE VENDOR PUBLISHES A DIGEST AND THIS IS WHERE IT SAYS SO. Its release
+    # carries `aria2-next-{version}-checksums.sha256` beside the seven builds,
+    # read out of the live listing on 2026-09-09 and still in the fixture, so
+    # the release route is verified against the vendor rather than merely
+    # recorded. `resolve-release.sh` selects it with the same call that selects
+    # the artifact, from the same response.
+    printf 'release_digest_asset=aria2-next-{version}-checksums.sha256\n'
     ;;
 
   install)
@@ -193,41 +212,33 @@ no package index carries it, and installing aria2 would acquire a different prod
         # file whether it is there.
         [ -n "${BIT_IDS_RELEASE_URL:-}" ] ||
           cannot "the release route needs BIT_IDS_RELEASE_URL, resolved before the route was cut"
-        command -v curl >/dev/null 2>&1 || cannot "curl is not on this host"
-        PREFIX=${BIT_IDS_PREFIX:-/usr/local}
-        mkdir -p "$PREFIX/bin" || cannot "cannot create $PREFIX/bin"
-        # ⛔ BOUNDED, AND THIS FETCH WAS NOT UNTIL 2026-09-15. `capture-client`
-        # runs 21 and 22 both hung in *Install the client* on the RELEASE lane,
-        # which had taken six seconds on runs 19 and 20 - and a stalled transfer
-        # with no limit waits forever, which is the shape of a step that went
-        # from six seconds to thirty minutes. ⚠ `docs/conventions/shell.md`
-        # section 9 already stated the rule; four adapters broke it, and the
-        # RPC call ninety lines above this one has carried `--max-time` all
-        # along, so the convention held on one of two paths into one product.
-        # ⭐ `bit-check check-adapters` is the rule now rather than this comment.
-        #
-        # ⚠ THE SPEED FLOOR IS THE ONE THAT CATCHES A STALL. `--max-time` alone
-        # has to be large enough for a slow link to finish a 14-megabyte
-        # artifact, which is large enough to sit in a dead transfer for minutes;
-        # a transfer under 1 KB/s for a minute is stopped whatever its size.
-        curl -fsSL --retry 2 --connect-timeout 20 --max-time 300 \
-          --speed-limit 1024 --speed-time 60 \
-          -o "$WORKDIR/aria2-next" "$BIT_IDS_RELEASE_URL" \
-          </dev/null >"$WORKDIR/install.log" 2>&1 ||
-          refuse "the release route could not be fetched"
-        [ -s "$WORKDIR/aria2-next" ] ||
-          refuse "the release route fetched an empty file"
-        chmod +x "$WORKDIR/aria2-next" ||
-          refuse "the release route could not make its artifact executable"
-        # ⚠ INTO PLACE AS ONE STEP. A copy that is interrupted leaves a truncated
-        # executable somewhere `binary()` will happily find; a rename within one
-        # directory either happened or did not.
-        cp "$WORKDIR/aria2-next" "$PREFIX/bin/.aria2-next.new" ||
-          refuse "the release route could not stage its artifact in $PREFIX/bin"
-        mv "$PREFIX/bin/.aria2-next.new" "$PREFIX/bin/aria2-next" ||
-          refuse "the release route could not install into $PREFIX/bin"
-        [ -x "$PREFIX/bin/aria2-next" ] ||
-          refuse "the release route reported an install and left no aria2-next in $PREFIX/bin"
+        # ⛔ THE FETCH, THE DIGEST AND THE PLACING ARE ONE CALL, AND IT IS NOT
+        # THIS FILE'S. `install-rootless.sh` bounds the transfer, settles the
+        # digest before anything is made executable, writes into a prefix this
+        # user already owns, and prints the path it placed. ⚠ This route used to
+        # `curl`, `chmod +x` and `cp` into `/usr/local/bin` itself, which is four
+        # adapters each carrying its own copy of a rule and each needing `sudo`
+        # to finish. `ACQ-06` carries what that privilege cost.
+        [ -n "${BIT_IDS_RELEASE_SUMS:-}" ] ||
+          cannot "the release route needs BIT_IDS_RELEASE_SUMS, the vendor's checksums document resolved beside the artifact"
+        _asset=${BIT_IDS_RELEASE_ASSET:-}
+        [ -n "$_asset" ] ||
+          cannot "the release route needs BIT_IDS_RELEASE_ASSET, the name the vendor's document uses"
+        sh "$ROOTLESS" --install \
+          --url "$BIT_IDS_RELEASE_URL" \
+          --into "$WORKDIR/aria2-next" \
+          --as aria2-next \
+          --sums "$BIT_IDS_RELEASE_SUMS" \
+          --sums-name "$_asset" \
+          --report "$WORKDIR/rootless-install.txt" \
+          </dev/null >>"$WORKDIR/install.log" 2>&1
+        _rc=$?
+        [ "$_rc" = 0 ] || {
+          tail -20 "$WORKDIR/install.log" >&2
+          [ "$_rc" = 1 ] ||
+            cannot "the rootless installer could not run for the release route (exit $_rc)"
+          refuse "the release route could not install the vendor's build"
+        }
         ;;
       source)
         # ⭐ THE SECOND ROUTE, AND IT EXISTS BECAUSE THIS TARGET HAS NO PACKAGE.
@@ -278,8 +289,12 @@ no package index carries it, and installing aria2 would acquire a different prod
           command -v "$_need" >/dev/null 2>&1 ||
             cannot "the source route builds from source and $_need is not on this host"
         done
-        PREFIX=${BIT_IDS_PREFIX:-/usr/local}
-        mkdir -p "$PREFIX/bin" || cannot "cannot create $PREFIX/bin"
+        # ⛔ THE SAME PREFIX THE RELEASE ROUTE USES, ASKED THE SAME WAY. Two
+        # routes installing to two places would make `binary()` answer about
+        # whichever ran last rather than about the route being measured.
+        PREFIX=$(prefix) || cannot "the rootless prefix could not be derived"
+        mkdir -p "$PREFIX/bin" ||
+          refuse "this user cannot create $PREFIX/bin; a rootless install writes nowhere else"
         # ⚠ THE REPOSITORY IS THE ONE `describe` ALREADY NAMES, so the two routes
         # cannot drift onto different upstreams. ⛔ A shallow clone of one tag:
         # the history is not the measurement and fetching it would be minutes of

@@ -53,9 +53,27 @@
 //     and `check-twins` compares that pair. Bounding it is its own unit and
 //     `TODO/ci.md` carries it under `CI-08`.
 //
-// ⚠ So this rule covers the capture adapters and says so, rather than claiming a
-// reach it does not have. A rule that named the whole tree and enforced one
-// directory is the shape this repository calls a preference stated as a rule.
+// ⚠ So this rule covers the capture install path and says so, rather than
+// claiming a reach it does not have. A rule that named the whole tree and
+// enforced one directory is the shape this repository calls a preference stated
+// as a rule.
+//
+// -- ⛔ AND THE SUBJECT MOVED OUT FROM UNDER IT. `ACQ-06`, 2026-09-17 ----------
+//
+// ⭐ **THE FLOOR IS WHAT CAUGHT THAT, WHICH IS WHY IT IS HERE.** `ACQ-06` moved
+// every release fetch out of the four adapters and into one rootless installer,
+// so the adapters went from four bounded `curl -o` invocations to none - and
+// this rule, reading adapters alone, answered `2 fetch(es) found across 4
+// adapter(s), which is too few to be this tree` and exited 2. ⛔ Without the
+// floor it would have reported a clean tree over a path whose every fetch it had
+// stopped reading, which is a guard narrower than the class it is about: the
+// defect this repository records more often than any other.
+//
+// ⚠ **SO THE SCOPE FOLLOWS THE FETCHES RATHER THAN THE DIRECTORY.**
+// `scripts/acquisition/install-rootless.sh` is in scope because it is where the
+// capture path now retrieves what it installs; `provision.sh` and `mine-repo.sh`
+// stay out for the reasons above, which are about what a stall COSTS rather than
+// about which directory a file is in.
 package main
 
 import (
@@ -65,9 +83,11 @@ import (
 	"strings"
 )
 
-// adapterRe is the scope: the capture adapters, which are the scripts that run
-// on a contained host with no operator watching.
-var adapterRe = regexp.MustCompile(`^scripts/capture/adapters/[^/]+\.sh$`)
+// adapterRe is the scope: the capture adapters and the rootless installer they
+// fetch through, which are the scripts that run on a contained host with no
+// operator watching.
+var adapterRe = regexp.MustCompile(
+	`^(scripts/capture/adapters/[^/]+\.sh|scripts/acquisition/install-rootless\.sh)$`)
 
 // retrievingCurlRe matches a curl invocation that writes a file.
 //
@@ -136,9 +156,9 @@ func checkAdapters(r *repo) (verdict, error) {
 	// `check-ignores` and `ACQ-01`'s catalogue scan both carry. An empty set
 	// satisfies every rule below perfectly, so a matcher that stopped matching
 	// would report every adapter bounded over no adapters at all.
-	if len(files) < 3 {
+	if len(files) < 4 {
 		return verdict{}, errCannotRun(
-			fmt.Sprintf("%d adapter(s) in scope, which is too few to be this tree", len(files)))
+			fmt.Sprintf("%d file(s) in scope, which is too few to be this tree", len(files)))
 	}
 
 	var problems []string
@@ -180,22 +200,24 @@ func checkAdapters(r *repo) (verdict, error) {
 		}
 	}
 
-	// ⛔ AND A RULE THAT FOUND NOTHING TO ASK ABOUT HAS ASKED NOTHING. Every
-	// adapter here retrieves something; a reader that matched no invocation at
-	// all would report a clean tree while examining none of them.
+	// ⛔ AND A RULE THAT FOUND NOTHING TO ASK ABOUT HAS ASKED NOTHING. A reader
+	// that matched no invocation at all would report a clean tree while examining
+	// none of them. ⭐ This is the floor that caught `ACQ-06` moving every release
+	// fetch out of the adapters: it answered 2 where the tree has more, and the
+	// scope followed the subject rather than the rule going quietly blind.
 	if fetches < 3 {
 		return verdict{}, errCannotRun(
-			fmt.Sprintf("%d fetch(es) found across %d adapter(s), which is too few to be this tree",
+			fmt.Sprintf("%d fetch(es) found across %d file(s), which is too few to be this tree",
 				fetches, len(files)))
 	}
 
 	v := verdict{
-		json: fmt.Sprintf(`{"schema":"check-adapters/1","problems":%d,"adapters":%d,"fetches":%d}`,
+		json: fmt.Sprintf(`{"schema":"check-adapters/2","problems":%d,"files":%d,"fetches":%d}`,
 			len(problems), len(files), fetches),
 	}
 	if len(problems) > 0 {
 		var b strings.Builder
-		fmt.Fprintf(&b, "an adapter fetch has no time limit, %d problem(s):\n\n", len(problems))
+		fmt.Fprintf(&b, "a capture-path fetch has no time limit, %d problem(s):\n\n", len(problems))
 		for _, p := range problems {
 			fmt.Fprintf(&b, "  %s\n", p)
 		}
@@ -206,6 +228,6 @@ func checkAdapters(r *repo) (verdict, error) {
 		v.text = b.String()
 		return v, nil
 	}
-	v.text = fmt.Sprintf("all %d fetch(es) across %d adapter(s) are bounded\n", fetches, len(files))
+	v.text = fmt.Sprintf("all %d fetch(es) across %d file(s) are bounded\n", fetches, len(files))
 	return v, nil
 }
