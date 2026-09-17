@@ -458,6 +458,14 @@ nothing is. The clone question under *Settled decisions* is spent too.
    ⛔ **A pair may leave that list ONE WAY ONLY**:
    `sh scripts/common/check-bitcheck.sh --compare` against BOTH halves, before
    either is deleted.
+   ⭐ **`check-project` IS PORTED AND COMPARED, 2026-09-17.** Twenty-nine refusals
+   are one Go check, 49 new cases run it against both halves, and the comparison
+   found THREE drifts - a twin that crashed instead of refusing, a rule compared
+   as a whole line in one half and as five counts in the other, and two checks
+   folded into one `-or`. All three were the twin's and all three are repaired.
+   ⚠ **Nothing is deleted yet and no gate row has moved**: the deletion and the
+   rewiring of `check-gate`, `check-twins`, `check-workflow` and `check-defaults`
+   are the next unit. [`ci.md`](ci.md) under `CI-10` carries the run.
 2. **`CLIENT-01` and `CLIENT-06`**, the remaining vertical captures. ⭐ They sat
    behind `ACQ-06` and no longer do: an install that needs no privilege is one a
    runner can finish, and the next dispatch is what says whether it does.

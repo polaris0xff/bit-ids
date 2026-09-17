@@ -90,9 +90,13 @@ uncovers the next, and only a dispatch shows it.**
 
 ### What the checking layer looks like now
 
-**Ten rules are one Go binary** in [`../../tools/check/`](../../tools/check/),
+**Eleven rules are one Go binary** in [`../../tools/check/`](../../tools/check/),
 and `bit-check --rows` is the measurement rather than this sentence. Both gate
 runners invoke it, so those rows are the SAME row on both lanes.
+
+⚠ **`check-project` is the eleventh and no gate row runs it yet.** It is
+ported and compared against both halves; the gate still queues the `sh` one
+until the deletion lands.
 
 ⛔ **Sixteen files are deleted, not translated.** `check-twins` went from twelve
 file pairs to **five**, and from 69 seconds to **10.0**, measured on 2026-09-15.
@@ -130,7 +134,12 @@ step supervisor - across two targets and both routes, on byte-identical code.
    fetches through the same installer - took 1s. ⚠ Do not reopen it: absolute 16.
 1. **`CI-10`**, five twin pairs left, `check-project` its own unit. ⛔ A pair
    leaves that list only after `check-bitcheck --compare` has run it against
-   BOTH halves.
+   BOTH halves. ⭐ **`check-project` is ported and compared, 2026-09-17** - the
+   twenty-nine refusals are in the Go binary, 49 cases, and the comparison found three drifts that
+   were all the PowerShell twin's and are all repaired. ⛔ **The deletion is the
+   next unit** and it is not one file: `check-gate` and its twin queue the row,
+   `check-twins` compares the pair, `check-workflow` plants against that exact
+   path, and `check-defaults` runs it as a subject.
 2. **`CLIENT-01` and `CLIENT-06`**, the remaining vertical captures. They sat
    behind `ACQ-06` and no longer do.
 3. **`CI-09`'s residuals**: the `RunManifest` a record needs beside it, and the
@@ -205,6 +214,14 @@ missing document takes with it.
 ⛔ **A validator handed an EMPTY input answers about nothing and looks green.**
 The same corpus check, given an empty tree instead of one read off the disk,
 found half of what was wrong and said so in the same confident sentence.
+
+⛔ **A report that cannot print its own failures is a silent run.** `store_report`
+counted rows by LINES, a disagreement is three lines, and the one comparison with
+something to say returned 1 having printed nothing at all.
+
+⚠ **`@(...) | Sort-Object` wraps the INPUT and leaves the output unwrapped**, so
+an empty result is `$null` and `.Count` throws. A rule written for the empty case
+was the one case it could not reach.
 
 ⛔ **A harness that plants a pattern cannot spell it** - and neither can the
 comment explaining why.

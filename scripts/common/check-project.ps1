@@ -37,8 +37,13 @@ try {
     # ⛔ THE TARGET SET IS DERIVED FROM THE CATALOGUE, IN BOTH DIRECTIONS. The sh
     # half carries the argument: this was a hardcoded list of seventeen ids and
     # `docs/client-matrix.md` claimed a bidirectional pin it did not have.
+    # ⛔ THE WHOLE PIPELINE IS WRAPPED, AND IT WAS NOT. `@(...) | Sort-Object`
+    # wraps the input and leaves the OUTPUT unwrapped, so an empty set arrived here
+    # as $null and `.Count` below threw - turning the refusal this rule exists for
+    # into a crash the caller reads as could-not-run. Found by
+    # `check-bitcheck --compare` on 2026-09-17, planting an empty matrix.
     $catalogueIds = @([regex]::Matches($catalogue, '(?m)^id = "([a-z0-9-]+)"$') |
-        ForEach-Object { $_.Groups[1].Value }) | Sort-Object -Unique
+        ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
     $matrixLines = if (Test-Path -LiteralPath 'docs/client-matrix.md') {
         Get-Content -LiteralPath 'docs/client-matrix.md'
     } else { @() }
@@ -46,7 +51,7 @@ try {
     $matrixIds = @($matrixLines |
         ForEach-Object { [regex]::Match($_, ('^\| ' + $backtick + '([a-z0-9-]+)' + $backtick + ' \|')) } |
         Where-Object { $_.Success } |
-        ForEach-Object { $_.Groups[1].Value }) | Sort-Object -Unique
+        ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
 
     # ⛔ A RESULT TOO SMALL TO BE REAL IS REFUSED. Two empty sets agree perfectly.
     if ($catalogueIds.Count -lt 10 -or $matrixIds.Count -lt 10) {
@@ -113,8 +118,14 @@ try {
     }
     $indexPairText = @($indexPairs | ForEach-Object { "$($_.Id)|$($_.Priority)|$($_.Effort)|$($_.Status)" } | Sort-Object)
     $bodyPairText = @($bodyPairs | Sort-Object)
-    if ($bodyPairText.Count -ne $indexPairText.Count -or
-        @(Compare-Object $indexPairText $bodyPairText).Count -ne 0) {
+    # ⛔ TWO CHECKS JOINED BY -or ARE ONE CHECK, which is this repository's own
+    # rule arriving inside a check. The sh twin says both things separately, so a
+    # tree failing both counted two failures there and one here. Found by
+    # `check-bitcheck --compare` on 2026-09-17, planting a duplicated index row.
+    if ($bodyPairText.Count -ne $indexPairText.Count) {
+        $failures.Add('TODO body count does not match index count')
+    }
+    if (@(Compare-Object $indexPairText $bodyPairText).Count -ne 0) {
         $failures.Add('TODO IDs, priorities, efforts or statuses disagree between index and category bodies')
     }
 
@@ -144,10 +155,20 @@ try {
     }
 
     $summaryLines = @(Get-Content -LiteralPath 'TODO/SUMMARY.md')
-    $summary = $summaryLines | Where-Object { $_ -match '^\| Total \|' } | Select-Object -First 1
-    $expectedSummary = "| Total | | $($openRows.Count) | $($inProgressRows.Count) | $($blockedRows.Count) | $($doneRows.Count) | $($rows.Count) |"
-    if ($summary -ne $expectedSummary) {
-        $failures.Add("TODO/SUMMARY.md total is '$summary', computed '$expectedSummary'")
+    # ⛔ THE FIVE COUNTS, NOT THE WHOLE LINE. This compared the rendered row
+    # against a reconstructed string, so anything else in it - a changed prefix
+    # cell, a different run of spaces - was refused here and ignored by the sh
+    # twin. One rule with two meanings. Found by `check-bitcheck --compare` on
+    # 2026-09-17.
+    $summaryTotal = @($summaryLines |
+        Where-Object { $_ -match '^\| Total \|' } |
+        ForEach-Object {
+            $cell = @($_ -split '\|' | ForEach-Object { $_.Trim(' ') })
+            if ($cell.Count -ge 9) { ($cell[3..7]) -join '|' }
+        }) -join [char]10
+    $expectedSummary = "$($openRows.Count)|$($inProgressRows.Count)|$($blockedRows.Count)|$($doneRows.Count)|$($rows.Count)"
+    if ($summaryTotal -ne $expectedSummary) {
+        $failures.Add("TODO/SUMMARY.md total is $summaryTotal, computed $expectedSummary")
     }
 
     # ⛔ THE TOTAL ROW WAS THE ONLY ROW CHECKED, AND IT IS ONE OF TWELVE. The

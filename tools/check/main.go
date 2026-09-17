@@ -92,6 +92,7 @@ var checks = map[string]check{
 	"check-no-secrets":    checkNoSecrets,
 	"check-one-home":      checkOneHome,
 	"check-placeholders":  checkPlaceholders,
+	"check-project":       checkProject,
 }
 
 func names() []string {

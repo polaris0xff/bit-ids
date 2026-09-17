@@ -26,6 +26,10 @@ default run and `bit-check check-no-secrets --public` adds the rules that only
 matter for a public repository. ⚠ `bit-check --rows` is the list; five file pairs
 still have twins and `check-twins` compares them as five rows.
 
+⚠ **`check-project` is in that binary too and its twins are still the gate's**,
+2026-09-17. The port is compared against both halves case for case and the halves
+have not been deleted, so the table below still names the script.
+
 `CI-01` eventually adds an independent Rust validator for the growing corpus.
 
 ## Existing external tools

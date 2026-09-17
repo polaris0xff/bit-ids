@@ -264,7 +264,10 @@ function Write-StoreReport {
     # ⛔ THE REPORT CHECKS ITSELF. The row list and the counters are two records
     # of one fact, and a value in two places with nothing comparing them is the
     # copy a reader trusts being the wrong one.
-    $rowCount = @($script:StoreRows -split "`n" | Where-Object { $_ -ne '' }).Count
+    # ⛔ IT COUNTS ROW STARTS AND NOT LINES. Counting lines hid the failures
+    # this check exists to surface: a row may be several lines, so a run with
+    # something to say returned 1 without printing a single row.
+    $rowCount = @($script:StoreRows -split "`n" | Where-Object { $_ -match '^  [^ ]' }).Count
     if ($rowCount -ne $total) {
         [Console]::Error.WriteLine(
             "${ME}: $rowCount rows recorded, $total counted; the report does not describe itself")

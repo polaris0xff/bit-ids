@@ -3990,3 +3990,116 @@ written up as a property of the change rather than of the host.
   inherits a different set of host values than a shell script - no `IFS`, and
   `TMPDIR` through the runtime rather than a shell expansion - so that row is
   asking the same question of a subject with its own answers.
+
+### ⭐ `check-project` ported, and the comparison found three drifts. 2026-09-17
+
+⛔ **THE BIG ONE.** 997 lines of `sh` and a hand-written PowerShell twin beside
+it, holding **twenty-nine refusals** over this repository's own invariants: the
+files a reader is promised, the catalogue against the client matrix in both
+directions,
+the TODO bookkeeping in six places, the Python exception, the action pins, the
+artifact names, the line endings, the shfmt pin, `set -u`, the cargo output path,
+the lockfile, the acceptance commands, the manifests, three `.ps1` rules and the
+same three again inside a workflow's `pwsh` blocks.
+
+⭐ **`bit-check check-project` is all of them**, and the binary carries **eleven**
+checks now. ⚠ The count is the greppable one rather than a count of *rules*,
+which is a judgement: `f.say(`, `say_fail "` and `failures.Add(` each appear
+twenty-nine times, in the port, the `sh` half and the twin. ⚠ Nothing is deleted yet and no gate row has moved: this change is
+the COMPARISON, which is the only way a pair may leave `check-twins`' list.
+
+**Measured on this host**: the `sh` half 0.72s, the PowerShell twin **2.60s**,
+the Go check **0.18s**. The twin is half of what is left of `check-twins`' 5.3
+seconds.
+
+#### ⛔ `--compare` found three drifts, and the twin was wrong in all three
+
+49 cases were written, one per rule plus the accept cases a harness of refusals
+never looks at. The first three-way run reported **three disagreements**, all of
+them `go and pwsh` - the Go port and the `sh` half agreeing, the twin dissenting:
+
+| planted | the twin |
+| --- | --- |
+| a client matrix with no rows | **CRASHED**: `The property 'Count' cannot be found on this object` |
+| the Total row's open count changed | refused for a second reason as well |
+| an index row duplicated | reported **9** failures where the other two reported 10 |
+
+1. ⛔ **`@(...) | Sort-Object -Unique` WRAPS THE INPUT AND LEAVES THE OUTPUT
+   UNWRAPPED.** An empty set therefore arrived as `$null`, and `.Count` threw -
+   turning the refusal *a result too small to be real* exists for into a crash a
+   caller reads as could-not-run. ⚠ The rule was written precisely because two
+   empty sets agree perfectly; the twin could not reach it.
+2. ⛔ **The Total row was compared as a whole LINE** against a reconstructed
+   string, where the `sh` half compares the five counts. One rule with two
+   meanings: anything else in that row - a changed prefix cell, a different run
+   of spaces - was refused on one lane and ignored on the other.
+3. ⛔ **Two checks joined by `-or` are one check**, which is this repository's own
+   rule arriving inside a check. The `sh` half says *the body count does not
+   match* and *the fields disagree* separately; the twin folded them, so a tree
+   failing both counted one failure there and two here.
+
+⭐ All three are fixed in the twin rather than absorbed by the port, and only then
+did the run come back clean. ⚠ The Windows gate lane runs that file today, so
+this is a repair of a live lane rather than work thrown away before a deletion.
+
+#### ⛔ And the harness could not report its own failures
+
+⛔ **The first `--compare` run printed NO ROWS AT ALL**, only
+`check-bitcheck: 149 rows recorded, 143 counted; the report does not describe
+itself`, and returned 1. `store_report`'s self-check counted LINES, and a row may
+be several: a disagreement is the label plus the two JSON lines that differ. So
+three real failures made the list six lines longer than the count, the self-check
+fired, and the one run with something to say said nothing.
+
+⭐ **It counts ROW STARTS now**, in both halves of `store-lib` - `row`'s own
+two-space prefix followed by a non-space, where a continuation is indented
+further. ⚠ The check itself is right and is kept: its own record says an
+accumulator was once overwritten and the summary went on claiming a count the
+rows did not support.
+
+#### ⚠ Two more differences the comparison cannot settle, recorded rather than hidden
+
+- **The TODO entry bodies.** `awk` carries the current entry id ACROSS files and
+  the twin resets it per file, so a heading left unterminated at the end of one
+  file would pair with the next file's first `Priority:` line in one
+  implementation and not the other. ⭐ The port resets, with the twin: pairing
+  across files is an answer nobody wrote down. No file here ends that way, so no
+  comparison over this tree can see it.
+- **The `Priority:` line itself.** The twin's pattern is anchored and strict; the
+  `sh` half's is loose. A malformed line is DROPPED by the twin and read by the
+  other two. ⭐ The port is loose, because dropping is the direction that keeps a
+  check green.
+
+#### ⚠ What the port had to reproduce rather than tidy
+
+- **`grep -n` prints no path over a SINGLE file**, and the manifest rule pipes
+  exactly that through `xargs`. A port that always prefixed would differ from
+  both halves on a tree with one manifest.
+- **A command substitution strips trailing newlines**, so the pin rule
+  concatenates one workflow's findings onto the previous one's last line.
+- **The `with:` column is the KEY's, not the line's.** In `- with:` the dash is
+  part of the indent, so the step's other keys sit at the key's column.
+- **An indent is measured in SPACES only** in the `pwsh`-block reader, so a
+  tab-led line reads as column 0.
+- **`case "$subject" in $pattern)` is sh's globbing**, where `*` crosses a slash.
+  `path.Match` is a different rule, so the class is implemented rather than the
+  instances this tree happens to have.
+
+#### ⛔ And the harness became the thing it refuses, twice
+
+`check-bitcheck.sh` is under `scripts/`, which is exactly the scope two of these
+rules read. Written whole, the plant strings `mvdan.cc/sh/v3/cmd/shfmt@v0.0.1`
+and `target/debug/examples` made the clean tree fail: a harness that plants a
+pattern cannot spell it. ⚠ A third, a bare forty-character hex pin fixture, is
+what `check-no-secrets --public` refuses and is right to. All three are assembled
+from parts.
+
+#### ⛔ Two defects in the harness itself, both found by this
+
+- **A case overwrote a REAL tracked file and `unplant`ed it**, and `unplant` is
+  `rm`. The tree then carried a path git lists with no bytes behind it - harmless
+  to every other rule and reported by `check-project`'s line-ending row the
+  moment it ran. It is saved and put back now.
+- **A plant rewritten three times could not be unplanted.** `git rm --cached`
+  refuses a path whose staged content matches neither HEAD nor the working tree,
+  so the file survived into every case after it. Each rewrite re-stages.

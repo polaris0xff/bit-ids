@@ -282,7 +282,17 @@ store_report() { # schema noun json
   # a reader trusts being the wrong one. Measured: a caller's own variable
   # overwrote the accumulator and the summary went on claiming a count the rows
   # did not support.
-  _rows=$(printf '%s' "$STORE_ROWS" | grep -c .)
+  #
+  # ⛔ IT COUNTS ROW STARTS AND NOT LINES, and counting lines HID THE FAILURES
+  # IT EXISTS TO SURFACE. A row may be several lines - `check-bitcheck` prints a
+  # disagreement as the label plus the two JSON lines that differ - so three real
+  # failures made the row list six lines longer than the count, this check fired,
+  # and the report returned 1 WITHOUT PRINTING A SINGLE ROW. The one run that had
+  # something to say was the one run that said nothing.
+  #
+  # ⚠ A row start is `row`'s own two-space prefix followed by a non-space; a
+  # continuation line is indented further by whoever wrote the message.
+  _rows=$(printf '%s' "$STORE_ROWS" | grep -c '^  [^ ]')
   if [ "$_rows" != "$_total" ]; then
     printf '%s: %s rows recorded, %s counted; the report does not describe itself\n' \
       "$ME" "$_rows" "$_total" >&2

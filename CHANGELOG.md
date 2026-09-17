@@ -5,6 +5,33 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-17T09:08:38Z
+
+- ⭐ **`check-project` IS PORTED, AND IT IS THE BIG ONE.** 997 lines of `sh` and a
+  hand-written PowerShell twin, holding twenty-nine refusals over this
+  repository's own invariants, are one Go check. The binary carries **eleven** checks now.
+  Measured here: the `sh` half 0.72s, the twin **2.60s**, the Go check **0.18s**.
+- ⚠ **Nothing is deleted and no gate row has moved.** This change is the
+  COMPARISON, which is the only way a pair may leave `check-twins`' list. 49 cases
+  run each rule against all three implementations: 143 cases in total, 143 passed,
+  agreeing on the exit code and byte for byte on the `--json` line.
+- ⛔ **AND THE COMPARISON FOUND THREE DRIFTS, ALL THE TWIN'S.** `@(...) |
+  Sort-Object` wraps the input and leaves the output unwrapped, so an empty set
+  arrived as `$null` and `.Count` THREW - turning the refusal *a result too small
+  to be real* exists for into a crash. The Total row was compared as a whole LINE
+  where the `sh` half compares five counts. And two checks were joined by `-or`,
+  so a tree failing both counted one failure there and two here.
+- ⭐ All three are fixed in the twin rather than absorbed by the port. The Windows
+  gate lane runs that file today.
+- ⛔ **AND THE HARNESS COULD NOT PRINT ITS OWN FAILURES.** `store_report` counted
+  rows by LINES and a disagreement is three lines, so the first run with something
+  to say returned 1 having printed no rows at all. It counts row STARTS now, in
+  both halves of `store-lib`.
+- ⚠ Two more defects in `check-bitcheck` itself: a case that overwrote a real
+  tracked file and `unplant`ed it by deletion, and a plant rewritten three times
+  that `git rm --cached` then refused to remove.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-10`. No version bump and no deploy.
+
 ### 2026-09-17T06:51:42Z
 
 - ⛔ **THE ASSEMBLER WROTE A STORE `validate_corpus` REFUSES AND SAID NOTHING.**

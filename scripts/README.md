@@ -278,6 +278,10 @@ from any working directory.
   eleven files had the BOM and four did not, sixteen relied on a PowerShell
   default that changed in 7.5, and ten wrote to stderr directly while five did
   not. The last two were found by CI rather than by a reading.
+  ⭐ **`bit-check check-project` is the same twenty-nine refusals**, 2026-09-17,
+  compared against both halves case for case. Nothing here is deleted yet and
+  the gate still queues the `sh` half; `TODO/ci.md` under `CI-10` says what the
+  comparison found.
   ⛔ **The last two also read the `pwsh` blocks of every workflow**, which they
   did not until `CI-06`'s first dispatch found `capture.yml` breaking both, one
   door away from the rules that forbid them. A third rule lives only there: a

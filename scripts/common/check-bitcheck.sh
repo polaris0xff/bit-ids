@@ -1047,11 +1047,19 @@ unplant docs/plant-orphan.md
 #
 # ⚠ The README carrying the link is orphan-exempt, so the only thing this case
 # can report is the page it points at.
+#
+# ⛔ AND THIS CASE OVERWRITES A REAL TRACKED FILE, so it is SAVED AND PUT BACK
+# rather than unplanted. `unplant` is `rm`, and deleting a tracked file left the
+# tree carrying a path git still lists with no bytes behind it - invisible to
+# every rule here until `check-project` began reading the WORKING TREE's line
+# endings, which then reported `w/` for a file nobody had touched.
+FIXREADME=crates/bit-ids/tests/fixtures/README.md
+cp "$TREE/$FIXREADME" "$WORK/fixtures-README.orig" || exit 2
 printf 'a page nothing else points at\n' >"$TREE/docs/plant-orphan.md"
 printf 'see [the page](../../../../docs/plant-orphan.md)\n' \
-  >"$TREE/crates/bit-ids/tests/fixtures/README.md"
+  >"$TREE/$FIXREADME"
 agree "docs a link climbing four levels resolves to the same page" check-docs common/check-docs 0
-unplant crates/bit-ids/tests/fixtures/README.md
+cp "$WORK/fixtures-README.orig" "$TREE/$FIXREADME"
 unplant docs/plant-orphan.md
 
 # ⚠ A README IS AN ENTRY POINT and the rule skips it by name, so a subdirectory
@@ -1091,6 +1099,356 @@ rm -rf "$TREE/docs/templates"
 unplant "$P"
 
 agree "docs clean tree again" check-docs common/check-docs 0
+
+# ============================================================================
+# check-project
+#
+# ⛔ TWENTY-NINE REFUSALS IN ONE CHECK, so one case per rule is the floor rather
+# than thoroughness. The verdict this harness compares is the whole `--json`
+# line, `failures` included, so a plant that trips two rules is still a proof:
+# the case states the exit code and the three implementations must agree on the
+# COUNT as well. That is why several plants below are not narrowed - an invalid
+# status necessarily moves four derived totals, and a port that moved three of
+# them would be caught here rather than reasoned about.
+# ============================================================================
+
+agree "project clean tree" check-project common/check-project 0
+
+PIDX="$TREE/TODO/INDEX.md"
+PPRG="$TREE/TODO/PROGRESS.md"
+PSUM="$TREE/TODO/SUMMARY.md"
+PMTX="$TREE/docs/client-matrix.md"
+PCAT="$TREE/catalogue/clients.toml"
+PLCK="$TREE/Cargo.lock"
+PPRV="$TREE/scripts/doctor/provision.sh"
+for _f in "$PIDX" "$PPRG" "$PSUM" "$PMTX" "$PCAT" "$PLCK" "$PPRV"; do
+  cp "$_f" "$WORK/$(basename "$_f").projorig" || exit 2
+done
+# ⚠ Kept apart from the list above because two cases edit it and then put it
+# back on their own, rather than through the blanket restore.
+cp "$TREE/TODO/ci.md" "$WORK/ci.md.projsrc" || exit 2
+restore_project() {
+  for _r in "$PIDX" "$PPRG" "$PSUM" "$PMTX" "$PCAT" "$PLCK" "$PPRV"; do
+    cp "$WORK/$(basename "$_r").projorig" "$_r"
+  done
+}
+
+# -- 1. the files a reader is promised ----------------------------------------
+mv "$TREE/docs/reference-sweeps/bit-cli.md" "$WORK/bit-cli.projmoved"
+agree "project a promised file that is missing is refused" check-project common/check-project 1
+mv "$WORK/bit-cli.projmoved" "$TREE/docs/reference-sweeps/bit-cli.md"
+
+# -- 2. the target set, in both directions ------------------------------------
+# shellcheck disable=SC2016
+# ⚠ The backticks are the SUBJECT: a matrix row names its target in a code
+# span, and expanding them here would hand the file a command's output.
+printf '| `plant-client` | x | x | x |\n' >>"$PMTX"
+agree "project a matrix row the catalogue does not carry is refused" check-project common/check-project 1
+restore_project
+
+printf '\n[[client]]\nid = "plant-client"\n' >>"$PCAT"
+agree "project a catalogue target the matrix lacks is refused" check-project common/check-project 1
+restore_project
+
+# ⛔ TWO EMPTY SETS AGREE PERFECTLY. Without this floor a parser that stopped
+# matching would report a pinned matrix over nothing at all.
+printf '# nothing here\n' >"$PMTX"
+agree "project a target set too small to be real is refused" check-project common/check-project 1
+restore_project
+
+# -- 3-8. the TODO bookkeeping ------------------------------------------------
+sed 's/^Total: /Total: 9/' "$WORK/PROGRESS.md.projorig" >"$PPRG"
+agree "project a declared total that disagrees is refused" check-project common/check-project 1
+restore_project
+
+sed 's/| OPEN |/| WIP |/' "$WORK/INDEX.md.projorig" >"$PIDX"
+agree "project an invalid status in the index is refused" check-project common/check-project 1
+restore_project
+
+# ⚠ THE OPEN COUNT IN THE TOTAL ROW, by field rather than by a number typed
+# here, so the plant follows the file. A first version prepended a digit to the
+# row's PREFIX cell instead, which is a different rule's business - and the three
+# implementations disagreed about it, which is how the twin's whole-line
+# comparison was found.
+awk -F'|' 'BEGIN { OFS = "|" } $2 == " Total " { $4 = " 99 " } { print }' \
+  "$WORK/SUMMARY.md.projorig" >"$PSUM"
+agree "project a summary total that disagrees is refused" check-project common/check-project 1
+restore_project
+
+# ⛔ THE CATEGORY ROWS ARE ELEVEN OF TWELVE, and the total row agreeing says
+# nothing about them: setting one category to a wrong number used to pass.
+awk -F'|' 'BEGIN { OFS = "|" } $2 == " Foundation " { $4 = " 99 " } { print }' \
+  "$WORK/SUMMARY.md.projorig" >"$PSUM"
+agree "project a summary category row that disagrees is refused" check-project common/check-project 1
+restore_project
+
+awk 'BEGIN { done = 0 }
+     /^\| P1 \|/ && !done { sub(/\| [0-9]+ \|/, "| 98 |"); done = 1 }
+     { print }' "$WORK/INDEX.md.projorig" >"$PIDX"
+agree "project a priority table row that disagrees is refused" check-project common/check-project 1
+restore_project
+
+# ⚠ A DUPLICATED ROW IS TWO FINDINGS, not one: the duplicate itself and every
+# total it moves. All three implementations have to count the same way.
+awk 'BEGIN { done = 0 }
+     { print }
+     /^\| CI-0/ && !done { print; done = 1 }' "$WORK/INDEX.md.projorig" >"$PIDX"
+agree "project a duplicated index row is refused" check-project common/check-project 1
+restore_project
+
+# -- 9. Python exists only with an approved exception -------------------------
+printf 'print("plant")\n' >"$TREE/tools/check/plant.py"
+agree "project a .py declaring no exception is refused" check-project common/check-project 1
+
+printf '# bit-ids:python-exception=ZZZ-99\nprint("plant")\n' >"$TREE/tools/check/plant.py"
+agree "project a .py naming an entry the index lacks is refused" check-project common/check-project 1
+
+# ⛔ THE OWNING ENTRY'S OWN SECTION, NOT ITS FILE. A plant naming a real but
+# unrelated entry survived this rule twice before it was narrowed this far.
+printf '# bit-ids:python-exception=CI-10\nprint("plant")\n' >"$TREE/tools/check/plant.py"
+agree "project a .py whose entry never mentions it is refused" check-project common/check-project 1
+
+# ⭐ AND THE ACCEPT CASE, which is the half a harness of refusals never looks at.
+# The argument is written into the entry's section, so the rule is satisfiable.
+awk -v want="## CI-10:" '
+  index($0, want) == 1 { print; print "tools/check/plant.py is approved here."; next }
+  { print }' "$WORK/ci.md.projsrc" >"$TREE/TODO/ci.md"
+agree "project a .py its entry argues for is accepted" check-project common/check-project 0
+unplant tools/check/plant.py
+cp "$WORK/ci.md.projsrc" "$TREE/TODO/ci.md"
+
+# -- 10. every action is pinned to an immutable form --------------------------
+PWF="$TREE/.github/workflows/plant.yml"
+# ⚠ ASSEMBLED RATHER THAN WRITTEN WHOLE. A bare forty-character hex run in a
+# tracked file is what `check-no-secrets --public` refuses, and it is right to:
+# the allowance it carries is anchored to a `uses:` line, which this is not.
+HEX40=$(printf '%s%s%s' 0123456789abcdef 0123456789abcdef 01234567)
+
+printf 'on: push\njobs:\n  j:\n    steps:\n      - uses: actions/checkout@v4\n' >"$PWF"
+agree "project an action pinned to a tag is refused" check-project common/check-project 1
+
+printf 'on: push\njobs:\n  j:\n    steps:\n      - uses: actions/checkout@%s\n' "$HEX40" >"$PWF"
+agree "project a pin with no version comment is refused" check-project common/check-project 1
+
+printf 'on: push\njobs:\n  j:\n    steps:\n      - uses: actions/checkout@%s # v4.2.2\n' "$HEX40" >"$PWF"
+agree "project a pin with a version comment is accepted" check-project common/check-project 0
+
+printf 'on: push\njobs:\n  j:\n    steps:\n      - uses: actions/checkout\n' >"$PWF"
+agree "project a uses: with no ref at all is refused" check-project common/check-project 1
+
+printf 'on: push\njobs:\n  j:\n    steps:\n      - uses: docker://alpine:3\n' >"$PWF"
+agree "project a container not pinned to a digest is refused" check-project common/check-project 1
+
+# ⭐ A LOCAL ACTION IS THIS REPOSITORY, reviewed with everything else, so it
+# needs no pin - the branch a denylist of floating forms would never reach.
+printf 'on: push\njobs:\n  j:\n    steps:\n      - uses: ./.github/actions/plant\n' >"$PWF"
+agree "project a local action needs no pin" check-project common/check-project 0
+
+# -- 11. an artifact a workflow downloads is one some workflow uploads --------
+{
+  printf 'on: push\njobs:\n  j:\n    steps:\n'
+  printf '      - uses: actions/download-artifact@%s # v8.0.0\n' "$HEX40"
+  printf '        with:\n          name: plant-nobody-uploads\n'
+} >"$PWF"
+agree "project a download nothing uploads is refused" check-project common/check-project 1
+
+{
+  printf 'on: push\njobs:\n  j:\n    steps:\n'
+  printf '      - uses: actions/upload-artifact@%s # v7.0.0\n' "$HEX40"
+  printf '        with:\n          name: plant-pair\n'
+  printf '      - uses: actions/download-artifact@%s # v8.0.0\n' "$HEX40"
+  printf '        with:\n          name: plant-pair\n'
+} >"$PWF"
+agree "project a download its own workflow uploads is accepted" check-project common/check-project 0
+
+# ⛔ A MARKER THAT OUTLIVED ITS REASON IS REFUSED TOO, which is what stops this
+# declaration becoming a permanent exemption.
+{
+  printf 'on: push\njobs:\n  j:\n    steps:\n'
+  printf '      - uses: actions/upload-artifact@%s # v7.0.0\n' "$HEX40"
+  printf '        with:\n          name: plant-pair\n'
+  printf '      - uses: actions/download-artifact@%s # v8.0.0\n' "$HEX40"
+  # ⚠ INSIDE THE STEP IT DECLARES, which is where the tree spells it: a marker
+  # above the step belongs to the step before it, and the parser is right to say
+  # so rather than to guess.
+  printf '        # bit-ids:no-producer=CI-09\n'
+  printf '        with:\n          name: plant-pair\n'
+} >"$PWF"
+agree "project a no-producer marker over a produced name is refused" check-project common/check-project 1
+
+# ⚠ `pattern:` COUNTS TOO: `download-artifact` accepts either key, so a rule
+# reading only `name:` is a gate on one of two doors.
+{
+  printf 'on: push\njobs:\n  j:\n    steps:\n'
+  printf '      - uses: actions/download-artifact@%s # v8.0.0\n' "$HEX40"
+  printf '        with:\n          pattern: plant-nobody-uploads-*\n'
+} >"$PWF"
+agree "project a download written as pattern: is read too" check-project common/check-project 1
+
+# -- 22-24. the same language behind a second door ----------------------------
+{
+  printf 'on: push\njobs:\n  j:\n    steps:\n'
+  printf '      - name: plant\n        shell: pwsh\n        run: |\n'
+  printf "          \$ErrorActionPreference = 'Stop'\n"
+  printf '          Write-Output ok\n'
+} >"$PWF"
+agree "project a workflow pwsh block that stops without the native rule is refused" \
+  check-project common/check-project 1
+
+{
+  printf 'on: push\njobs:\n  j:\n    steps:\n'
+  printf '      - name: plant\n        shell: pwsh\n        run: |\n'
+  printf "          \$ErrorActionPreference = 'Stop'\n"
+  # shellcheck disable=SC2016
+  printf '          $PSNativeCommandUseErrorActionPreference = $false\n'
+  printf '          Write-Output ok\n'
+} >"$PWF"
+agree "project a workflow pwsh block that says both is accepted" check-project common/check-project 0
+
+{
+  printf 'on: push\njobs:\n  j:\n    steps:\n'
+  printf '      - name: plant\n        shell: pwsh\n        run: |\n'
+  printf "          Write-Error 'plant'\n"
+} >"$PWF"
+agree "project a workflow pwsh block reporting through Write-Error is refused" \
+  check-project common/check-project 1
+
+# ⛔ AN INVERTED GUARD FAILS THE STEP BY SUCCEEDING AT ITS JOB, because GitHub
+# reads the block's residual exit code as the verdict.
+{
+  printf 'on: push\njobs:\n  j:\n    steps:\n'
+  printf '      - name: plant\n        shell: pwsh\n        run: |\n'
+  printf '          git status\n'
+  # shellcheck disable=SC2016
+  printf '          if ($LASTEXITCODE -ne 0) { Write-Output no }\n'
+} >"$PWF"
+agree "project a pwsh block leaving LASTEXITCODE as the verdict is refused" \
+  check-project common/check-project 1
+
+{
+  printf 'on: push\njobs:\n  j:\n    steps:\n'
+  printf '      - name: plant\n        shell: pwsh\n        run: |\n'
+  printf '          git status\n'
+  # shellcheck disable=SC2016
+  printf '          if ($LASTEXITCODE -ne 0) { Write-Output no }\n'
+  printf '          exit 0\n'
+} >"$PWF"
+agree "project a pwsh block that ends in an explicit exit is accepted" check-project common/check-project 0
+unplant .github/workflows/plant.yml
+
+# -- 12. the working tree agrees with .gitattributes --------------------------
+#
+# ⚠ A `.bat` RATHER THAN A `.ps1`, so this plant trips the line-ending rule and
+# nothing else: the three `.ps1` rules below have their own fixtures.
+printf 'echo plant\n' >"$TREE/plant.bat"
+plant_tracked plant.bat
+agree "project a working tree ending that contradicts .gitattributes is refused" \
+  check-project common/check-project 1
+unplant_tracked plant.bat
+
+# -- 13-15, 17. the tracked-only scopes ---------------------------------------
+# ⚠ THE NEEDLE IS ASSEMBLED, because this file is under `scripts/` and the
+# rule reads every tracked file there: written whole, the harness would be the
+# thing it refuses. That is this repository's own recurring shape - a harness
+# that plants a pattern cannot spell it.
+printf 'set -u\n# mvdan.cc/sh/v3/cmd/%s@v0.0.1\n' shfmt >"$TREE/scripts/plant.sh"
+plant_tracked scripts/plant.sh
+agree "project an shfmt version that disagrees with the pin is refused" \
+  check-project common/check-project 1
+
+# ⛔ RE-STAGED AFTER EVERY REWRITE. `git rm --cached` refuses a path whose
+# staged content matches neither HEAD nor the working tree, so a plant rewritten
+# three times could not be unplanted and survived into every case after it.
+printf 'echo plant\n' >"$TREE/scripts/plant.sh"
+plant_tracked scripts/plant.sh
+agree "project a script that does not state set -u first is refused" \
+  check-project common/check-project 1
+
+# ⚠ Assembled for the reason above: spelled whole, this line is itself a cargo
+# output path composed without `CARGO_TARGET_DIR`.
+printf 'set -u\nBIN=target/%s/examples/thing\n' debug >"$TREE/scripts/plant.sh"
+plant_tracked scripts/plant.sh
+agree "project a cargo output path composed by hand is refused" \
+  check-project common/check-project 1
+
+printf 'set -u\n# see: cargo test some_name\n' >"$TREE/scripts/plant.sh"
+plant_tracked scripts/plant.sh
+agree "project a cargo test in a script is out of this rule's scope" \
+  check-project common/check-project 0
+unplant_tracked scripts/plant.sh
+
+sed 's/^SHFMT_VERSION=/SHFMT_PIN_REMOVED=/' "$WORK/provision.sh.projorig" >"$PPRV"
+agree "project a provision script with no shfmt pin is refused" check-project common/check-project 1
+restore_project
+
+# -- 16. every dependency comes from the registry, with a checksum ------------
+sed 's|^source = "registry+https://github.com/rust-lang/crates.io-index"$|source = "git+https://example.invalid/x"|' \
+  "$WORK/Cargo.lock.projorig" >"$PLCK"
+agree "project a dependency from somewhere other than the registry is refused" \
+  check-project common/check-project 1
+restore_project
+
+grep -v '^checksum = "' "$WORK/Cargo.lock.projorig" >"$PLCK"
+agree "project a dependency with no checksum is refused" check-project common/check-project 1
+restore_project
+
+# -- 17. an acceptance that can pass over nothing -----------------------------
+#
+# ⛔ `cargo test` WITH A BARE WORD SELECTS BY NAME, and a filter matching none
+# prints `running 0 tests` for every binary and exits 0.
+# shellcheck disable=SC2016
+printf '\nProve: run `cargo test plant_name` and read it\n' >>"$TREE/TODO/ci.md"
+agree "project a Prove selecting tests by name is refused" check-project common/check-project 1
+cp "$WORK/ci.md.projsrc" "$TREE/TODO/ci.md"
+
+# shellcheck disable=SC2016
+printf '\nProve: run `cargo test --workspace --locked` and read it\n' >>"$TREE/TODO/ci.md"
+agree "project a Prove selecting by package rather than name is accepted" \
+  check-project common/check-project 0
+cp "$WORK/ci.md.projsrc" "$TREE/TODO/ci.md"
+
+# ⚠ THE WORKFLOW IS THE SECOND DOOR into the same mistake, and it is read by a
+# different extractor with the same judgement.
+{
+  printf 'on: push\njobs:\n  j:\n    steps:\n'
+  printf '      - run: cargo test plant_name\n'
+} >"$PWF"
+# ⚠ TRACKED, because this rule's scope is `git ls-files` rather than a glob -
+# unlike the pin and artifact rules above, which read the directory. A plant left
+# untracked would have all three implementations agreeing that they saw nothing.
+plant_tracked .github/workflows/plant.yml
+agree "project a workflow cargo test selecting by name is refused" check-project common/check-project 1
+unplant_tracked .github/workflows/plant.yml
+
+# -- 18. a git dependency in a manifest ---------------------------------------
+mkdir -p "$TREE/plantcrate"
+printf '[dependencies]\nthing = { git = "https://example.invalid/x" }\n' >"$TREE/plantcrate/Cargo.toml"
+agree "project a git dependency in a manifest is refused" check-project common/check-project 1
+rm -rf "$TREE/plantcrate"
+
+# -- 19-21. the three .ps1 rules ----------------------------------------------
+printf 'Write-Output "a plant \342\233\224 here"\n' >"$TREE/plant.ps1"
+agree "project a .ps1 with non-ASCII and no BOM is refused" check-project common/check-project 1
+
+printf '\357\273\277Write-Output "a plant \342\233\224 here"\n' >"$TREE/plant.ps1"
+agree "project a .ps1 with non-ASCII and a BOM is accepted" check-project common/check-project 0
+
+printf "\$ErrorActionPreference = 'Stop'\nWrite-Output ok\n" >"$TREE/plant.ps1"
+agree "project a .ps1 that stops without the native rule is refused" check-project common/check-project 1
+
+printf "\$ErrorActionPreference = 'Stop'\n\$PSNativeCommandUseErrorActionPreference = \$false\n" >"$TREE/plant.ps1"
+agree "project a .ps1 that says both is accepted" check-project common/check-project 0
+
+printf "Write-Error 'plant'\n" >"$TREE/plant.ps1"
+agree "project a .ps1 reporting through Write-Error is refused" check-project common/check-project 1
+
+# ⚠ THE NEEDLE IS AN INVOCATION, NOT THE WORD, and this is the case that proves
+# it: a rule matching the name anywhere fires on the file that describes it.
+printf "# Write-Error is what this comment is about\nWrite-Output ok\n" >"$TREE/plant.ps1"
+agree "project a .ps1 that only mentions Write-Error is accepted" check-project common/check-project 0
+unplant plant.ps1
+
+agree "project clean tree again" check-project common/check-project 0
 
 # ============================================================================
 
