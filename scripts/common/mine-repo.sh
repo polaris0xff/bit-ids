@@ -577,7 +577,26 @@ fi
 COMMIT="-"
 if [ "$CLONE" = "1" ]; then
   rm -rf "$DEST/tree"
-  if git clone --depth 1 -q "https://github.com/$TARGET.git" "$DEST/tree" 2>/dev/null; then
+  # ⛔ BOUNDED, AND BY GIT ITSELF RATHER THAN BY A WRAPPER. A clone with no limit
+  # against a server that accepts and never answers waits forever: measured on
+  # 2026-09-17 against a listener that does exactly that, an unbounded clone was
+  # still waiting at 20 seconds, and with these two settings git abandoned it at
+  # **5**. `docs/conventions/shell.md` section 9 is the rule.
+  #
+  # ⭐ AND IT IS ONE IDIOM IN BOTH HALVES, WHICH IS WHY THE FIRST ATTEMPT WAS
+  # REVERTED AND THIS ONE IS NOT. That attempt wrapped the clone in `timeout`,
+  # and `timeout.exe` on Windows is a PAUSE - so the `.ps1` twin would have slept
+  # for the bound and then cloned. `TODO/ci.md` records the revert. ⚠ These are
+  # git's own configuration, spelled identically on every platform git runs on,
+  # so the pair needs no second idiom and `check-twins` has no difference to
+  # compare.
+  #
+  # ⚠ THE NUMBERS ARE THIS PROJECT'S OWN, not new ones: the adapters and
+  # `install-rootless.sh` bound a stalled `curl` at `--speed-limit 1024
+  # --speed-time 60`, and a second vocabulary for the same idea is a second place
+  # for it to drift.
+  if git -c http.lowSpeedLimit=1024 -c http.lowSpeedTime=60 \
+    clone --depth 1 -q "https://github.com/$TARGET.git" "$DEST/tree" 2>/dev/null; then
     # ⛔ CAPTURED BEFORE THE STRIP. This order is the whole reason the two
     # steps are adjacent in the source rather than in separate functions.
     COMMIT=$(git -C "$DEST/tree" rev-parse HEAD 2>/dev/null || printf '-')

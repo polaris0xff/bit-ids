@@ -452,7 +452,22 @@ $commit = '-'
 $treeDir = Join-Path $dest 'tree'
 if (-not $NoClone) {
     if (Test-Path -LiteralPath $treeDir) { Remove-Item -Recurse -Force -LiteralPath $treeDir }
-    & git clone --depth 1 -q ('https://github.com/' + $Target + '.git') $treeDir 2>$null
+    # ⛔ BOUNDED, AND BY GIT ITSELF RATHER THAN BY A WRAPPER. A clone with no
+    # limit against a server that accepts and never answers waits forever:
+    # measured on 2026-09-17, an unbounded clone was still waiting at 20 seconds
+    # and these two settings abandoned it at 5.
+    #
+    # ⭐ THIS IS THE SAME SPELLING THE sh HALF USES, WHICH IS THE WHOLE POINT.
+    # The first attempt at this bound wrapped the clone in `timeout` and was
+    # reverted, because `timeout.exe` on Windows is a PAUSE: that twin would have
+    # slept for the bound and then cloned. ⚠ These are git's own configuration
+    # rather than a wrapper, identical on every platform git runs on, so this
+    # pair needs no second idiom at all.
+    #
+    # ⚠ The numbers are this project's own: the adapters and `install-rootless.sh`
+    # bound a stalled `curl` at `--speed-limit 1024 --speed-time 60`.
+    & git -c http.lowSpeedLimit=1024 -c http.lowSpeedTime=60 `
+        clone --depth 1 -q ('https://github.com/' + $Target + '.git') $treeDir 2>$null
     if ($LASTEXITCODE -eq 0) {
         # ⛔ CAPTURED BEFORE THE STRIP. Once the git directory is gone the
         # commit is unrecoverable and every line citation becomes unverifiable.

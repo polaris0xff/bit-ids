@@ -133,9 +133,8 @@ step supervisor - across two targets and both routes, on byte-identical code.
    `sampling::classify` computes a `Lifetime` per span and `field_state`
    DISCARDS it, so no record can say whether a tail is per-connection or
    per-session.
-4. **`mine-repo`'s unbounded clone, in both halves.** ⛔ `timeout` is a PAUSE on
-   Windows, so the two halves need two idioms and `check-twins` compares the
-   pair.
+4. ⭐ **`mine-repo`'s clone is bounded, 2026-09-17**, in both halves and with one
+   idiom: git's own low-speed settings rather than a wrapper.
 5. **`CI-07`**, whose class-A backlog shrinks as `CI-10` ports pairs.
 
 ---

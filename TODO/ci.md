@@ -2313,13 +2313,37 @@ is the rule being narrower than the class it is about:
 | where | verdict |
 | --- | --- |
 | `scripts/doctor/provision.sh` fetched every pinned tool with no limit | ⭐ bounded in the same change; out of `check-adapters`' scope because a stall there costs a session's start in front of somebody rather than a dispatch |
-| `scripts/common/mine-repo.sh` and its `.ps1` twin clone with no bound | ⛔ **NOT fixed, and the attempt was reverted** |
+| `scripts/common/mine-repo.sh` and its `.ps1` twin clone with no bound | ⭐ **fixed 2026-09-17**, and not with a wrapper; see below |
 
-⚠ **The revert is the finding.** `timeout` is not a bound on Windows -
+⚠ **The revert was the finding.** `timeout` is not a bound on Windows -
 `timeout.exe` is a PAUSE - so a `.ps1` wrapped that way would sleep for ten
-minutes and then clone. The two halves need two idioms, `check-twins` compares
-that pair, and doing it during a wrap-up would have shipped a Windows defect to
-avoid leaving a residual. It is its own unit.
+minutes and then clone. The two halves would have needed two idioms,
+`check-twins` compares that pair, and doing it during a wrap-up would have
+shipped a Windows defect to avoid leaving a residual.
+
+#### ⭐ AND IT IS FIXED, 2026-09-17, BY NOT USING A WRAPPER AT ALL
+
+⛔ **THE PREMISE OF THE REVERT WAS THAT A BOUND MEANS A WRAPPER, AND IT DOES
+NOT.** `git -c http.lowSpeedLimit -c http.lowSpeedTime` is git's own limit on a
+transfer that has stopped moving - the same idea `curl --speed-limit
+--speed-time` gives the adapters - and it is spelled identically on every
+platform git runs on. ⭐ So the two halves carry ONE idiom, not two, and
+`check-twins` has no difference to compare. ⚠ The numbers are this project's own
+`1024` and `60` rather than new ones.
+
+⭐ **Driven on 2026-09-17 against a listener that accepts a connection and never
+answers**, which is the failure that waits forever:
+
+| what | exit | elapsed |
+| --- | ---: | ---: |
+| the shipped settings, read out of the two files | 128 | **60s**, git abandoned it |
+| the control: the same clone with the settings removed | 124 | **still waiting at 25s** |
+
+⚠ **The settings were extracted from the shipped files rather than retyped**, and
+compared between the halves: both carry `http.lowSpeedLimit=1024 -c
+http.lowSpeedTime=60`, character for character. ⛔ `--selftest` is offline and
+does not reach the clone, so `check-twins` cannot see this pair agree about it -
+which is why the comparison is a driven measurement here rather than a claim.
 
 ⚠ **IT IS LOCATED RATHER THAN CONFIRMED, AND THE DIFFERENCE MATTERS HERE.** No
 run since carries the fix. What was measured from this host is that the vendor's

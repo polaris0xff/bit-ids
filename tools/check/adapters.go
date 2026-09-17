@@ -47,11 +47,16 @@
 //   - `scripts/doctor/provision.sh` fetched every pinned tool with no limit.
 //     ⭐ Fixed in the same change. It is out of SCOPE here because a stall there
 //     costs a session's start in front of somebody rather than a whole dispatch.
-//   - `scripts/common/mine-repo.sh` and its `.ps1` twin clone with no bound.
-//     ⛔ NOT fixed, and deliberately: `timeout` does not exist as a bound on
-//     Windows - `timeout.exe` is a PAUSE - so the two halves need two idioms,
-//     and `check-twins` compares that pair. Bounding it is its own unit and
-//     `TODO/ci.md` carries it under `CI-08`.
+//   - `scripts/common/mine-repo.sh` and its `.ps1` twin cloned with no bound.
+//     ⭐ FIXED on 2026-09-17, and the answer was not a wrapper. That pair was
+//     left unfixed because `timeout.exe` on Windows is a PAUSE, so a wrapped
+//     `.ps1` would sleep for the bound and then clone - which meant two idioms
+//     and a difference for `check-twins` to compare. ⭐ `git -c
+//     http.lowSpeedLimit -c http.lowSpeedTime` is git's OWN bound, spelled
+//     identically on every platform, so the pair needs no second idiom at all.
+//     ⚠ Still out of SCOPE here, for the reason above it: a stall there costs a
+//     session's reference mining rather than a dispatch, and this rule's
+//     expressions are shell-shaped where that pair is half PowerShell.
 //
 // ⚠ So this rule covers the capture install path and says so, rather than
 // claiming a reach it does not have. A rule that named the whole tree and

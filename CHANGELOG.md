@@ -5,6 +5,27 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-17T06:19:59Z
+
+- ⭐ **`mine-repo`'s clone is bounded, in both halves, with ONE idiom.** The
+  recorded blocker was that `timeout.exe` on Windows is a PAUSE, so a wrapper
+  would have made the two halves need two idioms and given `check-twins` a
+  difference to compare. ⛔ **That premise was the defect**: a bound does not
+  have to be a wrapper. `git -c http.lowSpeedLimit -c http.lowSpeedTime` is
+  git's own limit on a transfer that has stopped moving, spelled identically on
+  every platform it runs on.
+- ⭐ **Driven against a listener that accepts a connection and never answers.**
+  The shipped settings, read out of the two files rather than retyped, abandoned
+  the clone at **60 seconds**, exit 128; the same clone with them removed was
+  **still waiting at 25 seconds**. Both halves carry
+  `http.lowSpeedLimit=1024 -c http.lowSpeedTime=60`, character for character -
+  the same numbers the adapters and `install-rootless.sh` already bound a stalled
+  `curl` with.
+- ⚠ **`--selftest` is offline and does not reach the clone**, so `check-twins`
+  cannot see this pair agree about it. The comparison is a driven measurement
+  rather than a standing check, and `TODO/ci.md` says so.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-08`. No version bump and no deploy.
+
 ### 2026-09-17T05:55:24Z
 
 - ⛔ **THE HANG IS NOT PRIVILEGE, MEASURED.** `capture-client` run 32 on
@@ -235,7 +256,9 @@ Nothing is released yet. Entries accumulate here until the first
 - ⛔ **The door sweep found the same defect one directory away, twice.**
   `provision.sh` is bounded in the same change; `mine-repo`'s pair is NOT, and
   the attempt was reverted: `timeout` is a PAUSE on Windows, so its two halves
-  need two idioms.
+  need two idioms. ⭐ **Superseded 2026-09-17**: they need none. Git's own
+  `http.lowSpeedLimit` and `http.lowSpeedTime` are one spelling on every
+  platform, and the premise that a bound means a wrapper was what was wrong.
 - ⛔ **AND THE LOCATED CAUSE WAS REFUTED BY THE NEXT RUN.** Run 23 carries
   `--max-time 300` on that fetch and its release install ran past twelve
   minutes, so the step is not waiting there. The bound is kept on its own terms

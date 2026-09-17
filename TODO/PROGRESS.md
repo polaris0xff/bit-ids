@@ -467,9 +467,11 @@ nothing is. The clone question under *Settled decisions* is spent too.
    `SCHEMA-04`'s field - `sampling::classify` computes a `Lifetime` per span and
    `field_state` DISCARDS it, so no record can say whether a tail is
    per-connection or per-session.
-4. **`mine-repo`'s unbounded clone, in both halves.** ⛔ `timeout` is a PAUSE on
-   Windows, so the two halves need two idioms and `check-twins` compares the
-   pair. It is its own unit for that reason.
+4. ⭐ **`mine-repo`'s clone is bounded, 2026-09-17, in both halves and with ONE
+   idiom.** The recorded blocker was that `timeout` is a PAUSE on Windows, so a
+   wrapper would need two idioms; git's own `http.lowSpeedLimit` and
+   `http.lowSpeedTime` need none. [`ci.md`](ci.md) under `CI-08` carries the
+   driven pass.
 5. **`OBS-10`**, which needs a second platform, so it follows the captures.
 6. **`CI-07`**, whose class-A backlog shrinks as `CI-10` ports pairs.
 7. **`CI-04`**, provenance and supply-chain hardening, once a release exists to
