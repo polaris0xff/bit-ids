@@ -8,42 +8,50 @@
       {
         "name": "qbittorrent-5.3.0beta1_lt12_x86_64.AppImage",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.3.0beta1/qbittorrent-5.3.0beta1_lt12_x86_64.AppImage",
-        "size": 108259832
+        "size": 108259832,
+        "digest": "sha256:f05a627949791ded2b88a70d081b54a83fe0c79c7e9d2522ad90f44da92e0fce"
       },
       {
         "name": "qbittorrent-5.3.0beta1_lt12_x86_64.AppImage.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.3.0beta1/qbittorrent-5.3.0beta1_lt12_x86_64.AppImage.asc",
-        "size": 887
+        "size": 887,
+        "digest": "sha256:8f0183eeb89ea621b5897fcd8e33444fa7004c525324a6ec5a86e0bc7331bcc8"
       },
       {
         "name": "qbittorrent-5.3.0beta1_x86_64.AppImage",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.3.0beta1/qbittorrent-5.3.0beta1_x86_64.AppImage",
-        "size": 109812216
+        "size": 109812216,
+        "digest": "sha256:43a33fcbd525c7cbc6585afac898998c443e97a1499ab22724e7785540bb3dd1"
       },
       {
         "name": "qbittorrent-5.3.0beta1_x86_64.AppImage.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.3.0beta1/qbittorrent-5.3.0beta1_x86_64.AppImage.asc",
-        "size": 887
+        "size": 887,
+        "digest": "sha256:77ec59d56aae6bd5d9314ecf93ed50bd90bb4eb44eb775c48c2e1d7ad902cd9c"
       },
       {
         "name": "qbittorrent_5.3.0beta1_lt12_x64_setup.exe",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.3.0beta1/qbittorrent_5.3.0beta1_lt12_x64_setup.exe",
-        "size": 43403664
+        "size": 43403664,
+        "digest": "sha256:2ad45991f46f6b027adf52df9c63f1dd3a1688014078908c90426312eaf29f77"
       },
       {
         "name": "qbittorrent_5.3.0beta1_lt12_x64_setup.exe.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.3.0beta1/qbittorrent_5.3.0beta1_lt12_x64_setup.exe.asc",
-        "size": 887
+        "size": 887,
+        "digest": "sha256:9a8c15e1a65c19060d0441bdb617a34e8cea004da732524a54622a3fd51d305d"
       },
       {
         "name": "qbittorrent_5.3.0beta1_x64_setup.exe",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.3.0beta1/qbittorrent_5.3.0beta1_x64_setup.exe",
-        "size": 45846344
+        "size": 45846344,
+        "digest": "sha256:9420c03544a90c28a3373f0705d5c91d4d2a599f045ee02e54e7b08847b4f1b7"
       },
       {
         "name": "qbittorrent_5.3.0beta1_x64_setup.exe.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.3.0beta1/qbittorrent_5.3.0beta1_x64_setup.exe.asc",
-        "size": 887
+        "size": 887,
+        "digest": "sha256:b1c52e6e440c167df9b28e5ef5a7dbb50a8068922931ffbe4cb62ec36f758fe5"
       }
     ]
   },
@@ -56,72 +64,86 @@
       {
         "name": "qbittorrent-5.2.3.dmg",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.3/qbittorrent-5.2.3.dmg",
-        "size": 48317381
+        "size": 48317381,
+        "digest": "sha256:9e37f6c7ff848c7bdd3c10167614c0cb78c00e2ddcc323f1ad3ac6c008a0481f"
       },
       {
         "name": "qbittorrent-5.2.3.dmg.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.3/qbittorrent-5.2.3.dmg.asc",
-        "size": 887
+        "size": 887,
+        "digest": "sha256:f36deba8dfc087a6148b0e27aad32361d9269b8c9d8d3d6e7c6ccfad5115916c"
       },
       {
         "name": "qbittorrent-5.2.3.tar.xz",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.3/qbittorrent-5.2.3.tar.xz",
-        "size": 5305896
+        "size": 5305896,
+        "digest": "sha256:7573621859da7287ba708378ea9f5eb12f30962a1a7c28eba5f44ecf8c4c114c"
       },
       {
         "name": "qbittorrent-5.2.3.tar.xz.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.3/qbittorrent-5.2.3.tar.xz.asc",
-        "size": 887
+        "size": 887,
+        "digest": "sha256:473cce7003f17647602897ab7ef197b4607708945e3e611e51f10b104f7c6172"
       },
       {
         "name": "qbittorrent-5.2.3_lt20.dmg",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.3/qbittorrent-5.2.3_lt20.dmg",
-        "size": 49285730
+        "size": 49285730,
+        "digest": "sha256:4dde4f357cf8d7271f7e25140d2986d076126566edf2d2ad441cdd382b2a333d"
       },
       {
         "name": "qbittorrent-5.2.3_lt20.dmg.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.3/qbittorrent-5.2.3_lt20.dmg.asc",
-        "size": 887
+        "size": 887,
+        "digest": "sha256:63f4eca08b342e10420c95a8ee47b7379877c017991ab256cd29302f983a13a7"
       },
       {
         "name": "qbittorrent-5.2.3_lt20_x86_64.AppImage",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.3/qbittorrent-5.2.3_lt20_x86_64.AppImage",
-        "size": 101444088
+        "size": 101444088,
+        "digest": "sha256:71b3a861753674d941e517feff72ed47d1a0e5c01a0a39e9c3d7f7ccc3f80c63"
       },
       {
         "name": "qbittorrent-5.2.3_lt20_x86_64.AppImage.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.3/qbittorrent-5.2.3_lt20_x86_64.AppImage.asc",
-        "size": 887
+        "size": 887,
+        "digest": "sha256:f3817523dc5fd8bdc329ece673f974afb9abc0fd10ef30104af6787285663176"
       },
       {
         "name": "qbittorrent-5.2.3_x86_64.AppImage",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.3/qbittorrent-5.2.3_x86_64.AppImage",
-        "size": 101222904
+        "size": 101222904,
+        "digest": "sha256:c1467a713929323aaf253e021449992ac299a6c830a933643b023007d8641ed0"
       },
       {
         "name": "qbittorrent-5.2.3_x86_64.AppImage.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.3/qbittorrent-5.2.3_x86_64.AppImage.asc",
-        "size": 887
+        "size": 887,
+        "digest": "sha256:9d2974473788250ab1df3142b0d45f2358bf54ce650680052991d8040eb7b01e"
       },
       {
         "name": "qbittorrent_5.2.3_lt20_x64_setup.exe",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.3/qbittorrent_5.2.3_lt20_x64_setup.exe",
-        "size": 45733762
+        "size": 45733762,
+        "digest": "sha256:b7e925cbb26581b9f2bfbcb469e899020917e01fb2f3982ec969c5a551befeec"
       },
       {
         "name": "qbittorrent_5.2.3_lt20_x64_setup.exe.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.3/qbittorrent_5.2.3_lt20_x64_setup.exe.asc",
-        "size": 887
+        "size": 887,
+        "digest": "sha256:689b63c40c4bbbb6531f12f709831229d647a830c9dc4c1fa3c377e835e7f5b7"
       },
       {
         "name": "qbittorrent_5.2.3_x64_setup.exe",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.3/qbittorrent_5.2.3_x64_setup.exe",
-        "size": 43100219
+        "size": 43100219,
+        "digest": "sha256:ff508e2f912d59c9eabaf03633ebacfd45c2049f38dcac027b8a7d7ad867ab2f"
       },
       {
         "name": "qbittorrent_5.2.3_x64_setup.exe.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.3/qbittorrent_5.2.3_x64_setup.exe.asc",
-        "size": 887
+        "size": 887,
+        "digest": "sha256:898504d7511e81f32c598bef06ec70dd3e832feb3c03b430fcba576b1f601c8b"
       }
     ]
   },
@@ -134,72 +156,86 @@
       {
         "name": "qbittorrent-5.2.2.dmg",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.2/qbittorrent-5.2.2.dmg",
-        "size": 48314684
+        "size": 48314684,
+        "digest": "sha256:4d6eec9ffd932cd64d35d3fa3df85932bf397457461a69cebcde6d5b737ae5e4"
       },
       {
         "name": "qbittorrent-5.2.2.dmg.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.2/qbittorrent-5.2.2.dmg.asc",
-        "size": 849
+        "size": 849,
+        "digest": "sha256:c5684bee67114305311309189b5fa951c023cbdc1e58bbc9a13ea5d940093b66"
       },
       {
         "name": "qbittorrent-5.2.2.tar.xz",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.2/qbittorrent-5.2.2.tar.xz",
-        "size": 5304376
+        "size": 5304376,
+        "digest": "sha256:f0e8af3e400e4091d334e8f9d62c64c97c37fb50c9bc1c086c783e692c3f38de"
       },
       {
         "name": "qbittorrent-5.2.2.tar.xz.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.2/qbittorrent-5.2.2.tar.xz.asc",
-        "size": 849
+        "size": 849,
+        "digest": "sha256:9754ac6de88d37bab8de3a4ec9856afc69b6f67a7af3a617bc207bac49d11685"
       },
       {
         "name": "qbittorrent-5.2.2_lt20.dmg",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.2/qbittorrent-5.2.2_lt20.dmg",
-        "size": 49284303
+        "size": 49284303,
+        "digest": "sha256:ab72fb3920963b0a5c16d09bf104a30993de366cad9e33f96cf4c18dfd6c7ed0"
       },
       {
         "name": "qbittorrent-5.2.2_lt20.dmg.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.2/qbittorrent-5.2.2_lt20.dmg.asc",
-        "size": 849
+        "size": 849,
+        "digest": "sha256:e5c2a0b9abc898815604559b774568c44e2b2e686e21189f012ddb7b298b2b71"
       },
       {
         "name": "qbittorrent-5.2.2_lt20_x86_64.AppImage",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.2/qbittorrent-5.2.2_lt20_x86_64.AppImage",
-        "size": 101419512
+        "size": 101419512,
+        "digest": "sha256:ef7849df284cc3724bc636180d45f48d3c47b85cb841d83d0f0b87bcd4df7655"
       },
       {
         "name": "qbittorrent-5.2.2_lt20_x86_64.AppImage.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.2/qbittorrent-5.2.2_lt20_x86_64.AppImage.asc",
-        "size": 849
+        "size": 849,
+        "digest": "sha256:392de5f3c212b9b403ffdc56e5100ad8cd2606f04e3ab95e70f59a4bb25e6213"
       },
       {
         "name": "qbittorrent-5.2.2_x86_64.AppImage",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.2/qbittorrent-5.2.2_x86_64.AppImage",
-        "size": 101227000
+        "size": 101227000,
+        "digest": "sha256:8da9abadcb9285a86f0a15c4fbd425b25bb8924d669662ab4b816dfda0fb053d"
       },
       {
         "name": "qbittorrent-5.2.2_x86_64.AppImage.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.2/qbittorrent-5.2.2_x86_64.AppImage.asc",
-        "size": 849
+        "size": 849,
+        "digest": "sha256:c77c799d665cb208c9c163450d00d4f595295b5253143ed6f16a8951f556355e"
       },
       {
         "name": "qbittorrent_5.2.2_lt20_x64_setup.exe",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.2/qbittorrent_5.2.2_lt20_x64_setup.exe",
-        "size": 45738803
+        "size": 45738803,
+        "digest": "sha256:99e0168207514f2a0afe91262229e8348f511b5be50bd27e06601781f11c1e26"
       },
       {
         "name": "qbittorrent_5.2.2_lt20_x64_setup.exe.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.2/qbittorrent_5.2.2_lt20_x64_setup.exe.asc",
-        "size": 849
+        "size": 849,
+        "digest": "sha256:c0711ec9ac7dd67a066b38da4a03b45879859cb0f5f9951d4026f7b637bd4bf7"
       },
       {
         "name": "qbittorrent_5.2.2_x64_setup.exe",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.2/qbittorrent_5.2.2_x64_setup.exe",
-        "size": 43105617
+        "size": 43105617,
+        "digest": "sha256:219de2b0133bf8408f40450a389c227f8d1c2bb520d6d10d1833bc528ca2cd10"
       },
       {
         "name": "qbittorrent_5.2.2_x64_setup.exe.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.2/qbittorrent_5.2.2_x64_setup.exe.asc",
-        "size": 849
+        "size": 849,
+        "digest": "sha256:e7b5d70d849e5e0c5193d7912f5c6ee4fd096f7c403ac91905b3a5c768832c71"
       }
     ]
   },
@@ -212,72 +248,86 @@
       {
         "name": "qbittorrent-5.2.1.dmg",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.1/qbittorrent-5.2.1.dmg",
-        "size": 48259239
+        "size": 48259239,
+        "digest": "sha256:168ec82f892a9c558d1c2dfcc265524adafa4c6d8ec388db3122aaddbe03cb4f"
       },
       {
         "name": "qbittorrent-5.2.1.dmg.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.1/qbittorrent-5.2.1.dmg.asc",
-        "size": 849
+        "size": 849,
+        "digest": "sha256:b9f9e6c119c92aeb0f1ef680d5690b7ac3041f600ab7ce4089d20e8879434305"
       },
       {
         "name": "qbittorrent-5.2.1.tar.xz",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.1/qbittorrent-5.2.1.tar.xz",
-        "size": 5296412
+        "size": 5296412,
+        "digest": "sha256:becd0878802d4bc977381a41d8496d73ef64d543ba576be5f65fd3ad988ee8fe"
       },
       {
         "name": "qbittorrent-5.2.1.tar.xz.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.1/qbittorrent-5.2.1.tar.xz.asc",
-        "size": 849
+        "size": 849,
+        "digest": "sha256:206166e361c4f131c7b1053aaf5027bda1b69cb1153a960cf6d0e7e0862784cb"
       },
       {
         "name": "qbittorrent-5.2.1_lt20.dmg",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.1/qbittorrent-5.2.1_lt20.dmg",
-        "size": 49209532
+        "size": 49209532,
+        "digest": "sha256:3fe09a467edb12b58f8fb4c10f1cc343c57a5f03e87a14c803c1069f460533be"
       },
       {
         "name": "qbittorrent-5.2.1_lt20.dmg.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.1/qbittorrent-5.2.1_lt20.dmg.asc",
-        "size": 849
+        "size": 849,
+        "digest": "sha256:038fe695c939e7f3d2a729b3f90d47844bbbce973c2406a0d97035ea97c7367b"
       },
       {
         "name": "qbittorrent-5.2.1_lt20_x86_64.AppImage",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.1/qbittorrent-5.2.1_lt20_x86_64.AppImage",
-        "size": 101308920
+        "size": 101308920,
+        "digest": "sha256:455e27af8700746a9b20a0935d2f5306894b835000f88e0e1c85dac257a4e9bb"
       },
       {
         "name": "qbittorrent-5.2.1_lt20_x86_64.AppImage.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.1/qbittorrent-5.2.1_lt20_x86_64.AppImage.asc",
-        "size": 849
+        "size": 849,
+        "digest": "sha256:bb23b35b877c61433c6dbb2bd4c9e1687adf1c9d397809f939e83f6e64a56bec"
       },
       {
         "name": "qbittorrent-5.2.1_x86_64.AppImage",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.1/qbittorrent-5.2.1_x86_64.AppImage",
-        "size": 101161464
+        "size": 101161464,
+        "digest": "sha256:b5b1de67dee9326c52245082c7e740d67cfe05634a9043c3b9f54a14cea9dfa2"
       },
       {
         "name": "qbittorrent-5.2.1_x86_64.AppImage.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.1/qbittorrent-5.2.1_x86_64.AppImage.asc",
-        "size": 849
+        "size": 849,
+        "digest": "sha256:1d17df1391abfa64ec8c2e12f1e5194e7e08313b88930e2ca7ec960de6ac9dd6"
       },
       {
         "name": "qbittorrent_5.2.1_lt20_x64_setup.exe",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.1/qbittorrent_5.2.1_lt20_x64_setup.exe",
-        "size": 45377708
+        "size": 45377708,
+        "digest": "sha256:34f55b3c291d9d37a94367e326197c8ab367c814c424d0d701e834cce08e513f"
       },
       {
         "name": "qbittorrent_5.2.1_lt20_x64_setup.exe.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.1/qbittorrent_5.2.1_lt20_x64_setup.exe.asc",
-        "size": 849
+        "size": 849,
+        "digest": "sha256:753ed5ac4d75161cd18e83a62f009613b737a93ff0ec434273d57c88202e32cc"
       },
       {
         "name": "qbittorrent_5.2.1_x64_setup.exe",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.1/qbittorrent_5.2.1_x64_setup.exe",
-        "size": 43078183
+        "size": 43078183,
+        "digest": "sha256:02a177c43c08df4db30a8f1c2e3d71d51590403eb6ba8b8b2b7d9cf00e68e18c"
       },
       {
         "name": "qbittorrent_5.2.1_x64_setup.exe.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.1/qbittorrent_5.2.1_x64_setup.exe.asc",
-        "size": 849
+        "size": 849,
+        "digest": "sha256:897b04d61a68ac2e3a9a94b3d0278fd3c4736bde911098631f65e5cb15b4e4db"
       }
     ]
   },
@@ -290,72 +340,86 @@
       {
         "name": "qbittorrent-5.2.0.dmg",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.0/qbittorrent-5.2.0.dmg",
-        "size": 48137190
+        "size": 48137190,
+        "digest": "sha256:02f38e371c833add8ac8da3e7fb33ec1f144ed1874221f42f2dc76390a72f89b"
       },
       {
         "name": "qbittorrent-5.2.0.dmg.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.0/qbittorrent-5.2.0.dmg.asc",
-        "size": 849
+        "size": 849,
+        "digest": "sha256:7111897beddbd62dd2e67c7cfef5e9eb9b24a44c36ffa97b54bdfd96840ea3cb"
       },
       {
         "name": "qbittorrent-5.2.0.tar.xz",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.0/qbittorrent-5.2.0.tar.xz",
-        "size": 5291416
+        "size": 5291416,
+        "digest": "sha256:e86e7985c0304532cd9d885d03e183a0ea625e9bdde337a3dec905d502ab9ad0"
       },
       {
         "name": "qbittorrent-5.2.0.tar.xz.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.0/qbittorrent-5.2.0.tar.xz.asc",
-        "size": 849
+        "size": 849,
+        "digest": "sha256:1ffa070cc5cf9006e23e4122c8f3c2c62e6030048996903d06c4cde6259f754f"
       },
       {
         "name": "qbittorrent-5.2.0_lt20.dmg",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.0/qbittorrent-5.2.0_lt20.dmg",
-        "size": 49096083
+        "size": 49096083,
+        "digest": "sha256:410f8441a0b830a3fc807fe8f3f949e554b02003470c167efd97e281930a3755"
       },
       {
         "name": "qbittorrent-5.2.0_lt20.dmg.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.0/qbittorrent-5.2.0_lt20.dmg.asc",
-        "size": 849
+        "size": 849,
+        "digest": "sha256:ee44bfefac3ca4ee7d923e20f45df7b5aea01c490d50568102efc0e315263143"
       },
       {
         "name": "qbittorrent-5.2.0_lt20_x86_64.AppImage",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.0/qbittorrent-5.2.0_lt20_x86_64.AppImage",
-        "size": 101214712
+        "size": 101214712,
+        "digest": "sha256:c6db8fda4f589779fa630c89ddf58868525a45e89eafd4b6532b57cc3b5794c3"
       },
       {
         "name": "qbittorrent-5.2.0_lt20_x86_64.AppImage.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.0/qbittorrent-5.2.0_lt20_x86_64.AppImage.asc",
-        "size": 849
+        "size": 849,
+        "digest": "sha256:b44660921e23ce3bc523fe9c74980d08eac175f275ddd97a7abe9e5432edb49d"
       },
       {
         "name": "qbittorrent-5.2.0_x86_64.AppImage",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.0/qbittorrent-5.2.0_x86_64.AppImage",
-        "size": 101046776
+        "size": 101046776,
+        "digest": "sha256:52f35cd49b93e9cc1497426ef74b97744a3655eb62dd22f97de36a3bb01aaddd"
       },
       {
         "name": "qbittorrent-5.2.0_x86_64.AppImage.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.0/qbittorrent-5.2.0_x86_64.AppImage.asc",
-        "size": 849
+        "size": 849,
+        "digest": "sha256:f45782162e62b0467d2e6fe5615adc4cf95c5e389a091ac6482ec66fdd00c757"
       },
       {
         "name": "qbittorrent_5.2.0_lt20_x64_setup.exe",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.0/qbittorrent_5.2.0_lt20_x64_setup.exe",
-        "size": 45633863
+        "size": 45633863,
+        "digest": "sha256:84693c1adf622195f40ec5689e68be1961cdaf32587abefd15ecbaf4877b71e5"
       },
       {
         "name": "qbittorrent_5.2.0_lt20_x64_setup.exe.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.0/qbittorrent_5.2.0_lt20_x64_setup.exe.asc",
-        "size": 849
+        "size": 849,
+        "digest": "sha256:321982ea4dff71f39170bbbd8bb0522550cad4d61e1d082c01b6b9458cc93cb0"
       },
       {
         "name": "qbittorrent_5.2.0_x64_setup.exe",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.0/qbittorrent_5.2.0_x64_setup.exe",
-        "size": 43219694
+        "size": 43219694,
+        "digest": "sha256:dfde18111e28d0d20d037056e87f00e039cbf9a7ccb561b07ea6a4138b7fb784"
       },
       {
         "name": "qbittorrent_5.2.0_x64_setup.exe.asc",
         "browser_download_url": "https://github.com/qbittorrent/qBittorrent/releases/download/release-5.2.0/qbittorrent_5.2.0_x64_setup.exe.asc",
-        "size": 849
+        "size": 849,
+        "digest": "sha256:ea26a32b74651692c2e37435d3bfbfa8523e21c8ce260669a108c2abaa77e07c"
       }
     ]
   }

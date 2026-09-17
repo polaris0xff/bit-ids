@@ -146,11 +146,18 @@ case "$COMMAND" in
     printf 'release_min_components=3\n'
     printf 'release_max_components=4\n'
     printf 'release_asset=qbittorrent-{version}_x86_64.AppImage\n'
-    # ⛔ THE DIGEST DISPOSITION, DECLARED ONCE AND READ BY THE ROUTE. Every asset
-    # of this release carries a detached `.asc` and none carries a digest, read
-    # out of the listing on 2026-09-17, so the release route identifies its
-    # artifact and does not verify it. Stating it here keeps one fact in one
-    # place; the route asks this adapter rather than repeating it.
+    # ⛔ THE DIGEST DISPOSITION, DECLARED ONCE AND READ BY THE ROUTE, AND IT IS
+    # ABOUT THE VENDOR'S OWN CHECKSUMS DOCUMENT. ⚠ That is a narrower sentence
+    # than "no digest", and the difference is measured: the release LISTING
+    # carries a per-asset digest published by the party serving the bytes, which
+    # `resolve-release.sh` resolves out of the same response and records as
+    # `source-listing`. This key says only that the VENDOR uploaded no checksums
+    # file - which is what an adapter can know by reading a release, and is what
+    # decides whether the resolver goes looking for one.
+    # ⚠ MEASURED through rule 8's route on 2026-09-17: release-5.2.3 carries
+    # fourteen assets, seven of them detached `.asc` signatures, and no checksums
+    # file - and `digest` is stated on all fourteen. So this route verifies, and
+    # it verifies against the host rather than against the vendor.
     printf 'release_digest_unpublished=this release signs each asset with a detached .asc and publishes no checksums document\n'
     ;;
 
@@ -222,18 +229,27 @@ case "$COMMAND" in
         # PASSED OVER, so the artifact is IDENTIFIED - its digest is recorded -
         # and not verified. Those are different sentences and the installer's own
         # report is where the difference is made.
-        # ⚠ THE REASON IS ASKED OF THIS ADAPTER'S OWN `describe` RATHER THAN
-        # SPELLED AGAIN: a sentence written in two places is one that disagrees
-        # with itself the day a vendor starts publishing digests.
-        _why=$(sh "$0" describe |
-          awk -F= '$1 == "release_digest_unpublished" { sub(/^[^=]*=/, ""); print; exit }')
-        [ -n "$_why" ] ||
-          cannot "this adapter declares no digest disposition for its release route"
+        # ⛔ THE DIGEST DISPOSITION IS THE RESOLUTION'S AND THE INSTALLER READS
+        # IT. `ACQ-06`. Four adapters choosing between four dispositions would be
+        # four copies of one decision, which is the one-gated-door shape
+        # `docs/methodology/reviews.md` names the most recurring hole there is.
+        # ⚠ The second branch is the standalone drive - an adapter run with a URL
+        # and no resolution - and it carries this adapter's own declaration,
+        # asked of `describe` rather than spelled a second time.
+        if [ -n "${BIT_IDS_RELEASE_RESOLUTION:-}" ]; then
+          set -- --from-resolution "$BIT_IDS_RELEASE_RESOLUTION"
+        else
+          _why=$(sh "$0" describe |
+            awk -F= '$1 == "release_digest_unpublished" { sub(/^[^=]*=/, ""); print; exit }')
+          [ -n "$_why" ] ||
+            cannot "this adapter declares no digest disposition for its release route"
+          set -- --digest-unpublished "$_why"
+        fi
         sh "$ROOTLESS" --install \
           --url "$BIT_IDS_RELEASE_URL" \
           --into "$WORKDIR/qbittorrent-nox.AppImage" \
           --as qbittorrent-nox \
-          --digest-unpublished "$_why" \
+          "$@" \
           --report "$WORKDIR/rootless-install.txt" \
           </dev/null >>"$WORKDIR/install.log" 2>&1
         _rc=$?

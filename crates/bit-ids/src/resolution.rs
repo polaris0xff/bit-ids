@@ -751,6 +751,18 @@ fn check_selection(resolution: &Resolution, out: &mut Vec<SchemaError>) {
 /// vendor reorganises its downloads the composed one goes on answering - with
 /// nothing, or with bytes that are not the release's. The size is kept beside
 /// it because it is the cheapest thing a fetch can be checked against.
+/// ⭐ **And the digest the source publishes of the bytes it serves**, where it
+/// publishes one. `ACQ-06`. It is `None` for a source that states none, which is
+/// a fact about that source rather than a missing field: measured through
+/// `AGENTS.md` rule 8's route on 2026-09-17, three of this project's four targets
+/// carry one on every asset and `aria2/aria2` carries none on any.
+///
+/// ⛔ **IT IS THE HOST'S STATEMENT, NOT THE VENDOR'S, AND THE RECORD SAYS WHICH.**
+/// The party publishing this digest is the same party serving the bytes, so it
+/// establishes that nothing changed between reading the index and fetching the
+/// artifact - and says nothing that would survive that index being wrong. A
+/// vendor's own checksums document is a different claim, and `digest_source`
+/// exists so a reader is never told one when the other is what happened.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ReleaseAsset {
     /// The file name the source published it under.
@@ -759,6 +771,8 @@ pub struct ReleaseAsset {
     pub url: Url,
     /// How many bytes the source says it is.
     pub size: u64,
+    /// What the source says the bytes digest to, where it says anything.
+    pub digest: Option<Sha256Digest>,
 }
 
 /// Why no single asset could be chosen.
@@ -972,7 +986,7 @@ pub fn select_asset<'a>(
 /// parsing somewhere with no test and no record of what arrived.
 pub mod sources {
     use super::{Candidate, ReleaseAsset};
-    use crate::canonical::{Instant, Label, Slug, Url};
+    use crate::canonical::{Instant, Label, Sha256Digest, Slug, Url};
 
     /// Reads the GitHub releases list.
     ///
@@ -1110,6 +1124,11 @@ pub mod sources {
             browser_download_url: String,
             #[serde(default)]
             size: u64,
+            // ⚠ ABSENT AND NULL ARE THE SAME ANSWER HERE, and both mean the
+            // source states no digest. An older release predating this field
+            // serves `null`; a projection that dropped it serves neither.
+            #[serde(default)]
+            digest: Option<String>,
         }
 
         let releases: Vec<Release> =
@@ -1128,10 +1147,24 @@ pub mod sources {
                     .map_err(|error| format!("asset {:?}: {error}", asset.name))?;
                 let url = Url::parse(&asset.browser_download_url)
                     .map_err(|error| format!("asset {name}: url: {error}"))?;
+                // ⛔ A DIGEST THIS PROJECT CANNOT READ IS A REFUSAL, NEVER AN
+                // ABSENCE. The day a source publishes `sha512:` or a bare hex
+                // run, treating it as "no digest" would silently downgrade a
+                // verified route to an identified one with nothing saying so -
+                // which is the failure this whole field exists to remove.
+                // ⚠ `None` and a value are different answers; a value that
+                // cannot be parsed is a third.
+                let digest = asset
+                    .digest
+                    .as_deref()
+                    .map(Sha256Digest::parse)
+                    .transpose()
+                    .map_err(|error| format!("asset {name}: digest: {error}"))?;
                 Ok(ReleaseAsset {
                     name,
                     url,
                     size: asset.size,
+                    digest,
                 })
             })
             .collect::<Result<Vec<_>, String>>()

@@ -56,6 +56,14 @@ struct Asset {
     browser_download_url: String,
     #[serde(default)]
     size: u64,
+    // ⭐ AND THE DIGEST, WHICH IS WHY A PROJECTION IS BY CONSTRUCTION EVERYTHING
+    // THE READERS READ. `ACQ-06` taught `github_release_assets` to read it, and
+    // a fixture that lacked it would make a route read `unpublished` over a
+    // source that publishes one. ⚠ `skip_serializing_if` keeps the null out of
+    // the fixture for a source that states none, which is the shape
+    // `aria2/aria2` really serves and the shape the reader must handle.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    digest: Option<String>,
 }
 
 fn main() -> ExitCode {

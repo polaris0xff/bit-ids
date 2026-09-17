@@ -219,17 +219,27 @@ no package index carries it, and installing aria2 would acquire a different prod
         # `curl`, `chmod +x` and `cp` into `/usr/local/bin` itself, which is four
         # adapters each carrying its own copy of a rule and each needing `sudo`
         # to finish. `ACQ-06` carries what that privilege cost.
-        [ -n "${BIT_IDS_RELEASE_SUMS:-}" ] ||
-          cannot "the release route needs BIT_IDS_RELEASE_SUMS, the vendor's checksums document resolved beside the artifact"
-        _asset=${BIT_IDS_RELEASE_ASSET:-}
-        [ -n "$_asset" ] ||
-          cannot "the release route needs BIT_IDS_RELEASE_ASSET, the name the vendor's document uses"
+        # ⛔ THE DIGEST DISPOSITION IS THE RESOLUTION'S AND THE INSTALLER READS
+        # IT. `ACQ-06`. Four adapters choosing between four dispositions would be
+        # four copies of one decision, which is the one-gated-door shape
+        # `docs/methodology/reviews.md` names the most recurring hole there is.
+        # ⚠ The second branch is the standalone drive - an adapter run with a URL
+        # and no resolution - and it carries this adapter's own declaration,
+        # asked of `describe` rather than spelled a second time.
+        if [ -n "${BIT_IDS_RELEASE_RESOLUTION:-}" ]; then
+          set -- --from-resolution "$BIT_IDS_RELEASE_RESOLUTION"
+        else
+          _why=$(sh "$0" describe |
+            awk -F= '$1 == "release_digest_unpublished" { sub(/^[^=]*=/, ""); print; exit }')
+          [ -n "$_why" ] ||
+            cannot "this adapter declares no digest disposition for its release route"
+          set -- --digest-unpublished "$_why"
+        fi
         sh "$ROOTLESS" --install \
           --url "$BIT_IDS_RELEASE_URL" \
           --into "$WORKDIR/aria2-next" \
           --as aria2-next \
-          --sums "$BIT_IDS_RELEASE_SUMS" \
-          --sums-name "$_asset" \
+          "$@" \
           --report "$WORKDIR/rootless-install.txt" \
           </dev/null >>"$WORKDIR/install.log" 2>&1
         _rc=$?

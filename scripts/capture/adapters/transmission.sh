@@ -130,11 +130,18 @@ case "$COMMAND" in
     printf 'release_min_components=3\n'
     printf 'release_max_components=3\n'
     printf 'release_asset=transmission-{version}.tar.xz\n'
-    # ⛔ THE DIGEST DISPOSITION, DECLARED ONCE AND READ BY THE ROUTE. This
-    # release carries installers, debug archives and one source tarball, and no
-    # checksums asset, read out of the listing on 2026-09-17. ⚠ The route
-    # refuses after its fetch either way; the declaration is what stops the
-    # fetch itself being a transfer nothing identified.
+    # ⛔ THE DIGEST DISPOSITION, DECLARED ONCE AND READ BY THE ROUTE, AND IT IS
+    # ABOUT THE VENDOR'S OWN CHECKSUMS DOCUMENT. ⚠ That is a narrower sentence
+    # than "no digest", and the difference is measured: the release LISTING
+    # carries a per-asset digest published by the party serving the bytes, which
+    # `resolve-release.sh` resolves out of the same response and records as
+    # `source-listing`. This key says only that the VENDOR uploaded no checksums
+    # file - which is what an adapter can know by reading a release, and is what
+    # decides whether the resolver goes looking for one.
+    # ⚠ MEASURED through rule 8's route on 2026-09-17: 4.1.3 carries installers,
+    # debug archives and one source tarball, no checksums file, and `digest` on
+    # all eleven. ⚠ The route refuses after its fetch either way; the declaration
+    # is what stops the fetch itself being a transfer nothing identified.
     printf 'release_digest_unpublished=this release publishes installers and a source tarball and no checksums asset\n'
     ;;
 
@@ -208,17 +215,26 @@ case "$COMMAND" in
         # it needs no privilege, so this route reaches its refusal on a host
         # where nothing can be installed to `/usr/local` at all.
         #
-        # ⚠ THE REASON IS ASKED OF THIS ADAPTER'S OWN `describe` RATHER THAN
-        # SPELLED AGAIN: a sentence written in two places is one that disagrees
-        # with itself the day a vendor starts publishing digests.
-        _why=$(sh "$0" describe |
-          awk -F= '$1 == "release_digest_unpublished" { sub(/^[^=]*=/, ""); print; exit }')
-        [ -n "$_why" ] ||
-          cannot "this adapter declares no digest disposition for its release route"
+        # ⛔ THE DIGEST DISPOSITION IS THE RESOLUTION'S AND THE INSTALLER READS
+        # IT. `ACQ-06`. Four adapters choosing between four dispositions would be
+        # four copies of one decision, which is the one-gated-door shape
+        # `docs/methodology/reviews.md` names the most recurring hole there is.
+        # ⚠ The second branch is the standalone drive - an adapter run with a URL
+        # and no resolution - and it carries this adapter's own declaration,
+        # asked of `describe` rather than spelled a second time.
+        if [ -n "${BIT_IDS_RELEASE_RESOLUTION:-}" ]; then
+          set -- --from-resolution "$BIT_IDS_RELEASE_RESOLUTION"
+        else
+          _why=$(sh "$0" describe |
+            awk -F= '$1 == "release_digest_unpublished" { sub(/^[^=]*=/, ""); print; exit }')
+          [ -n "$_why" ] ||
+            cannot "this adapter declares no digest disposition for its release route"
+          set -- --digest-unpublished "$_why"
+        fi
         sh "$ROOTLESS" --fetch \
           --url "$BIT_IDS_RELEASE_URL" \
           --into "$WORKDIR/transmission-release" \
-          --digest-unpublished "$_why" \
+          "$@" \
           --report "$WORKDIR/rootless-install.txt" \
           </dev/null >>"$WORKDIR/install.log" 2>&1
         _rc=$?

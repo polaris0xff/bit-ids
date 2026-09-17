@@ -269,6 +269,12 @@ TAG=$(selected tag)
 ASSET=$(selected asset)
 ASSET_URL=$(selected url)
 SIZE=$(selected size)
+# ⭐ WHAT THE SOURCE SAYS THE BYTES DIGEST TO, out of the SAME response that
+# chose the version and the artifact. `ACQ-06`. ⚠ Empty means the source stated
+# none, which is a fact about that source: measured through `AGENTS.md` rule 8's
+# route on 2026-09-17, three of this project's four targets carry one on every
+# asset and `aria2/aria2` carries none on any of its six.
+ASSET_SHA256=$(selected digest)
 [ -n "$ASSET_URL" ] || cannot "select-asset printed no url"
 
 # -- the vendor's digest, out of the same response -----------------------------
@@ -368,6 +374,31 @@ if [ -n "$DIGEST_PATTERN" ]; then
     refuse "$DIGEST_ASSET does not name $ASSET, so it cannot verify the artifact this route installs"
 fi
 
+# -- which of the four dispositions this resolution reached --------------------
+#
+# ⛔ TWO INDEPENDENT STATEMENTS ABOUT ONE ARTIFACT ARE NOT ONE. The vendor's
+# checksums document is authored by the vendor; the listing's per-asset digest is
+# authored by the party SERVING the bytes. They answer different questions - what
+# the vendor meant to publish, and whether anything changed between reading the
+# index and fetching - so a record naming only the stronger would tell a reader
+# less than happened. ⭐ `both` is its own value for that reason.
+if [ -n "$DIGEST_DOC" ] && [ -n "$ASSET_SHA256" ]; then
+  DIGEST_SOURCE=both
+elif [ -n "$DIGEST_DOC" ]; then
+  DIGEST_SOURCE=vendor-document
+elif [ -n "$ASSET_SHA256" ]; then
+  DIGEST_SOURCE=source-listing
+else
+  DIGEST_SOURCE=unpublished
+fi
+
+# ⛔ AND AN ADAPTER THAT DECLARED NO DOCUMENT WHILE THE SOURCE PUBLISHES A DIGEST
+# IS NOT A CONTRADICTION. `release_digest_unpublished` is about the VENDOR's
+# checksums file, which is what an adapter can know by reading a release; the
+# listing digest is the host's and appears without the vendor doing anything.
+# ⚠ Stated here because the two sound like the same sentence and are not: of the
+# four targets, three declare no document and two of those still verify.
+
 FINISHED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
 # ⚠ Key=value, the shape install-client's own record uses. ⛔ It carries the
@@ -391,7 +422,8 @@ if [ -n "$RECORD" ]; then
     # taking an absent `digest_asset` for "the vendor publishes none" would be
     # reading a truncated record as a measurement, which is why every field here
     # is printed on every path and `digest_source` is never empty.
-    printf 'digest_source=%s\n' "$([ -n "$DIGEST_PATTERN" ] && printf vendor-document || printf unpublished)"
+    printf 'digest_source=%s\n' "$DIGEST_SOURCE"
+    printf 'asset_sha256=%s\n' "$ASSET_SHA256"
     printf 'digest_asset=%s\n' "$DIGEST_ASSET"
     printf 'digest_asset_url=%s\n' "$DIGEST_URL"
     printf 'digest_document=%s\n' "$DIGEST_DOC"

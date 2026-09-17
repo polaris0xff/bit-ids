@@ -851,6 +851,46 @@ the recorded `listing_sha256` covers all three decisions. ⚠ `--checksums` is
 vendor URLs, so a digest resolved from one would reach the network out of a
 harness written not to.
 
+#### ⛔ AND THE CLAIM AUDIT FOUND THE FIRST VERSION SAYING LESS THAN IT COULD
+
+⚠ **Three of the four adapters declared `release_digest_unpublished` and the
+source was publishing a digest the whole time.** The declarations were literally
+true - those vendors upload no checksums FILE - and the sentence they produced,
+*this artifact could not be verified*, was not: a release listing carries a
+per-asset `digest`, and it was sitting in the very response the resolver already
+holds. ⛔ Found by re-reading the adapters' own comments against the LIVE
+listings rather than against the fixtures they were written from, which is what
+lens 3 is for.
+
+⭐ **Measured through `AGENTS.md` rule 8's route on 2026-09-17**, the four
+targets:
+
+| target | vendor checksums document | listing `digest` | reaches |
+| --- | --- | --- | --- |
+| `aria2-next` | ⭐ yes | ⭐ on all 8 assets | `both` |
+| `qbittorrent` | ⛔ no, 7 detached `.asc` | ⭐ on all 14 | `source-listing` |
+| `transmission` | ⛔ no | ⭐ on all 11 | `source-listing` |
+| `aria2` | ⛔ no | ⛔ `null` on all 6 | `unpublished` |
+
+⛔ **A HOST IS NOT A VENDOR, AND THE RECORD SAYS WHICH ANSWERED.** The party
+publishing a listing digest is the party serving the bytes, so it establishes
+that nothing changed between reading the index and fetching the artifact and
+says nothing that would survive that index being wrong. A vendor's uploaded
+document is a different claim. ⭐ `both` is its own value because two parties
+describing one artifact is a stronger sentence than either, and a record naming
+only the stronger would tell a reader less than happened.
+
+⭐ **`--from-resolution` is what keeps four adapters out of the decision.** The
+installer reads the resolution record itself; four adapters choosing between
+four dispositions would have been four copies of one decision, which is the
+one-gated-door shape this project records most often. ⚠ It also deleted the two
+environment variables the first version passed.
+
+⚠ **The fixture contract paid for itself here.** `listings/README.md` says a
+projection is by construction everything the readers read, and it was: teaching
+the reader the field and re-recording at the SAME tags was the whole repair, and
+not one asset name under test moved.
+
 #### ⭐ The claim guard moved with it
 
 `assert-disposable.sh`'s state directory is `$HOME/.local/state/bit-ids`.
@@ -868,12 +908,13 @@ host and `docs/capture-host.md` carries it.
 
 | what | measured |
 | --- | --- |
-| `BIT_IDS_ROOTLESS_USER=runnerlike sh scripts/acquisition/check-rootless.sh` | **21 cases, 21 passed, 0 failed**, driven as uid **1001** |
-| the same harness as `root` | 21 passed - and its own last row says that run establishes nothing about an unprivileged user |
-| `sh scripts/acquisition/check-release-route.sh` | 33 cases, 33 passed, 0 failed, with nine new digest cases |
+| `BIT_IDS_ROOTLESS_USER=runnerlike sh scripts/acquisition/check-rootless.sh` | **26 cases, 26 passed, 0 failed**, driven as uid **1001**, all four dispositions reached through the real path |
+| the same harness as `root` | green - and its own last row says that run establishes nothing about an unprivileged user |
+| `sh scripts/acquisition/check-release-route.sh` | 35 cases, 35 passed, 0 failed, with eleven digest cases |
 | `sh scripts/common/check-bitcheck.sh` | 94 cases, 94 passed, 0 failed |
-| driven pass, the real step body | `install-step.sh` run end to end as uid 1001 against a `file://` vendor: **exit 0 in 5 seconds**, a complete install record, `acquired=yes`, and the build in a prefix that user owns |
+| driven pass, the real step body | `install-step.sh` run end to end as uid 1001 against a `file://` vendor: **exit 0 in 5 seconds**, a complete install record, `acquired=yes`, `digest_source=both`, and the build in a prefix that user owns |
 | guard mutation, the installer | 10 plants, 10 on the intended verdict, plus an acceptance control that still installs |
+| guard mutation, the resolution reader | 7 plants, 7 on the intended verdict, plus two acceptance controls including a digest and a document together |
 
 ⭐ **THE PROVE'S SECOND HALF IS THE ONE THAT NEEDED AN INSTRUMENT.** "With `sudo`
 absent from `PATH` entirely" cannot be done by removing PATH entries: `sudo` is

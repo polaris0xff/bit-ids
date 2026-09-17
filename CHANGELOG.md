@@ -5,6 +5,27 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-17T04:49:43Z
+
+- ⭐ **THE RELEASE LISTING PUBLISHES A DIGEST AND THIS PROJECT WAS NOT READING
+  IT.** Three of four adapters declared that no digest existed while one sat in
+  the very response the resolver already holds. ⚠ Found by a claim audit that
+  re-read those adapters' comments against the LIVE listings rather than against
+  the fixtures they were written from.
+- ⭐ **A resolution now reaches one of FOUR dispositions** - `both`,
+  `vendor-document`, `source-listing`, `unpublished` - and two targets moved from
+  identified to verified. ⛔ **A host is not a vendor**, and the record says which
+  answered: the party publishing a listing digest is the party serving the bytes.
+- ⭐ **`install-rootless.sh --from-resolution` keeps four adapters out of the
+  decision.** Four adapters choosing between four dispositions would be four
+  copies of one decision, which is the one-gated-door shape.
+- ⚠ **The listing fixtures are re-recorded at the SAME tags** and gained the
+  field the reader learned to read; not one asset name under test moved.
+  `aria2`'s six assets carry no digest, which is the source's answer and the
+  shape that keeps the other branch exercised.
+- Record: [`TODO/acquisition.md`](TODO/acquisition.md), `ACQ-06`. No version bump
+  and no deploy.
+
 ### 2026-09-17T03:32:23Z
 
 - ⭐ **`ACQ-06` IS CLOSED AND WITH IT EVERY OPEN P0.** One rootless installer,

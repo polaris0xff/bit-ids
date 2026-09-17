@@ -509,3 +509,82 @@ fn resolution_refuses_a_release_it_cannot_read_rather_than_dropping_it() {
         .expect_err("fractional seconds are not this schema's instant");
     assert!(error.contains("published_at"), "{error}");
 }
+
+/// The digest a source publishes beside an asset is read, and its three states
+/// are three different answers.
+///
+/// ⛔ **A DIGEST THIS PROJECT CANNOT READ IS A REFUSAL, NEVER AN ABSENCE.** The
+/// day a source publishes `sha512:` or a bare hex run, reading it as "no digest"
+/// would silently downgrade a verified route to an identified one with nothing
+/// saying so - which is exactly what the field exists to prevent. So `None`, a
+/// value, and a value that cannot be parsed are three outcomes rather than two.
+///
+/// ⚠ Measured through `AGENTS.md` rule 8's route on 2026-09-17: three of this
+/// project's four targets carry `digest` on every asset and `aria2/aria2`
+/// carries `null` on all six of its, so both of the first two states are shapes
+/// this project really meets.
+#[test]
+fn resolution_reads_an_asset_digest_and_refuses_one_it_cannot_parse() {
+    let tag = bit_ids::canonical::Label::parse("v1.0.0").expect("tag");
+
+    let stated = br#"[{"tag_name":"v1.0.0","assets":[
+        {"name":"tool-linux","browser_download_url":"https://example.invalid/tool","size":7,
+         "digest":"sha256:0000000000000000000000000000000000000000000000000000000000000001"}]}]"#;
+    let assets = bit_ids::resolution::sources::github_release_assets(stated, &tag)
+        .expect("reads")
+        .expect("the tag is present");
+    let digest = assets[0].digest.expect("the source stated one");
+    assert_eq!(
+        digest.to_string(),
+        "sha256:0000000000000000000000000000000000000000000000000000000000000001"
+    );
+
+    // ⚠ Absent and null are the same answer, and both mean the source states
+    // none. An older release predating the field serves `null`.
+    for body in [
+        &br#"[{"tag_name":"v1.0.0","assets":[
+            {"name":"tool-linux","browser_download_url":"https://example.invalid/tool","size":7}]}]"#
+            [..],
+        &br#"[{"tag_name":"v1.0.0","assets":[
+            {"name":"tool-linux","browser_download_url":"https://example.invalid/tool","size":7,
+             "digest":null}]}]"#[..],
+    ] {
+        let assets = bit_ids::resolution::sources::github_release_assets(body, &tag)
+            .expect("reads")
+            .expect("the tag is present");
+        assert!(
+            assets[0].digest.is_none(),
+            "a source that states no digest is None, not a default"
+        );
+    }
+
+    // ⛔ And the third state. A bare hex run carries no algorithm, which is the
+    // form this project refuses everywhere; `sha512:` is the one a source could
+    // plausibly move to.
+    //
+    // ⚠ THE BAD VALUES ARE ASSEMBLED, NEVER WRITTEN. A harness that plants a
+    // pattern cannot spell it, AND NEITHER CAN THE COMMENT EXPLAINING WHY - both
+    // of which this test reproduced in turn. A literal 64-digit hex run here is
+    // what `check-no-secrets --public` refuses; a doubled brace, which is how a
+    // `format!` escapes one, is what `check-placeholders` refuses. The first
+    // draft turned the clean tree red in both rules, and the second draft did it
+    // again by naming the brace in this paragraph. Concatenation avoids both.
+    let bare = "0".repeat(63) + "1";
+    for bad in [
+        bare.clone(),
+        String::from("sha512:") + &bare,
+        String::from("sha256:not-hex"),
+    ] {
+        let body = String::from(
+            r#"[{"tag_name":"v1.0.0","assets":[{"name":"tool-linux",
+                 "browser_download_url":"https://example.invalid/tool","size":7,"digest":""#,
+        ) + &bad
+            + r#""}]}]"#;
+        let error = bit_ids::resolution::sources::github_release_assets(body.as_bytes(), &tag)
+            .expect_err("a digest that cannot be parsed is a finding");
+        assert!(
+            error.contains("digest"),
+            "the message names the field: {error}"
+        );
+    }
+}

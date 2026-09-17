@@ -59,6 +59,23 @@ needs cannot be missing from a fixture: the projection would not have compiled
 past it. A hand-transcribed listing would risk exactly the transcription error
 that the asset names under test are.
 
+⭐ **That property was paid out on 2026-09-17.** `ACQ-06` taught the asset reader
+to read the per-asset `digest` the source publishes, and these fixtures carried
+none - so every route resolved `unpublished` over three sources that publish one.
+Adding the field to `project-listing` and re-recording at the SAME tags was the
+whole repair, and the asset names under test did not move.
+
+⚠ **`aria2.json` states no digest and that is the source's answer, not a gap.**
+Read through `AGENTS.md` rule 8's route on 2026-09-17: all six of
+`release-1.37.0`'s assets carry `digest: null`, where the other three targets
+carry one on every asset. ⛔ So the fixtures hold both shapes, which is what lets
+`check-release-route` assert three different dispositions instead of one.
+
+⛔ **`aria2-next-unpublished.json` is deliberately NOT re-recorded**, and its
+assets state no digest for that reason. It records a vendor mid-publish - `v2.7.5`
+with zero assets - and that release has had its eight assets since. Re-recording
+it would destroy the moment it was kept for.
+
 ## What they do not establish
 
 ⚠ **Nothing about what those vendors publish today.** A fixture's bytes provably

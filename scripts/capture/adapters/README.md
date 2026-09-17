@@ -237,15 +237,42 @@ absent declaration and a doubled one.
 out of the same listing by the same call, so one retrieval answers the version,
 the artifact and the digest and the record's `listing_sha256` covers all three.
 ⚠ **`release_digest_unpublished` carries the measured REASON**, not a flag: the
-route reads it from this adapter rather than spelling it a second time, and the
-installer prints it beside the digest of what arrived. Of the four targets here,
-one publishes a checksums document and three do not - qBittorrent signs each
-asset with a detached `.asc` instead, aria2 and Transmission publish neither.
+route reads it from this adapter rather than spelling it a second time.
 
-⚠ **AN IDENTIFIED ARTIFACT IS NOT A VERIFIED ONE**, and the installer's report
-says which happened: `digest_source` is `vendor-document` where `sha256sum -c`
-read the vendor's own file, and `unpublished` where the digest was recorded and
-compared against nothing.
+⛔ **AND THIS KEY IS ABOUT THE VENDOR'S CHECKSUMS DOCUMENT, NOT ABOUT DIGESTS.**
+That is narrower than it sounds and the difference is measured. A release listing
+also carries a per-asset `digest`, published by the party SERVING the bytes, and
+`resolve-release.sh` resolves it out of the same response with no extra
+retrieval. An adapter cannot know that by reading a release and does not declare
+it; what this key decides is only whether the resolver goes looking for a
+checksums FILE.
+
+⭐ **So a resolution reaches one of four dispositions**, and the installer's
+report carries which:
+
+| `digest_source` | what was checked |
+| --- | --- |
+| `both` | the vendor's document AND the listing's digest - two parties, two statements about one artifact |
+| `vendor-document` | `sha256sum -c` over a file the vendor uploaded |
+| `source-listing` | the digest the hosting index publishes of the bytes it serves |
+| `unpublished` | neither exists; the artifact is IDENTIFIED and not verified |
+
+⚠ **Measured through `AGENTS.md` rule 8's route on 2026-09-17**, which is why
+these are four values rather than two: `aria2-next` reaches `both`; qBittorrent
+and Transmission publish no checksums file and their listings state a digest, so
+they reach `source-listing`; and `aria2`'s six assets carry `digest: null`, which
+makes it the one target that is genuinely `unpublished`.
+
+⛔ **AN IDENTIFIED ARTIFACT IS NOT A VERIFIED ONE, AND A HOST IS NOT A VENDOR.**
+`source-listing` establishes that nothing changed between reading the index and
+fetching the artifact, and says nothing that would survive that index being
+wrong: the party publishing the digest is the party serving the bytes. A record
+naming only "verified" would tell a reader more than happened.
+
+⛔ **The route does not choose between them.** It passes
+`--from-resolution <file>` and the installer reads it - four adapters choosing
+between four dispositions would be four copies of one decision, which is the
+one-gated-door shape `docs/methodology/reviews.md` names.
 
 ⛔ **They live here because this file is already the only one that knows how
 this product is installed**, and they are on `describe` rather than on a sixth

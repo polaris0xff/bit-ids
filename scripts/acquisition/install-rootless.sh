@@ -28,21 +28,37 @@
 # -- identifying the bytes ----------------------------------------------------
 #
 # ⛔ NOTHING IS MADE EXECUTABLE BEFORE ITS DIGEST IS SETTLED, and the disposition
-# is declared rather than defaulted. Exactly one of these is required, so a
+# is declared rather than defaulted. At least one of these is required, so a
 # caller that forgot to pass a digest is refused rather than served:
 #
-#   --sha256 <hex>              the vendor published this digest for this asset
+#   --sha256 <hex>              the SOURCE published this digest of the bytes it
+#                               serves. ⚠ Same party as the one serving them, so
+#                               it establishes that nothing changed between
+#                               reading the index and fetching the artifact
 #   --sums <file> --sums-name <name>
-#                               the vendor published a document; `sha256sum -c`
+#                               the VENDOR published a document; `sha256sum -c`
 #                               is the verifier and this project wrote none of it
-#   --digest-unpublished <why>  the vendor publishes no digest, and <why> is the
-#                               measured reason. The digest of what arrived is
-#                               still recorded; what changes is the claim.
+#   --digest-unpublished <why>  neither exists, and <why> is the measured reason.
+#                               The digest of what arrived is still recorded;
+#                               what changes is the claim.
+#
+# ⭐ THE FIRST TWO MAY BE GIVEN TOGETHER AND BOTH ARE THEN CHECKED, because two
+# statements about one artifact is strictly stronger than either and they come
+# from different parties. ⛔ The third may not be combined with either: a caller
+# cannot both have a digest and declare there is none.
 #
 # ⚠ THE THIRD IS NOT A WAY ROUND THE FIRST TWO. It records that the bytes were
 # identified and not verified, which is a different sentence, and a route that
-# used it where a document exists would be saying something untrue about its own
+# used it where a digest exists would be saying something untrue about its own
 # evidence.
+#
+# -- ⭐ `--from-resolution` IS HOW THE CAPTURE PATH PASSES ALL THREE -----------
+#
+# ⛔ FOUR ADAPTERS CHOOSING BETWEEN FOUR DISPOSITIONS IS FOUR COPIES OF ONE
+# DECISION, and a gate on one of several paths into the same action is the most
+# recurring hole this repository records. So the resolution record is read HERE,
+# once: `resolve-release.sh` already wrote which digest it resolved and where,
+# and every adapter passes the path instead of the flags.
 #
 # Usage:
 #   sh scripts/acquisition/install-rootless.sh --prefix
@@ -69,6 +85,7 @@ SUMS=""
 SUMS_NAME=""
 UNPUBLISHED=""
 REPORT=""
+RESOLUTION=""
 
 usage() {
   awk 'NR>1 { if (/^#/) { sub(/^# ?/, ""); print } else exit }' "$0"
@@ -129,6 +146,11 @@ while [ $# -gt 0 ]; do
       UNPUBLISHED="$2"
       shift
       ;;
+    --from-resolution)
+      [ $# -ge 2 ] || cannot "--from-resolution takes a value"
+      RESOLUTION="$2"
+      shift
+      ;;
     --report)
       [ $# -ge 2 ] || cannot "--report takes a value"
       REPORT="$2"
@@ -187,18 +209,58 @@ case "$AS" in
   *) ;;
 esac
 
-# ⛔ EXACTLY ONE DISPOSITION. Zero is a caller that forgot, which is the case
-# this refuses; two is a caller whose two answers could disagree, and choosing
-# between them here would be this file deciding which evidence counts.
+# -- the resolution, read here so four adapters do not each read it ------------
+#
+# ⛔ THE RECORD SAYS WHICH DIGEST IT RESOLVED AND WHERE, and this turns that into
+# the flags below. ⚠ A record naming a `digest_source` this file does not know is
+# could-not-run rather than an install: a vocabulary that grew on one side and
+# not the other is how a route ends up installing under a disposition nobody
+# implemented.
+if [ -n "$RESOLUTION" ]; then
+  [ -f "$RESOLUTION" ] || cannot "the resolution $RESOLUTION is not present"
+  [ -z "$SHA256$SUMS$UNPUBLISHED" ] ||
+    cannot "--from-resolution carries the disposition; do not pass one beside it"
+  _src=$(sed -n 's/^digest_source=//p' "$RESOLUTION")
+  case "$_src" in
+    vendor-document | source-listing | both)
+      if [ "$_src" != source-listing ]; then
+        SUMS=$(sed -n 's/^digest_document=//p' "$RESOLUTION")
+        SUMS_NAME=$(sed -n 's/^asset=//p' "$RESOLUTION")
+        if [ -z "$SUMS" ] || [ -z "$SUMS_NAME" ]; then
+          cannot "the resolution says $_src and names no document or asset"
+        fi
+      fi
+      if [ "$_src" != vendor-document ]; then
+        SHA256=$(sed -n 's/^asset_sha256=//p' "$RESOLUTION")
+        # ⚠ THE CANONICAL FORM CARRIES ITS ALGORITHM AND THIS FLAG TAKES THE HEX.
+        # The record spells `sha256:<hex>` because a bare digest cannot say what
+        # produced it; the prefix is stripped here rather than in the record.
+        SHA256=${SHA256#sha256:}
+        [ -n "$SHA256" ] || cannot "the resolution says $_src and names no asset_sha256"
+      fi
+      ;;
+    unpublished)
+      UNPUBLISHED=$(sed -n 's/^digest_unpublished=//p' "$RESOLUTION")
+      [ -n "$UNPUBLISHED" ] ||
+        UNPUBLISHED="the resolution records no published digest and no reason"
+      ;;
+    "") cannot "the resolution $RESOLUTION names no digest_source" ;;
+    *) cannot "the resolution names digest_source=[$_src], which this installer does not know" ;;
+  esac
+fi
+
+# ⛔ AT LEAST ONE DISPOSITION, AND `--digest-unpublished` ALONE. Zero is a caller
+# that forgot, which is the case this refuses. ⭐ A digest and a document
+# together are two statements about one artifact from two parties, and both are
+# checked. ⛔ But a caller cannot both hold a digest and declare there is none.
 DISPOSITIONS=0
 [ -z "$SHA256" ] || DISPOSITIONS=$((DISPOSITIONS + 1))
 [ -z "$SUMS" ] || DISPOSITIONS=$((DISPOSITIONS + 1))
 [ -z "$UNPUBLISHED" ] || DISPOSITIONS=$((DISPOSITIONS + 1))
-case "$DISPOSITIONS" in
-  1) : ;;
-  0) cannot "name a digest disposition: --sha256, --sums or --digest-unpublished" ;;
-  *) cannot "name ONE digest disposition; $DISPOSITIONS were given" ;;
-esac
+[ "$DISPOSITIONS" != 0 ] ||
+  cannot "name a digest disposition: --sha256, --sums or --digest-unpublished"
+[ -z "$UNPUBLISHED" ] || [ "$DISPOSITIONS" = 1 ] ||
+  cannot "--digest-unpublished says there is no digest; it cannot be given beside one"
 
 if [ -n "$SHA256" ]; then
   # ⚠ SIXTY-FOUR LOWERCASE HEX DIGITS, CHECKED AS A SHAPE. A truncated or
@@ -259,10 +321,11 @@ DIGEST_SOURCE=""
 if [ -n "$SHA256" ]; then
   if [ "$ARRIVED" != "$SHA256" ]; then
     rm -f "$INTO"
-    refuse "the artifact from $URL digests as $ARRIVED and the vendor published $SHA256"
+    refuse "the artifact from $URL digests as $ARRIVED and the source published $SHA256"
   fi
-  DIGEST_SOURCE=vendor-digest
-elif [ -n "$SUMS" ]; then
+  DIGEST_SOURCE=source-listing
+fi
+if [ -n "$SUMS" ]; then
   # ⭐ THE VERIFIER IS `sha256sum -c` OVER THE VENDOR'S OWN DOCUMENT, so neither
   # the digest nor the comparison is this project's code. ⚠ It is run in a
   # directory holding the artifact under the name that document uses, because a
@@ -286,9 +349,17 @@ elif [ -n "$SUMS" ]; then
     rm -f "$INTO"
     refuse "sha256sum -c refused $SUMS_NAME against the vendor's document (exit $VERIFY_RC)"
   fi
-  DIGEST_SOURCE=vendor-document
-else
-  # ⚠ SAID OUT LOUD, ON stderr. A route whose vendor publishes no digest has
+  # ⭐ BOTH, WHERE BOTH WERE GIVEN. Two parties stated a digest of these bytes
+  # and both were checked, which is a different and stronger sentence than
+  # either alone - so the record says so rather than naming whichever ran last.
+  if [ "$DIGEST_SOURCE" = source-listing ]; then
+    DIGEST_SOURCE=both
+  else
+    DIGEST_SOURCE=vendor-document
+  fi
+fi
+if [ -z "$DIGEST_SOURCE" ]; then
+  # ⚠ SAID OUT LOUD, ON stderr. A route whose sources publish no digest has
   # identified its bytes and not verified them, and a reader of the step log is
   # who needs to know which of the two happened.
   printf 'install-rootless: %s publishes no digest for this asset (%s); the artifact is recorded as %s and was not verified\n' \

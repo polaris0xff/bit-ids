@@ -8,42 +8,50 @@
       {
         "name": "aria2-next-2.7.4-android-arm64",
         "browser_download_url": "https://github.com/AnInsomniacy/aria2-next/releases/download/v2.7.4/aria2-next-2.7.4-android-arm64",
-        "size": 13160720
+        "size": 13160720,
+        "digest": "sha256:bdf851e17f7fb334ba29ac9dfaa62b2a029bb869ba9fdeb867bbd90639e69c76"
       },
       {
         "name": "aria2-next-2.7.4-checksums.sha256",
         "browser_download_url": "https://github.com/AnInsomniacy/aria2-next/releases/download/v2.7.4/aria2-next-2.7.4-checksums.sha256",
-        "size": 684
+        "size": 684,
+        "digest": "sha256:fe74743d3302c777c64daadc4d98056ed2fc93df32943a91b4aa56881d800a81"
       },
       {
         "name": "aria2-next-2.7.4-linux-aarch64",
         "browser_download_url": "https://github.com/AnInsomniacy/aria2-next/releases/download/v2.7.4/aria2-next-2.7.4-linux-aarch64",
-        "size": 13467000
+        "size": 13467000,
+        "digest": "sha256:58044a5fe4eea4d641ab606f6f88ac0b247739e31018c53d2941a9f874365421"
       },
       {
         "name": "aria2-next-2.7.4-linux-x86_64",
         "browser_download_url": "https://github.com/AnInsomniacy/aria2-next/releases/download/v2.7.4/aria2-next-2.7.4-linux-x86_64",
-        "size": 14382192
+        "size": 14382192,
+        "digest": "sha256:878b17c21867dab1b32a7f1ff807758af93edd2ae5f854f872aef4ae65cc4fe7"
       },
       {
         "name": "aria2-next-2.7.4-macos-arm64",
         "browser_download_url": "https://github.com/AnInsomniacy/aria2-next/releases/download/v2.7.4/aria2-next-2.7.4-macos-arm64",
-        "size": 11750664
+        "size": 11750664,
+        "digest": "sha256:5443f6062a1cd117778ee52dd61f859d6a9e231e9593257a3dd17e976aa544e4"
       },
       {
         "name": "aria2-next-2.7.4-macos-x86_64",
         "browser_download_url": "https://github.com/AnInsomniacy/aria2-next/releases/download/v2.7.4/aria2-next-2.7.4-macos-x86_64",
-        "size": 12598328
+        "size": 12598328,
+        "digest": "sha256:b15c875d517d6d07ab2213a40881a0e663e7d52a0539a261b63f1a99880f31e7"
       },
       {
         "name": "aria2-next-2.7.4-windows-arm64.exe",
         "browser_download_url": "https://github.com/AnInsomniacy/aria2-next/releases/download/v2.7.4/aria2-next-2.7.4-windows-arm64.exe",
-        "size": 11261952
+        "size": 11261952,
+        "digest": "sha256:80c5480435c0f42cc5c3d859bd7e6db387fa47b8b3f9a2bfdce43e0f23e72bf9"
       },
       {
         "name": "aria2-next-2.7.4-windows-x86_64.exe",
         "browser_download_url": "https://github.com/AnInsomniacy/aria2-next/releases/download/v2.7.4/aria2-next-2.7.4-windows-x86_64.exe",
-        "size": 13169152
+        "size": 13169152,
+        "digest": "sha256:aa9c4c718ae2b7adc34fb9cf1e160bdcdb95eb3a6b71cc6aaf07d6f859dab626"
       }
     ]
   }

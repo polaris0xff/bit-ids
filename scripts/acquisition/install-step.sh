@@ -61,40 +61,24 @@ if [ "$ROUTE" = release ]; then
   export BIT_IDS_RELEASE_URL
   printf 'the release route will fetch %s\n' "$BIT_IDS_RELEASE_URL"
 
-  # ⛔ THE VENDOR'S DIGEST TRAVELS AS A DOCUMENT AND A NAME, BOTH OUT OF THE
-  # RESOLUTION. `resolve-release.sh` fetched it while the host still had a route
+  # ⛔ THE WHOLE DIGEST DISPOSITION TRAVELS AS THE RESOLUTION ITSELF, and the
+  # installer is what reads it. ⚠ This block used to export a document and an
+  # asset name and each adapter chose between them; four adapters choosing
+  # between four dispositions is four copies of one decision, which is the
+  # one-gated-door shape `docs/methodology/reviews.md` names. `ACQ-06`.
+  #
+  # ⚠ `resolve-release.sh` did the resolving while the host still had a route
   # off itself, which is the containment order; this step only points the route
-  # at what is already on disk. ⚠ A target whose vendor publishes none says so in
-  # `digest_source`, and this block passes nothing rather than inventing a path.
-  _res="$RUNNER_TEMP/release/resolution.txt"
-  [ -f "$_res" ] || {
+  # at what is already on disk.
+  BIT_IDS_RELEASE_RESOLUTION="$RUNNER_TEMP/release/resolution.txt"
+  [ -f "$BIT_IDS_RELEASE_RESOLUTION" ] || {
     printf 'install-step: the release lane has no resolution to take a digest from\n' >&2
     exit 2
   }
-  _dsource=$(sed -n 's/^digest_source=//p' "$_res")
-  case "$_dsource" in
-    vendor-document)
-      BIT_IDS_RELEASE_SUMS=$(sed -n 's/^digest_document=//p' "$_res")
-      BIT_IDS_RELEASE_ASSET=$(sed -n 's/^asset=//p' "$_res")
-      [ -f "${BIT_IDS_RELEASE_SUMS:-}" ] || {
-        printf 'install-step: the resolution names a checksums document that is not on disk\n' >&2
-        exit 2
-      }
-      [ -n "$BIT_IDS_RELEASE_ASSET" ] || {
-        printf 'install-step: the resolution names no asset for the checksums document to cover\n' >&2
-        exit 2
-      }
-      export BIT_IDS_RELEASE_SUMS BIT_IDS_RELEASE_ASSET
-      printf 'the release route will verify against %s\n' "$BIT_IDS_RELEASE_SUMS"
-      ;;
-    unpublished)
-      printf 'the release route has no vendor digest to verify against; the adapter declares why\n'
-      ;;
-    *)
-      printf 'install-step: the resolution declares digest_source=[%s]\n' "$_dsource" >&2
-      exit 2
-      ;;
-  esac
+  export BIT_IDS_RELEASE_RESOLUTION
+  printf 'the release route takes its digest disposition from %s (%s)\n' \
+    "$BIT_IDS_RELEASE_RESOLUTION" \
+    "$(sed -n 's/^digest_source=//p' "$BIT_IDS_RELEASE_RESOLUTION")"
 fi
 
 # ⛔ THE SOURCE ROUTE TAKES ITS TAG FROM ITS OWN RESOLUTION, AND THIS BLOCK USED

@@ -246,10 +246,9 @@ PREFIX=$(sh "$CR_ROOTLESS" --prefix) || exit 2
 rm -rf "$PREFIX"
 BIT_IDS_RELEASE_URL="$CR_URL"
 export BIT_IDS_RELEASE_URL
-if [ -n "${CR_SUMS:-}" ]; then
-  BIT_IDS_RELEASE_SUMS="$CR_SUMS"
-  BIT_IDS_RELEASE_ASSET="$CR_ASSET"
-  export BIT_IDS_RELEASE_SUMS BIT_IDS_RELEASE_ASSET
+if [ -n "${CR_RESOLUTION:-}" ]; then
+  BIT_IDS_RELEASE_RESOLUTION="$CR_RESOLUTION"
+  export BIT_IDS_RELEASE_RESOLUTION
 fi
 W=$(mktemp -d) || exit 2
 sh "$CR_GUARD" --claim rootless-case >/dev/null 2>&1
@@ -275,11 +274,29 @@ ROUTE_DRIVER
 # a session host and every run after it failed.
 CASE_ENV="BIT_IDS_STATE_DIR=$STATE BIT_IDS_PREFIX=$SCRATCH/prefix"
 
-route_case() { # label adapter url binary [sums asset]
+# ⛔ THE DISPOSITION TRAVELS AS A RESOLUTION RECORD, BECAUSE THAT IS WHAT THE REAL
+# PATH PASSES. `install-step.sh` exports the resolution `resolve-release.sh`
+# wrote and the installer reads it; a harness that handed the installer flags
+# directly would be exercising a door the capture path does not use.
+#
+# ⚠ The four values are four cases. A record naming none of them is its own case
+# further down.
+write_resolution() { # file source [document] [asset] [sha256] [reason]
+  {
+    printf 'bit-ids/release-resolution/1\n'
+    printf 'digest_source=%s\n' "$2"
+    printf 'digest_document=%s\n' "${3:-}"
+    printf 'asset=%s\n' "${4:-}"
+    printf 'asset_sha256=%s\n' "${5:-}"
+    printf 'digest_unpublished=%s\n' "${6:-}"
+  } >"$1"
+}
+
+route_case() { # label adapter url binary [resolution-file]
   _label=$1
   _env="$CASE_ENV CR_ROOTLESS=$ROOTLESS CR_INSTALLER=$INSTALLER CR_GUARD=$GUARD"
   _env="$_env CR_ADAPTER=$ADAPTERS/$2.sh CR_URL=file://$3 CR_BINARY=$4"
-  [ -z "${5:-}" ] || _env="$_env CR_SUMS=$5 CR_ASSET=$6"
+  [ -z "${5:-}" ] || _env="$_env CR_RESOLUTION=$5"
 
   rm -rf "$SCRATCH/prefix" "$STATE"
   run_as "$DRIVER" "$WORK/$_label.a.out" "$WORK/$_label.a.err" "$_env"
@@ -420,10 +437,26 @@ else
 fi
 
 # -- 3. every adapter's release route, driven ---------------------------------
-route_case aria2-next aria2-next "$VENDOR/aria2-next-9.9.9-linux-x86_64" aria2-next \
+# ⭐ THE FOUR DISPOSITIONS ARE FOUR ROUTES HERE, so each value is reached through
+# the real path rather than asserted about the installer in isolation.
+STUB_SHA=$(sha256sum "$VENDOR/aria2-next-9.9.9-linux-x86_64" | cut -d' ' -f1)
+write_resolution "$WORK/res-both.txt" both \
+  "$VENDOR/checksums.sha256" aria2-next-9.9.9-linux-x86_64 "sha256:$STUB_SHA"
+write_resolution "$WORK/res-document.txt" vendor-document \
   "$VENDOR/checksums.sha256" aria2-next-9.9.9-linux-x86_64
-route_case qbittorrent qbittorrent "$VENDOR/qbittorrent-9.9.9_x86_64.AppImage" qbittorrent-nox
-route_case aria2 aria2 "$VENDOR/aria2-9.9.9.tar.bz2" aria2c
+write_resolution "$WORK/res-listing.txt" source-listing "" "" "sha256:$(
+  sha256sum "$VENDOR/qbittorrent-9.9.9_x86_64.AppImage" | cut -d' ' -f1
+)"
+write_resolution "$WORK/res-none.txt" unpublished "" "" "" \
+  "this stub vendor publishes neither"
+
+route_case aria2-next aria2-next "$VENDOR/aria2-next-9.9.9-linux-x86_64" aria2-next \
+  "$WORK/res-both.txt"
+route_case aria2-next-doc aria2-next "$VENDOR/aria2-next-9.9.9-linux-x86_64" aria2-next \
+  "$WORK/res-document.txt"
+route_case qbittorrent qbittorrent "$VENDOR/qbittorrent-9.9.9_x86_64.AppImage" qbittorrent-nox \
+  "$WORK/res-listing.txt"
+route_case aria2 aria2 "$VENDOR/aria2-9.9.9.tar.bz2" aria2c "$WORK/res-none.txt"
 route_case transmission transmission "$VENDOR/transmission-9.9.9.tar.xz" transmission-daemon
 
 # ⭐ THE ONE THAT INSTALLS AND ANSWERS. This is the Prove's own sentence: the
@@ -440,11 +473,30 @@ fi
 
 # ⭐ AND ITS DIGEST WAS VERIFIED AGAINST THE VENDOR'S DOCUMENT rather than merely
 # recorded, which is the difference the installer's report exists to state.
-if [ "$(field aria2-next digest)" = vendor-document ]; then
-  pass "digest    aria2-next verified its artifact against the vendor's document"
+if [ "$(field aria2-next digest)" = both ]; then
+  pass "digest    aria2-next verified against the vendor's document AND the listing digest"
 else
   fail "digest    aria2-next recorded digest_source=[$(field aria2-next digest)]"
 fi
+
+# ⛔ AND EACH OF THE OTHER THREE VALUES IS REACHED, because a run in which every
+# route answered one of them would look the same as this one on a single case.
+# ⚠ `both` above is the strongest and the others are not it; a reader told
+# "verified" without being told BY WHOM has been told something weaker than it
+# sounds.
+while read -r label want; do
+  [ -n "$label" ] || continue
+  got=$(field "$label" digest)
+  if [ "$got" = "$want" ]; then
+    pass "digest    $label reaches digest_source=$want"
+  else
+    fail "digest    $label recorded digest_source=[$got], expected [$want]"
+  fi
+done <<DISPOSITIONS
+aria2-next-doc vendor-document
+qbittorrent source-listing
+aria2 unpublished
+DISPOSITIONS
 
 if [ "$(field qbittorrent rc)" = 0 ] &&
   [ "$(field qbittorrent installed)" = yes ] &&
@@ -453,15 +505,6 @@ if [ "$(field qbittorrent rc)" = 0 ] &&
 else
   sed 's/^/          /' "$WORK/qbittorrent.a.err" | tail -6 >&2
   fail "install   qbittorrent: rc=$(field qbittorrent rc) installed=$(field qbittorrent installed) version=$(field qbittorrent version)"
-fi
-
-# ⚠ AND ITS DIGEST WAS RECORDED RATHER THAN VERIFIED, because that vendor
-# publishes none. ⛔ The case asserts the DIFFERENCE: without it, a run in which
-# every route silently claimed verification would look the same as this one.
-if [ "$(field qbittorrent digest)" = unpublished ]; then
-  pass "digest    qbittorrent records its artifact and says the vendor published none"
-else
-  fail "digest    qbittorrent recorded digest_source=[$(field qbittorrent digest)]"
 fi
 
 # ⚠ AND THE TWO ROUTES THAT REFUSE, WHICH REFUSE AT DIFFERENT PLACES. Neither
@@ -476,7 +519,7 @@ fi
 #
 # ⛔ What matters in both is that each reaches its OWN refusal with no privilege,
 # rather than dying on a directory it cannot write.
-if [ "$(field aria2 rc)" = 1 ] && [ "$(field aria2 digest)" = unpublished ]; then
+if [ "$(field aria2 rc)" = 1 ] && [ -n "$(field aria2 digest)" ]; then
   pass "refusal   aria2 fetched and identified rootlessly, then refused on its archive"
 else
   sed 's/^/          /' "$WORK/aria2.a.err" | tail -4 >&2
@@ -489,6 +532,48 @@ if [ "$(field transmission rc)" = 2 ] &&
 else
   sed 's/^/          /' "$WORK/transmission.a.err" | tail -4 >&2
   fail "refusal   transmission: rc=$(field transmission rc), and not for its own reason"
+fi
+
+# -- 3b. the resolution reader, which is where four adapters' decision now lives
+#
+# ⛔ A VOCABULARY THAT GREW ON ONE SIDE AND NOT THE OTHER IS THE FAILURE THIS
+# READER CAN HAVE. `resolve-release.sh` writes `digest_source` and this reads it;
+# a value one knows and the other does not must be could-not-run, never an
+# install under a disposition nobody implemented.
+cat >"$WORK/unknown-res.txt" <<'UNKNOWN'
+digest_source=quantum-notary
+UNKNOWN
+cat >"$WORK/reader-probe.sh" <<READER
+#!/bin/sh
+set -u
+sh $ROOTLESS --fetch --url "file://\$CR_URL" --into "\$CR_INTO" \\
+  --from-resolution "\$CR_RES"
+READER
+run_as "$WORK/reader-probe.sh" "$WORK/unknown.out" "$WORK/unknown.err" \
+  "$CASE_ENV CR_URL=$VENDOR/aria2-next-9.9.9-linux-x86_64 CR_INTO=$SCRATCH/probe1 CR_RES=$WORK/unknown-res.txt"
+rc=$?
+if [ "$rc" = 2 ] &&
+  grep -q -F -e 'which this installer does not know' "$WORK/unknown.err"; then
+  pass "reader    a digest_source the installer does not know is could-not-run"
+else
+  fail "reader    the unknown disposition exited $rc: $(tail -1 "$WORK/unknown.err")"
+fi
+
+# ⭐ AND THE LISTING DIGEST IS REALLY COMPARED. Without this every
+# `source-listing` row above passes equally over a reader that took the value and
+# never checked it - which is the shape a disposition record makes easy, because
+# the record itself looks right either way.
+cat >"$WORK/wrong-res.txt" <<'WRONG'
+digest_source=source-listing
+asset_sha256=sha256:0000000000000000000000000000000000000000000000000000000000000000
+WRONG
+run_as "$WORK/reader-probe.sh" "$WORK/wrong.out" "$WORK/wrong.err" \
+  "$CASE_ENV CR_URL=$VENDOR/aria2-next-9.9.9-linux-x86_64 CR_INTO=$SCRATCH/probe2 CR_RES=$WORK/wrong-res.txt"
+rc=$?
+if [ "$rc" = 1 ] && grep -q -F -e 'and the source published' "$WORK/wrong.err"; then
+  pass "reader    a listing digest that does not match the bytes is refused"
+else
+  fail "reader    the mismatched listing digest exited $rc: $(tail -1 "$WORK/wrong.err")"
 fi
 
 # -- 4. the controls ----------------------------------------------------------
@@ -528,7 +613,7 @@ fi
 # adapter that could not find its build - a red row about the harness's own
 # ordering.
 route_case aria2-next-again aria2-next "$VENDOR/aria2-next-9.9.9-linux-x86_64" aria2-next \
-  "$VENDOR/checksums.sha256" aria2-next-9.9.9-linux-x86_64
+  "$WORK/res-both.txt"
 cat >"$WORK/where.sh" <<WHERE
 #!/bin/sh
 set -u

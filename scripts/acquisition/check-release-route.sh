@@ -339,12 +339,58 @@ while read -r target want; do
   else
     fail "digest    $target records digest_source=[$got], expected [$want]"
   fi
+  #
+  # ⭐ AND THE FOUR TARGETS REACH THREE DIFFERENT DISPOSITIONS, which is what makes
+  # this a table rather than four copies of one case. Measured through `AGENTS.md`
+  # rule 8's route on 2026-09-17 and recorded into the fixtures by
+  # `project-listing`:
+  #
+  #   * `aria2-next` publishes a checksums document AND the listing states a
+  #     digest, so two parties describe those bytes: `both`;
+  #   * `qbittorrent` and `transmission` publish no checksums file and the listing
+  #     states a digest: `source-listing`;
+  #   * `aria2` publishes neither - its six assets carry `digest: null` - so it is
+  #     the one target that is genuinely `unpublished`.
+  #
+  # ⛔ A table where every row expected the same value would pass over a resolver
+  # that answered that value unconditionally.
 done <<DISPOSITION_TABLE
-aria2-next vendor-document
+aria2-next both
 aria2 unpublished
-qbittorrent unpublished
-transmission unpublished
+qbittorrent source-listing
+transmission source-listing
 DISPOSITION_TABLE
+
+# ⭐ AND THE DIGEST THE LISTING STATED IS THE ONE RECORDED, in the canonical form
+# that carries its algorithm. ⛔ A bare hex run is what this project refuses
+# everywhere, so a record spelling one would be a value no reader could tell from
+# a different algorithm's.
+recorded=$(sed -n 's/^asset_sha256=//p' "$WORK/transmission.rec")
+listed=$(python3 -c "
+import json,sys
+d=json.load(open('$LISTINGS/transmission.json'))
+for r in d:
+    for a in r.get('assets', []):
+        if a['name'] == 'transmission-4.1.3.tar.xz':
+            print(a.get('digest','')); raise SystemExit
+" 2>/dev/null)
+if [ -n "$recorded" ] && [ "$recorded" = "$listed" ]; then
+  pass "digest    the recorded asset_sha256 is the digest the listing stated"
+elif [ -z "$listed" ]; then
+  fail "digest    the fixture states no digest for the asset, so nothing was compared"
+else
+  fail "digest    recorded [$recorded], the listing states [$listed]"
+fi
+
+# ⛔ AND A TARGET WHOSE SOURCE STATES NONE RECORDS AN EMPTY FIELD RATHER THAN
+# INVENTING ONE. ⚠ Without this the row above passes equally over a resolver that
+# copied some other asset's digest into every record.
+empty=$(sed -n 's/^asset_sha256=//p' "$WORK/aria2.rec")
+if [ -z "$empty" ]; then
+  pass "digest    a source that states no digest records an empty asset_sha256"
+else
+  fail "digest    aria2 records asset_sha256=[$empty] over a listing that states none"
+fi
 
 # ⭐ AND THE ONE TARGET WITH A DOCUMENT CARRIES THE DOCUMENT'S OWN NAME, which is
 # what says the second `select-asset` call really ran over the same listing.

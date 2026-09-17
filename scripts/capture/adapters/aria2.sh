@@ -142,11 +142,18 @@ case "$COMMAND" in
     printf 'release_min_components=3\n'
     printf 'release_max_components=3\n'
     printf 'release_asset=aria2-{version}.tar.bz2\n'
-    # ⛔ THE DIGEST DISPOSITION, DECLARED ONCE AND READ BY THE ROUTE. A vendor
-    # that publishes no checksums document is a fact about the vendor, so it is
-    # stated here rather than spelled a second time inside the route - which is
-    # the value-in-two-places shape this adapter already avoids for its
-    # repository name. Measured from the release listing on 2026-09-17.
+    # ⛔ THE DIGEST DISPOSITION, DECLARED ONCE AND READ BY THE ROUTE, AND IT IS
+    # ABOUT THE VENDOR'S OWN CHECKSUMS DOCUMENT. ⚠ That is a narrower sentence
+    # than "no digest", and the difference is measured: the release LISTING
+    # carries a per-asset digest published by the party serving the bytes, which
+    # `resolve-release.sh` resolves out of the same response and records as
+    # `source-listing`. This key says only that the VENDOR uploaded no checksums
+    # file - which is what an adapter can know by reading a release, and is what
+    # decides whether the resolver goes looking for one.
+    # ⚠ AND THIS TARGET IS THE ONE THAT REALLY HAS NEITHER. Read through
+    # `AGENTS.md` rule 8's route on 2026-09-17: release-1.37.0 carries six
+    # archives, no checksums asset, and `digest` is null on every one of the six
+    # - the only one of this project's four targets for which that is true.
     printf 'release_digest_unpublished=this release publishes six archives and no checksums asset\n'
     ;;
 
@@ -225,18 +232,26 @@ case "$COMMAND" in
         # unpacked bytes whose digest nothing had settled would be running a
         # vendor's build system over something nobody identified.
         #
-        # ⚠ THE REASON IS ASKED OF THIS ADAPTER'S OWN `describe` RATHER THAN
-        # SPELLED AGAIN, the way the vendor's repository already is: a sentence
-        # written in two places is one that disagrees with itself the day a
-        # vendor starts publishing digests.
-        _why=$(sh "$0" describe |
-          awk -F= '$1 == "release_digest_unpublished" { sub(/^[^=]*=/, ""); print; exit }')
-        [ -n "$_why" ] ||
-          cannot "this adapter declares no digest disposition for its release route"
+        # ⛔ THE DIGEST DISPOSITION IS THE RESOLUTION'S AND THE INSTALLER READS
+        # IT. `ACQ-06`. Four adapters choosing between four dispositions would be
+        # four copies of one decision, which is the one-gated-door shape
+        # `docs/methodology/reviews.md` names the most recurring hole there is.
+        # ⚠ The second branch is the standalone drive - an adapter run with a URL
+        # and no resolution - and it carries this adapter's own declaration,
+        # asked of `describe` rather than spelled a second time.
+        if [ -n "${BIT_IDS_RELEASE_RESOLUTION:-}" ]; then
+          set -- --from-resolution "$BIT_IDS_RELEASE_RESOLUTION"
+        else
+          _why=$(sh "$0" describe |
+            awk -F= '$1 == "release_digest_unpublished" { sub(/^[^=]*=/, ""); print; exit }')
+          [ -n "$_why" ] ||
+            cannot "this adapter declares no digest disposition for its release route"
+          set -- --digest-unpublished "$_why"
+        fi
         sh "$ROOTLESS" --fetch \
           --url "$BIT_IDS_RELEASE_URL" \
           --into "$WORKDIR/aria2.tar.bz2" \
-          --digest-unpublished "$_why" \
+          "$@" \
           --report "$WORKDIR/rootless-install.txt" \
           </dev/null >>"$WORKDIR/install.log" 2>&1
         _rc=$?

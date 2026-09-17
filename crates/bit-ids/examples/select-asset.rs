@@ -130,6 +130,15 @@ fn main() -> ExitCode {
             print_field("asset", asset.name.as_str());
             print_field("url", asset.url.as_str());
             println!("size={}", asset.size);
+            // ⭐ AND WHAT THE SOURCE SAYS THE BYTES DIGEST TO, where it says
+            // anything. `ACQ-06`. ⚠ The line is ABSENT rather than empty when
+            // the source states none, because a caller reading an empty value
+            // as a digest would compare an artifact against nothing and call it
+            // verified. A missing key is a missing answer; an empty one looks
+            // like an answer.
+            if let Some(digest) = asset.digest {
+                print_field("digest", &digest.to_string());
+            }
             eprintln!("select-asset: selected {}", asset.name);
             ExitCode::SUCCESS
         }
