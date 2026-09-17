@@ -474,3 +474,105 @@ fn variability_states_the_bytes_even_when_the_plan_varied_nothing() {
         "the bytes moved; calling that constant would publish a value no sample carried"
     );
 }
+
+/// What a consumer holding a profile and a run manifest can say about a span,
+/// and the boundary where it must say nothing.
+///
+/// ⛔ **A PUBLISHED `PatternRun` CARRIES NO LIFETIME, AND THAT IS A DECISION.**
+/// `SCHEMA-04` puts the plan in the manifest and the claim in the profile, so a
+/// lifetime stated in both would be a value that can disagree with itself. ⚠ The
+/// half that was missing is the ASKING: a consumer holding the pair had to
+/// re-reason about the plan itself, which is a second implementation of the
+/// classifier in every consumer.
+#[test]
+fn a_plan_says_what_a_varying_span_means_or_says_nothing() {
+    // One varied dimension attributes a change to exactly that dimension.
+    assert_eq!(plan(1, 1, 4).lifetime_of(true), Lifetime::PerConnection);
+    assert_eq!(plan(1, 3, 1).lifetime_of(true), Lifetime::PerTorrent);
+    assert_eq!(plan(2, 1, 1).lifetime_of(true), Lifetime::PerSession);
+
+    // ⛔ TWO VARIED DIMENSIONS BOTH EXPLAIN A CHANGE, so the plan alone cannot
+    // say which and must not pick one. That is the case only the samples settle.
+    assert_eq!(plan(2, 1, 4).lifetime_of(true), Lifetime::Unknown);
+    assert_eq!(plan(1, 3, 4).lifetime_of(true), Lifetime::Unknown);
+    assert_eq!(plan(2, 3, 4).lifetime_of(true), Lifetime::Unknown);
+
+    // A plan that varied nothing cannot attribute a change at all.
+    assert_eq!(plan(1, 1, 1).lifetime_of(true), Lifetime::Unknown);
+
+    // ⚠ HOLDING STILL IS ONLY EVIDENCE OF STORAGE IF THE PROCESS RESTARTED.
+    // Inside one session every lifetime but per-connection produces the same
+    // bytes, so a fixed span there says nothing.
+    assert_eq!(plan(2, 1, 1).lifetime_of(false), Lifetime::Persistent);
+    assert_eq!(plan(1, 4, 4).lifetime_of(false), Lifetime::Unknown);
+}
+
+/// The plan-only derivation never contradicts the one that reads the samples.
+///
+/// ⭐ **TWO DERIVATIONS OF ONE FACT, COMPARED.** `classify` sees which grouping a
+/// value is constant within; `lifetime_of` has only the plan, so it is
+/// deliberately weaker and answers `Unknown` where the classifier can still
+/// separate the cases. ⛔ What must never happen is the two naming DIFFERENT
+/// lifetimes: that would be a consumer reading the published pair and getting an
+/// answer the measurement refutes.
+///
+/// ⚠ The samples are built so the value changes per connection, which is the
+/// shape this project actually measured on a peer ID's tail.
+#[test]
+fn the_plan_only_derivation_never_contradicts_the_classifier() {
+    for sessions in [1u32, 2] {
+        for torrents in [1u32, 2] {
+            for connections in [1u32, 2] {
+                let p = plan(sessions, torrents, connections);
+                let mut samples = Vec::new();
+                let mut tail = 0u8;
+                for s in 0..sessions {
+                    for t in 0..torrents {
+                        for c in 0..connections {
+                            samples.push(sample(s, t, c, &format!("aa{tail:02x}")));
+                            tail += 1;
+                        }
+                    }
+                }
+                let report = classify(&samples, &p).expect("a report");
+
+                // Offset 0 never moves; offset 1 moves on every observation.
+                let fixed = report.span_at(0).expect("a span").lifetime;
+                let varying = report.span_at(1).expect("a span").lifetime;
+
+                for (measured, derived) in [
+                    (fixed, p.lifetime_of(false)),
+                    (varying, p.lifetime_of(true)),
+                ] {
+                    assert!(
+                        derived == Lifetime::Unknown || derived == measured,
+                        "plan {sessions}/{torrents}/{connections}: the plan says {} and \
+                         the samples say {}",
+                        derived.as_str(),
+                        measured.as_str()
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// ⛔ And the control the case above needs: the derivation is not simply
+/// `Unknown` everywhere.
+///
+/// ⚠ Without this, `derived == Lifetime::Unknown ||` satisfies every assertion
+/// over a function that never says anything - which is a check that passes
+/// because a different branch happens to satisfy it.
+#[test]
+fn the_plan_only_derivation_is_not_unknown_everywhere() {
+    let answered = [
+        plan(1, 1, 4).lifetime_of(true),
+        plan(1, 3, 1).lifetime_of(true),
+        plan(2, 1, 1).lifetime_of(true),
+        plan(2, 1, 1).lifetime_of(false),
+    ];
+    assert!(
+        answered.iter().all(|l| *l != Lifetime::Unknown),
+        "every one of these plans separates exactly one dimension"
+    );
+}

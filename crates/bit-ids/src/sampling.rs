@@ -59,6 +59,60 @@ impl SamplingPlan {
     pub const fn restarts(&self) -> bool {
         self.sessions.get() > 1
     }
+
+    /// What a span behaving this way means under this plan, without the samples.
+    ///
+    /// ⛔ **THIS IS THE HALF A CONSUMER HOLDING TWO DOCUMENTS WAS MISSING.** A
+    /// published [`crate::observation::PatternRun`] carries no lifetime, and
+    /// that is `SCHEMA-04`'s own decision rather than an omission: the plan
+    /// lives in the run manifest and the claim lives in the profile, so a value
+    /// stated in both would be a value that can disagree with itself. ⚠ What
+    /// followed from it and was never written down is that a consumer holding
+    /// the pair had no way to ASK what a varying span means - it had to
+    /// re-reason about `sessions`, `torrents` and `connections` itself, which is
+    /// a second implementation of [`classify_offset`] in every consumer.
+    ///
+    /// ⛔ **IT IS DELIBERATELY WEAKER THAN [`classify`], AND NEVER DISAGREES
+    /// WITH IT.** [`classify`] has the samples and can see which grouping a
+    /// value is constant within; this has only the plan. So a plan that varied
+    /// two dimensions cannot attribute a change to either and answers
+    /// [`Lifetime::Unknown`], where the classifier reading real samples may well
+    /// separate them. ⚠ The property that matters is that this never returns a
+    /// lifetime the classifier would contradict, and a test holds it over every
+    /// plan shape.
+    ///
+    /// `varied` is whether the bytes actually moved, which is what the record's
+    /// run kind already says: a `Varying` run is `true` and a `Fixed` one is
+    /// `false`.
+    #[must_use]
+    pub const fn lifetime_of(&self, varied: bool) -> Lifetime {
+        if !varied {
+            // ⚠ Holding still is only evidence of storage if the run restarted
+            // the process. Otherwise every lifetime but per-connection would
+            // have produced the same bytes, which is no answer at all.
+            return if self.restarts() {
+                Lifetime::Persistent
+            } else {
+                Lifetime::Unknown
+            };
+        }
+        // ⛔ EXACTLY ONE VARIED DIMENSION, OR NOTHING CAN BE ATTRIBUTED. Two
+        // varied dimensions both explain a change and the plan alone cannot say
+        // which; that is the case the samples settle and this cannot.
+        let varied_count = (self.connections.get() > 1) as u8
+            + (self.torrents.get() > 1) as u8
+            + (self.sessions.get() > 1) as u8;
+        if varied_count != 1 {
+            return Lifetime::Unknown;
+        }
+        if self.connections.get() > 1 {
+            Lifetime::PerConnection
+        } else if self.torrents.get() > 1 {
+            Lifetime::PerTorrent
+        } else {
+            Lifetime::PerSession
+        }
+    }
 }
 
 /// Where one observation came from within the plan.

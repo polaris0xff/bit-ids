@@ -127,12 +127,12 @@ step supervisor - across two targets and both routes, on byte-identical code.
    BOTH halves.
 2. **`CLIENT-01` and `CLIENT-06`**, the remaining vertical captures. They sat
    behind `ACQ-06` and no longer do.
-3. **`CI-09`'s residuals**: the `RunManifest` a record needs beside it; the
+3. **`CI-09`'s residuals**: the `RunManifest` a record needs beside it, and the
    publisher, which cannot run at all because it downloads an artifact named
-   `bundle` that nothing produces; and `SCHEMA-04`'s field -
-   `sampling::classify` computes a `Lifetime` per span and `field_state`
-   DISCARDS it, so no record can say whether a tail is per-connection or
-   per-session.
+   `bundle` that nothing produces. ⛔ Its third clause about a discarded
+   `Lifetime` was STALE and is struck - that is a `SCHEMA-04` decision rather
+   than a defect, and the consumer-side half it really lacked is
+   `SamplingPlan::lifetime_of`.
 4. ⭐ **`mine-repo`'s clone is bounded, 2026-09-17**, in both halves and with one
    idiom: git's own low-speed settings rather than a wrapper.
 5. **`CI-07`**, whose class-A backlog shrinks as `CI-10` ports pairs.

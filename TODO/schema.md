@@ -319,6 +319,50 @@ Guard mutation: five plants into `field_state`, one at a time, each verified to
 have changed the file, with the clean tree run either side. All five refused,
 none survived, none failed to apply.
 
+### ⭐ The half a consumer was missing, 2026-09-17
+
+⛔ **`CI-09` CARRIED THIS ENTRY'S DECISION AS A DEFECT, AND IT IS STRUCK.** Its
+residual read *`sampling::classify` computes a `Lifetime` per span and
+`field_state` DISCARDS it, so no record can say whether a tail is per-connection
+or per-session*. ⚠ The discard is this entry's own Decision, stated twice above
+and again in `sampling.rs`: the plan lives in the run manifest, the claim lives
+in the profile, and a lifetime stated in both would be a value that can disagree
+with itself.
+
+⭐ **AND THE PAIR OF DOCUMENTS DOES ANSWER IT.** The profile says a span varies
+and the manifest says which dimensions the plan varied; `bind_sampling` already
+refuses a variation claim over a plan that varied nothing, `E-BND-20`.
+
+⛔ **WHAT WAS GENUINELY MISSING IS THE ASKING.** A consumer holding both
+documents had no function to ask, so it had to re-reason about `sessions`,
+`torrents` and `connections` itself - a second implementation of
+`classify_offset` in every consumer, which is the drift this project refuses
+everywhere else. ⭐ `SamplingPlan::lifetime_of(varied)` is that question.
+
+⚠ **IT IS DELIBERATELY WEAKER THAN `classify` AND NEVER CONTRADICTS IT.** The
+classifier has the samples and can see which grouping a value is constant
+within; this has only the plan, so a plan that varied TWO dimensions answers
+`unknown` where the classifier may still separate them. ⛔ What must never
+happen is the two naming different lifetimes, and a test holds that over every
+plan shape - with a control asserting the derivation is not simply `unknown`
+everywhere, because `derived == Unknown ||` is satisfied by a function that says
+nothing at all.
+
+Prove: `cargo test -p bit-ids --locked --test variability`.
+
+Closure evidence, 2026-09-17: **23 cases, 23 passed, 0 failed**. Guard mutation,
+four plants into `lifetime_of`, each verified to have applied, clean control
+either side: a fixed span always reading `persistent`, a varying span under more
+than one connection reading `per_session`, two varied dimensions attributed
+anyway, and the derivation saying nothing at all. ⭐ All four refused, and the
+fourth was caught by the control case written for exactly it.
+
+⚠ **The plant harness misread its own statuses on the first run** and is worth
+recording: `cargo` prints `error: test failed` for a FAILING TEST, so a needle
+for `^error` labelled all four refusals *could not compile*. That is this
+repository's own rule - a harness exit of 2 is *could not run*, never *refused* -
+arriving mirrored, and the fix is to read the `test result:` line first.
+
 | plant | cases that went red |
 | --- | ---: |
 | runs derived from the lifetime rather than the bytes | 1 |

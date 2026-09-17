@@ -5,6 +5,30 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-17T06:34:11Z
+
+- ⛔ **A `CI-09` RESIDUAL CALLED A `SCHEMA-04` DECISION A DEFECT, AND IT IS
+  STRUCK.** It read *`field_state` DISCARDS the lifetime, so no record can say
+  whether a tail is per-connection or per-session*. ⚠ That discard is stated as a
+  Decision twice in `SCHEMA-04` and again in `sampling.rs`, which own the
+  reasoning: a lifetime stated in two documents can disagree with itself.
+- ⭐ **And the pair of documents does answer it** - `bind_sampling` already
+  refuses a variation claim over a plan that varied nothing, `E-BND-20`. ⛔ What
+  was genuinely missing is the ASKING: a consumer holding both had to re-reason
+  about the plan itself, which is a second implementation of the classifier in
+  every consumer.
+- ⭐ **`SamplingPlan::lifetime_of(varied)` is that question**, and it is
+  deliberately weaker than the classifier: a plan that varied two dimensions
+  answers `unknown` where the samples may still separate them. ⛔ A test holds
+  that the two derivations never name DIFFERENT lifetimes, over every plan
+  shape, with a control asserting the derivation is not simply `unknown`
+  everywhere.
+- ⚠ **Acting on the residual as written would have reversed a recorded
+  decision**, which is why this entry is a correction rather than a schema
+  change. `PatternRun` is unchanged.
+- Record: [`TODO/schema.md`](TODO/schema.md), `SCHEMA-04`. No version bump and no
+  deploy.
+
 ### 2026-09-17T06:19:59Z
 
 - ⭐ **`mine-repo`'s clone is bounded, in both halves, with ONE idiom.** The

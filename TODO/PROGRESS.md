@@ -462,11 +462,13 @@ nothing is. The clone question under *Settled decisions* is spent too.
    behind `ACQ-06` and no longer do: an install that needs no privilege is one a
    runner can finish, and the next dispatch is what says whether it does.
 3. **`CI-09`'s residuals**, which are no longer about reaching a record: the
-   `RunManifest` a record needs beside it; the publisher, which cannot run at all
-   because it downloads an artifact named `bundle` that nothing produces; and
-   `SCHEMA-04`'s field - `sampling::classify` computes a `Lifetime` per span and
-   `field_state` DISCARDS it, so no record can say whether a tail is
-   per-connection or per-session.
+   `RunManifest` a record needs beside it, and the publisher, which cannot run at
+   all because it downloads an artifact named `bundle` that nothing produces.
+   ⛔ **The third clause was STALE and is struck.** It read *`field_state`
+   DISCARDS the lifetime, so no record can say whether a tail is per-connection*,
+   which calls a `SCHEMA-04` **Decision** a defect. ⭐ The pair of documents
+   answers it, and `SamplingPlan::lifetime_of` is what a consumer asks; that
+   entry in [`schema.md`](schema.md) owns the reasoning.
 4. ⭐ **`mine-repo`'s clone is bounded, 2026-09-17, in both halves and with ONE
    idiom.** The recorded blocker was that `timeout` is a PAUSE on Windows, so a
    wrapper would need two idioms; git's own `http.lowSpeedLimit` and
