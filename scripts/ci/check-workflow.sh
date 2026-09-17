@@ -573,7 +573,7 @@ fi
 # alone would be a gate on one of two doors the moment a second workflow landed,
 # and a second workflow did land: the publisher is the one job in this
 # repository that may write, so it is exactly the file a permissions rule must
-# not skip. check-project.sh's action-pin rule generalises the same way.
+# not skip. `check-project`'s action-pin rule generalises the same way.
 if unit job-properties; then
   for wf in "$ROOT"/.github/workflows/*.yml; do
     [ -f "$wf" ] || continue
@@ -1152,10 +1152,17 @@ fi
 # observed counts are separate now, so --strict permits the six and refuses
 # this. ⚠ Case 0 above is the other half: this shows the runner reports the
 # skip, and that one shows CI is asking with the flag that makes it fatal.
+#
+# ⚠ THE SUBJECT MOVED ON 2026-09-17 AND THE CASE DID NOT CHANGE. It planted
+# into `check-project.sh`, which is now one check of a Go binary rather than a
+# script; `check-shell.sh` is a queued `sh` row of the same shape. ⛔ It has to be
+# an `sh` ROW rather than a ported one: planting `exit 2` into a Go source file
+# would fail the BUILD, and a gate whose binary did not build skips every ported
+# row at once - a different plant with a different answer.
 if unit check-stopped; then
-  BROKEN="scripts/common/check-project.sh"
+  BROKEN="scripts/common/check-shell.sh"
   if keep "$BROKEN" && printf 'exit 2\n' >"$TREE/$BROKEN"; then
-    gate_refuses "a check that can no longer run" "SKIP  check-project"
+    gate_refuses "a check that can no longer run" "SKIP  check-shell"
   else
     fail "plant    could not plant the unrunnable check"
   fi

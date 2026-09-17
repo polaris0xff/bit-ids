@@ -229,16 +229,14 @@ function Invoke-Ported([string]$Name, [string]$Check = '', [string[]]$ExtraArgs 
     }
 }
 
+# ⭐ EVERY `common/` HALF IS PORTED NOW. `check-project` joined this list on
+# 2026-09-17 and the direct call below it is gone with the twin it called.
 foreach ($c in 'check-adapters', 'check-changelog', 'check-control-bytes',
                 'check-docs', 'check-ignores', 'check-licences',
                 'check-markers', 'check-no-secrets', 'check-one-home',
-                'check-placeholders') {
+                'check-placeholders', 'check-project') {
     Invoke-Ported $c
 }
-
-# ⭐ THE LAST `common/` HALF THAT IS NOT PORTED. It was a list of three until
-# 2026-09-15 and is one call now.
-Invoke-Check 'check-project' 'check-project.ps1'
 
 # ⚠ --public is a DIFFERENT question from the default run, not a stricter one.
 # Emails, absolute home paths and long hex are legitimate content in a private

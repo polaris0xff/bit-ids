@@ -269,7 +269,7 @@ from any working directory.
   read from the process that produced it - `wait` on that child and nothing
   else - and each row is still assembled at its own index, so two runs over one
   tree produce one report.
-- `common/check-project.sh` and `common/check-project.ps1` validate bit-ids
+- `bit-check check-project` validates bit-ids
   structure, catalogue coverage, todo counts, action pins, the shell-first
   implementation rule, that a `.ps1` carrying non-ASCII starts with a UTF-8 BOM,
   that a `.ps1` which stops on errors also says what a native command's exit code
@@ -278,10 +278,10 @@ from any working directory.
   eleven files had the BOM and four did not, sixteen relied on a PowerShell
   default that changed in 7.5, and ten wrote to stderr directly while five did
   not. The last two were found by CI rather than by a reading.
-  ⭐ **`bit-check check-project` is the same twenty-nine refusals**, 2026-09-17,
-  compared against both halves case for case. Nothing here is deleted yet and
-  the gate still queues the `sh` half; `TODO/ci.md` under `CI-10` says what the
-  comparison found.
+  ⭐ **It was `common/check-project.sh` and a hand-written twin until 2026-09-17**,
+  the last `common/` pair and the biggest at 997 lines. Both halves are deleted;
+  the same twenty-nine refusals are one Go check on both lanes. `TODO/ci.md` under
+  `CI-10` says what the pre-deletion comparison found.
   ⛔ **The last two also read the `pwsh` blocks of every workflow**, which they
   did not until `CI-06`'s first dispatch found `capture.yml` breaking both, one
   door away from the rules that forbid them. A third rule lives only there: a

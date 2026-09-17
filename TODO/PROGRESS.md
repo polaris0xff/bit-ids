@@ -8,7 +8,7 @@ Blocked: 0
 Done: 44
 
 ⚠ Those five counts are compared against
-[`INDEX.md`](INDEX.md) by `check-project.sh` on every gate, so they cannot go
+[`INDEX.md`](INDEX.md) by `check-project` on every gate, so they cannot go
 stale silently. ⛔ Nothing else in this header is checked, which is why no commit
 is named here: a hash written into the commit that changes it can only name the
 one before, and a session reading it would take this file's own work for
@@ -449,23 +449,22 @@ nothing is. The clone question under *Settled decisions* is spent too.
    The operator's direction was to port the checking scripts to Go, port the slow
    CI parts to Go, and parallelise CI across runners; all three are measured on
    real runners, and the acceptance bound came DOWN to 20 from 45.
-   ⛔ **What is left is the rest of the port**: ten rules are in
-   [`../tools/check/`](../tools/check/) and **five twin file pairs remain**, whose
-   PowerShell halves together are 5.3 seconds against the 96 the layer started at.
+   ⛔ **What is left is the rest of the port**: eleven rules are in
+   [`../tools/check/`](../tools/check/) and **four twin file pairs remain** -
+   `check-cache`, `check-catalogue`, `check-remote-items` and `mine-repo`.
    ⚠ So the wall-clock value is small and the DRIFT value is unchanged, which is
    the argument for taking them when they are cheapest rather than first.
-   ⛔ `check-project` is the big one at 997 lines and is its own unit.
    ⛔ **A pair may leave that list ONE WAY ONLY**:
    `sh scripts/common/check-bitcheck.sh --compare` against BOTH halves, before
    either is deleted.
-   ⭐ **`check-project` IS PORTED AND COMPARED, 2026-09-17.** Twenty-nine refusals
-   are one Go check, 49 new cases run it against both halves, and the comparison
-   found THREE drifts - a twin that crashed instead of refusing, a rule compared
-   as a whole line in one half and as five counts in the other, and two checks
-   folded into one `-or`. All three were the twin's and all three are repaired.
-   ⚠ **Nothing is deleted yet and no gate row has moved**: the deletion and the
-   rewiring of `check-gate`, `check-twins`, `check-workflow` and `check-defaults`
-   are the next unit. [`ci.md`](ci.md) under `CI-10` carries the run.
+   ⭐ **`check-project` IS PORTED, COMPARED AND DELETED, 2026-09-17**, and it was
+   the big one: 997 lines of `sh` against a hand-written twin, twenty-nine
+   refusals, **2.60 seconds** of the five pairs' 5.3. 49 cases ran it against both
+   halves and found THREE drifts - a twin that crashed instead of refusing, a rule
+   compared as a whole line in one half and as five counts in the other, and two
+   checks folded into one `-or`. All three were the twin's, all three were
+   repaired, and only then did both halves go. `bit-check check-project` is the
+   row on both lanes. [`ci.md`](ci.md) under `CI-10` carries the run.
 2. **`CLIENT-01` and `CLIENT-06`**, the remaining vertical captures. ⭐ They sat
    behind `ACQ-06` and no longer do: an install that needs no privilege is one a
    runner can finish, and the next dispatch is what says whether it does.

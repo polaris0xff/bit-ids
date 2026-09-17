@@ -5,6 +5,34 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-17T10:05:14Z
+
+- ⛔ **BOTH HALVES OF `check-project` ARE DELETED**, 997 lines of `sh` and its
+  hand-written PowerShell twin. It was the last `common/` pair and the biggest;
+  `bit-check check-project` is the row on both lanes and `check-twins` is down to
+  **four pairs**.
+- ⚠ **It left that list the only way a pair may.** The pre-deletion comparison ran
+  49 planted cases against all three implementations, agreeing on the exit code
+  and byte for byte on the `--json` line. After the deletion the same cases print
+  *the sh half is gone, not compared*: the window closes with the halves, which is
+  why the run before is the one that counts.
+- ⚠ **The deletion was not one file.** Both gate runners queued the row,
+  `check-twins` compared the pair, `check-workflow` planted `exit 2` into that
+  exact path, and `check-defaults` ran it as a subject.
+- ⛔ **`check-workflow`'s unrunnable-check plant had to stay an `sh` row.** Planting
+  into a Go source file would fail the BUILD, and a gate whose binary did not
+  build skips every ported row at once - a different plant with a different
+  answer. It is `check-shell.sh` now.
+- ⛔ **And `check-defaults`' subject moved INSIDE the build gate**, not below it.
+  Outside, a host where the build failed would run a missing command that answers
+  127 under every environment, which `run_subject` reports as a subject answering
+  identically everywhere - the one-gated-door defect that block's own comment
+  records.
+- ⚠ `TODO/ci.md`'s `CI-05` names the two deleted halves in its Approach and its
+  Prove; both are amended in place with a dated note rather than rewritten, and
+  the Closure evidence is untouched.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-10`. No version bump and no deploy.
+
 ### 2026-09-17T09:08:38Z
 
 - ⭐ **`check-project` IS PORTED, AND IT IS THE BIG ONE.** 997 lines of `sh` and a

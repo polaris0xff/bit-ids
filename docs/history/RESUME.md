@@ -19,7 +19,7 @@ before editing anything.
 
 ⚠ **The container may start on a `claude/*` branch, with `user.name` set to an
 agent, and a shallow clone.** All three were true again on 2026-09-17, which is
-thirteen starts running. Correct them first: the branch to `main` per rule 7, the
+fourteen starts running. Correct them first: the branch to `main` per rule 7, the
 identity to the operator's own per rule 11, and the clone with
 `git fetch --unshallow` - after which `git rev-list --count HEAD` answered **170**
 here, from **50** before. ⚠ Measure the depth before AND after if the pair is
@@ -51,21 +51,21 @@ Both runner images carry it.
 ## Where the work is
 
 **In flight:** nothing. `ACQ-06` closed on 2026-09-17 and with it every open P0;
-the next unstarted item is `CI-10`'s remaining twin pairs.
+`check-project` was ported, compared and deleted the same day. The next unstarted
+work is `CI-10`'s four remaining twin pairs, or `CI-09`'s `RunManifest` producer.
 
 ### ⚠ The state of the tree, as this was last written
 
-The gate was **39 checks, 38 passed, 0 failed, 1 skipped** at session start -
-`check-remote-items`, the one observed skip on a session host - exit 0, on a
-clean tree level with `origin/main` at `07b2a07`. CI run **157** on that commit
-is green on all six jobs, read back through rule 8's route rather than assumed.
-⚠ The gate is **40 rows** now: `check-rootless` joined it with `ACQ-06`, and it
-reads 40 checks, 39 passed, 0 failed, 1 skipped.
+The gate is **40 checks, 39 passed, 0 failed, 1 skipped**, exit 0 - the one skip
+is `check-remote-items`, which needs an authenticated `gh` no session host has.
+⚠ It was 39 rows at the 2026-09-17 session's start; `check-rootless` joined with
+`ACQ-06`.
 
-⚠ **Five commits landed after that and each was read back the same way.** Runs
-**158** through **162** are green, all six jobs, the last of them on `2525a5b`.
-⛔ The commit this session ends on is the one with no run read back yet, whatever
-its number: confirming it is a starting step rather than an assumption.
+⚠ **Seven commits landed in that session and each was read back through rule 8's
+route.** CI runs **158** through **164** are green on all six jobs, the last of
+them on `5b331ca`. ⛔ **The commit a session ends on is the one with no run read
+back yet**, whatever its number: confirming it is a starting step rather than an
+assumption.
 
 ### ⭐ A record exists, and a session can produce another
 
@@ -94,18 +94,18 @@ uncovers the next, and only a dispatch shows it.**
 and `bit-check --rows` is the measurement rather than this sentence. Both gate
 runners invoke it, so those rows are the SAME row on both lanes.
 
-⚠ **`check-project` is the eleventh and no gate row runs it yet.** It is
-ported and compared against both halves; the gate still queues the `sh` one
-until the deletion lands.
+⭐ **`check-project` is the eleventh and the last `common/` pair**, ported,
+compared and deleted on 2026-09-17. Every `common/` half is in the binary now.
 
-⛔ **Sixteen files are deleted, not translated.** `check-twins` went from twelve
-file pairs to **five**, and from 69 seconds to **10.0**, measured on 2026-09-15.
+⛔ **Eighteen files are deleted, not translated.** `check-twins` went from twelve
+file pairs to **four**: 69 seconds to 10.0 over the first eleven, measured on
+2026-09-15, and `check-project`'s two halves on 2026-09-17.
 
-**The five pairs left** are `check-project`, 997 lines and its own unit, plus
-`check-cache`, `check-catalogue`, `check-remote-items` and `mine-repo`. Their
-PowerShell halves together are **5.3 seconds**, timed on 2026-09-15, against the
-**96** the layer started at. ⛔ So the remaining wall-clock value is small and the
-DRIFT value is unchanged.
+**The four pairs left** are `check-cache`, `check-catalogue`,
+`check-remote-items` and `mine-repo`. ⭐ `check-project` was the fifth and the
+biggest, and it left on 2026-09-17; the five together were **5.3 seconds**, timed
+on 2026-09-15, of which it was **2.60**. ⛔ So the remaining wall-clock value is
+small and the DRIFT value is unchanged.
 
 ⛔ **A PAIR MAY ONLY LEAVE THAT LIST ONE WAY.**
 `sh scripts/common/check-bitcheck.sh --compare` runs every case against BOTH
@@ -132,14 +132,15 @@ step supervisor - across two targets and both routes, on byte-identical code.
    run 32 wedged in *Install the client* on both lanes and uploaded zero
    artifacts, where the unprivileged claim took 0s and the resolve step - which
    fetches through the same installer - took 1s. ⚠ Do not reopen it: absolute 16.
-1. **`CI-10`**, five twin pairs left, `check-project` its own unit. ⛔ A pair
-   leaves that list only after `check-bitcheck --compare` has run it against
-   BOTH halves. ⭐ **`check-project` is ported and compared, 2026-09-17** - the
-   twenty-nine refusals are in the Go binary, 49 cases, and the comparison found three drifts that
-   were all the PowerShell twin's and are all repaired. ⛔ **The deletion is the
-   next unit** and it is not one file: `check-gate` and its twin queue the row,
-   `check-twins` compares the pair, `check-workflow` plants against that exact
-   path, and `check-defaults` runs it as a subject.
+1. **`CI-10`**, four twin pairs left: `check-cache`, `check-catalogue`,
+   `check-remote-items` and `mine-repo`. ⛔ A pair leaves that list only after
+   `check-bitcheck --compare` has run it against BOTH halves.
+   ⭐ **`check-project` is ported, compared and deleted, 2026-09-17** - the
+   twenty-nine refusals are in the Go binary, 49 cases ran them against both
+   halves, and the comparison found three drifts that were all the PowerShell
+   twin's and are all repaired. ⚠ The deletion was not one file: both gate
+   runners queued the row, `check-twins` compared the pair, `check-workflow`
+   planted against that exact path, and `check-defaults` ran it as a subject.
 2. **`CLIENT-01` and `CLIENT-06`**, the remaining vertical captures. They sat
    behind `ACQ-06` and no longer do.
 3. **`CI-09`'s residuals**: the `RunManifest` a record needs beside it, and the

@@ -66,3 +66,10 @@ release a route fetches. It also found that the record the work order was waitin
 for cannot be written from any capture this project has run, refuted two more
 readings of the aria2 hang, and cut the lane a contributor waits for from thirty
 minutes to under four.
+
+[`SESSION-2026-09-17-ROOTLESS.md`](SESSION-2026-09-17-ROOTLESS.md) is the saved
+summary of the session that took the last privilege off the capture path and
+measured that removing it does not end the hang, dissolved a recorded blocker by
+noticing that a bound need not be a wrapper, made the assembler ask whether the
+store it writes is a corpus at all, and deleted the last `common/` twin - whose
+pre-deletion comparison found three defects in the half that was about to go.

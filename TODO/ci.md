@@ -3380,7 +3380,10 @@ drifts.
 
 Approach: A rule in `scripts/common/check-project.sh` and its PowerShell twin
 that reads every `cargo test` invocation and refuses a bare word argument unless
-it follows a flag that takes a value. ⚠ The parsing is the work: a code span can
+it follows a flag that takes a value. ⚠ **Amended 2026-09-17: both halves are
+gone and the rule is `bit-check check-project`**, ported and compared case for
+case under `CI-10`. The paragraph is left as it was written because it is what
+was built; this note says where the rule lives now. ⚠ The parsing is the work: a code span can
 wrap across lines, so the paragraph is joined before the spans are found, and the
 two twins must agree per planted mutation rather than on a clean tree.
 
@@ -3409,6 +3412,10 @@ Prove: `sh scripts/common/check-project.sh` and
 `pwsh -File scripts/common/check-project.ps1` both exit 1 when a `Prove` line is
 rewritten to the bare-filter form, both exit 0 on the tree as it stands, and
 both agree on every planted mutation.
+⚠ **Amended 2026-09-17**: the two halves no longer exist, so the runnable form
+of this acceptance is `go run ./tools/check check-project` from the repository
+root, and `sh scripts/common/check-bitcheck.sh` plants the bare-filter form as a
+standing case. The line above is kept as the acceptance that was actually run.
 
 Closure evidence: run on 2026-09-05. Both halves exit 0 on the tree as it
 stands, and `sh scripts/common/check-gate.sh` and
@@ -3972,9 +3979,10 @@ written up as a property of the change rather than of the host.
   harness that grew, not a defect, and shrinking it is a decision about how many
   cases a gate should carry rather than a port. Recorded here because the
   measurement was taken here; it belongs to whoever next opens `CI-01`.
-- ⚠ **Five file pairs remain and `check-twins` prints five rows.** Their
-  PowerShell halves together are **5.3 seconds**, timed on 2026-09-15, against
-  the 96.1 the layer started at. ⛔ The figure had been decremented from 12.3 as
+- ⚠ **Four file pairs remain and `check-twins` prints four rows**, 2026-09-17,
+  `check-project` having left. The five that remained before it together took
+  **5.3 seconds**, timed on 2026-09-15, against the 96.1 the layer started at,
+  and `check-project.ps1` was **2.60** of those five. ⛔ The figure had been decremented from 12.3 as
   pairs left rather than re-timed, which is the value-in-two-places defect in a
   different costume. ⛔ The
   remaining wall-clock value of porting them is therefore small and the DRIFT
@@ -3984,7 +3992,7 @@ written up as a property of the change rather than of the host.
   `docs/history/RESUME.md` said eight while naming seven files; both were real,
   because `check-no-secrets` was compared TWICE and seven pairs of files produced
   eight rows. ⚠ Reconciled by running `sh scripts/common/check-twins.sh` rather
-  than by picking one. It is **five pairs and five rows** now, and the two are
+  than by picking one. It is **four pairs and four rows** now, and the two are
   equal only because the two-row pair has gone.
 - ⚠ **`check-defaults` runs the Go binary as a subject now.** A Go program
   inherits a different set of host values than a shell script - no `IFS`, and

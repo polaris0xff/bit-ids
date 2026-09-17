@@ -430,7 +430,24 @@ harvest_pairs() {
 # spot its own header records, a rule differing only on a shape the tree does not
 # contain. The twin was correct, both other implementations were changed to match,
 # and only then did the pair leave.
-compare_pair "check-project" common/check-project.sh "--json" common/check-project.ps1 "-Json"
+# ⛔ AND A SEVENTH PAIR HAS LEFT: `check-project`, 2026-09-17, the biggest one
+# there was - 997 lines of `sh` against a hand-written twin, twenty-nine refusals
+# over this repository's own invariants. Both halves are gone and `bit-check
+# check-project` is the row on both lanes.
+#
+# ⛔ IT LEFT THE LIST THE ONLY WAY A PAIR MAY, and the comparison earned it.
+# `check-bitcheck.sh --compare` ran 49 planted cases against both halves and
+# found THREE DISAGREEMENTS, all of them the twin's: `@(...) | Sort-Object`
+# wrapping the input and leaving the output unwrapped, so an empty set threw
+# instead of refusing; the summary Total row compared as a whole LINE where the
+# `sh` half compares five counts; and two checks joined by `-or`, so a tree
+# failing both counted one failure rather than two. All three were repaired in
+# the twin and only then did the run come back clean - 143 cases, 143 passed,
+# agreeing on the exit code and byte for byte on the `--json` line.
+#
+# ⚠ THIS FILE COULD NOT HAVE FOUND ANY OF THEM. It compares the two halves on
+# the tree it runs against, and this tree has no empty client matrix, no altered
+# Total row and no duplicated index row. The blind spot its own header records.
 
 # ⭐ THE FIRST PAIR OUTSIDE common/, AND WHY THE PATHS ABOVE GAINED A DIRECTORY.
 # Every twin this file compared lived in `common/`, so the base was spelled once

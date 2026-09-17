@@ -11,7 +11,6 @@ capability; run the doctor and the tool's own version command.
 | [`../scripts/common/check-gate.sh`](../scripts/common/check-gate.sh) | one local gate entry point |
 | [`../tools/check/`](../tools/check/) | one Go binary carrying the ported rules, run by both lanes |
 | [`../scripts/common/mine-repo.sh`](../scripts/common/mine-repo.sh) | reproducible read-only reference mining |
-| [`../scripts/common/check-project.sh`](../scripts/common/check-project.sh) | bit-ids skeleton, catalogue and TODO invariants |
 
 ⛔ **The PowerShell twin layer is being DELETED rather than extended**, which is
 `CI-10`. A rule used to be a `.sh` and a hand-written `.ps1` with `check-twins`
@@ -23,12 +22,12 @@ twin of an existing check is work added to a layer that is going away.
 ⭐ **`check-no-secrets` and `check-docs` are in that binary**, which is why this
 table no longer names a script for either: `bit-check check-no-secrets` is the
 default run and `bit-check check-no-secrets --public` adds the rules that only
-matter for a public repository. ⚠ `bit-check --rows` is the list; five file pairs
-still have twins and `check-twins` compares them as five rows.
+matter for a public repository. ⚠ `bit-check --rows` is the list; four file pairs
+still have twins and `check-twins` compares them as four rows.
 
-⚠ **`check-project` is in that binary too and its twins are still the gate's**,
-2026-09-17. The port is compared against both halves case for case and the halves
-have not been deleted, so the table below still names the script.
+⭐ **`check-project` is in that binary too**, 2026-09-17, which is why the table
+above no longer names a script for it either. It was the last `common/` pair and
+the biggest: 997 lines against a hand-written twin. Both halves are gone.
 
 `CI-01` eventually adds an independent Rust validator for the growing corpus.
 

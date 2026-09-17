@@ -178,8 +178,8 @@ fi
 # ⚠ SINGLE-QUOTED ON PURPOSE, and shellcheck is right to ask. `$IFS` has to be
 # expanded by the CHILD shell, because the whole question is what the child sees;
 # expanding it here would print this shell's own value and the case would pass
-# over any child at all. `check-project.sh` disables the same rule for the same
-# shape.
+# over any child at all. `check-placeholders` and `mine-repo.sh` disable the same
+# rule for the same shape.
 # shellcheck disable=SC2016
 IFS_SEEN=$(env "IFS=:" sh -c 'printf "%s" "$IFS"' | od -An -c | tr -d ' \n')
 if [ "$IFS_SEEN" = "\\t\\n" ]; then
@@ -278,16 +278,24 @@ run_subject() { # label command...
 # a changed environment reaches. ⛔ Moving a subject and leaving it outside the
 # condition is the one-gated-door defect this block's own comment records; it is
 # inside.
+#
+# ⚠ `project` JOINED THE GATED SET ON 2026-09-17 for the same reason, and it is
+# the subject with the widest surface here: twenty-nine refusals over `git`
+# output, `awk`-shaped parsing and a regex engine, every one of which a locale or
+# a changed environment can reach. ⛔ Moving it and leaving it below the condition
+# would be the one-gated-door defect this block's own comment records, a second
+# time and in the change that moved it.
 if (cd "$ROOT/tools/check" && go build -o "$WORK/bit-check" .) >/dev/null 2>&1; then
   run_subject "markers   " "$WORK/bit-check" check-markers --json
   run_subject "licences  " "$WORK/bit-check" check-licences --json
   run_subject "secrets   " "$WORK/bit-check" check-no-secrets --public --json
+  run_subject "project   " "$WORK/bit-check" check-project --json
 else
   fail "markers     tools/check did not build, so the ported subject could not be run"
   fail "licences    tools/check did not build, so the ported subject could not be run"
   fail "secrets     tools/check did not build, so the ported subject could not be run"
+  fail "project     tools/check did not build, so the ported subject could not be run"
 fi
-run_subject "project   " sh "$ROOT/scripts/common/check-project.sh" --json
 run_subject "cache     " sh "$ROOT/scripts/acquisition/check-cache.sh" --json
 
 store_report check-defaults/1 cases "$JSON"
