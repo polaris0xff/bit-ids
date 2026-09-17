@@ -61,10 +61,11 @@ is `check-remote-items`, which needs an authenticated `gh` no session host has.
 ⚠ It was 39 rows at the 2026-09-17 session's start; `check-rootless` joined with
 `ACQ-06`.
 
-⚠ **Seven commits landed in that session and each was read back through rule 8's
-route.** CI runs **158** through **164** are green on all six jobs, the last of
-them on `5b331ca`. ⛔ **The commit a session ends on is the one with no run read
-back yet**, whatever its number: confirming it is a starting step rather than an
+⚠ **Eight commits landed in that session and each was read back through rule 8's
+route.** CI runs **158** through **165** are green on all six jobs, the last of
+them on `4c00fa9`, which is where `origin/main` stood. ⛔ **The commit a session
+ends on is the one with no run read back yet**, whatever its number - including
+the one carrying this sentence. Confirming it is a starting step rather than an
 assumption.
 
 ### ⭐ A record exists, and a session can produce another
