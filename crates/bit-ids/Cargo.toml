@@ -16,5 +16,5 @@ serde_json = "1.0.151"
 # `bundled` compiles a vendored SQLite so the published bytes do not depend on
 # whatever library a host happens to have, and `serialize` is what lets the
 # database be produced in memory: this crate owns no filesystem.
-rusqlite = { version = "0.37.0", features = ["bundled", "serialize"] }
+rusqlite = { version = "0.40.2", features = ["bundled", "serialize"] }
 sha2 = "0.11.0"
