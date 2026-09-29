@@ -469,6 +469,11 @@ nothing is. The clone question under *Settled decisions* is spent too.
    and the gate's one skip is proved on every host now: a stub `gh` and a stub
    `curl` serve its fifteen cases in `check-bitcheck`'s DEFAULT mode, and the
    comparison over them found two drifts, both the twin's.
+   ⭐ **`mine-repo` IS PORTED AND COMPARED, 2026-09-29, with nothing deleted
+   yet.** Its only comparison had been `--selftest`; stub `gh`, `curl` and `git`
+   now serve both routes, the clone and the trim to all three implementations,
+   and six drifts were repaired in the half that had each. [`ci.md`](ci.md)
+   under `CI-10` has the table.
    ⛔ **A pair may leave that list ONE WAY ONLY**:
    `sh scripts/common/check-bitcheck.sh --compare` against BOTH halves, before
    either is deleted.

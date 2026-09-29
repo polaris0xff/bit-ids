@@ -12,6 +12,10 @@
 // runs on both platforms cannot drift from itself, so the comparison stops being
 // necessary rather than getting faster.
 //
+// ⚠ AND ONE HELPER, WHICH WRITES RATHER THAN CHECKS. `mine-repo` was the last
+// twin pair `check-twins` compared, so it came here for the same reason the
+// checks did; it is no gate row, and minerepo.go says how it is kept apart.
+//
 // -- ⛔ WHAT A PORT MAY NOT CHANGE -------------------------------------------
 //
 // A ported check refuses exactly what its shell half refused, over the same
@@ -38,6 +42,8 @@
 //	bit-check check-licences --permitted
 //	bit-check check-no-secrets --public
 //	bit-check check-remote-items [--repo OWNER/NAME]
+//	bit-check mine-repo OWNER/NAME [--out DIR] [--route auto|gh|proxy] [--no-clone] [--json]
+//	bit-check mine-repo --selftest [--json]
 //	bit-check --rows
 //
 // ⛔ Read the exit code from this process, unpiped. ⚠ `go run . <check>` is a
@@ -133,6 +139,13 @@ func main() {
 			fmt.Println(n)
 		}
 		os.Exit(0)
+	}
+
+	// ⭐ A HELPER IS DISPATCHED BEFORE THE CHECKS ARE READ, which is why it is not
+	// one of them: `mine-repo` writes, so it is no gate row and `--rows` does not
+	// name it. It parses its own arguments and answers its own exit code.
+	if args[0] == "mine-repo" {
+		os.Exit(mineRepo(args[1:]))
 	}
 
 	name := args[0]

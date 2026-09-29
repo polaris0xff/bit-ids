@@ -70,11 +70,16 @@ param(
     [Parameter(Position = 0)]
     [string]$Target = '',
     [string]$Out = 'references',
-    [ValidateSet('auto', 'gh', 'proxy')]
     [string]$Route = 'auto',
     [switch]$NoClone,
     [switch]$SelfTest,
-    [switch]$Json
+    [switch]$Json,
+    # ⛔ WHAT THE BINDER DOES NOT KNOW LANDS HERE, AND IS REFUSED BELOW WITH A 2.
+    # An unknown argument, a second target and a route outside the set were
+    # binder errors until 2026-09-29, and pwsh answers a binder error with exit
+    # 1 - "the subject was not fetched" - where the sh half answered 2.
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$Rest = @()
 )
 
 Set-StrictMode -Version Latest
@@ -85,6 +90,11 @@ $ErrorActionPreference = 'Stop'
 # REFUSES stops being a code a caller can read and becomes an exception nobody
 # caught. docs/conventions/shell.md section 8.
 $PSNativeCommandUseErrorActionPreference = $false
+
+if ($Rest.Count -gt 0) {
+    [Console]::Error.WriteLine('mine-repo: unknown argument: ' + $Rest[0])
+    exit 2
+}
 
 $proxy = 'https://api.gh.pkgforge.dev'
 $control = 'pkgforge-dev/reverse-proxies'
@@ -276,6 +286,13 @@ if ($SelfTest) {
     exit 1
 }
 
+# ⛔ AN UNKNOWN ROUTE IS REFUSED, NOT PROBED, and with the sh half's 2. The
+# comparison is case-sensitive because the sh half's is: `-notin` alone would
+# take `GH` for `gh`.
+if ($Route -cnotin @('auto', 'gh', 'proxy')) {
+    [Console]::Error.WriteLine('mine-repo: the route is auto, gh or proxy, not: ' + $Route)
+    exit 2
+}
 if ($Target -notmatch '^[^/]+/[^/]+$') {
     [Console]::Error.WriteLine('mine-repo: give a target as OWNER/NAME')
     exit 2
@@ -386,7 +403,12 @@ function Get-List([string]$Path, [string]$OutFile, [string]$Label) {
 if ($route -eq 'proxy') {
     $tmp = Join-Path $apiDir '.control.json'
     $c = Invoke-Proxy ('/repos/' + $control) $tmp
-    Remove-Item -LiteralPath $tmp -ErrorAction SilentlyContinue
+    # ⛔ -Force, OR THE CONTROL STAYS IN THE CORPUS. The name begins with a dot,
+    # pwsh on Linux treats it as hidden, and Remove-Item refuses a hidden item
+    # without -Force - silently, under SilentlyContinue. Measured on 2026-09-29
+    # against the real proxy: this half left api/.control.json behind and the
+    # other two did not.
+    Remove-Item -Force -LiteralPath $tmp -ErrorAction SilentlyContinue
     $controlOk = if ($c -eq 200) { "reachable ($control answered 200)" }
                  else { "⛔ UNREACHABLE ($control answered $c). A 404 below means nothing." }
 }
@@ -479,8 +501,14 @@ if (-not $NoClone) {
         Remove-Item -Recurse -Force -LiteralPath (Join-Path $treeDir '.git') -ErrorAction SilentlyContinue
         # ⛔ DELETING, NEVER MOVING. A trim that rewrites paths invalidates every
         # citation already written. Source, tests, docs & anything else relevant
+        #
+        # ⛔ -Force, OR THE DOT-DIRECTORIES STAY. pwsh on Linux treats a name
+        # beginning with a dot as hidden, and Get-ChildItem skips hidden items
+        # without it, so `.next` and `.venv` were never trimmed there - found on
+        # 2026-09-29 by check-bitcheck --compare. A leading dot hides nothing on
+        # Windows, so the same line trimmed on one platform and not the other.
         foreach ($junk in 'node_modules', 'target', 'build', 'dist', '.next', '.venv', '__pycache__') {
-            Get-ChildItem -LiteralPath $treeDir -Recurse -Directory -Filter $junk -ErrorAction SilentlyContinue |
+            Get-ChildItem -LiteralPath $treeDir -Recurse -Directory -Force -Filter $junk -ErrorAction SilentlyContinue |
                 ForEach-Object { Remove-Item -Recurse -Force -LiteralPath $_.FullName -ErrorAction SilentlyContinue }
         }
     }

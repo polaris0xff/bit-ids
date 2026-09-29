@@ -126,7 +126,16 @@ while [ $# -gt 0 ]; do
       printf 'mine-repo: unknown argument: %s\n' "$1" >&2
       exit 2
       ;;
-    *) TARGET="$1" ;;
+    *)
+      # ⛔ A SECOND TARGET IS REFUSED, NOT TAKEN. This kept the last one it was
+      # given until 2026-09-29, so `a/b c/d` mined only `c/d` and said so
+      # nowhere; running both halves before the port found the twin refusing it.
+      [ -z "$TARGET" ] || {
+        printf 'mine-repo: unknown argument: %s\n' "$1" >&2
+        exit 2
+      }
+      TARGET="$1"
+      ;;
   esac
   shift
 done
@@ -370,7 +379,24 @@ if [ "$SELFTEST" = "1" ]; then
   exit $?
 fi
 
+# ⛔ AN UNKNOWN ROUTE IS REFUSED, NOT PROBED. Anything but `gh` and `proxy` was
+# read as `auto` until 2026-09-29, so `--route prxy` - asked for precisely to
+# keep the operator's token out of it - probed gh and used the token.
+case "$ROUTE" in
+  auto | gh | proxy) ;;
+  *)
+    printf 'mine-repo: the route is auto, gh or proxy, not: %s\n' "$ROUTE" >&2
+    exit 2
+    ;;
+esac
+
+# ⚠ OWNER/NAME AND NOTHING ELSE. Any string with a slash in it passed here until
+# 2026-09-29, so `a/b/c` was mined into `a__b/c`; the twin was strict.
 case "$TARGET" in
+  */*/* | /* | */)
+    printf 'mine-repo: give a target as OWNER/NAME\n' >&2
+    exit 2
+    ;;
   */*) ;;
   *)
     printf 'mine-repo: give a target as OWNER/NAME\n' >&2

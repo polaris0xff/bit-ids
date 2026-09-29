@@ -4463,3 +4463,102 @@ printed *exit status 2* and then exited **1** - so through it, a refusal and a
 could-not-run are one code. The three `Prove` forms state exit 0, which it
 reports faithfully; the update procedure says to read the report, and the
 binary's usage comment says why.
+
+### ⭐ `mine-repo` ported and compared: a helper, and the last pair. 2026-09-29
+
+⚠ **IT IS NOT A CHECK, AND IT CAME INTO THE CHECKING BINARY ANYWAY.** It
+writes a corpus - the API's answers, a clone and `PROVENANCE.md` - so it is no
+gate row, `--rows` does not name it, and `bit-check mine-repo` is dispatched
+before the checks are read. It came here because it was the last pair
+`check-twins` compared, and this entry's direction is that the twin layer is
+deleted rather than translated.
+
+⛔ **`--selftest` WAS THE WHOLE COMPARISON THE PAIR EVER HAD, AND IT COVERS FOUR
+CASES OF ONE FUNCTION.** Paging, both routes, the control, the clone, the trim
+and the provenance had never been run against each other. `check-bitcheck` now
+serves all of them from stubs first on `PATH` - `gh`, `curl` and `git` - and
+compares what each implementation LEFT: the exit code, what `--json` printed,
+and every file and directory it wrote, JSON through `jq -S`, the tree by
+checksum, `PROVENANCE.md` whole but for the line naming its writer and moment.
+
+⭐ **The stubs enforce what the halves only said.** The proxy stub answers 420
+to any user-agent but curl's own, as the real proxy was measured to; the git
+stub refuses a clone without the low-speed bound or a depth of one, and any URL
+but the target's. ⚠ The proxy route is compared between the port and the `sh`
+half alone: the twin fetches with `Invoke-WebRequest`, which no stub on `PATH`
+intercepts, and the rows say so.
+
+#### ⛔ Six drifts, and only running the three against each other found the last two
+
+| drift | whose | found by |
+| --- | --- | --- |
+| a target with two slashes, `a/b/c`, was mined into `a__b/c` | `sh` | running both halves before the port |
+| of two targets, the last was mined and the first dropped in silence | `sh` | the same |
+| an unknown route was read as `auto`, so `--route prxy` - asked for to keep the operator's token out of it - probed gh and used the token | `sh` | the same |
+| an unknown argument, a second target and a bad route were binder errors, which pwsh answers with exit 1 where the vocabulary says 2 | twin | the same |
+| `.next` and `.venv` were never trimmed on Linux: pwsh treats a leading dot as hidden, and `Get-ChildItem` skips hidden items without `-Force` | twin | `check-bitcheck --compare`, five cases |
+| the proxy route left `api/.control.json` in the corpus: the same hidden name, and `Remove-Item` refuses a hidden item without `-Force`, silently under `SilentlyContinue` | twin | a real fetch, below; no stub reaches this path |
+
+All six are repaired in the half that had them, CRLF and BOM kept, and the
+comparison then came back clean, as did the real fetch.
+
+#### ⭐ What the port does that neither half did
+
+- ⛔ **A list cut off at the page cap is a named gap.** Both halves stopped the
+  proxy route after ten pages of a hundred and said `ok`, so a tracker with
+  more than a thousand items arrived short with nothing anywhere saying so.
+- ⚠ **`vendor/bundle` is trimmed.** The `sh` half listed it where `find -name`
+  takes a NAME, which never matches a slash, and the twin left it out; neither
+  ever removed one.
+- ⚠ **A relative `--out` is under the repository root** when it runs inside one.
+  The halves resolved it from the working directory, and `go run .` starts in
+  `tools/check`.
+- **No python3 or node.** The halves needed one of them to join pages and
+  probed each by running it; the port parses with the standard library.
+
+The first two are cases marked `-` in `check-bitcheck`, with a third for an
+`--out` given no value: a rule the port has and no half ever did, which is a
+different fact from a half that agreed. ⚠ The relative `--out` has no case,
+because every case passes an absolute one.
+
+#### ⭐ Measured once against the real proxy and a real clone
+
+`pkgforge-dev/cross-libc-dlopen`, the target the twin's own header recorded,
+through `api.gh.pkgforge.dev` with read-only requests. Without the clone, the
+three wrote the same corpus - 40 issues and pull requests, 26 comments, no
+review comments, 9 releases and 9 tags - once the `.control.json` repair was
+in; before it, the twin's corpus held one file more. With the clone, all three
+wrote the same 169 files and directories at commit `3095c15`, `.git` gone.
+
+#### Guard mutation over the port
+
+| plant | verdict |
+| --- | --- |
+| the proxy user-agent is a browser's | refused, 16 rows |
+| the clone loses its low-speed bound | refused, 10 rows |
+| the clone loses its depth | refused, 10 rows |
+| a full page is taken for the last | refused, 3 rows |
+| the empty-join guard never fires | refused, by the self-test |
+| each page is kept as one record | refused, 3 rows - and NOT by the self-test |
+| any slashed target is taken | refused |
+| an unknown route is taken | refused, 2 rows |
+| a second target is taken | refused |
+| an ignored `--out` is written anyway | refused, 3 rows |
+| the commit is read from nowhere | refused, 5 rows |
+| the trim takes files as well as directories | refused, by the FILE named like junk alone |
+| a truncation at the cap is not named | refused, by a Go-only case |
+| `vendor/bundle` is left | refused, by a Go-only case |
+| failed discussions leave their file | refused |
+| pages are never removed | refused, 2 rows |
+| the separator is always a question mark | refused, 9 rows |
+| the gaps never reach `PROVENANCE.md` | refused, 7 rows |
+| any answer from the control is reachable | refused, by the control case alone |
+
+Nineteen plants, each verified to apply and to change the file, and the file
+restored from a saved copy after each: all refused, none survived, none failed
+to compile.
+
+⚠ **The self-test the pair was compared by would have passed one of them.** A
+joiner that keeps each page as one record still writes four `"url"` strings and
+one line beginning `[`, which is everything `--selftest` counts. What refuses
+it is the proxy cases' record counts - 102 issues where that joiner writes 2.

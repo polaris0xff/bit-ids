@@ -115,7 +115,10 @@ ME=check-bitcheck
 # shellcheck source=scripts/corpus/store-lib.sh
 . "$ROOT/scripts/corpus/store-lib.sh"
 
-store_require git go tar
+# ⚠ jq IS REQUIRED because the gh stub below answers `--jq` with it and the
+# mine-repo cases compare JSON through it. Without it those cases would FAIL
+# rather than say they could not run, which is the wrong one of the two.
+store_require git go tar jq
 
 WORK=$(store_workdir checkbitcheck) || exit 2
 trap 'rm -rf "$WORK"' EXIT INT TERM
@@ -894,27 +897,38 @@ case "$1 ${2:-}" in
     exit 0
     ;;
 esac
+# ⚠ AN API PATH IS A FILE NAMED WITH ITS SLASHES AS `%`, leading slash dropped,
+# query kept. mine-repo asks for a repository AND for the lists under it, and a
+# nested layout cannot hold `repos/o/r` as a file and a directory at once.
 if [ "$1" = "api" ]; then
-  path=$2
+  shift
+  path=""
   jqexpr=""
-  shift 2
   while [ $# -gt 0 ]; do
     case "$1" in
       --jq)
         jqexpr=$2
         shift 2
         ;;
-      *) shift ;;
+      -f | -F)
+        shift 2
+        ;;
+      -*) shift ;;
+      *)
+        [ -n "$path" ] || path=$1
+        shift
+        ;;
     esac
   done
-  [ -f "$D/api/$path" ] || {
+  key=$(printf '%s' "${path#/}" | tr '/' '%')
+  [ -f "$D/api/$key" ] || {
     printf 'gh: Not Found (HTTP 404)\n' >&2
     exit 1
   }
   if [ -n "$jqexpr" ]; then
-    jq -r "$jqexpr" "$D/api/$path"
+    jq -r "$jqexpr" "$D/api/$key"
   else
-    cat "$D/api/$path"
+    cat "$D/api/$key"
   fi
   exit 0
 fi
@@ -924,18 +938,69 @@ STUBGH
 
 cat >"$STUBBIN/curl" <<'STUBCURL'
 #!/bin/sh
-# A stand-in for curl that serves raw.githubusercontent.com out of
-# $STUB_GH_DIR/raw, and answers what that host answers for a path it lacks.
+# A stand-in for curl. It serves raw.githubusercontent.com out of
+# $STUB_GH_DIR/raw, and the proxy out of $STUB_GH_DIR/proxy, keyed as the gh
+# stub keys a path, and answers what each host answers for a path it lacks.
+# ⛔ The proxy refuses any user-agent but curl's own with 420, as the real one
+# was measured to on 2026-08-28, so a caller that stops sending it fails here.
 set -u
 D=${STUB_GH_DIR:?}
 url=""
-for a in "$@"; do
-  case "$a" in https://*) url=$a ;; esac
+out=""
+fmt=""
+ua=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -o)
+      out=$2
+      shift 2
+      ;;
+    -w)
+      fmt=$2
+      shift 2
+      ;;
+    -A)
+      ua=$2
+      shift 2
+      ;;
+    -m | --max-time)
+      shift 2
+      ;;
+    https://*)
+      url=$1
+      shift
+      ;;
+    *) shift ;;
+  esac
 done
 case "$url" in
   https://raw.githubusercontent.com/*)
     rel=${url#https://raw.githubusercontent.com/}
     if [ -f "$D/raw/$rel" ]; then cat "$D/raw/$rel"; else printf '404: Not Found'; fi
+    exit 0
+    ;;
+  https://api.gh.pkgforge.dev/*)
+    key=$(printf '%s' "${url#https://api.gh.pkgforge.dev/}" | tr '/' '%')
+    src=""
+    if [ "$ua" != "curl/8" ]; then
+      code=420
+    elif [ -f "$D/proxy/$key.code" ]; then
+      code=$(cat "$D/proxy/$key.code")
+      src="$D/proxy/$key"
+    elif [ -f "$D/proxy/$key" ]; then
+      code=200
+      src="$D/proxy/$key"
+    else
+      code=404
+    fi
+    {
+      if [ -n "$src" ] && [ -f "$src" ]; then
+        cat "$src"
+      elif [ "$code" = 404 ]; then
+        printf '{"message":"Not Found"}'
+      fi
+    } >"${out:-/dev/stdout}"
+    [ -z "$fmt" ] || printf '%s' "$code"
     exit 0
     ;;
 esac
@@ -955,13 +1020,17 @@ TAGOBJ=$(printf '%040d' 7)
 
 stub_reset() {
   rm -rf "$STUB"
-  mkdir -p "$STUB/api" "$STUB/raw" || exit 2
+  mkdir -p "$STUB/api" "$STUB/raw" "$STUB/proxy" || exit 2
   printf '[]\n' >"$STUB/issues.json"
   printf '[]\n' >"$STUB/prs.json"
 }
 
+stub_key() { # path -> the file name both stubs look it up by
+  printf '%s' "${1#/}" | tr '/' '%'
+}
+
 stub_api() { # path json
-  mkdir -p "$STUB/api/${1%/*}" && printf '%s\n' "$2" >"$STUB/api/$1"
+  printf '%s\n' "$2" >"$STUB/api/$(stub_key "$1")"
 }
 
 stub_runs() { # action sha runs-block
@@ -1103,6 +1172,463 @@ agree "remote-items an unauthenticated gh cannot run" "$RI" "$RIS" 2
 stub_reset
 printf 'HTTP 502: the listing failed\n' >"$STUB/issues.fail"
 agree "remote-items a listing that fails cannot run" "$RI" "$RIS" 2
+
+# ============================================================================
+# mine-repo
+# ============================================================================
+#
+# ⭐ A HELPER, NOT A CHECK, AND COMPARED BY WHAT IT LEAVES BEHIND. It writes a
+# directory - the API's answers, a clone and PROVENANCE.md - so a case compares
+# the exit code, what --json printed, and every file and directory it wrote:
+# JSON through `jq -S`, the tree by checksum, and PROVENANCE.md whole but for
+# the line naming its writer and the moment it ran.
+#
+# ⛔ THE STUBS ENFORCE WHAT THE HALVES ONLY SAID. The proxy stub answers 420 to
+# any user-agent but curl's own, the git stub refuses a clone without the
+# low-speed bound or a depth of one, and it refuses any URL but the target's -
+# so an implementation that dropped any of them fails a case, not a reading.
+#
+# ⚠ THE PROXY ROUTE IS COMPARED WITHOUT THE POWERSHELL HALF. It fetches with
+# `Invoke-WebRequest`, which no stub on PATH intercepts, so it would ask the real
+# proxy about a repository that does not exist; those rows say so. The gh route,
+# the clone, the trim and the provenance are compared across all three.
+#
+# ⚠ TWO SPELLINGS ARE THE HOST'S, NOT A DRIFT: the twin names its own flags
+# `-Out` and `-NoClone` where the others say `--out` and `--no-clone`, in one
+# refusal and one gap. `mr_exec` maps those two back before comparing.
+MRS=common/mine-repo
+MR_T=stub-owner/stub-repo
+MR_OUT="$WORK/mined"
+MR_FIX="$WORK/mrfixture"
+STUBGIT="$WORK/stubgit"
+mkdir -p "$STUBGIT" || exit 2
+
+cat >"$STUBGIT/git" <<'STUBGITEOF'
+#!/bin/sh
+# A stand-in for git that answers a clone out of a fixture and hands every other
+# command to the real git. The commit it makes has a fixed author, committer and
+# date, so every implementation cloning one fixture reads one commit.
+set -u
+REAL=${STUB_GIT_REAL:?}
+D=${STUB_GH_DIR:?}
+clone=0
+bound=0
+depth=0
+prev=""
+src=""
+dst=""
+for a in "$@"; do
+  case "$a" in
+    clone) clone=1 ;;
+    http.lowSpeedLimit=1024 | http.lowSpeedTime=60) bound=$((bound + 1)) ;;
+  esac
+  [ "$prev" = "--depth" ] && [ "$a" = 1 ] && depth=1
+  prev=$a
+  src=$dst
+  dst=$a
+done
+[ "$clone" = 1 ] || exec "$REAL" "$@"
+if [ "$bound" != 2 ] || [ "$depth" != 1 ]; then
+  printf 'stub git: an unbounded or full clone is refused\n' >&2
+  exit 128
+fi
+if [ -f "$D/clone.fail" ] || [ "$src" != "https://github.com/stub-owner/stub-repo.git" ]; then
+  printf 'fatal: repository %s not found\n' "$src" >&2
+  exit 128
+fi
+mkdir -p "$dst" && cp -R "${STUB_GIT_FIXTURE:?}/." "$dst/" || exit 128
+if [ -f "$D/fixture.vendor" ]; then
+  mkdir -p "$dst/vendor/bundle/gems" && printf 'gem\n' >"$dst/vendor/bundle/gems/g.rb" || exit 128
+fi
+cd "$dst" || exit 128
+GIT_AUTHOR_NAME=stub GIT_AUTHOR_EMAIL=stub GIT_COMMITTER_NAME=stub GIT_COMMITTER_EMAIL=stub
+GIT_AUTHOR_DATE=2026-01-01T00:00:00Z GIT_COMMITTER_DATE=2026-01-01T00:00:00Z
+export GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
+export GIT_AUTHOR_DATE GIT_COMMITTER_DATE
+"$REAL" init -q -b main && "$REAL" add -A &&
+  "$REAL" -c commit.gpgsign=false commit -qm fixture || exit 128
+"$REAL" rev-parse HEAD >"$D/clone.sha"
+STUBGITEOF
+chmod +x "$STUBGIT/git" || exit 2
+
+# ⭐ THE FIXTURE CARRIES EVERY SHAPE THE TRIM DECIDES ON: each directory name it
+# deletes, one of them nested, a FILE named like one - `find -type d` must keep
+# it - and a `vendor/` that stays. Dot-directories are in it on purpose.
+mkdir -p "$MR_FIX/src" "$MR_FIX/docs" "$MR_FIX/node_modules/dep" \
+  "$MR_FIX/sub/target" "$MR_FIX/build" "$MR_FIX/dist" "$MR_FIX/.next" \
+  "$MR_FIX/.venv/bin" "$MR_FIX/lib/__pycache__" "$MR_FIX/vendor" || exit 2
+printf 'fixture\n' >"$MR_FIX/README.md"
+printf 'int main(void) { return 0; }\n' >"$MR_FIX/src/main.c"
+printf 'a file named like a directory the trim deletes\n' >"$MR_FIX/docs/build"
+printf 'kept\n' >"$MR_FIX/vendor/keep.rb"
+for _d in node_modules/dep sub/target build dist .next .venv/bin lib/__pycache__; do
+  printf 'junk\n' >"$MR_FIX/$_d/junk" || exit 2
+done
+
+mr_proxy() { # path-and-query json
+  printf '%s\n' "$2" >"$STUB/proxy/$(stub_key "$1")"
+}
+
+# A proxy page of exactly one hundred records, each carrying one "url", which is
+# what the halves count to decide whether another page follows.
+mr_full_page() { # path-and-query
+  _i=1
+  _s=""
+  {
+    printf '['
+    while [ "$_i" -le 100 ]; do
+      printf '%s{"url":"https://example.invalid/%s","body":"[unclosed %s"}' "$_s" "$_i" "$_i"
+      _s=,
+      _i=$((_i + 1))
+    done
+    printf ']\n'
+  } >"$STUB/proxy/$(stub_key "$1")"
+}
+
+mr_world_gh() {
+  stub_api rate_limit '{"resources":{}}'
+  stub_api "repos/pkgforge-dev/reverse-proxies" '{"full_name":"pkgforge-dev/reverse-proxies"}'
+  stub_api "repos/$MR_T" '{"full_name":"stub-owner/stub-repo","open_issues_count":2}'
+  stub_api "repos/$MR_T/issues?state=all&per_page=100" '[{"url":"https://example.invalid/i/1","body":"see [the report](x"},{"url":"https://example.invalid/i/2","pull_request":{"url":"https://example.invalid/p/2"}}]'
+  stub_api "repos/$MR_T/issues/comments?per_page=100" '[{"url":"https://example.invalid/c/1","body":"log: [ERROR] ]["}]'
+  stub_api "repos/$MR_T/pulls/comments?per_page=100" '[]'
+  stub_api "repos/$MR_T/releases?per_page=100" '[{"url":"https://example.invalid/r/1","tag_name":"v1.0.0"}]'
+  stub_api "repos/$MR_T/tags?per_page=100" '[{"name":"v1.0.0"}]'
+  stub_api graphql '{"data":{"repository":{"discussions":{"nodes":[]}}}}'
+}
+
+# ⭐ THE ISSUES SPAN TWO PAGES AND THE SECOND IS SHORT, with brackets in the
+# bodies of both - the shape that broke the halves' first joiner.
+mr_world_proxy() {
+  mr_proxy "repos/pkgforge-dev/reverse-proxies" '{"full_name":"pkgforge-dev/reverse-proxies"}'
+  mr_proxy "repos/$MR_T" '{"full_name":"stub-owner/stub-repo"}'
+  mr_full_page "repos/$MR_T/issues?state=all&per_page=100&page=1"
+  mr_proxy "repos/$MR_T/issues?state=all&per_page=100&page=2" '[{"url":"https://example.invalid/i/101","body":"]["},{"url":"https://example.invalid/i/102","body":"[x](y"}]'
+  mr_proxy "repos/$MR_T/issues/comments?per_page=100&page=1" '[{"url":"https://example.invalid/c/1","body":"see [the report](x"},{"url":"https://example.invalid/c/2","body":"log: [ERROR] [WARN]"}]'
+  mr_proxy "repos/$MR_T/pulls/comments?per_page=100&page=1" '[]'
+  mr_proxy "repos/$MR_T/releases?per_page=100&page=1" '[{"url":"https://example.invalid/r/1","tag_name":"v1.0.0"}]'
+  mr_proxy "repos/$MR_T/tags?per_page=100&page=1" '[{"name":"v1.0.0"}]'
+}
+
+# What one implementation left in $MR_OUT, in a form the others can be held to.
+mr_files() {
+  [ -d "$MR_OUT" ] || {
+    printf 'no output directory\n'
+    return
+  }
+  (cd "$MR_OUT" && find . -type d | LC_ALL=C sort) | sed 's/^/dir  /'
+  (cd "$MR_OUT" && find . -type f | LC_ALL=C sort) | while IFS= read -r _f; do
+    case "$_f" in
+      *.json)
+        printf 'file %s records %s\n' "$_f" \
+          "$(jq 'if type == "array" then length else "-" end' "$MR_OUT/$_f" 2>/dev/null | tr '\n' ' ')"
+        jq -S -c . "$MR_OUT/$_f" 2>/dev/null | sed 's/^/     /'
+        ;;
+      */PROVENANCE.md)
+        printf 'file %s\n' "$_f"
+        # shellcheck disable=SC2016
+        # The backticks are the markdown code span PROVENANCE.md writes around
+        # its writer's name, matched as text; nothing here is meant to expand.
+        sed -e 's/^Fetched .* by `.*`\.$/Fetched <when> by <writer>./' \
+          -e 's/tree: -NoClone was passed/tree: --no-clone was passed/' \
+          -e 's/^/     /' "$MR_OUT/$_f"
+        ;;
+      *) printf 'file %s cksum %s\n' "$_f" "$(cksum <"$MR_OUT/$_f" | cut -d' ' -f1-2)" ;;
+    esac
+  done
+}
+
+# Runs one implementation into a fresh $MR_OUT and writes what it did to
+# $WORK/mr.<impl>: the exit code, everything it printed, and mr_files.
+mr_exec() { # impl flags...
+  _mi=$1
+  shift
+  rm -rf "$MR_OUT"
+  case "$_mi" in
+    go)
+      (cd "$TREE" && "$BIN" mine-repo --json "$@") >"$OUTF" 2>&1
+      ;;
+    sh)
+      (cd "$TREE" && sh "$TREE/scripts/$MRS.sh" --json "$@") >"$OUTF" 2>&1
+      ;;
+    ps)
+      # ⚠ Each flag is rotated to the end in its PowerShell spelling, which keeps
+      # every argument one argument whatever it holds.
+      _mn=$#
+      while [ "$_mn" -gt 0 ]; do
+        case "$1" in
+          --out) set -- "$@" -Out ;;
+          --route) set -- "$@" -Route ;;
+          --no-clone) set -- "$@" -NoClone ;;
+          --selftest) set -- "$@" -SelfTest ;;
+          *) set -- "$@" "$1" ;;
+        esac
+        shift
+        _mn=$((_mn - 1))
+      done
+      (cd "$TREE" && pwsh -NoProfile -File "$TREE/scripts/$MRS.ps1" -Json "$@") >"$OUTF" 2>&1
+      ;;
+  esac
+  _mc=$?
+  {
+    printf 'exit %s\n' "$_mc"
+    sed 's/choose another -Out,/choose another --out,/' "$OUTF"
+    mr_files
+  } >"$WORK/mr.$_mi"
+}
+
+# ⭐ ONE CASE, UP TO THREE IMPLEMENTATIONS. `all` compares every half there is,
+# `go-sh` leaves the twin out for the reason the row names, and `-` is a rule
+# the port has and no half ever did.
+mr_agree() { # label expected-code all|go-sh|- flags...
+  _ml=$1
+  _mw=$2
+  _mh=$3
+  shift 3
+  mr_exec go "$@"
+  cp "$WORK/mr.go" "$MR_KEPT"
+  _mgc=$(sed -n '1s/^exit //p' "$MR_KEPT")
+  if [ "$_mgc" != "$_mw" ]; then
+    fail "$_ml: go answered $_mgc, expected $_mw"
+    return
+  fi
+  if [ "$COMPARE" = "0" ]; then
+    pass "$_ml: go (exit $_mw)"
+    return
+  fi
+  if [ "$_mh" = "-" ]; then
+    pass "$_ml: go (exit $_mw); a Go-only rule, so there is no half to compare"
+    return
+  fi
+  if [ ! -f "$TREE/scripts/$MRS.sh" ]; then
+    pass "$_ml: go (exit $_mw); the sh half is gone, not compared"
+    return
+  fi
+  mr_exec sh "$@"
+  if ! cmp -s "$MR_KEPT" "$WORK/mr.sh"; then
+    fail "$_ml: go and sh disagree
+$(diff -u --label go --label sh "$MR_KEPT" "$WORK/mr.sh" | sed 's/^/          /')"
+    return
+  fi
+  if [ "$_mh" = "go-sh" ]; then
+    pass "$_ml: go and sh agree (exit $_mw); pwsh not compared, its proxy fetch cannot be stubbed"
+    return
+  fi
+  if [ "$HAVE_PWSH" = "0" ] || [ ! -f "$TREE/scripts/$MRS.ps1" ]; then
+    pass "$_ml: go and sh agree (exit $_mw); no PowerShell half compared"
+    return
+  fi
+  mr_exec ps "$@"
+  if ! cmp -s "$MR_KEPT" "$WORK/mr.ps"; then
+    fail "$_ml: go and pwsh disagree
+$(diff -u --label go --label pwsh "$MR_KEPT" "$WORK/mr.ps" | sed 's/^/          /')"
+    return
+  fi
+  pass "$_ml: all three agree (exit $_mw)"
+}
+
+# ⛔ AN EXIT CODE OF 0 SAYS A FETCH ENDED, NOT WHAT IT GOT. These assert what the
+# port's run of the case just made left behind, from the copy `mr_agree` keeps
+# of it before any half runs over the same directory.
+MR_KEPT="$WORK/mr.kept"
+mr_said() { # label expected-line
+  _msaid=$(sed -n '2p' "$MR_KEPT")
+  if [ "$_msaid" = "$2" ]; then
+    pass "$1: go said $2"
+  else
+    fail "$1: go said $_msaid, expected $2"
+  fi
+}
+
+mr_has() { # label fixed-string
+  if grep -qF -- "$2" "$MR_KEPT"; then
+    pass "$1: go left $2"
+  else
+    fail "$1: go left no $2"
+  fi
+}
+
+mr_lacks() { # label fixed-string
+  if grep -qF -- "$2" "$MR_KEPT"; then
+    fail "$1: go left $2"
+  else
+    pass "$1: go left no $2"
+  fi
+}
+
+mr_json() { # route commit gaps
+  printf '{"schema":"mine-repo/1","target":"%s","route":"%s","commit":"%s","gaps":%s,"dest":"%s"}' \
+    "$MR_T" "$1" "$2" "$3" "$MR_OUT/stub-owner__stub-repo"
+}
+
+STUB_GIT_REAL=$(command -v git)
+STUB_GIT_FIXTURE=$MR_FIX
+PATH_BEFORE_GIT=$PATH
+PATH="$STUBGIT:$PATH"
+export PATH STUB_GIT_REAL STUB_GIT_FIXTURE
+
+MRD="$MR_OUT/stub-owner__stub-repo"
+MRF="./stub-owner__stub-repo"
+
+# -- what it refuses to start with ------------------------------------------
+
+stub_reset
+mr_agree "mine-repo --selftest joins and guards" 0 all --selftest
+mr_said "mine-repo --selftest joins and guards" '{"schema":"mine-repo-selftest/1","cases":4,"failed":0}'
+
+mr_agree "mine-repo no target cannot run" 2 all --out "$MR_OUT"
+mr_agree "mine-repo a target with two slashes is refused" 2 all --out "$MR_OUT" a/b/c
+mr_agree "mine-repo an unknown argument is refused" 2 all --bogus "$MR_T"
+mr_agree "mine-repo a second target is refused, not taken" 2 all "$MR_T" other/x
+mr_agree "mine-repo an unknown route is refused, not probed" 2 all --route prxy "$MR_T"
+mr_agree "mine-repo a route in another case is refused" 2 all --route GH "$MR_T"
+mr_agree "mine-repo --out with no value cannot run" 2 - "$MR_T" --out
+
+# ⛔ THE CORPUS IS THE EVIDENCE, so an --out this repository ignores is refused
+# before anything is fetched. The rule is planted in the scratch tree's own
+# exclude file rather than in its tracked .gitignore, and taken out after.
+stub_reset
+mr_world_gh
+MR_OUT_SAVED=$MR_OUT
+MR_OUT="$TREE/mined"
+EXCL="$TREE/.git/info/exclude"
+if [ -f "$EXCL" ]; then cp "$EXCL" "$WORK/exclude.saved" || exit 2; else : >"$WORK/exclude.saved"; fi
+printf 'mined/\n' >>"$EXCL"
+mr_agree "mine-repo an --out the repository ignores is refused" 2 all --route gh --out "$MR_OUT" "$MR_T"
+mr_has "mine-repo an --out the repository ignores is refused" "is ignored by this repository"
+mr_lacks "mine-repo an --out the repository ignores is refused" "api/repo.json"
+cp "$WORK/exclude.saved" "$EXCL" || exit 2
+rm -rf "$MR_OUT"
+MR_OUT=$MR_OUT_SAVED
+
+# -- the gh route -------------------------------------------------------------
+
+stub_reset
+mr_world_gh
+mr_agree "mine-repo the gh route fetches every source and keeps the tree" 0 all --route gh --out "$MR_OUT" "$MR_T"
+MR_SHA=$(cat "$STUB/clone.sha" 2>/dev/null)
+mr_said "mine-repo the gh route fetches every source and keeps the tree" "$(mr_json gh "$MR_SHA" 0)"
+mr_has "mine-repo the gh route keeps the source" "file $MRF/tree/src/main.c"
+mr_has "mine-repo the gh route keeps a FILE named like junk" "file $MRF/tree/docs/build"
+mr_has "mine-repo the gh route keeps vendor/" "file $MRF/tree/vendor/keep.rb"
+mr_lacks "mine-repo the gh route drops the git directory" "$MRF/tree/.git"
+mr_lacks "mine-repo the gh route trims node_modules" "node_modules"
+mr_lacks "mine-repo the gh route trims a nested target" "$MRF/tree/sub/target"
+mr_lacks "mine-repo the gh route trims .next" "$MRF/tree/.next"
+mr_lacks "mine-repo the gh route trims .venv" "$MRF/tree/.venv"
+mr_lacks "mine-repo the gh route trims __pycache__" "__pycache__"
+mr_has "mine-repo the gh route fetches discussions" "file $MRF/api/discussions.json"
+mr_has "mine-repo the gh route says it missed nothing" "Nothing. Every source above answered."
+
+stub_reset
+mr_world_gh
+mr_agree "mine-repo auto takes gh when gh answers" 0 all --out "$MR_OUT" "$MR_T"
+mr_said "mine-repo auto takes gh when gh answers" "$(mr_json gh "$MR_SHA" 0)"
+
+stub_reset
+mr_world_gh
+rm -f "$STUB/api/$(stub_key "repos/$MR_T")"
+mr_agree "mine-repo a subject gh cannot fetch fails" 1 all --route gh --out "$MR_OUT" "$MR_T"
+mr_has "mine-repo a subject gh cannot fetch fails" "mine-repo: could not fetch repos/$MR_T"
+mr_has "mine-repo a subject gh cannot fetch fails" "mine-repo: control says: reachable"
+
+stub_reset
+mr_world_gh
+rm -f "$STUB/api/$(stub_key "repos/pkgforge-dev/reverse-proxies")"
+mr_agree "mine-repo a control gh cannot reach is written down" 0 all --route gh --out "$MR_OUT" "$MR_T"
+mr_has "mine-repo a control gh cannot reach is written down" "UNREACHABLE (pkgforge-dev/reverse-proxies did not answer)"
+
+stub_reset
+mr_world_gh
+rm -f "$STUB/api/$(stub_key "repos/$MR_T/tags?per_page=100")"
+mr_agree "mine-repo a list gh cannot fetch is a named gap" 0 all --route gh --out "$MR_OUT" "$MR_T"
+mr_said "mine-repo a list gh cannot fetch is a named gap" "$(mr_json gh "$MR_SHA" 1)"
+mr_has "mine-repo a list gh cannot fetch is a named gap" "tags: gh could not fetch /repos/$MR_T/tags"
+
+stub_reset
+mr_world_gh
+rm -f "$STUB/api/graphql"
+mr_agree "mine-repo failed discussions are a named gap and no file" 0 all --route gh --out "$MR_OUT" "$MR_T"
+mr_has "mine-repo failed discussions are a named gap and no file" "discussions: the GraphQL query failed"
+mr_lacks "mine-repo failed discussions are a named gap and no file" "api/discussions.json"
+
+stub_reset
+mr_world_gh
+mr_agree "mine-repo --no-clone keeps no tree and says so" 0 all --route gh --no-clone --out "$MR_OUT" "$MR_T"
+mr_said "mine-repo --no-clone keeps no tree and says so" "$(mr_json gh - 1)"
+mr_has "mine-repo --no-clone keeps no tree and says so" "tree: --no-clone was passed"
+
+stub_reset
+mr_world_gh
+: >"$STUB/clone.fail"
+mr_agree "mine-repo a failed clone is a named gap" 0 all --route gh --out "$MR_OUT" "$MR_T"
+mr_said "mine-repo a failed clone is a named gap" "$(mr_json gh - 1)"
+mr_has "mine-repo a failed clone is a named gap" "tree: the clone failed"
+
+# -- the proxy route ----------------------------------------------------------
+
+stub_reset
+mr_world_proxy
+mr_agree "mine-repo the proxy route pages and joins by hand" 0 go-sh --route proxy --out "$MR_OUT" "$MR_T"
+mr_said "mine-repo the proxy route pages and joins by hand" "$(mr_json proxy "$MR_SHA" 1)"
+mr_has "mine-repo the proxy route joins both pages" "file $MRF/api/issues.json records 102"
+mr_has "mine-repo the proxy route keeps brackets in bodies" "file $MRF/api/comments.json records 2"
+mr_lacks "mine-repo the proxy route leaves no page behind" ".page."
+mr_has "mine-repo the proxy route names what it cannot reach" "discussions: NOT FETCHED"
+mr_has "mine-repo the proxy route reads its control" "reachable (pkgforge-dev/reverse-proxies answered 200)"
+
+stub_reset
+mr_world_proxy
+: >"$STUB/auth-fails"
+mr_agree "mine-repo auto takes the proxy when gh is not authenticated" 0 go-sh --out "$MR_OUT" "$MR_T"
+mr_said "mine-repo auto takes the proxy when gh is not authenticated" "$(mr_json proxy "$MR_SHA" 1)"
+
+stub_reset
+mr_world_proxy
+printf '502\n' >"$STUB/proxy/$(stub_key "repos/$MR_T/issues/comments?per_page=100&page=1").code"
+mr_agree "mine-repo a failed page is a named gap and leaves nothing" 0 go-sh --route proxy --out "$MR_OUT" "$MR_T"
+mr_has "mine-repo a failed page is a named gap and leaves nothing" "comments: proxy returned 502 on page 1"
+mr_lacks "mine-repo a failed page is a named gap and leaves nothing" "api/comments.json"
+
+stub_reset
+mr_world_proxy
+rm -f "$STUB/proxy/$(stub_key "repos/$MR_T")"
+mr_agree "mine-repo a subject the proxy cannot find fails beside its control" 1 go-sh --route proxy --out "$MR_OUT" "$MR_T"
+mr_has "mine-repo a subject the proxy cannot find fails beside its control" "mine-repo: proxy returned 404 for repos/$MR_T"
+
+stub_reset
+mr_world_proxy
+printf '500\n' >"$STUB/proxy/$(stub_key "repos/pkgforge-dev/reverse-proxies").code"
+mr_agree "mine-repo a control the proxy cannot reach is written down" 0 go-sh --route proxy --out "$MR_OUT" "$MR_T"
+mr_has "mine-repo a control the proxy cannot reach is written down" "UNREACHABLE (pkgforge-dev/reverse-proxies answered 500)"
+
+# -- what only the port does --------------------------------------------------
+
+# ⛔ A LIST CUT OFF AT THE PAGE CAP IS NAMED. Both halves stopped after ten full
+# pages and said "ok"; ten full pages and an eleventh behind them is the shape.
+stub_reset
+mr_world_proxy
+_mp=1
+while [ "$_mp" -le 11 ]; do
+  mr_full_page "repos/$MR_T/tags?per_page=100&page=$_mp"
+  _mp=$((_mp + 1))
+done
+mr_agree "mine-repo a list cut off at the page cap is a named gap" 0 - --route proxy --out "$MR_OUT" "$MR_T"
+mr_has "mine-repo a list cut off at the page cap is a named gap" "tags: stopped at 10 pages of 100"
+mr_has "mine-repo a list cut off at the page cap keeps what it got" "file $MRF/api/tags.json records 1000"
+
+# ⚠ `vendor/bundle` IS A PATH. The sh half listed it where `find -name` takes a
+# name, so it never matched, and its twin left it out.
+stub_reset
+mr_world_gh
+: >"$STUB/fixture.vendor"
+mr_agree "mine-repo vendor/bundle is trimmed and vendor/ is not" 0 - --route gh --out "$MR_OUT" "$MR_T"
+mr_lacks "mine-repo vendor/bundle is trimmed and vendor/ is not" "vendor/bundle"
+mr_has "mine-repo vendor/bundle is trimmed and vendor/ is not" "file $MRF/tree/vendor/keep.rb"
+
+rm -rf "$MR_OUT" "$MRD"
+PATH=$PATH_BEFORE_GIT
+export PATH
 
 PATH=$PATH_BEFORE_STUBS
 export PATH

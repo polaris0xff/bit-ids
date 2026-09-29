@@ -5,6 +5,26 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-29T04:15:24Z
+
+- ⭐ **`mine-repo` IS PORTED, AND COMPARED WHOLE FOR THE FIRST TIME.** The
+  pair's only comparison was `--selftest`, four cases of its page joiner.
+  `check-bitcheck` now serves both routes, the control, the clone and the trim
+  from stub `gh`, `curl` and `git`, and compares every file each implementation
+  leaves behind. The port is a helper, dispatched before the checks and in no
+  gate row. ⚠ Nothing is deleted: this change is the COMPARISON.
+- ⛔ **Six drifts, each repaired in the half that had it.** The `sh` half mined
+  `a/b/c`, kept the last of two targets, and read `--route prxy` as `auto`, so a
+  route asked for to keep the operator's token out probed gh and used it. The
+  twin answered usage errors with exit 1, and on Linux never trimmed `.next` or
+  `.venv` and left `api/.control.json` in every proxy-route corpus: pwsh hides a
+  dot-name, and `Get-ChildItem` and `Remove-Item` pass one by without `-Force`.
+- ⭐ Measured once against the real proxy and a real clone of one public target:
+  after the repairs, the three leave the same corpus, file for file.
+- ⚠ The port names a list cut off at the proxy route's page cap, which both
+  halves reported as `ok`, and trims `vendor/bundle`, which neither ever did.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-10`. No version bump and no deploy.
+
 ### 2026-09-29T03:21:20Z
 
 - ⛔ **BOTH HALVES OF `check-remote-items` ARE DELETED**, after `f0e4f7f`

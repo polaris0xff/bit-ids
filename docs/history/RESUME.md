@@ -57,8 +57,10 @@ Both runner images carry it.
 deleted (`a8cfedf`), and so is `check-catalogue` (`c40784f`, then its deletion,
 which took the orphaned `store-lib.ps1` too). `check-remote-items` is ported
 and compared - fifteen stubbed cases in the default mode (`f0e4f7f`) - and
-deleted. `mine-repo` is next, then `CI-09`'s `RunManifest` producer. Refresh
-this line when the in-flight item changes.
+deleted (`e6ae4c4`). `mine-repo` is ported and compared, both routes and the
+clone served from stubs, with nothing deleted; its deletion is next, then
+`CI-09`'s `RunManifest` producer. Refresh this line when the in-flight item
+changes.
 
 ### ⚠ The state of the tree, as this was last written
 
