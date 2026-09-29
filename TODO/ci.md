@@ -4111,3 +4111,109 @@ from parts.
 - **A plant rewritten three times could not be unplanted.** `git rm --cached`
   refuses a path whose staged content matches neither HEAD nor the working tree,
   so the file survived into every case after it. Each rewrite re-stages.
+
+### ⭐ `check-cache` ported and compared: the first HARNESS. 2026-09-29
+
+`bit-check check-cache` carries the harness's thirteen rows, and
+[`../tools/check/harness.go`](../tools/check/harness.go) carries what it needed of
+`store-lib`: rows, a report that checks itself, an example build, a scratch
+directory and the literal plant with its six probes. ⚠ Nothing is deleted and no
+gate row has moved; this change is the COMPARISON.
+
+⛔ **A HARNESS PLANTS INTO WHAT IT READS, SO ITS CASES DO TOO.** Over the real
+tree every row passes, so its refusal branches are exercised by nothing but a
+plant: a register permitting the scenario's own target, one permitting another,
+a register that is missing, and a scenario whose second retrieval repeats the
+first. Six cases in `check-bitcheck.sh`, run against all three implementations:
+
+| case | all three answered |
+| --- | --- |
+| the clean tree, either side | exit 0, `13` passed |
+| the register permits `aria2`, the scenario's target | exit 1, `10` passed and `3` failed |
+| the register permits `aria2-next` | exit 1, `12` passed and `1` failed |
+| the register is missing | exit 2 |
+| the second retrieval repeats the first | exit 1, `7` passed and `6` failed |
+
+⭐ **THE COMPARISON FOUND ONE DRIFT AND IT WAS THE TWIN'S.** Its could-not-run
+message named `-Permitted`, a flag the call it describes does not use, where the
+`sh` half and the port say `--permitted`. Repaired in the twin, byte for byte
+with its CRLF kept, and only then did the run come back clean.
+
+⛔ **AN EXIT CODE OF 1 DOES NOT SAY WHICH ROW FAILED.** A harness answers 1 for one
+failed row and for six, so `go_said` asserts the verdict line the Go binary gave
+for each case. ⭐ The mutation pass is what proved it earns its place: three of
+the plants below were caught by that line ALONE, every exit code unchanged.
+
+⚠ **A PLANT DID NOT PRODUCE ITS DEFECT ON THE FIRST ATTEMPT.** Moving the second
+retrieval's location changed nothing, because a retrieval is its location and
+its time; the case went green and said so. It repeats both now.
+
+#### Guard mutation over the port
+
+Seven plants into the Go files, one at a time, each verified to have changed the
+file, restored from a scratch copy after each:
+
+| plant | verdict |
+| --- | --- |
+| the register row inverted | refused |
+| the E-CAC-01 row always passes | refused, by the verdict line alone |
+| the diff count always 2 | refused, by the verdict line alone |
+| a literal occurring twice accepted by the plant function | refused |
+| identity needing one of its two facts | refused, by the verdict line alone |
+| the control permitting the wrong target | refused |
+| a run that passed nothing reported green | ⛔ **survived** |
+
+⚠ **The survivor is a guard nothing here can refute and it is kept.** The six
+probe rows always pass, so no plant through this harness produces a run with no
+passes; the guard is the shell library's, carried across, and the label says what
+it is rather than claiming a proof. ⚠ And the diff plant's first spelling did not
+compile - an unused variable - so it exited 2, which is could-not-run and was
+counted as neither; re-aimed, it is the row above.
+
+#### ⛔ Why the harness cases are not in the default mode, measured
+
+The cases build `cache-scenario` out of the scratch tree, and the build is COLD:
+the scratch tree needs a target directory of its own, because sharing a caller's
+would let a planted scenario be uplifted over a binary another gate row is
+executing. Measured on this host:
+
+| | before | with the cases in the default mode |
+| --- | ---: | ---: |
+| `check-bitcheck` | 23s | 39s |
+| the whole gate, same host, same tree otherwise | 168s | 193s |
+
+⛔ `check-workflow` runs the gate about nine times per shard, so that is minutes
+per shard for plants that do not change between pushes - `check-defaults`'
+reason for being a step of its own. ⭐ So `--harnesses` runs them, `--compare`
+runs them, and the default mode says on stderr that it did not rather than
+passing a row for it.
+
+#### What the port changed on purpose, and what it could not settle
+
+- ⭐ **The example's path is ASKED OF CARGO**, from `--message-format=json`, where
+  the `sh` half composed it out of `CARGO_TARGET_DIR` or the tree's `target`.
+  That composition is `CI-01`'s old hole, and asking removes the class rather
+  than guarding it; a configured target directory is the one input where the two
+  would differ, and this tree configures none.
+- ⭐ **The register is read by the one reader.** `readRegister` and
+  `permittedTargets` are what `check-licences` itself calls, so `check-cache`
+  asks a function where it used to build a binary and ask it for `--permitted`.
+  ⚠ Moving that code was checked rather than trusted: the binary built from
+  `HEAD` and the one built from this change gave identical output and exit codes
+  over eighteen runs - three modes over the clean register and four plants.
+- ⚠ **The two halves counted the difference between two runs two ways.** The
+  `sh` half asks `diff` and the twin asked `Compare-Object -SyncWindow 0`, which
+  compares by position; they agree on every case here and would part over a
+  reordered line, which counts 2 to `diff` and 4 by position. ⭐ The port answers
+  `diff`'s question, over a longest common subsequence, because that half is the
+  one whose argument each case carries.
+
+#### Residuals
+
+- ⚠ **Nothing runs the harness cases automatically.** They cost too much for the
+  gate and nothing else invokes `--harnesses`; a CI step of their own, the way
+  `check-defaults` has one, would close it and is a workflow change.
+- ⛔ **CI runs no `gofmt`, no `go vet` and no `go test` over `tools/check`**,
+  found by the door sweep over this change. Earlier commits in this entry say
+  *gofmt and go vet clean*, which was a session running them by hand: a rule a
+  commit message says this repository has is not a rule it has.

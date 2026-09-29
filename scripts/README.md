@@ -328,6 +328,11 @@ from any working directory.
   ⚠ Its own first mutation pass reproduced `check-twins`' documented blind spot:
   adding DEL to the Go control class left every case green, because nothing in
   the tree and nothing planted carried that byte. The repair is a fixture.
+  ⛔ **`--harnesses` adds the cases for a ported HARNESS**, and the default mode
+  leaves them out and says so on stderr. A harness's cases build its Rust subject
+  out of the scratch tree, cold, which measured this row at 39 seconds against
+  23 and the whole gate at 193 against 168 - and `check-workflow` runs the gate
+  about nine times per shard. `--compare` runs them too.
 
 Shell is the default orchestration language and **Go is the checking layer**.
 Rust owns parsing, normalization, validation, indexing, and publishing. Python

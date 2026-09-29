@@ -5,6 +5,27 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-29T01:58:49Z
+
+- ⭐ **`check-cache` IS PORTED, AND IT IS THE FIRST HARNESS IN THE BINARY.**
+  `bit-check check-cache` carries its thirteen rows, and `tools/check/harness.go`
+  carries what it needed of `store-lib`. ⚠ Nothing is deleted and no gate row has
+  moved: this change is the COMPARISON, which is the only way a pair may leave.
+- ⛔ **Its plants go into what the harness reads**: a register permitting the
+  scenario's own target, one permitting another, a missing register, and a second
+  retrieval repeating the first. All three implementations agree on all six cases,
+  on the exit code and byte for byte, after ONE drift was repaired - the twin's
+  could-not-run message named a flag the call does not use.
+- ⭐ **An exit code of 1 does not say which row failed**, so each case also pins
+  the Go verdict line; three of seven mutation plants were caught by that line
+  alone. One survived, the zero-pass guard, which nothing here can reach.
+- ⛔ **The harness cases are out of the gate, measured**: they build the scenario
+  cold in a scratch tree, which took `check-bitcheck` from 23 to 39 seconds and the
+  gate from 168 to 193. `--harnesses` and `--compare` run them.
+- ⭐ The example's path is asked of cargo rather than composed, and the register
+  is read by `check-licences`' own reader, checked identical over eighteen runs.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-10`. No version bump and no deploy.
+
 ### 2026-09-29T01:13:49Z
 
 - ⛔ **A DECLINED BUMP CAME BACK AS A NEW PULL REQUEST.** Pull request 2 re-offers

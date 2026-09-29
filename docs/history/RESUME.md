@@ -52,9 +52,11 @@ Both runner images carry it.
 ## Where the work is
 
 **In flight, 2026-09-29:** the session started at `2026-09-29T01:02:41Z` on
-`ff690a3`. First, a record correction found at the start (below, *the dependabot
-pull request*); then `CI-10`'s four remaining twin pairs, then `CI-09`'s
-`RunManifest` producer. Refresh this line when the in-flight item changes.
+`ff690a3`. The dependabot correction landed as `2451816`. `CI-10`'s
+`check-cache` is ported and compared against both halves, committed with nothing
+deleted; the deletion is the next commit, then `check-catalogue`,
+`check-remote-items` and `mine-repo`, then `CI-09`'s `RunManifest` producer.
+Refresh this line when the in-flight item changes.
 
 ### ⚠ The state of the tree, as this was last written
 

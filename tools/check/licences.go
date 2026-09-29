@@ -52,23 +52,106 @@ func tomlValue(line string) string {
 	return strings.TrimSuffix(v, `"`)
 }
 
-func checkLicences(r *repo) (verdict, error) {
-	const (
-		register  = "catalogue/licences.toml"
-		catalogue = "catalogue/clients.toml"
-		lock      = "Cargo.lock"
-	)
-	for _, p := range []string{register, catalogue, lock} {
+const (
+	licRegister  = "catalogue/licences.toml"
+	licCatalogue = "catalogue/clients.toml"
+	licLock      = "Cargo.lock"
+)
+
+// readRegister is the one reader of the register, and it refuses to read one
+// whose neighbours are missing, exactly as the check always has.
+//
+// ⭐ TWO CALLERS, ONE READER. `check-cache` asks what the register permits, and
+// it asks this function rather than a second parse of the file: a second reader
+// would be a second answer to what the register allows. It used to ask a built
+// binary for `--permitted`; in one binary the call is a function call.
+func readRegister() (regBytes []byte, targets, deps []licRow, err error) {
+	for _, p := range []string{licRegister, licCatalogue, licLock} {
 		if _, err := os.Stat(p); err != nil {
-			return verdict{}, errCannotRun(p + " is missing")
+			return nil, nil, nil, errCannotRun(p + " is missing")
 		}
 	}
-
-	regBytes, err := os.ReadFile(register)
+	regBytes, err = os.ReadFile(licRegister)
 	if err != nil {
-		return verdict{}, errCannotRun("cannot read " + register)
+		return nil, nil, nil, errCannotRun("cannot read " + licRegister)
+	}
+
+	var cur licRow
+	section := ""
+	flush := func() {
+		if cur.id == "" {
+			cur = licRow{}
+			return
+		}
+		if cur.notice == "" {
+			cur.notice = "-"
+		}
+		switch section {
+		case "target":
+			targets = append(targets, cur)
+		case "dep":
+			deps = append(deps, cur)
+		}
+		cur = licRow{}
+	}
+	for _, lb := range splitLines(regBytes) {
+		line := string(lb)
+		switch {
+		case strings.HasPrefix(line, "[[targets]]"):
+			flush()
+			section = "target"
+		case strings.HasPrefix(line, "[[dependencies]]"):
+			flush()
+			section = "dep"
+		case strings.HasPrefix(line, `id = "`), strings.HasPrefix(line, `name = "`):
+			cur.id = tomlValue(line)
+		case strings.HasPrefix(line, `version = "`):
+			cur.version = tomlValue(line)
+		case strings.HasPrefix(line, `licence = "`):
+			cur.licence = tomlValue(line)
+		case strings.HasPrefix(line, `licence_source = "`):
+			cur.source = tomlValue(line)
+		case strings.HasPrefix(line, `redistribute = "`):
+			cur.redist = tomlValue(line)
+		case strings.HasPrefix(line, `notice = "`):
+			cur.notice = tomlValue(line)
+		}
+	}
+	flush()
+	return regBytes, targets, deps, nil
+}
+
+// permittedTargets is what `--permitted` prints: the target ids the register
+// lets this repository keep the bytes of, sorted.
+func permittedTargets(targets []licRow) []string {
+	var ids []string
+	for _, row := range targets {
+		if row.redist == "permitted" {
+			ids = append(ids, row.id)
+		}
+	}
+	sort.Strings(ids)
+	return ids
+}
+
+func checkLicences(r *repo) (verdict, error) {
+	register, catalogue, lock := licRegister, licCatalogue, licLock
+
+	regBytes, targets, deps, err := readRegister()
+	if err != nil {
+		return verdict{}, err
 	}
 	regText := string(regBytes)
+
+	// ⚠ REPORTED BEFORE ANY RULE RUNS. A caller asking what is permitted is
+	// asking about the file as written, not about whether it is coherent.
+	if optPermitted {
+		out := ""
+		for _, id := range permittedTargets(targets) {
+			out += id + "\n"
+		}
+		return verdict{code: 0, text: out, json: out}, nil
+	}
 
 	failures := []string{}
 	fail := func(f string, a ...any) { failures = append(failures, fmt.Sprintf(f, a...)) }
@@ -76,69 +159,6 @@ func checkLicences(r *repo) (verdict, error) {
 	if !strings.Contains(regText, "\nschema = \"bit-ids/licences/1\"\n") &&
 		!strings.HasPrefix(regText, "schema = \"bit-ids/licences/1\"\n") {
 		fail("%s does not declare the licences schema", register)
-	}
-
-	var targets, deps []licRow
-	{
-		var cur licRow
-		section := ""
-		flush := func() {
-			if cur.id == "" {
-				cur = licRow{}
-				return
-			}
-			if cur.notice == "" {
-				cur.notice = "-"
-			}
-			switch section {
-			case "target":
-				targets = append(targets, cur)
-			case "dep":
-				deps = append(deps, cur)
-			}
-			cur = licRow{}
-		}
-		for _, lb := range splitLines(regBytes) {
-			line := string(lb)
-			switch {
-			case strings.HasPrefix(line, "[[targets]]"):
-				flush()
-				section = "target"
-			case strings.HasPrefix(line, "[[dependencies]]"):
-				flush()
-				section = "dep"
-			case strings.HasPrefix(line, `id = "`), strings.HasPrefix(line, `name = "`):
-				cur.id = tomlValue(line)
-			case strings.HasPrefix(line, `version = "`):
-				cur.version = tomlValue(line)
-			case strings.HasPrefix(line, `licence = "`):
-				cur.licence = tomlValue(line)
-			case strings.HasPrefix(line, `licence_source = "`):
-				cur.source = tomlValue(line)
-			case strings.HasPrefix(line, `redistribute = "`):
-				cur.redist = tomlValue(line)
-			case strings.HasPrefix(line, `notice = "`):
-				cur.notice = tomlValue(line)
-			}
-		}
-		flush()
-	}
-
-	// ⚠ REPORTED BEFORE ANY RULE RUNS. A caller asking what is permitted is
-	// asking about the file as written, not about whether it is coherent.
-	if optPermitted {
-		var ids []string
-		for _, row := range targets {
-			if row.redist == "permitted" {
-				ids = append(ids, row.id)
-			}
-		}
-		sort.Strings(ids)
-		out := ""
-		for _, id := range ids {
-			out += id + "\n"
-		}
-		return verdict{code: 0, text: out, json: out}, nil
 	}
 
 	// -- 1. every catalogue target has exactly one row, and the reverse -------

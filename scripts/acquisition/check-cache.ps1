@@ -70,7 +70,7 @@ try {
     $permittedPath = Join-Path $work 'permitted'
     & $licences check-licences --permitted > $permittedPath 2> (Join-Path $work 'permitted.err')
     if ($LASTEXITCODE -ne 0) {
-        [Console]::Error.WriteLine("check-cache: check-licences -Permitted exited $LASTEXITCODE")
+        [Console]::Error.WriteLine("check-cache: check-licences --permitted exited $LASTEXITCODE")
         exit 2
     }
 

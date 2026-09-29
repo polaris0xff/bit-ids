@@ -28,6 +28,22 @@
 # opened for, arriving in the checking layer. --compare is the answer to that,
 # and TODO/ci.md records the run rather than leaving it to a session to repeat.
 #
+# -- ⛔ A PORTED HARNESS'S CASES ARE NOT IN THE DEFAULT MODE ------------------
+#
+#   --harnesses the default mode plus the cases for ported HARNESSES, which plant
+#               into what a harness reads and so have to build its Rust subject
+#               out of this scratch tree. --compare runs them too.
+#
+# ⛔ MEASURED, NOT ASSUMED: the build is cold here, because the scratch tree
+# needs a target directory of its own - sharing a caller's would let a planted
+# example be uplifted over the binary another gate row is executing. On
+# 2026-09-29 it made this row 39 seconds where it had been 23, and the whole
+# gate 193 where the same host measured 168 without it. `check-workflow` runs
+# the gate about nine times per shard, so that is minutes per shard for plants
+# that do not change between pushes, which is `check-defaults`' reason for
+# being a step of its own rather than a row. The default mode says what it did
+# not run, on stderr, rather than passing a row for it.
+#
 # -- ⛔ WHY A CLEAN TREE PROVES ALMOST NOTHING HERE --------------------------
 #
 # check-twins.sh compares two halves' ANSWERS on the tree it runs against, and
@@ -54,6 +70,7 @@
 #
 # Usage:
 #   sh scripts/common/check-bitcheck.sh
+#   sh scripts/common/check-bitcheck.sh --harnesses
 #   sh scripts/common/check-bitcheck.sh --compare
 #   sh scripts/common/check-bitcheck.sh --json
 #
@@ -65,10 +82,15 @@ set -u
 
 JSON=0
 COMPARE=0
+HARNESSES=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --json) JSON=1 ;;
-    --compare) COMPARE=1 ;;
+    --compare)
+      COMPARE=1
+      HARNESSES=1
+      ;;
+    --harnesses) HARNESSES=1 ;;
     -h | --help)
       awk 'NR>1 { if (/^#/) { sub(/^# ?/, ""); print } else exit }' "$0"
       exit 0
@@ -184,6 +206,7 @@ run_ps() { # relative-path flags...
 # PROOF. Three implementations that all answer 0 over a plant agree perfectly and
 # have all missed it. So a case states what the plant is supposed to do, and a
 # unanimous wrong answer is a failure rather than agreement.
+AGREE_GO_JSON=""
 agree() { # label check sh-rel expected-code [sh-flags...]
   _label=$1
   _check=$2
@@ -194,6 +217,8 @@ agree() { # label check sh-rel expected-code [sh-flags...]
   _g=$(run_go "$_check" "$@")
   _gc=${_g%%	*}
   _gj=${_g#*	}
+  # ⚠ Kept for `go_said` below, and named so no case reads agree's own locals.
+  AGREE_GO_JSON=$_gj
 
   if [ "$_gc" != "$_want" ]; then
     fail "$_label: go answered $_gc, expected $_want"
@@ -271,6 +296,21 @@ agree() { # label check sh-rel expected-code [sh-flags...]
     return
   fi
   pass "$_label: all three agree (exit $_want)"
+}
+
+# ⛔ AN EXIT CODE OF 1 SAYS A HARNESS FAILED A ROW AND NOT WHICH. A ported
+# harness answers 1 for one failed row and for six, so two plants aimed at
+# different rows are indistinguishable by code alone - and a harness whose rows
+# had been rewired would pass both. This asserts the whole line the Go binary
+# gave for the case just run, in the default mode as well, and costs no second
+# run. ⚠ Under --compare, `agree` has already required the halves to print the
+# same line, so one expectation here covers all three.
+go_said() { # label expected-json
+  if [ "$AGREE_GO_JSON" = "$2" ]; then
+    pass "$1: go said $2"
+  else
+    fail "$1: go said $AGREE_GO_JSON, expected $2"
+  fi
 }
 
 # -- planting -----------------------------------------------------------------
@@ -626,6 +666,80 @@ agree "licences an empty register is refused, by rule 1 rather than by the empty
 restore_licences
 
 agree "licences clean tree again" check-licences common/check-licences 0
+
+# ============================================================================
+# check-cache
+# ============================================================================
+#
+# ⭐ THE FIRST HARNESS TO LEAVE THE TWIN LAYER, and its plants go into what the
+# harness READS - the register and the scenario it drives - rather than into the
+# harness. A harness's own refusal branches are otherwise exercised by nothing:
+# over the real tree every one of its rows passes.
+#
+# ⛔ CARGO_TARGET_DIR IS THIS RUN'S OWN from here on. Every implementation builds
+# `cache-scenario` out of THIS scratch tree, so the build is paid once, by
+# whichever asks first - and it never lands in a target directory another check
+# of the same gate is executing examples out of, which a variable exported by
+# the caller would otherwise arrange.
+CARGO_TARGET_DIR="$WORK/target"
+export CARGO_TARGET_DIR
+
+if [ "$HARNESSES" = "0" ]; then
+  printf 'check-bitcheck: the check-cache cases were NOT run; --harnesses or --compare runs them\n' >&2
+else
+
+  agree "cache clean tree" check-cache acquisition/check-cache 0
+  go_said "cache clean tree" '{"schema":"check-cache/1","total":13,"passed":13,"failed":0}'
+
+  # ⛔ THE REGISTER PERMITS THE SCENARIO'S OWN TARGET. Three rows must fire and
+  # only three: the register row, the E-CAC-01 refusal that no longer appears, and
+  # the control whose two runs are now the same run.
+  awk '/^id = "aria2"$/ { a = 1 }
+    a && /^redistribute = "refused"$/ { print "redistribute = \"permitted\""; a = 0; next }
+    { print }' "$WORK/licences.orig" >"$REG"
+  agree "cache a register permitting the scenario's target" check-cache acquisition/check-cache 1
+  go_said "cache a register permitting the scenario's target" '{"schema":"check-cache/1","total":13,"passed":10,"failed":3}'
+  restore_licences
+
+  # ⚠ AND A REGISTER PERMITTING SOMETHING ELSE, which only the register row may
+  # notice: the scenario's target is still refused, so a harness that let this
+  # plant fail any other row is reading the register twice.
+  awk '/^id = "aria2-next"$/ { a = 1 }
+    a && /^redistribute = "refused"$/ { print "redistribute = \"permitted\""; a = 0; next }
+    { print }' "$WORK/licences.orig" >"$REG"
+  agree "cache a register permitting another target" check-cache acquisition/check-cache 1
+  go_said "cache a register permitting another target" '{"schema":"check-cache/1","total":13,"passed":12,"failed":1}'
+  restore_licences
+
+  # ⛔ A REGISTER THAT CANNOT BE READ IS COULD-NOT-RUN, never an empty permitted
+  # list: that would report every target refused, which looks safe and is still a
+  # verdict nobody measured.
+  rm -f "$REG"
+  agree "cache a missing register cannot run" check-cache acquisition/check-cache 2
+  restore_licences
+
+  # ⛔ THE SCENARIO'S SOURCE DID NOT MOVE. A retrieval is its location AND its
+  # time, so the second one is made an exact repeat of the first: the cache
+  # records one retrieval, the scenario refuses itself, and every row that reads
+  # its output must say so - six of them. ⚠ Moving the location alone was tried
+  # first and changed nothing, because a repeat at a new time is a new retrieval:
+  # a plant that did not produce the defect it names, found by its case going
+  # green.
+  SCEN="$TREE/crates/bit-ids/examples/cache-scenario.rs"
+  cp "$SCEN" "$WORK/scenario.orig" || exit 2
+  if replace_once "$SCEN" '"https://example.invalid/archive/2026/aria2.tar.gz"' \
+    '"https://example.invalid/downloads/v1/aria2.tar.gz"' &&
+    replace_once "$SCEN" '"2026-06-18T09:00:00Z"' '"2026-01-04T09:00:00Z"'; then
+    agree "cache a retrieval that repeats the first" check-cache acquisition/check-cache 1
+    go_said "cache a retrieval that repeats the first" '{"schema":"check-cache/1","total":13,"passed":7,"failed":6}'
+  else
+    fail "cache a retrieval that repeats the first: NOT PLANTED"
+  fi
+  cp "$WORK/scenario.orig" "$SCEN"
+
+  agree "cache clean tree again" check-cache acquisition/check-cache 0
+
+fi
 
 # ============================================================================
 # check-placeholders
