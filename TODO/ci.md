@@ -4256,3 +4256,68 @@ repository root*, and this change first copied that form into `ACQ-05`. Measured
 it exits 1 with *cannot find main module*, because the module is `tools/check`.
 `go run . <check>` from that directory exits 0; both places carry that now, with
 `CI-05`'s correction written under its original sentence.
+
+### ⭐ `check-catalogue` ported and compared, the second harness. 2026-09-29
+
+`bit-check check-catalogue` carries its eighteen rows, using only what
+`harness.go` already had - the second measurement of the library's shape, after
+`CI-07` measured the same thing once in PowerShell. ⚠ Nothing is deleted and no
+gate row has moved; this change is the COMPARISON.
+
+⛔ **THE PLANTS GO WHERE THE HARNESS READS**, which here is three places: the crate
+it sweeps for sockets, the manifest it reads for a transport, and the library it
+drives. Seven cases, all three implementations agreeing on every one:
+
+| case | all three answered |
+| --- | --- |
+| the clean tree, either side | exit 0, `18` passed |
+| a socket named in a crate file nothing compiles | exit 1, `17` and `1` |
+| the same needle spelled in another case | exit 0 |
+| a transport line in the crate's manifest, under a table cargo ignores | exit 1, `17` and `1` |
+| the same line with the name capitalised | exit 0 |
+| both `E-LIB-02` sites disabled in the library | exit 1, `17` and `1` |
+
+⛔ **THE COMPARISON FOUND TWO DRIFTS AND BOTH WERE THE TWIN'S.** `Select-String`
+and `-match` are case-INSENSITIVE by default, where the `sh` half's `grep` is
+not, so the twin refused a lower-case `tcpstream` in a comment and a `Tokio` key
+that name nothing - Rust tells the two spellings apart, and the needles are Rust
+paths. ⚠ **A clean tree cannot see this**: every needle in it is spelled one way,
+so the halves agreed for as long as both existed. Repaired with
+`-CaseSensitive` at both sweeps and `-cmatch` on the manifest, CRLF kept, and
+only then did the run come back clean.
+
+⛔ **A CASE WAS NAMED FOR SOMETHING IT DID NOT DO, AND THE MUTATION PASS SAID SO.**
+The library plant was first called *a library that accepts a moved record*.
+Disabling the harness's own code comparison turned it green, and driving the
+planted library by hand showed why: the record is still REFUSED, as `E-LIB-04` -
+the checksum file no longer covers the bytes - so the row had only ever failed
+on *refused, but not as E-LIB-02*. ⭐ It is renamed for that and kept, because
+it is the one case that proves the harness reads the CODE and not only the exit.
+
+#### Guard mutation over the port
+
+| plant | verdict |
+| --- | --- |
+| the ordering row reads `1.2.3` | refused |
+| the absent row ignores what the lookup printed | ⛔ **survived** |
+| a plant is never restored | refused |
+| two needles dropped from the list | refused |
+| the sweep folds case | refused, by the lower-case plant alone |
+| the manifest check folds case | refused, by the capitalised plant alone |
+| a refusal under any code accepted | refused, by the relabelled case alone |
+
+⚠ **The survivor is equivalent on this fixture and is recorded rather than
+chased.** The unmeasured build line prints nothing, so no plant through this
+harness separates "exit 1 and no rows" from "exit 1"; a library that answered the
+nearest line would, and none here does.
+
+#### What the halves did differently that no case separates
+
+- ⚠ The twin chose the first record with `Sort-Object`, which is culture-aware,
+  where `sh` sorts under `LC_ALL=C`; the port sorts bytes. Any record serves the
+  plant, so the three can pick different files and give one verdict.
+- ⚠ The twin appended with `Add-Content`, which writes CRLF on Windows, where the
+  `sh` half appends one newline. The bytes moved either way.
+- ⚠ `sed` without `g` replaces the first occurrence on each LINE and the twin's
+  `.Replace` replaced every one; the port does what `sed` does. The index carries
+  its generation once.

@@ -54,9 +54,10 @@ Both runner images carry it.
 **In flight, 2026-09-29:** the session started at `2026-09-29T01:02:41Z` on
 `ff690a3`. The dependabot correction landed as `2451816` and was read back.
 `CI-10`'s `check-cache` is ported, compared against both halves (`621f93a`) and
-deleted in the commit after it; next are `check-catalogue`, `check-remote-items`
-and `mine-repo`, then `CI-09`'s `RunManifest` producer. Refresh this line when
-the in-flight item changes.
+deleted (`a8cfedf`). `check-catalogue` is ported and compared, committed with
+nothing deleted; its deletion is next, then `check-remote-items` and
+`mine-repo`, then `CI-09`'s `RunManifest` producer. Refresh this line when the
+in-flight item changes.
 
 ### ⚠ The state of the tree, as this was last written
 

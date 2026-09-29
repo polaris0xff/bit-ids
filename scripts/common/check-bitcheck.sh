@@ -742,6 +742,77 @@ else
 fi
 
 # ============================================================================
+# check-catalogue
+# ============================================================================
+#
+# ⭐ THE SECOND HARNESS, and its plants go where the harness reads: the crate it
+# sweeps for sockets, the manifest it reads for a transport, and the library it
+# drives. The publication itself it builds and plants into on its own.
+#
+# ⛔ THE CASE-VARIANT PLANTS ARE THE ONES A CLEAN TREE CANNOT SEE. The `sh` half
+# matches with `grep`, which is case-sensitive, and its twin with `Select-String`
+# and `-match`, which are not - so the two agree over this tree, which spells
+# every needle one way, and part over a needle spelled another.
+if [ "$HARNESSES" = "0" ]; then
+  printf 'check-bitcheck: the check-catalogue cases were NOT run; --harnesses or --compare runs them\n' >&2
+else
+
+  agree "catalogue clean tree" check-catalogue publishing/check-catalogue 0
+  go_said "catalogue clean tree" '{"schema":"check-catalogue/1","total":18,"passed":18,"failed":0}'
+
+  # ⛔ A SOCKET NAMED IN THE CRATE, in a file nothing compiles - the sweep reads
+  # the directory, not the module tree, which is the half a build cannot answer.
+  PLANTRS="$TREE/crates/bit-ids/src/zz_planted.rs"
+  printf '// planted\nuse std::net::TcpStream;\n' >"$PLANTRS"
+  agree "catalogue a socket named in the crate" check-catalogue publishing/check-catalogue 1
+  go_said "catalogue a socket named in the crate" '{"schema":"check-catalogue/1","total":18,"passed":17,"failed":1}'
+  rm -f "$PLANTRS"
+
+  # ⚠ THE SAME NAME IN ANOTHER CASE IS NOT THE TYPE, and the sweep says so: Rust
+  # distinguishes the two and the needles are Rust paths.
+  printf '// a tcpstream spelled this way names nothing\n' >"$PLANTRS"
+  agree "catalogue a needle in another case is not a socket" check-catalogue publishing/check-catalogue 0
+  rm -f "$PLANTRS"
+
+  # ⛔ A TRANSPORT IN THE MANIFEST, under a table cargo ignores so the build
+  # still succeeds: the rule reads a line, and a plant that broke the build would
+  # be refused by the build rather than by the rule.
+  CRATEMF="$TREE/crates/bit-ids/Cargo.toml"
+  cp "$CRATEMF" "$WORK/crate-manifest.orig" || exit 2
+  printf '\n[package.metadata.zz-plant]\ntokio = "planted"\n' >>"$CRATEMF"
+  agree "catalogue a transport in the manifest" check-catalogue publishing/check-catalogue 1
+  go_said "catalogue a transport in the manifest" '{"schema":"check-catalogue/1","total":18,"passed":17,"failed":1}'
+  cp "$WORK/crate-manifest.orig" "$CRATEMF"
+
+  printf '\n[package.metadata.zz-plant]\nTokio = "planted"\n' >>"$CRATEMF"
+  agree "catalogue a transport in another case is not one" check-catalogue publishing/check-catalogue 0
+  cp "$WORK/crate-manifest.orig" "$CRATEMF"
+
+  # ⛔ THE LIBRARY REFUSES A MOVED RECORD UNDER ANOTHER CODE. Both sites that
+  # raise E-LIB-02 are disabled - the manifest comparison fires on every per-file
+  # mismatch as well, so disabling one would pass through the other - and the
+  # record is still refused, as E-LIB-04: the checksum file no longer covers the
+  # bytes. The harness must call that the wrong refusal, and one row fires.
+  # ⚠ NAMED FOR WHAT IT DOES. It was first called a library that ACCEPTS a moved
+  # record; a mutation pass that disabled the harness's code comparison turned
+  # it green, which showed the row had only ever failed on the code.
+  CATRS="$TREE/crates/bit-ids/src/catalogue.rs"
+  cp "$CATRS" "$WORK/catalogue.rs.orig" || exit 2
+  if replace_once "$CATRS" 'if release.manifest_json().as_bytes() != manifest {' \
+    'if false && release.manifest_json().as_bytes() != manifest {' &&
+    replace_once "$CATRS" 'if found != **digest {' 'if false && found != **digest {'; then
+    agree "catalogue a moved record refused under another code" check-catalogue publishing/check-catalogue 1
+    go_said "catalogue a moved record refused under another code" '{"schema":"check-catalogue/1","total":18,"passed":17,"failed":1}'
+  else
+    fail "catalogue a moved record refused under another code: NOT PLANTED"
+  fi
+  cp "$WORK/catalogue.rs.orig" "$CATRS"
+
+  agree "catalogue clean tree again" check-catalogue publishing/check-catalogue 0
+
+fi
+
+# ============================================================================
 # check-placeholders
 # ============================================================================
 

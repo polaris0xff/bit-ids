@@ -5,6 +5,24 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-29T02:39:46Z
+
+- ⭐ **`check-catalogue` IS PORTED, THE SECOND HARNESS, and it needed nothing
+  `harness.go` did not already have.** ⚠ Nothing is deleted and no gate row has
+  moved: this change is the COMPARISON.
+- ⛔ **Its plants go where it reads**: a socket named in the crate, a transport in
+  the manifest, and the library's `E-LIB-02` disabled at both sites. All three
+  implementations agree on all seven cases.
+- ⛔ **The comparison found two drifts and both were the twin's**: `Select-String`
+  and `-match` fold case, so the twin refused a lower-case `tcpstream` and a
+  `Tokio` key that `grep` - and Rust - tell apart. A clean tree spells every needle
+  one way and could never have shown it. Repaired in the twin, CRLF kept.
+- ⚠ **A case was named for something it did not do.** *A library that accepts a
+  moved record* is refused as `E-LIB-04`, which a mutation pass exposed; renamed,
+  and kept as the one case proving the harness reads the code and not only the
+  exit. Seven plants into the port: six refused, one equivalent on the fixture.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-10`. No version bump and no deploy.
+
 ### 2026-09-29T02:09:27Z
 
 - ⛔ **BOTH HALVES OF `check-cache` ARE DELETED**, after `621f93a` committed the

@@ -237,7 +237,7 @@ try {
     $needles = 'std::net|TcpStream|TcpListener|UdpSocket|SocketAddr|reqwest|ureq|hyper::|curl::|\.connect\(|to_socket_addrs'
     $src = Join-Path $root (Join-Path 'crates' (Join-Path 'bit-ids' 'src'))
     $hits = @(Get-ChildItem -LiteralPath $src -Recurse -File |
-        Select-String -Pattern $needles)
+        Select-String -CaseSensitive -Pattern $needles)
     if ($hits.Count -gt 0) {
         Add-StoreFail ('network  the crate names a socket or an HTTP client: ' +
             (($hits | Select-Object -First 2 | ForEach-Object { $_.Line.Trim() }) -join ' '))
@@ -250,7 +250,7 @@ try {
     # over a crate full of sockets.
     $lab = Join-Path $root (Join-Path 'crates' (Join-Path 'bit-ids-lab' 'src'))
     $labHits = if (Test-Path -LiteralPath $lab) {
-        @(Get-ChildItem -LiteralPath $lab -Recurse -File | Select-String -Pattern $needles)
+        @(Get-ChildItem -LiteralPath $lab -Recurse -File | Select-String -CaseSensitive -Pattern $needles)
     } else { @() }
     if ($labHits.Count -gt 0) {
         Add-StorePass 'network  and the same needles do match the crate that owns the sockets'
@@ -261,7 +261,7 @@ try {
     # And the dependency list, because a socket can arrive through a crate rather
     # than through a line of source.
     $manifest = Join-Path $root (Join-Path 'crates' (Join-Path 'bit-ids' 'Cargo.toml'))
-    if (Get-Content -LiteralPath $manifest | Where-Object { $_ -match '^(reqwest|ureq|hyper|curl|tokio|async-std|isahc)' }) {
+    if (Get-Content -LiteralPath $manifest | Where-Object { $_ -cmatch '^(reqwest|ureq|hyper|curl|tokio|async-std|isahc)' }) {
         Add-StoreFail 'network  the crate depends on a transport'
     } else {
         Add-StorePass 'network  and its dependency list carries no transport'
