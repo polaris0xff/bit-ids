@@ -371,8 +371,17 @@ of this reasoning was wrong: its cargo `Version` applies Cargo's pre-1.0 rules, 
 for 0.37.0 BOTH types resolve to `>= 0.38` - a change of `y` in `0.y` is major
 there, not minor - while a patch inside 0.37 is still proposed. And
 `IgnoreCondition#ignored_versions` returns only explicit `versions` for a
-security update, so the rule cannot silence one. ⚠ Pull request 2 stays the
+security update, so the rule cannot silence one. ⚠ Pull request 2 stayed the
 operator's: `docs/supply-chain.md` says nothing here closes an item.
+
+⭐ **Driven on the real system, 2026-09-29: the push was the whole experiment.**
+Dependabot ran on the changed configuration within seconds of `2451816` landing -
+its three update jobs at 01:25:38 and 01:25:39 - and closed pull request 2 ITSELF
+at 01:25:41, commenting *"Looks like rusqlite is no longer being updated by
+Dependabot, so this is no longer needed."* ⚠ That is a different sentence from
+pull request 1's *"no longer updatable"*, which is what says the ignore rule was
+read rather than the pin: one names the configuration and the other the tree.
+CI run 168 on the same commit is green on all six jobs.
 
 ## FOUND-05: The session host, provisioned by something rather than by memory
 

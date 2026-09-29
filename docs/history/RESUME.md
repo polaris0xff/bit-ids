@@ -65,15 +65,17 @@ this session's start on a cold build in 3m23s - the one skip is
 `check-remote-items`, which needs an authenticated `gh` no session host has.
 
 ⚠ **CI run 166 on `ff690a3` was read back through rule 8's route at this
-session's start: all six jobs `completed`/`success`.** ⛔ **The commit a session
+session's start: all six jobs `completed`/`success`.** So was run 168 on
+`2451816`, this session's first commit. ⛔ **The commit a session
 ends on is the one with no run read back yet**, whatever its number - including
 the one carrying this sentence. Confirming it is a starting step rather than an
 assumption.
 
 ### The dependabot pull request, found 2026-09-29
 
-⛔ **Pull request 2 is OPEN and re-proposes `rusqlite` 0.40.2**, opened by
-dependabot on 2026-09-18, and its CI run 167 is red on all six jobs because
+⭐ **Closed by dependabot itself at 01:25:41, reading the repair below.** At this
+session's start pull request 2 was OPEN and re-proposed `rusqlite` 0.40.2, opened
+by dependabot on 2026-09-18, and its CI run 167 was red on all six jobs because
 `check-licences` refuses eighteen locked packages with no register row. The
 record said *pull request 1 is closed unmerged*, which is true and is not the
 decision's doing: dependabot closed it itself at 03:26 on 2026-09-15, *"no longer
@@ -319,9 +321,9 @@ chosen for thirteen fewer locked packages. ⭐ **The operator settled it on
 2026-09-16: the answer is no**, and the pin is 0.37.0 in both the manifest and
 the lockfile. Pull request 1 was closed by dependabot rather than by the
 decision, and pull request 2 re-proposed the same bump; `.github/dependabot.yml`
-ignores every `rusqlite` version from 0.38 since 2026-09-29, and pull request 2
-is the operator's to close. ⚠ Do not take the bump to make a bot green, and do
-not re-raise the question.
+ignores every `rusqlite` version from 0.38 since 2026-09-29, and dependabot read
+that and closed pull request 2 itself the same minute. ⚠ Do not take the bump to
+make a bot green, and do not re-raise the question.
 
 ⛔ **The nine commit stamps before 2026-09-06T07:56Z are fabricated**, and so are
 the subjects of `62e1a68`, `d64c51c`, `facf9a9`, `e2d1891` and `aba7142`. They

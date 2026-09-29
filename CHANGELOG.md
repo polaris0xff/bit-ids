@@ -5,6 +5,19 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-29T02:03:01Z
+
+- ⭐ **THE DEPENDABOT REPAIR WAS DRIVEN ON THE REAL SYSTEM, AND THE PUSH WAS THE
+  WHOLE EXPERIMENT.** Dependabot ran on the changed configuration within seconds
+  of `2451816` landing and closed pull request 2 itself at 01:25:41: *"rusqlite is
+  no longer being updated by Dependabot"*. ⚠ Pull request 1's closure said *no
+  longer updatable*; the new wording names the configuration rather than the tree,
+  which is what says the ignore rule was read. Nothing here closed an item.
+- CI run 168 on `2451816` is green on all six jobs, read back through rule 8's
+  route. The settled-decision row, `FOUND-04` and RESUME say so in place.
+- Record: [`TODO/foundation.md`](TODO/foundation.md), `FOUND-04`. No version bump
+  and no deploy.
+
 ### 2026-09-29T01:58:49Z
 
 - ⭐ **`check-cache` IS PORTED, AND IT IS THE FIRST HARNESS IN THE BINARY.**
