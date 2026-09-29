@@ -74,9 +74,9 @@ CLAUDE.local.md
 # BRANCH and say so in the write-up. That is still tracked. An ignore rule is
 # not a size decision, it is a deletion nobody notices.
 #
-# ⚠ scripts/common/mine-repo.sh refuses to finish when its output directory is
-# one this file would swallow, so a project that re-adds a rule here finds out
-# on the next sweep rather than after losing one.
+# ⚠ `bit-check mine-repo` refuses to finish when its output directory is one
+# this file would swallow, so a project that re-adds a rule here finds out on
+# the next sweep rather than after losing one.
 temp/
 
 # ⛔ WINDOWS RESERVED DEVICE NAMES. Two different things create one as a real

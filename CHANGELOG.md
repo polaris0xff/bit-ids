@@ -5,6 +5,18 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-29T04:23:35Z
+
+- ⛔ **BOTH HALVES OF `mine-repo` ARE DELETED, AND NO TWIN PAIR IS LEFT.**
+  `c65a553` committed the comparison with its six repairs in it; this is the
+  deletion, and `CI-10`'s port is done. `bit-check mine-repo` is the helper, and
+  `check-twins` compares only the doctor's probe pair.
+- ⚠ `check-twins` lost the machinery that ran pairs at once, which nothing called
+  any more, and both gate runners stopped naming a `common/` pair that is gone.
+- `docs/methodology/references.md` runs the helper from `tools/check`, and a
+  relative `--out` still lands at the repository root.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-10`. No version bump and no deploy.
+
 ### 2026-09-29T04:15:24Z
 
 - ⭐ **`mine-repo` IS PORTED, AND COMPARED WHOLE FOR THE FIRST TIME.** The

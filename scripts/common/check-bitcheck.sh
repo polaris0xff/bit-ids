@@ -1188,14 +1188,18 @@ agree "remote-items a listing that fails cannot run" "$RI" "$RIS" 2
 # low-speed bound or a depth of one, and it refuses any URL but the target's -
 # so an implementation that dropped any of them fails a case, not a reading.
 #
-# ⚠ THE PROXY ROUTE IS COMPARED WITHOUT THE POWERSHELL HALF. It fetches with
-# `Invoke-WebRequest`, which no stub on PATH intercepts, so it would ask the real
-# proxy about a repository that does not exist; those rows say so. The gh route,
-# the clone, the trim and the provenance are compared across all three.
+# ⚠ THE PROXY ROUTE WAS COMPARED WITHOUT THE POWERSHELL HALF. It fetched with
+# `Invoke-WebRequest`, which no stub on PATH intercepts, so it would have asked
+# the real proxy about a repository that does not exist; those rows said so, and
+# one read-only run against the real proxy stood in for them. The gh route, the
+# clone, the trim and the provenance were compared across all three.
 #
-# ⚠ TWO SPELLINGS ARE THE HOST'S, NOT A DRIFT: the twin names its own flags
+# ⚠ TWO SPELLINGS WERE THE HOST'S, NOT A DRIFT: the twin named its own flags
 # `-Out` and `-NoClone` where the others say `--out` and `--no-clone`, in one
-# refusal and one gap. `mr_exec` maps those two back before comparing.
+# refusal and one gap, and `mr_exec` maps those two back before comparing.
+# ⭐ Both halves were deleted on 2026-09-29, after the comparison ran clean, so
+# every case here now runs the port alone and says so; the machinery stays so
+# the rows keep saying which question they would have put to a half.
 MRS=common/mine-repo
 MR_T=stub-owner/stub-repo
 MR_OUT="$WORK/mined"

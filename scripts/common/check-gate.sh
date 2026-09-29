@@ -308,8 +308,9 @@ fi
 # this list on 2026-09-17 and the direct call below it is gone with the script it
 # called; the comment that used to sit there named it *the last one that is not
 # ported*. ⚠ This line then said *every `common/` half* while `check-remote-items`
-# still ran from its `.sh` half, which is why it names what the gate RUNS:
-# `mine-repo` is the one `common/` pair left, and it is a miner, not a row.
+# still ran from its `.sh` half, which is why it names what the gate RUNS.
+# ⭐ And since 2026-09-29 no `common/` pair is left at all: `mine-repo`, a miner
+# rather than a row, was the last, and it is `bit-check mine-repo` now.
 # ⭐ AND THE HARNESSES, 2026-09-29: `check-cache` and `check-catalogue` left the
 # prover list below for this one, each compared case for case against both of
 # its halves first. They build Rust examples, which the build above has already

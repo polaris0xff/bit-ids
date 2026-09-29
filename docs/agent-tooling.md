@@ -10,7 +10,7 @@ capability; run the doctor and the tool's own version command.
 | [`../scripts/doctor/`](../scripts/doctor/) | read-only host, repository and tool probe |
 | [`../scripts/common/check-gate.sh`](../scripts/common/check-gate.sh) | one local gate entry point |
 | [`../tools/check/`](../tools/check/) | one Go binary carrying the ported rules, run by both lanes |
-| [`../scripts/common/mine-repo.sh`](../scripts/common/mine-repo.sh) | reproducible read-only reference mining |
+| `bit-check mine-repo`, in [`../tools/check/minerepo.go`](../tools/check/minerepo.go) | reproducible read-only reference mining |
 
 ⛔ **The PowerShell twin layer is being DELETED rather than extended**, which is
 `CI-10`. A rule used to be a `.sh` and a hand-written `.ps1` with `check-twins`

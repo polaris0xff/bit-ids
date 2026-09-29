@@ -76,9 +76,10 @@
 //
 // ⚠ **SO THE SCOPE FOLLOWS THE FETCHES RATHER THAN THE DIRECTORY.**
 // `scripts/acquisition/install-rootless.sh` is in scope because it is where the
-// capture path now retrieves what it installs; `provision.sh` and `mine-repo.sh`
-// stay out for the reasons above, which are about what a stall COSTS rather than
-// about which directory a file is in.
+// capture path now retrieves what it installs; `provision.sh` and `mine-repo` -
+// a Go helper in minerepo.go since 2026-09-29, bounded the same way - stay out
+// for the reasons above, which are about what a stall COSTS rather than about
+// which directory a file is in.
 package main
 
 import (

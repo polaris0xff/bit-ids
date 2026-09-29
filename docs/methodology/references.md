@@ -18,22 +18,24 @@ owes a repeatable command and a negative result.
 ## The order
 
 ```
-1 FETCH IT ALL, with the script -> 2 read the code -> 3 READ THE TRACKER
+1 FETCH IT ALL, with the helper -> 2 read the code -> 3 READ THE TRACKER
                                                    -> 4 KEEP THE CORPUS
                                                    -> 5 write the two files
 ```
 
 ---
 
-## 1. Fetch it, with the script, and do not write your own
+## 1. Fetch it, with the helper, and do not write your own
 
 ```bash
-sh scripts/common/mine-repo.sh OWNER/REPO --out references
+cd tools/check && go run . mine-repo OWNER/REPO --out references
 ```
 
-```bash
-pwsh -NoProfile -File scripts/common/mine-repo.ps1 OWNER/REPO -Out references
-```
+It is one Go program on every platform, and a relative `--out` is taken from
+the repository root wherever it runs, so the line above writes `references/`
+there. ⚠ `go run` answers 1 for any failure; the report says whether the subject
+was not fetched or the helper could not run, which its own exit code - 1 or 2 -
+tells apart when it is built and run directly.
 
 That fetches the metadata, the issues and pull requests in **both states**, the
 comments, the review comments, the releases, the tags, the discussions where it
@@ -45,7 +47,7 @@ not get.**
 minutes building issue and pull request fetchers in Python, ran them, produced
 real data, and then deleted the scripts and the data on the way out because
 both lived in session-local scratch. That is the second time the same work was
-paid for and thrown away, and it is why this script exists.
+paid for and thrown away, and it is why this helper exists.
 
 ⚠ **It probes `gh` rather than assuming it.** A token that `command -v` says is
 there has been dead on a live run. Where `gh` cannot answer it falls back to a
@@ -54,7 +56,7 @@ for a write of any kind. [`../security/remote-ops.md`](../security/remote-ops.md
 
 ### ⛔ Capture the commit before stripping anything
 
-The script does this, in that order, and it is worth knowing why: once the git
+The helper does this, in that order, and it is worth knowing why: once the git
 directory is gone the commit is unrecoverable and every line citation becomes
 unverifiable. If you ever do it by hand, do it in this order.
 

@@ -3999,10 +3999,10 @@ written up as a property of the change rather than of the host.
   harness that grew, not a defect, and shrinking it is a decision about how many
   cases a gate should carry rather than a port. Recorded here because the
   measurement was taken here; it belongs to whoever next opens `CI-01`.
-- ⚠ **One file pair remains and `check-twins` prints one pair row**, 2026-09-29:
-  `mine-repo --selftest`. `check-cache`, `check-catalogue` and
-  `check-remote-items` left that day; it said *four* from 2026-09-17, when
-  `check-project` left, through both earlier deletions of this session.
+- ⚠ **No file pair remains and `check-twins` prints no pair row**, 2026-09-29:
+  `check-cache`, `check-catalogue`, `check-remote-items` and `mine-repo` all left
+  that day. This said *four* from 2026-09-17, when `check-project` left, through
+  the first two deletions of that session, and *one* for the next two commits.
   The five that remained before `check-project` left together took
   **5.3 seconds**, timed on 2026-09-15, against the 96.1 the layer started at,
   and `check-project.ps1` was **2.60** of those five. ⛔ The figure had been decremented from 12.3 as
@@ -4562,3 +4562,22 @@ to compile.
 joiner that keeps each page as one record still writes four `"url"` strings and
 one line beginning `[`, which is everything `--selftest` counts. What refuses
 it is the proxy cases' record counts - 102 issues where that joiner writes 2.
+
+#### ⛔ And both halves are deleted: the last pair, and the port is done. 2026-09-29
+
+`c65a553` committed the comparison with the six repairs in it; the deletion came
+after. ⭐ **No twin file pair is left**:
+`grep -c '^compare_pair ' scripts/common/check-twins.sh` answers 0, and
+`check-twins` compares only the doctor's probe pair. The doors the deletion
+touched:
+
+| door | what changed |
+| --- | --- |
+| `check-twins.sh` | the pair is gone, and so is the machinery that ran pairs at once and read each verdict in list order, which nothing called any more; its header and section 7 say where the pairs went |
+| `check-bitcheck.sh` | the section's notes on the twin's proxy route and its flag spellings are past tense; every case runs the port alone and says so |
+| `check-gate.sh`, `check-gate.ps1` | each named `mine-repo` as the one `common/` pair left, and now says none is |
+| `docs/methodology/references.md` | its first step ran the two deleted scripts; it runs `go run . mine-repo` from `tools/check`, and says why a relative `--out` still lands at the root |
+| `docs/agent-tooling.md`, `.gitignore`, `adapters.go`, `check-defaults.sh` | each named `mine-repo.sh`, and the last named `check-placeholders.sh` beside it, deleted since `CI-10` ported it |
+
+⚠ **`mine-repo` never was a gate row**, so no runner queued it and no row moved;
+the doors were prose and one pair list.

@@ -210,8 +210,9 @@ function Invoke-Ported([string]$Name, [string]$Check = '', [string[]]$ExtraArgs 
 # ⭐ EVERY `common/` CHECK THE GATE RUNS IS PORTED NOW. `check-project` joined
 # this list on 2026-09-17 and the direct call below it is gone with the twin it
 # called. ⚠ This line then said *every `common/` half* while this lane still ran
-# `check-remote-items.ps1`, which is why it names what the gate RUNS: `mine-repo`
-# is the one `common/` pair left, and it is a miner, not a row.
+# `check-remote-items.ps1`, which is why it names what the gate RUNS. ⭐ And
+# since 2026-09-29 no `common/` pair is left at all: `mine-repo`, a miner rather
+# than a row, was the last, and it is `bit-check mine-repo` now.
 foreach ($c in 'check-adapters', 'check-changelog', 'check-control-bytes',
                 'check-docs', 'check-ignores', 'check-licences',
                 'check-markers', 'check-no-secrets', 'check-one-home',

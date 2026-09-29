@@ -449,12 +449,14 @@ nothing is. The clone question under *Settled decisions* is spent too.
    The operator's direction was to port the checking scripts to Go, port the slow
    CI parts to Go, and parallelise CI across runners; all three are measured on
    real runners, and the acceptance bound came DOWN to 20 from 45.
-   ⛔ **What is left is the rest of the port**: the twin file pair
-   `check-twins.sh` still compares - `mine-repo`, which
-   `grep -c '^compare_pair ' scripts/common/check-twins.sh` counts.
-   `bit-check --rows` lists what [`../tools/check/`](../tools/check/) carries.
-   ⚠ So the wall-clock value is small and the DRIFT value is unchanged, which is
-   the argument for taking them when they are cheapest rather than first.
+   ⭐ **THE PORT IS DONE, 2026-09-29: no twin file pair is left** for
+   `check-twins.sh` to compare, which
+   `grep -c '^compare_pair ' scripts/common/check-twins.sh` answering 0 says,
+   and it compares only the doctor's probe pair now. `bit-check --rows` lists what
+   [`../tools/check/`](../tools/check/) carries. ⛔ **What is left of the entry
+   is its residuals**, under it in [`ci.md`](ci.md): nothing runs
+   `--harnesses` automatically, and CI runs no `gofmt` and no `go vet` over the
+   module.
    ⭐ **`check-cache` AND `check-catalogue` ARE PORTED, COMPARED AND DELETED,
    2026-09-29, the first HARNESSES in the binary**, and `store-lib.ps1` went with
    them for want of a caller. Their plants go into what each harness reads - the
@@ -469,11 +471,11 @@ nothing is. The clone question under *Settled decisions* is spent too.
    and the gate's one skip is proved on every host now: a stub `gh` and a stub
    `curl` serve its fifteen cases in `check-bitcheck`'s DEFAULT mode, and the
    comparison over them found two drifts, both the twin's.
-   ⭐ **`mine-repo` IS PORTED AND COMPARED, 2026-09-29, with nothing deleted
-   yet.** Its only comparison had been `--selftest`; stub `gh`, `curl` and `git`
-   now serve both routes, the clone and the trim to all three implementations,
-   and six drifts were repaired in the half that had each. [`ci.md`](ci.md)
-   under `CI-10` has the table.
+   ⭐ **`mine-repo` IS PORTED, COMPARED AND DELETED, 2026-09-29, the last
+   pair.** Its only comparison had been `--selftest`; stub `gh`, `curl` and `git`
+   served both routes, the clone and the trim to all three implementations, six
+   drifts were repaired in the half that had each, and `bit-check mine-repo` is
+   the helper now. [`ci.md`](ci.md) under `CI-10` has the table.
    ⛔ **A pair may leave that list ONE WAY ONLY**:
    `sh scripts/common/check-bitcheck.sh --compare` against BOTH halves, before
    either is deleted.

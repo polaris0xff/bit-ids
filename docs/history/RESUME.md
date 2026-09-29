@@ -57,8 +57,8 @@ Both runner images carry it.
 deleted (`a8cfedf`), and so is `check-catalogue` (`c40784f`, then its deletion,
 which took the orphaned `store-lib.ps1` too). `check-remote-items` is ported
 and compared - fifteen stubbed cases in the default mode (`f0e4f7f`) - and
-deleted (`e6ae4c4`). `mine-repo` is ported and compared, both routes and the
-clone served from stubs, with nothing deleted; its deletion is next, then
+deleted (`e6ae4c4`), and so is `mine-repo` (`c65a553`, then its deletion) -
+the last pair, so the port is done. `CI-10`'s two residuals are next, then
 `CI-09`'s `RunManifest` producer. Refresh this line when the in-flight item
 changes.
 
@@ -123,10 +123,9 @@ are the SAME row on both lanes.
 2026-09-29, and `tools/check/harness.go` carries what they needed of
 `store-lib`; `store-lib.ps1` is deleted, having no caller left.
 
-**The pair left** is the one `check-twins.sh` still compares: `mine-repo`.
-`check-remote-items` went on 2026-09-29, after fifteen stubbed cases ran all
-three implementations. ⛔ The remaining wall-clock value is small and the DRIFT
-value is unchanged.
+**No pair is left.** `check-remote-items` and `mine-repo` went on 2026-09-29,
+the last two, each after stubbed cases ran all three implementations, and
+`check-twins.sh` compares only the doctor's probe pair now.
 
 ⛔ **A HARNESS'S CASES BUILD ITS RUST SUBJECT, COLD**, in the scratch tree, so
 they run under `check-bitcheck --harnesses` and `--compare` and not in the gate:
@@ -158,9 +157,9 @@ step supervisor - across two targets and both routes, on byte-identical code.
    run 32 wedged in *Install the client* on both lanes and uploaded zero
    artifacts, where the unprivileged claim took 0s and the resolve step - which
    fetches through the same installer - took 1s. ⚠ Do not reopen it: absolute 16.
-1. **`CI-10`**, the pair `check-twins.sh` still compares: `mine-repo`.
-   ⛔ A pair leaves that list only after
-   `check-bitcheck --compare` has run it against BOTH halves.
+1. **`CI-10`**, whose port is done: no pair is left in `check-twins.sh`, and
+   what remains is two residuals under the entry. ⛔ A pair left that list only
+   after `check-bitcheck --compare` had run it against BOTH halves.
    ⭐ **`check-project` is ported, compared and deleted, 2026-09-17** - the
    twenty-nine refusals are in the Go binary, 49 cases ran them against both
    halves, and the comparison found three drifts that were all the PowerShell

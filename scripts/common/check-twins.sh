@@ -7,7 +7,7 @@
 # noticed had fallen behind. The failure is silent, because each one works fine
 # on its own host and nobody runs both.
 #
-# -- ⭐ EVERYTHING IN common/ HAS A TWIN, AND THIS FILE COVERS ALL OF THEM ----
+# -- ⭐ WHEREVER A TWIN EXISTS, THIS FILE COVERS IT, AND ONE PAIR IS LEFT -----
 #
 # ⛔ A POSIX sh check cannot be assumed to run on Windows. Measured on one
 # Windows 11 machine on 2026-08-25, from a native PowerShell session with Git
@@ -19,6 +19,11 @@
 #
 # ⛔ So the rule is: wherever a twin exists, THIS CHECK covers it. Adding a
 # twin without adding it here is how drift starts.
+#
+# ⭐ AND THE TWINS ARE ALMOST GONE. `CI-10` ported every `common/` check into one
+# Go binary and deleted both halves of each; the doctor's probe pair, sections 1
+# to 6 below, is the one this file still compares, and section 7 says where the
+# rest went.
 #
 # ⚠ THIS HEADER USED TO SAY THE OPPOSITE, that only the probe needed a twin.
 # It did not go stale: it shipped in the SAME COMMIT as the section 7 below
@@ -276,222 +281,18 @@ else
   printf '           schema comparison cannot see. Add it to BOTH.\n'
 fi
 
-# --- 7. every OTHER twin pair, compared on this tree --------------------------
-# ⛔ THE PROBE IS NO LONGER THE ONLY TWIN, so it is no longer the only thing
-# compared. Every check in common/ has a PowerShell implementation, because the
-# sh ones cannot run on a Windows host that has no POSIX layer: measured on one
-# Windows 11 machine, native PowerShell had no `sed` at all and `sort` resolved
-# to PowerShell's own Sort-Object alias rather than the coreutils binary. ⚠ The
-# second is the dangerous one: a missing tool fails loudly, an aliased one
-# silently returns a different answer.
+# --- 7. the other twin pairs: none is left ------------------------------------
+# ⭐ CI-10 DELETED EVERY ONE, and a pair left this file only after
+# `check-bitcheck.sh --compare` had run both of its halves against the Go port
+# over the same plants. The last, `mine-repo`, went on 2026-09-29, and with it
+# the machinery that ran the pairs at once and read each verdict in list order,
+# which nothing called any more. What each comparison found - and why this file
+# could not have found it, since it compares answers on the tree it runs
+# against and a drift that only a planted shape shows is invisible to that - is
+# in TODO/ci.md under CI-10.
 #
-# ⭐ THE COMPARISON IS THE --json OUTPUT AND THE EXIT CODE, both read from the
-# process that produced them. Two implementations of one rule agreeing on a
-# clean tree proves very little; they are mutation-proven together, which is
-# what scripts/README.md asks for.
-# ⚠ IT COMPARES ANSWERS ON THIS TREE, NOT THE RULES THEMSELVES. A scope
-# difference with nothing in the tree to exercise it is INVISIBLE here:
-# dropping `.py` from one twin's extension list changed no number, because this
-# repository has no `.py` file. Dropping `.md` was caught instantly. ⭐ So a
-# scope rule is proven by adding a fixture that exercises it, not by trusting
-# this comparison to notice.
-printf '\n  twin pairs, same tree:\n'
-
-# ⭐ THE PAIRS RUN CONCURRENTLY AND THEIR VERDICTS ARE READ IN LIST ORDER, for
-# the reason `check-gate.sh` gives about the checks it runs: each pair reads the
-# same tree and writes nothing to it, so running twelve at once changes the wall
-# clock and nothing else. ⚠ It matters more here than anywhere: this file was
-# 90.7 of the gate's 198 seconds on the host it was measured on, and starting
-# `pwsh` twelve times in sequence is most of that - two seconds of process
-# startup before either half reads a byte.
-#
-# ⛔ THE TWO HALVES OF ONE PAIR ALSO RUN AT ONCE, and that is the second half of
-# the saving: a pair used to cost sh plus ps and now costs the slower of them.
-# ⚠ They are still two separate processes with two separate exit codes, read
-# from the process that produced each; ⛔ writing this as one pipeline is the
-# defect that was found in this very function once already.
-TWIN_JOBS=0
-
-compare_pair() {
-  TWIN_JOBS=$((TWIN_JOBS + 1))
-  _q="$TMP/pair.$TWIN_JOBS"
-  printf '%s\n' "$1" >"$_q.name"
-  # ⚠ THE SUBSHELL BELOW INHERITS THIS FUNCTION'S POSITIONAL PARAMETERS, so it
-  # reads $1..$5 without being handed them. Handing them over is not available:
-  # `( ... ) "$@"` is a syntax error rather than a command with arguments.
-  (
-    _p_name="$1"
-    _p_sh="$2"
-    _p_shargs="$3"
-    _p_ps="$4"
-    _p_psargs="$5"
-
-    # shellcheck disable=SC2086
-    # The argument strings are deliberately word-split: each is a fixed literal
-    # written in the table below, never user input.
-    # ⛔ RUN UNPIPED, READ THE EXIT CODE, THEN FILTER. Writing this as
-    # `check | grep '^{'` and reading $? gives the GREP's status, so a check that
-    # exited 1 reads as 0 and a check that exited 2 reads as 1. That is this
-    # repository's oldest stated rule and it was broken here, in the file whose
-    # job is comparing guards, while writing this very function.
-    #
-    # ⚠ ONLY THE MACHINE-READABLE LINE IS COMPARED. A pair that also printed
-    # timestamped progress reported a disagreement while agreeing exactly, because
-    # two runs a second apart are never byte-identical. Comparing the JSON
-    # compares the ANSWER; comparing the transcript compares the clock.
-    (cd "$REPO_ROOT" && sh "$REPO_ROOT/scripts/$_p_sh" $_p_shargs 2>/dev/null) >"$_q.a" &
-    _sh_pid=$!
-    # shellcheck disable=SC2086
-    (cd "$REPO_ROOT" && "$PWSH" -NoProfile -File "$REPO_ROOT/scripts/$_p_ps" $_p_psargs 2>/dev/null) >"$_q.b" &
-    _ps_pid=$!
-    wait "$_sh_pid"
-    ra=$?
-    wait "$_ps_pid"
-    rb=$?
-    a=$(grep '^{' "$_q.a" || true)
-    b=$(grep '^{' "$_q.b" || true)
-
-    if [ "$a" = "$b" ] && [ "$ra" = "$rb" ]; then
-      printf '  ok     %s: both say %s, exit %s\n' \
-        "$_p_name" "$([ -n "$a" ] && printf '%s' "$a" || printf 'nothing')" "$ra"
-      exit 0
-    fi
-    printf '  DRIFT  %s: the twins disagree\n' "$_p_name"
-    printf '           sh: exit %s  %s\n' "$ra" "$a"
-    printf '           ps: exit %s  %s\n' "$rb" "$b"
-    printf '           ⛔ One rule, two answers. Fix BOTH; do not widen this\n'
-    printf '           comparison to make the failure go away.\n'
-    exit 1
-  ) >"$_q.out" 2>&1 &
-  printf '%s\n' "$!" >"$_q.pid"
-}
-
-# ⛔ NOTHING HAS BEEN WAITED ON UNTIL THIS RUNS. Every pair's exit code is read
-# from its own process, and every pair's lines are printed at its own index, so
-# the report cannot come out in the order the pairs happened to finish.
-harvest_pairs() {
-  _i=1
-  while [ "$_i" -le "$TWIN_JOBS" ]; do
-    _q="$TMP/pair.$_i"
-    wait "$(cat "$_q.pid")"
-    _rc=$?
-    # ⚠ A DRIFTING PAIR PRINTS EVEN UNDER --json, because the json line carries
-    # only a count and the lines below it are the only place the two answers
-    # appear. An agreeing pair prints nothing there, the way it did before.
-    if [ "$_rc" != 0 ] || [ "$JSON" != "1" ]; then
-      cat "$_q.out"
-    fi
-    [ "$_rc" = 0 ] || DRIFT=$((DRIFT + 1))
-    _i=$((_i + 1))
-  done
-}
-
-# ⭐ FOUR PAIRS HAVE LEFT THIS LIST BY BEING DELETED, NOT BY BEING EXEMPTED.
-# CI-10, 2026-09-10. `check-changelog`, `check-control-bytes`, `check-markers` and
-# `check-one-home` are one Go binary now; both of each pair's halves are gone, so
-# there is no drift left to compare and no row here to keep in step.
-#
-# ⛔ THE COMPARISON WAS NOT SIMPLY DROPPED. `check-bitcheck.sh --compare` ran every
-# one of them against BOTH deleted halves, over eight planted defects and six
-# plants that must be accepted, and recorded 35 cases agreeing on the exit code
-# and byte for byte on the `--json` line. TODO/ci.md carries the run. A pair
-# removed from this list without that is a rule nobody checks.
-#
-# ⚠ AND THE PAIR THIS FILE SINGLED OUT IS ONE OF THE FOUR. `check-markers` was
-# "the one most worth comparing and the one least proved by the comparison",
-# because both halves decoded UTF-8 by hand from opposite directions and this
-# tree carries no character outside the five for them to disagree about. ⭐ There
-# is one decoder now, and `check-bitcheck` plants the character rather than hoping
-# the tree contains one - which is what that note asked for.
-# ⛔ AND A FIFTH PAIR HAS LEFT BY BEING DELETED: `check-no-secrets`, 2026-09-15.
-# It was TWO rows here rather than one, because `--public` is a different
-# question from the default run rather than a stricter version of it, so the two
-# modes were compared separately. ⚠ That is why the pair count and the row count
-# disagree and always did: seven file pairs produced eight rows.
-#
-# ⛔ IT LEFT THE LIST THE ONLY WAY A PAIR MAY. `check-bitcheck.sh --compare` ran
-# twenty cases over both deleted halves - nine in the default mode and eleven
-# under `--public` - with all three implementations agreeing on the exit code and
-# byte for byte on the `--json` line. Three of those cases exist because a port
-# could pass every other one and still be wrong: a lockfile digest, which is
-# allowed by an expression anchored to the `path:lineno:` prefix and so proves
-# the allowances read the OUTPUT LINE rather than the text; an allowed digest
-# beside a bare one, which proves an allowed item is deleted from the line rather
-# than the line being dropped; and a forty-six digit run after an infohash field,
-# which is what the trailing class on that expression is for.
-# ⛔ AND A SIXTH PAIR HAS LEFT: `check-docs`, 2026-09-15. ⭐ IT IS THE ONE THAT
-# PAID FOR THE WHOLE DISCIPLINE. `check-bitcheck --compare` ran its planted cases
-# against both halves and they DISAGREED on one: a page cited only inside
-# backticks was an orphan to the PowerShell twin and not to the `sh` half, which
-# read links with two awk programs where only one stripped code spans.
-#
-# ⚠ This file could never have found it. It compares the two halves' answers on
-# the tree it runs against, and no page here is cited only that way - the blind
-# spot its own header records, a rule differing only on a shape the tree does not
-# contain. The twin was correct, both other implementations were changed to match,
-# and only then did the pair leave.
-# ⛔ AND A SEVENTH PAIR HAS LEFT: `check-project`, 2026-09-17, the biggest one
-# there was - 997 lines of `sh` against a hand-written twin, twenty-nine refusals
-# over this repository's own invariants. Both halves are gone and `bit-check
-# check-project` is the row on both lanes.
-#
-# ⛔ IT LEFT THE LIST THE ONLY WAY A PAIR MAY, and the comparison earned it.
-# `check-bitcheck.sh --compare` ran 49 planted cases against both halves and
-# found THREE DISAGREEMENTS, all of them the twin's: `@(...) | Sort-Object`
-# wrapping the input and leaving the output unwrapped, so an empty set threw
-# instead of refusing; the summary Total row compared as a whole LINE where the
-# `sh` half compares five counts; and two checks joined by `-or`, so a tree
-# failing both counted one failure rather than two. All three were repaired in
-# the twin and only then did the run come back clean - 143 cases, 143 passed,
-# agreeing on the exit code and byte for byte on the `--json` line.
-#
-# ⚠ THIS FILE COULD NOT HAVE FOUND ANY OF THEM. It compares the two halves on
-# the tree it runs against, and this tree has no empty client matrix, no altered
-# Total row and no duplicated index row. The blind spot its own header records.
-
-# ⭐ WHY THE PATHS BELOW CARRY A DIRECTORY. Every twin this file compared lived in
-# `common/`, so the base was spelled once and the call sites named a bare file.
-# `CI-07`'s class-A rows did not, and a comparison that could only reach one
-# directory would have left them uncompared - which is the shape this whole file
-# exists to refuse, arriving in its own plumbing. ⚠ Both of those pairs have left,
-# and the directory stays spelled so the next pair outside `common/` needs no
-# change here.
-#
-# ⛔ AND AN EIGHTH PAIR HAS LEFT: `check-cache`, 2026-09-29, the first harness
-# twin and the first HARNESS to leave. `check-bitcheck.sh --compare` ran six
-# cases against both halves - a register permitting the scenario's own target,
-# one permitting another, one that is missing, and a retrieval repeating the
-# first - and found one drift, the twin's: its could-not-run message named a flag
-# the call does not use. Repaired in the twin, and only then did the pair leave.
-#
-# ⛔ AND A NINTH: `check-catalogue`, 2026-09-29. Seven cases, and the comparison
-# found two drifts that were both the twin's and that no clean tree could show:
-# `Select-String` and `-match` fold case, so the twin refused a needle spelled in
-# another case that `grep` - and Rust - tell apart. Repaired in the twin first.
-#
-# ⛔ AND A TENTH: `check-remote-items`, 2026-09-29. This file compared it as two
-# 2s on every host with no authenticated gh, which is every session host, and
-# where gh was authenticated it compared whatever happened to be open.
-# `check-bitcheck` served all three implementations from a stub gh and a stub
-# curl instead: fifteen cases, the whole report compared rather than the JSON
-# line, and two drifts found, both the twin's - its runtime refusal said *the
-# platform* where the `sh` half says *GitHub*, and a listing that failed
-# discarded gh's own error. Repaired in the twin first.
-
-# ⭐ mine-repo IS COMPARED THROUGH --selftest, AND THAT IS THE WHOLE POINT.
-# This pair used to be excluded, on the reasoning that comparing two miners
-# means fetching a live third-party repository twice on every run. That
-# reasoning still holds for a FETCH and it never applied to the JOIN, which is
-# the part that was wrong: the sh half joined paginated pages by counting
-# bracket characters over raw text, dropped every comment body containing a
-# markdown link, and printed "ok". A consumer found it, not this check.
-#
-# ⚠ --selftest touches no network and no credential. There was never a reason
-# to leave the joiner uncompared, and the exclusion note that covered the fetch
-# had been read as covering the whole script.
-compare_pair "mine-repo --selftest" common/mine-repo.sh "--selftest --json" common/mine-repo.ps1 "-SelfTest -Json"
-
-harvest_pairs
+# ⛔ SO A NEW TWIN IS NOT ADDED HERE. A new rule goes into tools/check/, which is
+# one implementation on both platforms and cannot drift from itself.
 
 # --- 8. per-tool verdicts, on request ----------------------------------------
 if [ "$VERBOSE" = "1" ]; then

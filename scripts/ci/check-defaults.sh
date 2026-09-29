@@ -182,8 +182,8 @@ fi
 # ⚠ SINGLE-QUOTED ON PURPOSE, and shellcheck is right to ask. `$IFS` has to be
 # expanded by the CHILD shell, because the whole question is what the child sees;
 # expanding it here would print this shell's own value and the case would pass
-# over any child at all. `check-placeholders` and `mine-repo.sh` disable the same
-# rule for the same shape.
+# over any child at all. `check-placeholders.sh` and `mine-repo.sh` disabled the
+# same rule for the same shape until `CI-10` deleted both, so this is the last.
 # shellcheck disable=SC2016
 IFS_SEEN=$(env "IFS=:" sh -c 'printf "%s" "$IFS"' | od -An -c | tr -d ' \n')
 if [ "$IFS_SEEN" = "\\t\\n" ]; then
