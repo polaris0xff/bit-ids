@@ -3999,8 +3999,11 @@ written up as a property of the change rather than of the host.
   harness that grew, not a defect, and shrinking it is a decision about how many
   cases a gate should carry rather than a port. Recorded here because the
   measurement was taken here; it belongs to whoever next opens `CI-01`.
-- ⚠ **Four file pairs remain and `check-twins` prints four rows**, 2026-09-17,
-  `check-project` having left. The five that remained before it together took
+- ⚠ **One file pair remains and `check-twins` prints one pair row**, 2026-09-29:
+  `mine-repo --selftest`. `check-cache`, `check-catalogue` and
+  `check-remote-items` left that day; it said *four* from 2026-09-17, when
+  `check-project` left, through both earlier deletions of this session.
+  The five that remained before `check-project` left together took
   **5.3 seconds**, timed on 2026-09-15, against the 96.1 the layer started at,
   and `check-project.ps1` was **2.60** of those five. ⛔ The figure had been decremented from 12.3 as
   pairs left rather than re-timed, which is the value-in-two-places defect in a
@@ -4413,3 +4416,50 @@ plants that read removed lines and read one match per line both passed every
 case. ⚠ And the last plant's first spelling appended an empty match per line and
 PANICKED, exiting 2: that is the mutant failing on its own nil path, counted as
 neither, and the spelling that cannot crash is the row above.
+
+#### ⛔ And both halves are deleted, and a function with them. 2026-09-29
+
+`f0e4f7f` committed the comparison with the twin's repairs in it, and CI run 174
+read it back green on all six jobs; the deletion came after. ⚠ **Both lanes now
+run the binary against the real open items**, where until this commit each ran
+its own half. The doors the deletion touched:
+
+| door | what changed |
+| --- | --- |
+| `check-gate.sh` | the row left its `sh` call for the ported list, keeping its note that it needs `gh` and the network |
+| `check-gate.ps1` | the row became `Invoke-Ported 'check-remote-items'`, and `Invoke-Check` went with its last caller; its two lessons moved into `Invoke-Ported`, and so did its skip reason - a ported row that could not run said only *could not run*, which would have cost this row its *gh not found*, and now prints the check's first line as the `sh` lane does |
+| `check-twins.sh` | the pair is gone, with a note saying how it left; `mine-repo` is the one pair left |
+| `check-bitcheck.sh` | the section's note on the PowerShell half's real fetches is past tense, and the header says what `--compare` compares: stderr as well as stdout |
+| `docs/supply-chain.md`, `docs/security/remote-ops.md` | each linked or ran the deleted script, and now names the Go file |
+
+⛔ **THE PAGE THAT TELLS AN OPERATOR WHAT THE CHECK VERIFIES CLAIMED ONE THING IT
+NEVER DID.** Step 1 of `docs/supply-chain.md`'s update procedure said the check
+verifies *that the tag is a published release*. The `sh` half's header said so
+too, and its code never asked it; the step now says what the code does ask
+about releases. That page already carried a warning that it described the check
+from its own documentation with no run behind it; fifteen cases now back each
+sentence of the step, and the sentence no case could back is gone rather than
+tested.
+
+⚠ **Two comments beside the row were false for a reason other than this pair.**
+Both runners said *every `common/` half is ported* from 2026-09-17, while this
+row still ran from its halves; each now says what the gate RUNS is ported and
+names `mine-repo` as the pair left. And `check-gate.ps1` cited an
+`Invoke-Native` for its unpiped exit codes, which no commit in this repository
+ever defined - `git log -S 'function Invoke-Native'` over the full history finds
+nothing - so it now names the function that does the work.
+
+⚠ **A third was false about a different row.** `check-gate.sh` said `check-runner`
+is not in `check-twins`' pair list *because it has no PowerShell half*;
+`check-runner.ps1` has existed since `CI-03` closed. The true reason is that the
+two prove different guards - the Linux ones and the Windows ones - so no one
+verdict holds both.
+
+⚠ **THE RUNNABLE FORM THIS SESSION WROTE HIDES ONE CODE.**
+`go run . <check>` from `tools/check` is what `CI-05`, `ACQ-05`, `LIB-01` and
+now the update procedure give, and it is right about exit 0. Measured over this
+check on a host with no `gh`: the binary printed *gh not found*, `go run`
+printed *exit status 2* and then exited **1** - so through it, a refusal and a
+could-not-run are one code. The three `Prove` forms state exit 0, which it
+reports faithfully; the update procedure says to read the report, and the
+binary's usage comment says why.

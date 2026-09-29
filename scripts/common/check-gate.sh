@@ -304,16 +304,24 @@ if command -v go >/dev/null 2>&1; then
   (cd "$HERE/../../tools/check" && go build -o "$GOBIN" .) >/dev/null 2>&1 || :
 fi
 
-# ⭐ EVERY `common/` HALF IS PORTED NOW. `check-project` joined this list on
-# 2026-09-17 and the direct call below it is gone with the script it called; the
-# comment that used to sit there named it *the last one that is not ported*.
+# ⭐ EVERY `common/` CHECK THE GATE RUNS IS PORTED NOW. `check-project` joined
+# this list on 2026-09-17 and the direct call below it is gone with the script it
+# called; the comment that used to sit there named it *the last one that is not
+# ported*. ⚠ This line then said *every `common/` half* while `check-remote-items`
+# still ran from its `.sh` half, which is why it names what the gate RUNS:
+# `mine-repo` is the one `common/` pair left, and it is a miner, not a row.
 # ⭐ AND THE HARNESSES, 2026-09-29: `check-cache` and `check-catalogue` left the
 # prover list below for this one, each compared case for case against both of
 # its halves first. They build Rust examples, which the build above has already
 # made a no-op.
+# ⚠ `check-remote-items` joined the same day and NEEDS gh AND THE NETWORK, so it
+# exits 2 on a machine without them and that reads as a skip rather than a pass.
+# That is correct: nothing was verified. Its logic is proved without either by
+# `check-bitcheck`, which serves it from a stub `gh` and a stub `curl`.
 for c in check-adapters check-cache check-catalogue check-changelog \
   check-control-bytes check-docs check-ignores check-licences check-markers \
-  check-no-secrets check-one-home check-placeholders check-project; do
+  check-no-secrets check-one-home check-placeholders check-project \
+  check-remote-items; do
   if [ -x "$GOBIN" ]; then
     queue "$c" "$GOBIN" "$c"
   else
@@ -339,16 +347,15 @@ else
   queue_row "check-no-secrets (public)" "SKIP  check-no-secrets (public)  (tools/check did not build)" skip
 fi
 
-# ⚠ NEEDS gh AND THE NETWORK, so it exits 2 on a machine without them and that
-# reads as a skip rather than a pass. That is correct: nothing was verified.
-[ -f "$HERE/check-remote-items.sh" ] && queue "check-remote-items" sh "$HERE/check-remote-items.sh"
-
 # ⛔ NOT IN common/, AND IN THE GATE ANYWAY. `check-runner` mutation-proves the
 # guards that stand between this project and installing an untrusted client on a
 # machine somebody keeps. It is hermetic, it takes no network, and it is the one
 # check whose silence would be worst, so it runs on every gate rather than only
-# where captures happen. It is not in check-twins' pair list because it has no
-# PowerShell half; scripts/README.md carries why.
+# where captures happen. It is not in check-twins' pair list. ⚠ This said
+# *because it has no PowerShell half* long after `CI-03` wrote one: the reason
+# is that `check-runner.ps1` proves the Windows guards and this proves the Linux
+# ones, so the two answer different questions and no one verdict holds both.
+# scripts/README.md carries the history.
 RUNNER="$HERE/../acquisition/check-runner.sh"
 if [ -f "$RUNNER" ]; then
   queue "check-runner" sh "$RUNNER"

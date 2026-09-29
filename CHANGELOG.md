@@ -5,6 +5,28 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-29T03:21:20Z
+
+- ⛔ **BOTH HALVES OF `check-remote-items` ARE DELETED**, after `f0e4f7f`
+  committed the comparison and run 174 read it back. Both lanes now run the Go
+  binary against the real open items, and `check-twins` compares one pair:
+  `mine-repo`. `Invoke-Check` left the PowerShell runner with its last caller,
+  and a ported row that cannot run on that lane now says why, as on the other.
+- ⛔ **The operator's update procedure claimed a check nothing made.** Step 1 of
+  `docs/supply-chain.md` said the tag is verified as a published release; the
+  `sh` half's header said so and its code never asked. The sentence is gone, and
+  the page's warning that no run backed it is replaced by the fifteen cases that
+  now do.
+- ⚠ Three comments beside the rows were false: both runners said every `common/`
+  half was ported while this one was not, the PowerShell runner cited an
+  `Invoke-Native` no commit ever defined, and `check-runner` was said to lack a
+  PowerShell half it has had since `CI-03`.
+- ⚠ `go run . <check>`, the runnable form `CI-05`, `ACQ-05`, `LIB-01` and the
+  update procedure give, exits 1 for a refusal and for a check that could not
+  run alike. Measured; the procedure now says to read the report, and the
+  binary's usage comment says why.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-10`. No version bump and no deploy.
+
 ### 2026-09-29T03:07:40Z
 
 - ⭐ **`check-remote-items` IS PORTED, AND THE GATE'S ONE SKIP NOW RUNS ON EVERY

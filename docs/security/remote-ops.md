@@ -115,7 +115,8 @@ Re-derive against the tree or the API before acting:
 | a version, a tag or a commit is what it claims | resolve it, and confirm it belongs to the repository named |
 | a check passes, or a state is already fixed | run the check, unpiped, and read the exit code |
 
-⭐ [`check-remote-items.sh`](../../scripts/common/check-remote-items.sh) is this
+⭐ `check-remote-items`, in
+[`../../tools/check/remoteitems.go`](../../tools/check/remoteitems.go), is this
 rule with a machine behind it, for the subset a machine can hold: it verifies
 what an open item asserts about pins, tags, commits and runtimes, and it never
 merges, closes, comments or approves. ⚠ **It cannot tell you whether a change is

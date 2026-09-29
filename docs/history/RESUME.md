@@ -56,15 +56,17 @@ Both runner images carry it.
 `CI-10`'s `check-cache` is ported, compared against both halves (`621f93a`) and
 deleted (`a8cfedf`), and so is `check-catalogue` (`c40784f`, then its deletion,
 which took the orphaned `store-lib.ps1` too). `check-remote-items` is ported
-and compared - fifteen stubbed cases in the default mode - committed with
-nothing deleted; its deletion is next, then `mine-repo`, then `CI-09`'s
-`RunManifest` producer. Refresh this line when the in-flight item changes.
+and compared - fifteen stubbed cases in the default mode (`f0e4f7f`) - and
+deleted. `mine-repo` is next, then `CI-09`'s `RunManifest` producer. Refresh
+this line when the in-flight item changes.
 
 ### ⚠ The state of the tree, as this was last written
 
 The gate is **40 checks, 39 passed, 0 failed, 1 skipped**, exit 0, re-measured at
 this session's start on a cold build in 3m23s - the one skip is
 `check-remote-items`, which needs an authenticated `gh` no session host has.
+⭐ Its logic runs here anyway since 2026-09-29: `check-bitcheck` serves it from a
+stub `gh`, in the default mode, so the row that skips is the real-items run.
 
 ⚠ **CI run 166 on `ff690a3` was read back through rule 8's route at this
 session's start: all six jobs `completed`/`success`.** So was run 168 on
@@ -119,9 +121,10 @@ are the SAME row on both lanes.
 2026-09-29, and `tools/check/harness.go` carries what they needed of
 `store-lib`; `store-lib.ps1` is deleted, having no caller left.
 
-**The pairs left** are the ones `check-twins.sh` still compares:
-`check-remote-items` and `mine-repo`. ⛔ The remaining wall-clock value is small
-and the DRIFT value is unchanged.
+**The pair left** is the one `check-twins.sh` still compares: `mine-repo`.
+`check-remote-items` went on 2026-09-29, after fifteen stubbed cases ran all
+three implementations. ⛔ The remaining wall-clock value is small and the DRIFT
+value is unchanged.
 
 ⛔ **A HARNESS'S CASES BUILD ITS RUST SUBJECT, COLD**, in the scratch tree, so
 they run under `check-bitcheck --harnesses` and `--compare` and not in the gate:
@@ -153,8 +156,8 @@ step supervisor - across two targets and both routes, on byte-identical code.
    run 32 wedged in *Install the client* on both lanes and uploaded zero
    artifacts, where the unprivileged claim took 0s and the resolve step - which
    fetches through the same installer - took 1s. ⚠ Do not reopen it: absolute 16.
-1. **`CI-10`**, the pairs `check-twins.sh` still compares: `check-remote-items`
-   and `mine-repo`. ⛔ A pair leaves that list only after
+1. **`CI-10`**, the pair `check-twins.sh` still compares: `mine-repo`.
+   ⛔ A pair leaves that list only after
    `check-bitcheck --compare` has run it against BOTH halves.
    ⭐ **`check-project` is ported, compared and deleted, 2026-09-17** - the
    twenty-nine refusals are in the Go binary, 49 cases ran them against both
@@ -343,8 +346,8 @@ composing both in one command puts the writing before the reading.
 
 **No repository owner or name is hardcoded anywhere in this tree.**
 
-`check-remote-items` cannot run on a session host and installing `gh` does not
-fix it. It is the one observed skip.
+`check-remote-items` cannot run on a session host against real items, and
+installing `gh` does not fix it. It is the one observed skip.
 
 Every session record is listed in [`README.md`](README.md), and `check-docs`
 refuses one that page does not link.

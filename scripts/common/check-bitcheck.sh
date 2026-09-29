@@ -18,7 +18,9 @@
 #               every shell half has been deleted, because a plant does not need
 #               a second implementation to be a plant.
 #   --compare   each case additionally runs the .sh half and the .ps1 half and
-#               refuses any difference in exit code or in the --json line.
+#               refuses any difference in exit code or in what --json prints,
+#               stdout and stderr together - one line for every check but
+#               check-remote-items, which keeps its report on stderr.
 #               ⛔ THIS IS THE PRE-DELETION PROOF and it is deliberately NOT in
 #               the gate: check-control-bytes.ps1 alone is 67.9 seconds, so
 #               running it once per case would cost more than the twin layer this
@@ -843,11 +845,12 @@ fi
 # ⛔ THE THREE REAL PINS ARE REAL, and their `runs:` lines are copies of what the
 # commits carry, read on 2026-09-29: `actions/checkout` at its v4.2.2 commit
 # declares `node20`, at v5.0.0 `node24`, and `astral-sh/setup-uv` at v10.2.0
-# declares `"node24"` QUOTED - the spelling the shell half strips quotes for.
-# ⚠ That matters under --compare alone. The PowerShell half fetches with
-# `Invoke-WebRequest`, which no stub on PATH intercepts, so it reads the real
-# bytes at those commits while the other two read the copies; a commit's bytes
-# cannot change, and a commit that does not exist is a 404 on both routes.
+# declares `"node24"` QUOTED - the spelling the check strips quotes for.
+# ⚠ That mattered under --compare while the halves lived. The PowerShell half
+# fetched with `Invoke-WebRequest`, which no stub on PATH intercepts, so it read
+# the real bytes at those commits while the other two read the copies - and all
+# three agreed. Both halves were deleted the same day, so every case here now
+# runs the binary alone, and a real pin keeps the copies honest.
 #
 # ⚠ EVERY FORTY-DIGIT NAME IS ASSEMBLED FROM TWO HALVES, because a contiguous one
 # in a tracked file is the shape `check-no-secrets --public` refuses.

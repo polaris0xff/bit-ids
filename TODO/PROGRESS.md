@@ -449,8 +449,8 @@ nothing is. The clone question under *Settled decisions* is spent too.
    The operator's direction was to port the checking scripts to Go, port the slow
    CI parts to Go, and parallelise CI across runners; all three are measured on
    real runners, and the acceptance bound came DOWN to 20 from 45.
-   ⛔ **What is left is the rest of the port**: the twin file pairs
-   `check-twins.sh` still compares - `check-remote-items` and `mine-repo`, which
+   ⛔ **What is left is the rest of the port**: the twin file pair
+   `check-twins.sh` still compares - `mine-repo`, which
    `grep -c '^compare_pair ' scripts/common/check-twins.sh` counts.
    `bit-check --rows` lists what [`../tools/check/`](../tools/check/) carries.
    ⚠ So the wall-clock value is small and the DRIFT value is unchanged, which is
@@ -465,6 +465,10 @@ nothing is. The clone question under *Settled decisions* is spent too.
    gate, so they run under `check-bitcheck --harnesses` and `--compare` and not
    in the gate; nothing runs `--harnesses` automatically yet, and
    [`ci.md`](ci.md) under `CI-10` carries that residual.
+   ⭐ **`check-remote-items` IS PORTED, COMPARED AND DELETED TOO, 2026-09-29**,
+   and the gate's one skip is proved on every host now: a stub `gh` and a stub
+   `curl` serve its fifteen cases in `check-bitcheck`'s DEFAULT mode, and the
+   comparison over them found two drifts, both the twin's.
    ⛔ **A pair may leave that list ONE WAY ONLY**:
    `sh scripts/common/check-bitcheck.sh --compare` against BOTH halves, before
    either is deleted.
@@ -572,7 +576,8 @@ than in a sentence somebody re-types, and `--check` reports what a host has
 without installing anything.
 
 With those three present the whole CI pipeline runs locally except
-`check-remote-items`.
+`check-remote-items` against the real open items. ⭐ Its logic runs here too
+since 2026-09-29, under `check-bitcheck`'s stub `gh`.
 
 ⛔ **`check-remote-items` cannot be made to run on this host, and installing
 `gh` does not fix it.** Measured on 2026-09-04: `gh` 2.63.2 installs from the
@@ -580,7 +585,7 @@ upstream release tarball and then reports `The token in GH_TOKEN is invalid`, so
 the check exits 2 with `gh is not authenticated` rather than with `gh not
 found`. The other GitHub route this harness has is scoped to this repository
 alone, so a pin in `actions/checkout` cannot be resolved through it either. A
-skip is not a pass; the CI Linux lane is what runs this check.
+skip is not a pass; both CI lanes are what run this check against real items.
 
 ⛔ **A prover that could not run reported nothing, and the gate read that as a
 skip.** Exporting `CARGO_TARGET_DIR`, which a great many Rust developers do, put

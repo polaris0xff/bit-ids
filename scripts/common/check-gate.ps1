@@ -135,27 +135,54 @@ if ($gitPresent) {
     }
 }
 
-function Invoke-Check([string]$Name, [string]$Script, [string[]]$ExtraArgs = @()) {
+# ⭐ THE PORTED RULES, AND THEY ARE THE SAME BINARY THIS LANE'S TWIN RUNS. CI-10.
+# Each of these was a hand-written `.ps1` twin of an `.sh` half, kept in step by
+# check-twins. ⛔ One implementation cannot drift from itself, so both halves are
+# deleted rather than compared - and what this lane runs is now the same program
+# rather than a second reading of the same rule.
+#
+# ⛔ THE EXIT CODE IS TAKEN FROM THE PROCESS, UNPIPED, which is what
+# Invoke-Ported below does: `&` into a redirect, then $LASTEXITCODE on the next
+# line. Piping into anything reports the pipeline's status, so a check that
+# failed reads green, and that is the defect this repository is most emphatic
+# about. ⚠ This named an `Invoke-Native` no version of this file defined, and an
+# `Invoke-Check` that ran a `.ps1` twin; the last twin it ran was deleted on
+# 2026-09-29, and the function went with it.
+$goBin = Join-Path ([System.IO.Path]::GetTempPath()) ("bit-check." + $PID + $(if ($IsWindows) { '.exe' } else { '' }))
+$goPresent = [bool](Get-Command go -CommandType Application -ErrorAction SilentlyContinue)
+if ($goPresent -and -not $Rows) {
+    $toolDir = Join-Path $here '..' '..' 'tools' 'check'
+    Push-Location $toolDir
+    & go build -o $goBin . *> $logFile
+    Pop-Location
+}
+
+# ⚠ THE ROW LABEL AND THE CHECK NAME ARE TWO PARAMETERS, because one row is no
+# longer one check: `check-no-secrets (public)` is the same check under a mode,
+# and the label is what the row lists compare. ⛔ The extra arguments are NOT
+# called $Args: that is an automatic variable inside a function and it silently
+# swallows a parameter of that name, and PowerShell names are case-insensitive so
+# $args collides too. docs/conventions/shell.md section 8.
+function Invoke-Ported([string]$Name, [string]$Check = '', [string[]]$ExtraArgs = @()) {
     # ⛔ THE NAME COMES OUT OF THE CALL THAT WOULD HAVE RUN THE CHECK, so a row
     # this mode does not name is a row this runner does not run. A separate list
     # would be the value in two places the comparison exists to catch.
     if ($Rows) { Write-Output $Name; return }
-    $path = Join-Path $here $Script
-    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
-        Add-Row ("SKIP  " + $Name + "  (not present)")
+    $target = if ($Check) { $Check } else { $Name }
+    if (-not (Test-Path -LiteralPath $goBin -PathType Leaf)) {
+        Add-Row ("SKIP  " + $Name + "  (tools/check did not build)")
         $script:skip++
         return
     }
-    # ⛔ THE EXIT CODE IS TAKEN FROM THE PROCESS, UNPIPED. Output is redirected
-    # to a file and $LASTEXITCODE is read on the next line. Piping into
-    # anything reports the pipeline's status, so a check that failed reads
-    # green, and that is the defect this repository is most emphatic about.
-    $argv = @('-NoProfile', '-File', $path) + $ExtraArgs
-    & pwsh @argv *> $logFile
+    & $goBin $target @ExtraArgs *> $logFile
     $rc = $LASTEXITCODE
     switch ($rc) {
         0 { Add-Row ("✅ ok    " + $Name); $script:pass++ }
         2 {
+            # ⚠ THE REASON IS THE CHECK'S OWN FIRST LINE, cut at 60, which is
+            # what the sh runner prints and what `Invoke-Check` printed. This
+            # said *could not run* alone, so moving `check-remote-items` here on
+            # 2026-09-29 would have cost its row the *gh not found* that says why.
             $first = ''
             if (Test-Path -LiteralPath $logFile) {
                 $first = (Get-Content -LiteralPath $logFile -TotalCount 1 -ErrorAction SilentlyContinue)
@@ -180,57 +207,11 @@ function Invoke-Check([string]$Name, [string]$Script, [string[]]$ExtraArgs = @()
     }
 }
 
-# ⭐ THE PORTED RULES, AND THEY ARE THE SAME BINARY THIS LANE'S TWIN RUNS. CI-10.
-# Each of these was a hand-written `.ps1` twin of an `.sh` half, kept in step by
-# check-twins. ⛔ One implementation cannot drift from itself, so both halves are
-# deleted rather than compared - and what this lane runs is now the same program
-# rather than a second reading of the same rule.
-#
-# ⚠ THE EXIT CODE IS STILL TAKEN FROM THE PROCESS, UNPIPED, which is what
-# Invoke-Native below is for: `&` into a redirect, then $LASTEXITCODE on the next
-# line, exactly as Invoke-Check does for a script.
-$goBin = Join-Path ([System.IO.Path]::GetTempPath()) ("bit-check." + $PID + $(if ($IsWindows) { '.exe' } else { '' }))
-$goPresent = [bool](Get-Command go -CommandType Application -ErrorAction SilentlyContinue)
-if ($goPresent -and -not $Rows) {
-    $toolDir = Join-Path $here '..' '..' 'tools' 'check'
-    Push-Location $toolDir
-    & go build -o $goBin . *> $logFile
-    Pop-Location
-}
-
-# ⚠ THE ROW LABEL AND THE CHECK NAME ARE TWO PARAMETERS, because one row is no
-# longer one check: `check-no-secrets (public)` is the same check under a mode,
-# and the label is what the row lists compare. ⛔ The extra arguments are NOT
-# called $Args: that is an automatic variable inside a function and it silently
-# swallows a parameter of that name, and PowerShell names are case-insensitive so
-# $args collides too. docs/conventions/shell.md section 8.
-function Invoke-Ported([string]$Name, [string]$Check = '', [string[]]$ExtraArgs = @()) {
-    if ($Rows) { Write-Output $Name; return }
-    $target = if ($Check) { $Check } else { $Name }
-    if (-not (Test-Path -LiteralPath $goBin -PathType Leaf)) {
-        Add-Row ("SKIP  " + $Name + "  (tools/check did not build)")
-        $script:skip++
-        return
-    }
-    & $goBin $target @ExtraArgs *> $logFile
-    $rc = $LASTEXITCODE
-    switch ($rc) {
-        0 { Add-Row ("✅ ok    " + $Name); $script:pass++ }
-        2 { Add-Row ("SKIP  " + $Name + "  (could not run)"); $script:skip++ }
-        default {
-            Add-Row ("❌ FAIL  " + $Name + "  (exit " + $rc + ")")
-            $script:fail++
-            if (-not $Json -and (Test-Path -LiteralPath $logFile)) {
-                Get-Content -LiteralPath $logFile -ErrorAction SilentlyContinue |
-                    Select-Object -Last 20 |
-                    ForEach-Object { Write-Output ('          ' + $_) }
-            }
-        }
-    }
-}
-
-# ⭐ EVERY `common/` HALF IS PORTED NOW. `check-project` joined this list on
-# 2026-09-17 and the direct call below it is gone with the twin it called.
+# ⭐ EVERY `common/` CHECK THE GATE RUNS IS PORTED NOW. `check-project` joined
+# this list on 2026-09-17 and the direct call below it is gone with the twin it
+# called. ⚠ This line then said *every `common/` half* while this lane still ran
+# `check-remote-items.ps1`, which is why it names what the gate RUNS: `mine-repo`
+# is the one `common/` pair left, and it is a miner, not a row.
 foreach ($c in 'check-adapters', 'check-changelog', 'check-control-bytes',
                 'check-docs', 'check-ignores', 'check-licences',
                 'check-markers', 'check-no-secrets', 'check-one-home',
@@ -260,9 +241,12 @@ Invoke-Ported 'check-cache'
 # were deleted. With it gone, `store-lib.ps1` had no caller and went too.
 Invoke-Ported 'check-catalogue'
 
-# ⚠ NEEDS gh AND THE NETWORK, so it exits 2 on a machine without them and that
-# reads as a skip rather than a pass. Correct: nothing was verified.
-Invoke-Check 'check-remote-items' 'check-remote-items.ps1'
+# ⭐ AND THE LAST `common/` TWIN THIS LANE RAN, 2026-09-29. This row ran
+# `check-remote-items.ps1`, compared case for case against both halves before
+# they were deleted. ⚠ It NEEDS gh AND THE NETWORK, so it exits 2 on a machine
+# without them and that reads as a skip rather than a pass. Correct: nothing was
+# verified.
+Invoke-Ported 'check-remote-items'
 
 # ⭐ A REAL ROW NOW, AND IT USED TO BE A DECLARED GAP. The disposable-host guards
 # were Linux-only because they read /proc/net/route and /etc/machine-id;

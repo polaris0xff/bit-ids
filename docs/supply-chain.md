@@ -165,10 +165,11 @@ uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
 ⛔ **Both halves are required.** `check-project` refuses a tag, a branch, an
 abbreviated commit and a bare commit with no comment. The comment is not
-decoration: [`../scripts/common/check-remote-items.sh`](../scripts/common/check-remote-items.sh)
-resolves it against the tag it names and refuses a pin whose comment has
-drifted from the commit it labels, so a pin without a comment is a pin that
-check can never examine.
+decoration: `check-remote-items`, in
+[`../tools/check/remoteitems.go`](../tools/check/remoteitems.go), resolves it
+against the tag it names and refuses a pin whose comment has drifted from the
+commit it labels, so a pin without a comment is a pin that check can never
+examine.
 
 ⚠ **A rule written as a denylist of the floating forms somebody thought of is
 not a rule.** This one named `main`, `master` and `vN.N.N`, and a branch called
@@ -196,12 +197,18 @@ dependabot filters by explicit versions alone. Moving past 0.37 is a change some
 makes on purpose, with its locked packages registered, rather than a proposal.
 
 1. **Read what the item asserts, then check it.** Run
-   `sh scripts/common/check-remote-items.sh`. For an action it verifies that
-   the commit exists and belongs to the repository the ref names, that the tag
-   in the comment really resolves to that commit, that the tag is a published
-   release, that the runtime it declares is not deprecated, and whether a newer
-   major already exists. ⚠ A bump that resolves cleanly can still be two majors
-   behind; that has happened here.
+   `go run . check-remote-items` from `tools/check`, and read its report:
+   `go run` exits 1 for a refusal and for a check that could not run alike,
+   where the binary's own code tells them apart. For every action pin a pull
+   request adds, it verifies that the commit exists in the repository the ref
+   names, that the tag in the comment resolves to that commit - following an
+   annotated tag to the commit it names - and that the runtime the pinned commit
+   declares is not deprecated, and it names the latest release when the pin
+   proposes another. ⚠ A bump that resolves cleanly can still be two majors
+   behind; that has happened here. ⚠ This step used to say it also verified
+   that the tag is a published release. The shell half's header claimed that
+   and its code never asked it: the one release it reads is the latest, and a
+   pin labelled with another tag is reported for a reading, not refused.
 2. **Regenerate the lockfile with the pinned toolchain**, never by hand.
    `cargo update -p NAME --precise VERSION` for one crate, `cargo update` for
    the group.
@@ -224,13 +231,15 @@ is the whole reason `check-remote-items` exists.
 - `check-remote-items` verifies pins a pull request proposes. It does not
   re-verify the pins already in the tree, so a tag deleted or moved upstream
   after a merge is not currently detected. `CI-04` owns closing that.
-- ⚠ What `check-remote-items` verifies is described here from its own
-  documentation. No run of it backs this page. It needs `gh` **authenticated**:
-  installing the binary is not enough, and on 2026-09-04 a session host with
-  `gh` 2.63.2 present had its environment token rejected by `gh auth status`,
-  while the other GitHub route that host had was scoped to this repository
-  alone and so could not resolve a pin in `actions/checkout`. The CI Linux lane
-  runs it on every push.
+- ⚠ `check-remote-items` needs `gh` **authenticated**: installing the binary is
+  not enough, and on 2026-09-04 a session host with `gh` 2.63.2 present had its
+  environment token rejected by `gh auth status`, while the other GitHub route
+  that host had was scoped to this repository alone and so could not resolve a
+  pin in `actions/checkout`. Both CI lanes run it on every push. ⭐ Until
+  2026-09-29 this page described what it verifies from its own documentation,
+  with no run behind it, and one claim was false; fifteen cases in
+  `check-bitcheck` now back each sentence of step 1 above, served from a stub
+  `gh` and `curl` on every host.
 - The `run:` scripts in a workflow are read by nobody. The pin test covers
   `uses:` lines; a tool fetched by a shell line is only as pinned as the fetch
   it uses, which is why the fourth layer above needed an argument rather than

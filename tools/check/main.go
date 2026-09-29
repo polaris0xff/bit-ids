@@ -40,7 +40,9 @@
 //	bit-check check-remote-items [--repo OWNER/NAME]
 //	bit-check --rows
 //
-// ⛔ Read the exit code from this process, unpiped.
+// ⛔ Read the exit code from this process, unpiped. ⚠ `go run . <check>` is a
+// different process: it exits 1 for any non-zero exit of the program it ran, so
+// a refusal and a could-not-run are one code through it. Measured 2026-09-29.
 package main
 
 import (

@@ -317,12 +317,12 @@ from any working directory.
   against the Go checking binary in [`../tools/check/`](../tools/check/) and
   refuses one it does not catch. ⭐ **`--compare` additionally runs the `.sh` and
   `.ps1` halves and refuses any difference in exit code or in the `--json`
-  line**, which is `CI-10`'s bound: a ported check refuses exactly what its shell
-  half refused, over the same plants, and is compared case for case BEFORE either
-  half is deleted. ⛔ That mode is deliberately not in the gate - one PowerShell
-  half alone is 67.9 seconds, so running it per case would cost more than the
-  layer this removes - and the default mode is the permanent row, which goes on
-  being a row after every half has gone.
+  output**, stderr included, which is `CI-10`'s bound: a ported check refuses
+  exactly what its shell half refused, over the same plants, and is compared
+  case for case BEFORE either half is deleted. ⛔ That mode is deliberately not
+  in the gate - one PowerShell half alone is 67.9 seconds, so running it per
+  case would cost more than the layer this removes - and the default mode is the
+  permanent row, which goes on being a row after every half has gone.
   ⚠ Its own first mutation pass reproduced `check-twins`' documented blind spot:
   adding DEL to the Go control class left every case green, because nothing in
   the tree and nothing planted carried that byte. The repair is a fixture.

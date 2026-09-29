@@ -468,6 +468,15 @@ harvest_pairs() {
 # found two drifts that were both the twin's and that no clean tree could show:
 # `Select-String` and `-match` fold case, so the twin refused a needle spelled in
 # another case that `grep` - and Rust - tell apart. Repaired in the twin first.
+#
+# ⛔ AND A TENTH: `check-remote-items`, 2026-09-29. This file compared it as two
+# 2s on every host with no authenticated gh, which is every session host, and
+# where gh was authenticated it compared whatever happened to be open.
+# `check-bitcheck` served all three implementations from a stub gh and a stub
+# curl instead: fifteen cases, the whole report compared rather than the JSON
+# line, and two drifts found, both the twin's - its runtime refusal said *the
+# platform* where the `sh` half says *GitHub*, and a listing that failed
+# discarded gh's own error. Repaired in the twin first.
 
 # ⭐ mine-repo IS COMPARED THROUGH --selftest, AND THAT IS THE WHOLE POINT.
 # This pair used to be excluded, on the reasoning that comparing two miners
@@ -481,12 +490,6 @@ harvest_pairs() {
 # to leave the joiner uncompared, and the exclusion note that covered the fetch
 # had been read as covering the whole script.
 compare_pair "mine-repo --selftest" common/mine-repo.sh "--selftest --json" common/mine-repo.ps1 "-SelfTest -Json"
-
-# ⚠ THIS PAIR NEEDS THE NETWORK AND AN AUTHENTICATED gh, and both twins exit 2
-# when they do not have them. Two 2s is agreement: it says the pair could not
-# run, not that it passed. ⛔ Do not drop the row on a machine with no gh; a
-# comparison skipped for convenience is a comparison that stops happening.
-compare_pair "check-remote-items" common/check-remote-items.sh "--json" common/check-remote-items.ps1 "-Json"
 
 harvest_pairs
 
