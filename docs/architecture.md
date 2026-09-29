@@ -1007,7 +1007,8 @@ found.
 
 ⚠ The disposition is passed in and never read from a file by this crate. Its
 rules are pure over data a caller has already read, and the register has one
-parser: `check-licences`, which reports the permitted set through `--permitted`.
+parser: `check-licences`' own reader, which reports the permitted set through
+`--permitted` and which `bit-check check-cache` calls directly.
 
 ### What equal version labels are worth
 

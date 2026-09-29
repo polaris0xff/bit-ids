@@ -10,10 +10,11 @@
 //! about identity and permission, and a real download would make the run depend
 //! on a vendor's uptime to answer a question about this project's rules.
 //!
-//! ⭐ **`--permitted` comes from `check-licences --permitted` and never from a
-//! second reader of the register.** `catalogue/licences.toml` has one parser per
-//! twin and this example is not a third; the caller asks that check what the
-//! register permits and passes the answer in.
+//! ⭐ **`--permitted` comes from the register's one reader and never from a
+//! second one.** `catalogue/licences.toml` has one parser, the one
+//! `check-licences` itself calls, and this example is not another; its caller,
+//! `bit-check check-cache`, asks that reader what the register permits and passes
+//! the answer in.
 //!
 //! Exit codes follow `docs/capture-methodology.md`: 0 the cache behaved as the
 //! model says, 1 it did not, 2 the route could not run.

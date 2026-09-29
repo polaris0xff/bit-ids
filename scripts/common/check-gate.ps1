@@ -248,6 +248,13 @@ foreach ($c in 'check-adapters', 'check-changelog', 'check-control-bytes',
 # a row they both have.
 Invoke-Ported 'check-no-secrets (public)' 'check-no-secrets' @('--public')
 
+# ⭐ THE FIRST HARNESS TO LEAVE THE TWIN LAYER, 2026-09-29. This row ran
+# `check-cache.ps1`, the first harness twin CI-07 wrote, and it was compared case
+# for case against both halves before they were deleted. ⚠ It builds a Rust
+# example, so on this lane it needs cargo as well as go; a host with neither
+# answers could-not-run, which reads as a skip and never as a pass.
+Invoke-Ported 'check-cache'
+
 # ⚠ NEEDS gh AND THE NETWORK, so it exits 2 on a machine without them and that
 # reads as a skip rather than a pass. Correct: nothing was verified.
 Invoke-Check 'check-remote-items' 'check-remote-items.ps1'
@@ -287,27 +294,6 @@ else {
 # says so. ⚠ A documented gap whose reason is wrong is worse than an undocumented
 # one, because --strict permits it forever on the strength of a sentence nobody
 # re-read. Found by a claim audit while CI-03 was being closed.
-# ⭐ A REAL ROW SINCE 2026-09-10, AND IT IS THE FIRST OF `CI-07` CLASS A TO STOP
-# BEING DECLARED. It was `a portable Rust subject; it needs store-lib.ps1`, and
-# `store-lib.ps1` now exists: the sweep's finding was that every class-A row
-# waits on ONE library rather than on fifteen translations, and this row is what
-# turns that finding into a measurement.
-$cachePs = Join-Path $here '..' 'acquisition' 'check-cache.ps1'
-if ($Rows) { Write-Output 'check-cache' }
-elseif (Test-Path -LiteralPath $cachePs -PathType Leaf) {
-    & pwsh -NoProfile -File $cachePs *> $logFile
-    $rc = $LASTEXITCODE
-    switch ($rc) {
-        0 { Add-Row '✅ ok    check-cache'; $pass++ }
-        2 { Add-Row 'SKIP  check-cache  (could not run)'; $skip++ }
-        default { Add-Row ('❌ FAIL  check-cache  (exit ' + $rc + ')'); $fail++ }
-    }
-}
-else {
-    Add-Row 'SKIP  check-cache  (not present)'
-    $skip++
-}
-
 Add-Unavailable 'check-store' 'its plants are a symlink and a named pipe; reconsider them, do not translate; CI-07 class B'
 Add-Unavailable 'check-corpus' 'a portable Rust subject; it needs store-lib.ps1; CI-07 class A'
 Add-Unavailable 'check-indexes' 'a portable Rust subject; it needs store-lib.ps1; CI-07 class A'

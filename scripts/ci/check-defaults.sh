@@ -165,6 +165,10 @@ pass "control   a probe that READS the variable answers differently under it"
 # report MASKED on a host that exports it while the row could in fact have fired.
 # That error is in the safe direction: it understates this instrument's reach and
 # never overstates it.
+# ⭐ AND THE `cache` SUBJECT CAN NO LONGER CARRY THAT DEFECT AT ALL, 2026-09-29.
+# It is the Go port now, which asks cargo for the path of what cargo built rather
+# than composing one, so there is no composition in it to revert. The row stays
+# because the `sh` harnesses that still call `store_build` compose it.
 TARGET_EXAMPLES="${CARGO_TARGET_DIR:-$ROOT/target}/debug/examples"
 if [ -d "$TARGET_EXAMPLES" ]; then
   pass "control   CARGO_TARGET_DIR is MASKED here: $TARGET_EXAMPLES already holds built examples"
@@ -285,17 +289,21 @@ run_subject() { # label command...
 # a changed environment can reach. ⛔ Moving it and leaving it below the condition
 # would be the one-gated-door defect this block's own comment records, a second
 # time and in the change that moved it.
+#
+# ⚠ `cache` JOINED IT ON 2026-09-29, when `check-cache` became the first HARNESS
+# in the binary, and it is still the one subject here that builds an example.
 if (cd "$ROOT/tools/check" && go build -o "$WORK/bit-check" .) >/dev/null 2>&1; then
   run_subject "markers   " "$WORK/bit-check" check-markers --json
   run_subject "licences  " "$WORK/bit-check" check-licences --json
   run_subject "secrets   " "$WORK/bit-check" check-no-secrets --public --json
   run_subject "project   " "$WORK/bit-check" check-project --json
+  run_subject "cache     " "$WORK/bit-check" check-cache --json
 else
   fail "markers     tools/check did not build, so the ported subject could not be run"
   fail "licences    tools/check did not build, so the ported subject could not be run"
   fail "secrets     tools/check did not build, so the ported subject could not be run"
   fail "project     tools/check did not build, so the ported subject could not be run"
+  fail "cache       tools/check did not build, so the ported subject could not be run"
 fi
-run_subject "cache     " sh "$ROOT/scripts/acquisition/check-cache.sh" --json
 
 store_report check-defaults/1 cases "$JSON"

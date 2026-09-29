@@ -10,10 +10,11 @@ from any working directory.
   not call it.
 - [`acquisition/`](acquisition/fetch-releases.sh) retrieves a release listing
   and keeps the exact bytes. It does not parse, sort or decide.
-- [`acquisition/check-cache.sh`](acquisition/check-cache.sh) drives the artifact
-  cache through a source that moved and asks `check-licences --permitted` what
-  the register allows, so the tie between the two is a call rather than a second
-  reading of the register.
+- `bit-check check-cache` drives the artifact cache through a source that moved
+  and asks the register's one reader - the function `check-licences` itself calls
+  - what the register allows, so the tie between the two is a call rather than a
+  second reading of the register. ⭐ It was `acquisition/check-cache.sh` and a
+  PowerShell twin until 2026-09-29, the first HARNESS to leave the twin layer.
 - [`acquisition/resolve-release.sh`](acquisition/resolve-release.sh) decides
   which artifact a `release` route will fetch, before the route is cut. ⛔ It
   carries no per-target knowledge: the repository, the version scheme and the
@@ -254,12 +255,9 @@ from any working directory.
   ⛔ Three of the sh half's functions have no twin here yet - `place`,
   `tree_digest` and `tree_files` - because nothing on this lane calls them, and a
   function nothing calls is a function nobody knows works. They land with the
-  first twin that exercises them.
-- [`acquisition/check-cache.ps1`](acquisition/check-cache.ps1) is the first
-  harness twin that library made possible. ⚠ It cannot hold a second opinion
-  about the cache, because both halves drive the same Rust example; what the pair
-  compares is the machinery underneath, and a clean tree proves nothing about
-  that - three defects planted in the library made the two halves disagree.
+  first twin that exercises them. ⚠ Its first caller, `check-cache.ps1`, is
+  deleted: that harness is in the Go binary since 2026-09-29, and
+  `publishing/check-catalogue.ps1` is what still dot-sources this.
 - [`common/check-gate.sh`](common/check-gate.sh) and
   [`common/check-gate.ps1`](common/check-gate.ps1) run the local gate. ⭐ The
   `sh` half runs its checks **concurrently** and reads their verdicts in list
@@ -313,8 +311,10 @@ from any working directory.
 - `tools/check/licences.go` checks the register in `catalogue/licences.toml`
   against the catalogue and the lockfile in both directions, refuses a row with no
   disposition, and refuses an installer-shaped file in the tree. ⭐ Ported from a
-  pair on 2026-09-10, `CI-10`; `--permitted` lists the redistributable target ids
-  and is what `check-cache` asks, on both platforms, of one implementation.
+  pair on 2026-09-10, `CI-10`; `--permitted` lists the redistributable target ids.
+  ⚠ `check-cache` used to build the binary and ask that mode; in the binary it
+  calls the same reader directly, so the mode has no caller in this tree and is
+  kept as the command a person runs to ask what the register permits.
 - [`common/check-bitcheck.sh`](common/check-bitcheck.sh) plants a defect per rule
   against the Go checking binary in [`../tools/check/`](../tools/check/) and
   refuses one it does not catch. ⭐ **`--compare` additionally runs the `.sh` and

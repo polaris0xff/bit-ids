@@ -307,9 +307,12 @@ fi
 # ⭐ EVERY `common/` HALF IS PORTED NOW. `check-project` joined this list on
 # 2026-09-17 and the direct call below it is gone with the script it called; the
 # comment that used to sit there named it *the last one that is not ported*.
-for c in check-adapters check-changelog check-control-bytes check-docs \
-  check-ignores check-licences check-markers check-no-secrets check-one-home \
-  check-placeholders check-project; do
+# ⭐ AND THE FIRST HARNESS, 2026-09-29: `check-cache` left the prover list below
+# for this one, compared case for case against both of its halves first. It
+# builds a Rust example, which the build above has already made a no-op.
+for c in check-adapters check-cache check-changelog check-control-bytes \
+  check-docs check-ignores check-licences check-markers check-no-secrets \
+  check-one-home check-placeholders check-project; do
   if [ -x "$GOBIN" ]; then
     queue "$c" "$GOBIN" "$c"
   else
@@ -408,7 +411,7 @@ fi
 # **79 at `6`** and `check-capture-client` from 48 at `5` to **168 at `20`** -
 # more gate time than the whole concurrency saves, paid nine times over by
 # `check-workflow`. The numbers live beside each `SECS`.
-for spec in acquisition/check-cache acquisition/check-release-route \
+for spec in acquisition/check-release-route \
   acquisition/check-source-route acquisition/check-rootless \
   corpus/check-store \
   common/check-shell \

@@ -707,6 +707,10 @@ The Rust cache takes a disposition map, the way the store rules take a tree a
 caller has already read; the driving example takes `--permitted TARGET` flags;
 and `check-cache.sh` fills them from `check-licences --permitted`. A second
 reader of that file would be a second answer to what it permits.
+⚠ **Amended 2026-09-29:** both twins of each are gone, and the rule holds more
+tightly than it was written - `bit-check check-cache` calls the one reader
+`check-licences` itself calls, in the same binary, rather than building it and
+asking a mode. `CI-10` carries the port and its comparison.
 
 ⭐ `--permitted` was added to **both** halves and both were run against a
 register with a planted `permitted` row: both printed `aria2` and both still
@@ -727,6 +731,11 @@ would be theatre.
 - `cargo test -p bit-ids --locked --all-targets`
 - `sh scripts/acquisition/check-cache.sh`
 - `sh scripts/common/check-gate.sh`
+
+⚠ **Amended 2026-09-29**: the second line's script is deleted, so the runnable
+form of that acceptance is `go run . check-cache` from `tools/check`, whose
+directory holds the module, and `sh scripts/common/check-bitcheck.sh --harnesses`
+plants against it. The list above is kept as what was actually run.
 
 ### Closure evidence, 2026-09-06
 
@@ -752,6 +761,10 @@ the example and are nobody's installer.
 - ⚠ `check-cache.sh` does not plant in the register, because that file is
   tracked and a gate check that edits one leaves a dirty tree when it is
   interrupted. The planted-register measurement is in the table above instead.
+  ⭐ **Closed differently, 2026-09-29**: `check-bitcheck.sh --harnesses` plants a
+  register permitting the scenario's own target, and one permitting another, into
+  a SCRATCH copy of the tree, which edits nothing tracked. `CI-10` carries the
+  verdicts.
 - ⚠ Certificate metadata and package receipts from the Premise are not modelled.
   `SignatureStatus` records what was done about a signature and the manifest
   carries the rest; a receipt has no producer until a real acquisition runs.

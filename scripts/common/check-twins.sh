@@ -449,25 +449,24 @@ harvest_pairs() {
 # the tree it runs against, and this tree has no empty client matrix, no altered
 # Total row and no duplicated index row. The blind spot its own header records.
 
-# ⭐ THE FIRST PAIR OUTSIDE common/, AND WHY THE PATHS ABOVE GAINED A DIRECTORY.
-# Every twin this file compared lived in `common/`, so the base was spelled once
-# and the call sites named a bare file. `CI-07`'s class-A rows do not: the first
-# harness twin is `acquisition/check-cache.ps1`, and a comparison that could only
-# reach one directory would have left it uncompared - which is the shape this
-# whole file exists to refuse, arriving in its own plumbing.
+# ⭐ WHY THE PATHS BELOW CARRY A DIRECTORY. Every twin this file compared lived in
+# `common/`, so the base was spelled once and the call sites named a bare file.
+# `CI-07`'s class-A rows do not, and a comparison that could only reach one
+# directory would have left them uncompared - which is the shape this whole file
+# exists to refuse, arriving in its own plumbing.
 #
-# ⚠ WHAT THIS PAIR CAN AND CANNOT DISAGREE ABOUT. Both halves drive the SAME
-# Rust example, so they cannot hold two opinions about the cache; what they can
-# differ on is the machinery underneath - the plant probes, the row accounting
-# and the verdict - which is `store-lib.ps1`, new on 2026-09-10 and used by
-# nothing else yet.
-compare_pair "check-cache" acquisition/check-cache.sh "--json" acquisition/check-cache.ps1 "-Json"
+# ⛔ AND AN EIGHTH PAIR HAS LEFT: `check-cache`, 2026-09-29, the first harness
+# twin and the first HARNESS to leave. `check-bitcheck.sh --compare` ran six
+# cases against both halves - a register permitting the scenario's own target,
+# one permitting another, one that is missing, and a retrieval repeating the
+# first - and found one drift, the twin's: its could-not-run message named a flag
+# the call does not use. Repaired in the twin, and only then did the pair leave.
 
-# ⚠ AND THE SECOND, WHICH IS WHERE THE HARNESSES REALLY DIFFER. Both halves drive
-# the same five Rust examples over the same fixture publication, so the answers
-# are identical by construction; what differs is how each PLANTS a defect and
-# restores the publication afterwards. A half that restored it differently would
-# report the same eighteen cases over a different experiment.
+# ⚠ THE HARNESS PAIR THAT REMAINS, AND IT IS WHERE HARNESSES REALLY DIFFER. Both
+# halves drive the same five Rust examples over one fixture publication, so the
+# answers are identical by construction; what differs is how each PLANTS a defect
+# and restores the publication afterwards. A half that restored it differently
+# would report the same eighteen cases over a different experiment.
 compare_pair "check-catalogue" publishing/check-catalogue.sh "--json" publishing/check-catalogue.ps1 "-Json"
 
 # ⭐ mine-repo IS COMPARED THROUGH --selftest, AND THAT IS THE WHOLE POINT.

@@ -449,11 +449,19 @@ nothing is. The clone question under *Settled decisions* is spent too.
    The operator's direction was to port the checking scripts to Go, port the slow
    CI parts to Go, and parallelise CI across runners; all three are measured on
    real runners, and the acceptance bound came DOWN to 20 from 45.
-   ⛔ **What is left is the rest of the port**: eleven rules are in
-   [`../tools/check/`](../tools/check/) and **four twin file pairs remain** -
-   `check-cache`, `check-catalogue`, `check-remote-items` and `mine-repo`.
-   ⚠ So the wall-clock value is small and the DRIFT value is unchanged, which is
-   the argument for taking them when they are cheapest rather than first.
+   ⛔ **What is left is the rest of the port**: the twin file pairs
+   `check-twins.sh` still compares - `check-catalogue`, `check-remote-items` and
+   `mine-repo`, which `grep -c '^compare_pair ' scripts/common/check-twins.sh`
+   counts. `bit-check --rows` lists what [`../tools/check/`](../tools/check/)
+   carries. ⚠ So the wall-clock value is small and the DRIFT value is unchanged,
+   which is the argument for taking them when they are cheapest rather than first.
+   ⭐ **`check-cache` IS PORTED, COMPARED AND DELETED, 2026-09-29, the first
+   HARNESS in the binary.** Six cases planted into what it reads - the register
+   and the scenario - and all three implementations agreed after one drift in the
+   twin was repaired. ⛔ Its cases build the scenario cold, measured at 25 seconds
+   of gate, so they run under `check-bitcheck --harnesses` and `--compare` and
+   not in the gate; nothing runs `--harnesses` automatically yet, and
+   [`ci.md`](ci.md) under `CI-10` carries that residual.
    ⛔ **A pair may leave that list ONE WAY ONLY**:
    `sh scripts/common/check-bitcheck.sh --compare` against BOTH halves, before
    either is deleted.
@@ -532,9 +540,10 @@ info hash. ⚠ Run `sh scripts/common/check-gate.sh`, which is the list; a subse
 chosen by hand is not the same gate twice.
 
 ⭐ **THE CHECKING LAYER IS MOVING TO GO AND `go` IS NOW A GATE DEPENDENCY.**
-`CI-10`. Nine rules live in [`../tools/check/`](../tools/check/) and are run by one
-binary on both lanes, and `bit-check --rows` is the list; `check-bitcheck`, `check-cache` and `check-defaults` build
-it themselves. ⛔ Without `go` those rows are a SKIP rather than a pass, and the
+`CI-10`. The ported rules live in [`../tools/check/`](../tools/check/) and are
+run by one binary on both lanes, and `bit-check --rows` is the list rather than a
+number here; the gate runners, `check-bitcheck` and `check-defaults` build it
+themselves. ⛔ Without `go` those rows are a SKIP rather than a pass, and the
 CI lanes run `--strict`, so an absent toolchain turns a lane red rather than
 quietly shrinking it. ⚠ Both hosted runner images carry Go - the workflow already
 `go install`s `shfmt` - and run 124 is the measurement.

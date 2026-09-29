@@ -42,7 +42,7 @@ four seconds, every download verified against a pinned digest first. ⛔ Without
 `pwsh` the gate goes RED rather than shrinking: `check-capture` fails and
 `check-twins` skips.
 
-**`go` is a gate dependency.** `check-bitcheck`, `check-cache` and
+**`go` is a gate dependency.** The gate runners, `check-bitcheck` and
 `check-defaults` each build [`../../tools/check/`](../../tools/check/)
 themselves; without it those rows SKIP, which `--strict` turns into a red lane.
 Both runner images carry it.
@@ -52,11 +52,11 @@ Both runner images carry it.
 ## Where the work is
 
 **In flight, 2026-09-29:** the session started at `2026-09-29T01:02:41Z` on
-`ff690a3`. The dependabot correction landed as `2451816`. `CI-10`'s
-`check-cache` is ported and compared against both halves, committed with nothing
-deleted; the deletion is the next commit, then `check-catalogue`,
-`check-remote-items` and `mine-repo`, then `CI-09`'s `RunManifest` producer.
-Refresh this line when the in-flight item changes.
+`ff690a3`. The dependabot correction landed as `2451816` and was read back.
+`CI-10`'s `check-cache` is ported, compared against both halves (`621f93a`) and
+deleted in the commit after it; next are `check-catalogue`, `check-remote-items`
+and `mine-repo`, then `CI-09`'s `RunManifest` producer. Refresh this line when
+the in-flight item changes.
 
 ### ⚠ The state of the tree, as this was last written
 
@@ -107,22 +107,23 @@ uncovers the next, and only a dispatch shows it.**
 
 ### What the checking layer looks like now
 
-**Eleven rules are one Go binary** in [`../../tools/check/`](../../tools/check/),
-and `bit-check --rows` is the measurement rather than this sentence. Both gate
-runners invoke it, so those rows are the SAME row on both lanes.
+**The ported rules are one Go binary** in
+[`../../tools/check/`](../../tools/check/), and `bit-check --rows` is the
+measurement rather than this sentence. Both gate runners invoke it, so those rows
+are the SAME row on both lanes.
 
-⭐ **`check-project` is the eleventh and the last `common/` pair**, ported,
-compared and deleted on 2026-09-17. Every `common/` half is in the binary now.
+⭐ **`check-project` was the last `common/` pair**, ported, compared and deleted on
+2026-09-17. ⭐ **`check-cache` is the first HARNESS**, 2026-09-29, and
+`tools/check/harness.go` carries what it needed of `store-lib`.
 
-⛔ **Eighteen files are deleted, not translated.** `check-twins` went from twelve
-file pairs to **four**: 69 seconds to 10.0 over the first eleven, measured on
-2026-09-15, and `check-project`'s two halves on 2026-09-17.
+**The pairs left** are the ones `check-twins.sh` still compares:
+`check-catalogue`, `check-remote-items` and `mine-repo`. ⛔ The remaining
+wall-clock value is small and the DRIFT value is unchanged.
 
-**The four pairs left** are `check-cache`, `check-catalogue`,
-`check-remote-items` and `mine-repo`. ⭐ `check-project` was the fifth and the
-biggest, and it left on 2026-09-17; the five together were **5.3 seconds**, timed
-on 2026-09-15, of which it was **2.60**. ⛔ So the remaining wall-clock value is
-small and the DRIFT value is unchanged.
+⛔ **A HARNESS'S CASES BUILD ITS RUST SUBJECT, COLD**, in the scratch tree, so
+they run under `check-bitcheck --harnesses` and `--compare` and not in the gate:
+measured at 25 seconds of gate, which `check-workflow` would pay about nine times
+per shard.
 
 ⛔ **A PAIR MAY ONLY LEAVE THAT LIST ONE WAY.**
 `sh scripts/common/check-bitcheck.sh --compare` runs every case against BOTH
@@ -149,7 +150,7 @@ step supervisor - across two targets and both routes, on byte-identical code.
    run 32 wedged in *Install the client* on both lanes and uploaded zero
    artifacts, where the unprivileged claim took 0s and the resolve step - which
    fetches through the same installer - took 1s. ⚠ Do not reopen it: absolute 16.
-1. **`CI-10`**, four twin pairs left: `check-cache`, `check-catalogue`,
+1. **`CI-10`**, the pairs `check-twins.sh` still compares: `check-catalogue`,
    `check-remote-items` and `mine-repo`. ⛔ A pair leaves that list only after
    `check-bitcheck --compare` has run it against BOTH halves.
    ⭐ **`check-project` is ported, compared and deleted, 2026-09-17** - the

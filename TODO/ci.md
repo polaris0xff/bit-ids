@@ -1439,9 +1439,9 @@ twin harness would let that shrink back to one gate-level case.
 ### ⭐ THE LIBRARY EXISTS AND THE FIRST CLASS-A ROW IS REAL. 2026-09-10
 
 ⭐ **[`../scripts/corpus/store-lib.ps1`](../scripts/corpus/store-lib.ps1) is the
-first step this entry named**, and
-[`../scripts/acquisition/check-cache.ps1`](../scripts/acquisition/check-cache.ps1)
-is the first harness twin that proves it. `check-gate.ps1` runs `check-cache` as
+first step this entry named**, and `scripts/acquisition/check-cache.ps1` - deleted
+on 2026-09-29, when `CI-10` put the harness in the Go binary - is the first
+harness twin that proves it. `check-gate.ps1` runs `check-cache` as
 a row rather than declaring it: measured on 2026-09-10, that lane went from 13
 passed and 20 unavailable to **14 passed and 19 unavailable**, over 34 rows both
 runners agree on.
@@ -3416,6 +3416,10 @@ both agree on every planted mutation.
 of this acceptance is `go run ./tools/check check-project` from the repository
 root, and `sh scripts/common/check-bitcheck.sh` plants the bare-filter form as a
 standing case. The line above is kept as the acceptance that was actually run.
+⛔ **Corrected 2026-09-29: that runnable form does not run.** From the
+repository root it exits 1 with *cannot find main module*, because the module is
+`tools/check`; measured, not read. `go run . check-project` from that directory
+is the form that exits 0, and it is the one `ACQ-05`'s amended acceptance uses.
 
 Closure evidence: run on 2026-09-05. Both halves exit 0 on the tree as it
 stands, and `sh scripts/common/check-gate.sh` and
@@ -3994,6 +3998,10 @@ written up as a property of the change rather than of the host.
   eight rows. ⚠ Reconciled by running `sh scripts/common/check-twins.sh` rather
   than by picking one. It is **four pairs and four rows** now, and the two are
   equal only because the two-row pair has gone.
+  ⚠ **Amended 2026-09-29**: `check-cache` has left too, so `check-twins.sh`
+  compares three pairs as three rows, which
+  `grep -c '^compare_pair ' scripts/common/check-twins.sh` counts. The numbers
+  above are what was true on the dates they carry.
 - ⚠ **`check-defaults` runs the Go binary as a subject now.** A Go program
   inherits a different set of host values than a shell script - no `IFS`, and
   `TMPDIR` through the runtime rather than a shell expansion - so that row is
@@ -4217,3 +4225,34 @@ passing a row for it.
   found by the door sweep over this change. Earlier commits in this entry say
   *gofmt and go vet clean*, which was a session running them by hand: a rule a
   commit message says this repository has is not a rule it has.
+
+#### ⛔ And both halves are deleted, 2026-09-29, after the comparison
+
+The comparison was committed first, as `621f93a`, with the twin's repair in it,
+so the history carries a repaired twin before it carries a deleted one. ⚠ The
+deletion was not two files:
+
+| door | what changed |
+| --- | --- |
+| `check-gate.sh` | the row left the `sh` prover list for the ported list |
+| `check-gate.ps1` | the `pwsh -File check-cache.ps1` block became `Invoke-Ported 'check-cache'` |
+| `check-twins.sh` | the pair is gone, with a note saying how it left |
+| `check-defaults.sh` | the `cache` subject moved INSIDE the block that gates on the Go build |
+| `scripts/README.md`, `docs/architecture.md`, the scenario's own doc comment, `ACQ-05` | each named the deleted script or its `--permitted` call |
+
+⛔ **Moving `cache` below the build gate would have been the defect that block's
+own comment records**, a third time: a host where the build failed runs a missing
+command, which answers 127 under every environment and reads as a subject
+answering identically everywhere.
+
+⚠ **`--permitted` has no caller in this tree now.** It was how `check-cache`
+asked the register; in one binary that is a function call. The mode is kept as
+the command a person runs to ask what the register permits, and its comment says
+so rather than naming a caller that is gone.
+
+⛔ **THE CLAIM AUDIT FOUND A RUNNABLE FORM THAT DOES NOT RUN.** `CI-05`'s amended
+Prove, written on 2026-09-17, gives `go run ./tools/check check-project` *from the
+repository root*, and this change first copied that form into `ACQ-05`. Measured:
+it exits 1 with *cannot find main module*, because the module is `tools/check`.
+`go run . <check>` from that directory exits 0; both places carry that now, with
+`CI-05`'s correction written under its original sentence.

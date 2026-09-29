@@ -5,6 +5,25 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-29T02:09:27Z
+
+- ⛔ **BOTH HALVES OF `check-cache` ARE DELETED**, after `621f93a` committed the
+  comparison with the twin's repair in it, so the history carries a repaired twin
+  before a deleted one. `bit-check check-cache` is the row on both lanes and
+  `check-twins` compares three pairs.
+- ⚠ **The deletion was not two files.** Both gate runners queued the row,
+  `check-twins` compared the pair, and `check-defaults` ran it as a subject - which
+  moved INSIDE the build gate, where leaving it below would be the one-gated-door
+  defect that block's own comment records.
+- ⚠ `--permitted` has no caller in this tree now: `check-cache` calls the register's
+  reader directly. The mode stays as the command a person runs, and every comment
+  that named the old caller is amended.
+- ⛔ **The claim audit found a runnable form that does not run.** `CI-05`'s amended
+  Prove gives `go run ./tools/check check-project` from the repository root; it
+  exits 1, because the module is `tools/check`. Corrected under the original
+  sentence, and `ACQ-05`'s new note uses the form that exits 0.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-10`. No version bump and no deploy.
+
 ### 2026-09-29T02:03:01Z
 
 - ⭐ **THE DEPENDABOT REPAIR WAS DRIVEN ON THE REAL SYSTEM, AND THE PUSH WAS THE

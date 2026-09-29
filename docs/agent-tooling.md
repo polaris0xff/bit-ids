@@ -22,8 +22,9 @@ twin of an existing check is work added to a layer that is going away.
 ⭐ **`check-no-secrets` and `check-docs` are in that binary**, which is why this
 table no longer names a script for either: `bit-check check-no-secrets` is the
 default run and `bit-check check-no-secrets --public` adds the rules that only
-matter for a public repository. ⚠ `bit-check --rows` is the list; four file pairs
-still have twins and `check-twins` compares them as four rows.
+matter for a public repository. ⚠ `bit-check --rows` is the list, and
+`sh scripts/common/check-twins.sh` names the file pairs that still have twins;
+this page carries no count of them, because the last one went stale.
 
 ⭐ **`check-project` is in that binary too**, 2026-09-17, which is why the table
 above no longer names a script for it either. It was the last `common/` pair and

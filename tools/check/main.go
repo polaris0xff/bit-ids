@@ -131,10 +131,10 @@ func main() {
 			jsonOut = true
 		case "--permitted":
 			// ⚠ ONE CHECK'S MODE RATHER THAN A GLOBAL ONE, and it is parsed here
-			// because the dispatcher owns the argument list. check-cache asks
-			// check-licences which targets may be redistributed; a second
-			// derivation of that answer in the caller would be the value in two
-			// places this repository refuses everywhere else.
+			// because the dispatcher owns the argument list. It prints what
+			// `permittedTargets` answers, which is also what check-cache calls: one
+			// derivation of which targets may be redistributed, asked two ways,
+			// rather than the value in two places this repository refuses.
 			optPermitted = true
 		case "--public":
 			// ⚠ check-no-secrets' second question rather than a stricter first
