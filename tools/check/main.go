@@ -35,6 +35,9 @@
 // Usage:
 //
 //	bit-check <check> [--json]
+//	bit-check check-licences --permitted
+//	bit-check check-no-secrets --public
+//	bit-check check-remote-items [--repo OWNER/NAME]
 //	bit-check --rows
 //
 // ⛔ Read the exit code from this process, unpiped.
@@ -75,6 +78,11 @@ type verdict struct {
 	// and exited 1 without emitting JSON at all. A port that invented a JSON line
 	// there would be answering a question its predecessor refused to answer.
 	stderr string
+	// jsonReport is a report for a person that `--json` sends to STDERR, ahead of
+	// the document on stdout. ⚠ One check has it: check-remote-items' shell half
+	// kept its whole report in that mode and moved it off stdout, so that a
+	// parser reading stdout gets the document alone.
+	jsonReport string
 }
 
 // check is one rule. The name is the gate row label, so a row this map does not
@@ -95,6 +103,7 @@ var checks = map[string]check{
 	"check-one-home":      checkOneHome,
 	"check-placeholders":  checkPlaceholders,
 	"check-project":       checkProject,
+	"check-remote-items":  checkRemoteItems,
 }
 
 func names() []string {
@@ -126,8 +135,18 @@ func main() {
 
 	name := args[0]
 	jsonOut := false
-	for _, a := range args[1:] {
+	rest := args[1:]
+	for i := 0; i < len(rest); i++ {
+		a := rest[i]
 		switch a {
+		case "--repo":
+			// ⚠ check-remote-items' question about ANOTHER repository, and the
+			// one flag here that takes a value. Missing, it is empty, as the shell
+			// half's `${1:-}` made it: the repository is then the one git names.
+			if i+1 < len(rest) {
+				i++
+				optRepo = rest[i]
+			}
 		case "--json":
 			jsonOut = true
 		case "--permitted":
@@ -171,12 +190,19 @@ func main() {
 		os.Exit(2)
 	}
 
-	if v.stderr != "" {
-		fmt.Fprint(os.Stderr, v.stderr)
-	} else if jsonOut {
-		fmt.Println(v.json)
+	// ⚠ A REPORT MAY PRECEDE A REFUSAL. A check that has printed part of its
+	// report and then cannot go on prints what it had, then why it stopped, and
+	// no document - the order its shell half wrote them in.
+	if jsonOut {
+		fmt.Fprint(os.Stderr, v.jsonReport)
+		if v.stderr != "" {
+			fmt.Fprint(os.Stderr, v.stderr)
+		} else {
+			fmt.Println(v.json)
+		}
 	} else {
 		fmt.Print(v.text)
+		fmt.Fprint(os.Stderr, v.stderr)
 	}
 	os.Exit(v.code)
 }

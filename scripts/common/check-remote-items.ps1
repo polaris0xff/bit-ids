@@ -111,9 +111,13 @@ function Get-Clean($V) {
 # nothing here can verify it. What this can do is stop one going unnoticed.
 Write-Report ''
 Write-Report 'OPEN ISSUES'
-$issuesRaw = & gh issue list @ghArgs --state open --limit 50 --json number,title,author,createdAt 2>$null
+# ⚠ gh's own error is kept and printed after the message, as the sh half's
+# `cat` does: a listing that failed says why, not only that it did.
+$ghErr = [System.IO.Path]::GetTempFileName()
+$issuesRaw = & gh issue list @ghArgs --state open --limit 50 --json number,title,author,createdAt 2>$ghErr
 if ($LASTEXITCODE -ne 0) {
     [Console]::Error.WriteLine('check-remote-items: could not list issues')
+    [Console]::Error.Write((Get-Content -LiteralPath $ghErr -Raw))
     exit 2
 }
 $issues = @()
@@ -128,11 +132,13 @@ else {
 # -- open pull requests ------------------------------------------------------
 Write-Report ''
 Write-Report 'OPEN PULL REQUESTS'
-$prsRaw = & gh pr list @ghArgs --state open --limit 50 --json number,title,author,headRefName,files 2>$null
+$prsRaw = & gh pr list @ghArgs --state open --limit 50 --json number,title,author,headRefName,files 2>$ghErr
 if ($LASTEXITCODE -ne 0) {
     [Console]::Error.WriteLine('check-remote-items: could not list pull requests')
+    [Console]::Error.Write((Get-Content -LiteralPath $ghErr -Raw))
     exit 2
 }
+Remove-Item -LiteralPath $ghErr -ErrorAction SilentlyContinue
 $prs = @()
 $t = Get-Clean $prsRaw
 if ($t) { $prs = @($t | ConvertFrom-Json) }
@@ -225,7 +231,7 @@ else {
 
             switch -Regex ($rt) {
                 '^$'                       { Write-Human '      could not read action.yml at that commit; runtime unverified' }
-                '^(node12|node16|node20)$' { Write-Bad ('it declares ' + $rt + ', which the platform has deprecated. It will run under a forced newer runtime, with a warning nobody reads, until it does not.') }
+                '^(node12|node16|node20)$' { Write-Bad ('it declares ' + $rt + ', which GitHub has deprecated. It will run under a forced newer runtime, with a warning nobody reads, until it does not.') }
                 '^(node24|docker|composite)$' { Write-Note ('      runtime: ' + $rt) }
                 default                    { Write-Human ('      runtime: ' + $rt + ' (unrecognised; check it)') }
             }

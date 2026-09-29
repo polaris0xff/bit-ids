@@ -55,9 +55,10 @@ Both runner images carry it.
 `ff690a3`. The dependabot correction landed as `2451816` and was read back.
 `CI-10`'s `check-cache` is ported, compared against both halves (`621f93a`) and
 deleted (`a8cfedf`), and so is `check-catalogue` (`c40784f`, then its deletion,
-which took the orphaned `store-lib.ps1` too). Next are `check-remote-items` and
-`mine-repo`, then `CI-09`'s `RunManifest` producer. Refresh this line when the
-in-flight item changes.
+which took the orphaned `store-lib.ps1` too). `check-remote-items` is ported
+and compared - fifteen stubbed cases in the default mode - committed with
+nothing deleted; its deletion is next, then `mine-repo`, then `CI-09`'s
+`RunManifest` producer. Refresh this line when the in-flight item changes.
 
 ### ⚠ The state of the tree, as this was last written
 

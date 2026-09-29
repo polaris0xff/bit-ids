@@ -261,8 +261,7 @@ agree() { # label check sh-rel expected-code [sh-flags...]
   fi
   if [ "$_gj" != "$_sj" ]; then
     fail "$_label: go and sh disagree
-        go: $_gj
-        sh: $_sj"
+$(disagreement go "$_gj" sh "$_sj")"
     return
   fi
 
@@ -291,11 +290,23 @@ agree() { # label check sh-rel expected-code [sh-flags...]
   fi
   if [ "$_gj" != "$_pj" ]; then
     fail "$_label: go and pwsh disagree
-        go:   $_gj
-        pwsh: $_pj"
+$(disagreement go "$_gj" pwsh "$_pj")"
     return
   fi
   pass "$_label: all three agree (exit $_want)"
+}
+
+# ⚠ A DISAGREEMENT IS SHOWN AS A DIFF, INDENTED UNDER ITS ROW. Every check here
+# used to answer one JSON line, and printing both lines inline was enough; one
+# whose --json mode keeps a report answers many, and an inline copy of two reports
+# both buried the difference and put report lines where `store_report` counts
+# row starts - so the run with something to say refused to say anything, which
+# is the defect that report's own comment records. ⛔ Every line is indented
+# deeper than a row start, whatever the reports contain.
+disagreement() { # left-name left right-name right
+  printf '%s\n' "$2" >"$WORK/left"
+  printf '%s\n' "$4" >"$WORK/right"
+  diff -u --label "$1" --label "$3" "$WORK/left" "$WORK/right" | sed 's/^/          /'
 }
 
 # ⛔ AN EXIT CODE OF 1 SAYS A HARNESS FAILED A ROW AND NOT WHICH. A ported
@@ -305,11 +316,18 @@ agree() { # label check sh-rel expected-code [sh-flags...]
 # gave for the case just run, in the default mode as well, and costs no second
 # run. ⚠ Under --compare, `agree` has already required the halves to print the
 # same line, so one expectation here covers all three.
+#
+# ⚠ THE VERDICT IS THE LAST LINE, NOT THE WHOLE OUTPUT. check-remote-items keeps
+# a report for a person on stderr in --json mode, ahead of the document, so the
+# combined output is many lines; comparing all of it put report lines into a
+# failure message, and `store_report` rightly refused a report whose rows it
+# could no longer count. `agree` still compares everything under --compare.
 go_said() { # label expected-json
-  if [ "$AGREE_GO_JSON" = "$2" ]; then
+  _said=$(printf '%s\n' "$AGREE_GO_JSON" | tail -n 1)
+  if [ "$_said" = "$2" ]; then
     pass "$1: go said $2"
   else
-    fail "$1: go said $AGREE_GO_JSON, expected $2"
+    fail "$1: go said $_said, expected $2"
   fi
 }
 
@@ -811,6 +829,280 @@ else
   agree "catalogue clean tree again" check-catalogue publishing/check-catalogue 0
 
 fi
+
+# ============================================================================
+# check-remote-items
+# ============================================================================
+#
+# ⭐ THE ONE ROW NO SESSION HOST COULD RUN, RUN HERE WITH NO NETWORK AT ALL. It
+# asks an authenticated `gh` about the open items and `curl` for an action's own
+# `action.yml`, so a stub of each, first on PATH, serves every answer from files
+# this section writes: the issues, the pull requests, a diff, the API's view of a
+# commit, a tag and a release, and the runtime a pinned commit declares.
+#
+# ⛔ THE THREE REAL PINS ARE REAL, and their `runs:` lines are copies of what the
+# commits carry, read on 2026-09-29: `actions/checkout` at its v4.2.2 commit
+# declares `node20`, at v5.0.0 `node24`, and `astral-sh/setup-uv` at v10.2.0
+# declares `"node24"` QUOTED - the spelling the shell half strips quotes for.
+# ⚠ That matters under --compare alone. The PowerShell half fetches with
+# `Invoke-WebRequest`, which no stub on PATH intercepts, so it reads the real
+# bytes at those commits while the other two read the copies; a commit's bytes
+# cannot change, and a commit that does not exist is a 404 on both routes.
+#
+# ⚠ EVERY FORTY-DIGIT NAME IS ASSEMBLED FROM TWO HALVES, because a contiguous one
+# in a tracked file is the shape `check-no-secrets --public` refuses.
+STUB="$WORK/stub"
+STUBBIN="$WORK/stubbin"
+mkdir -p "$STUBBIN" || exit 2
+
+cat >"$STUBBIN/gh" <<'STUBGH'
+#!/bin/sh
+# A stand-in for gh that serves files from $STUB_GH_DIR and reaches nothing.
+set -u
+D=${STUB_GH_DIR:?}
+case "$1 ${2:-}" in
+  "auth status")
+    [ -f "$D/auth-fails" ] && {
+      printf 'You are not logged into any GitHub hosts.\n' >&2
+      exit 1
+    }
+    exit 0
+    ;;
+  "issue list")
+    [ -f "$D/issues.fail" ] && {
+      cat "$D/issues.fail" >&2
+      exit 1
+    }
+    cat "$D/issues.json"
+    exit 0
+    ;;
+  "pr list")
+    cat "$D/prs.json"
+    exit 0
+    ;;
+  "pr diff")
+    shift 2
+    while [ $# -gt 1 ]; do shift; done
+    [ -f "$D/diff.$1" ] || {
+      printf 'could not find a diff for %s\n' "$1" >&2
+      exit 1
+    }
+    cat "$D/diff.$1"
+    exit 0
+    ;;
+esac
+if [ "$1" = "api" ]; then
+  path=$2
+  jqexpr=""
+  shift 2
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --jq)
+        jqexpr=$2
+        shift 2
+        ;;
+      *) shift ;;
+    esac
+  done
+  [ -f "$D/api/$path" ] || {
+    printf 'gh: Not Found (HTTP 404)\n' >&2
+    exit 1
+  }
+  if [ -n "$jqexpr" ]; then
+    jq -r "$jqexpr" "$D/api/$path"
+  else
+    cat "$D/api/$path"
+  fi
+  exit 0
+fi
+printf 'stub gh: unsupported: %s\n' "$*" >&2
+exit 1
+STUBGH
+
+cat >"$STUBBIN/curl" <<'STUBCURL'
+#!/bin/sh
+# A stand-in for curl that serves raw.githubusercontent.com out of
+# $STUB_GH_DIR/raw, and answers what that host answers for a path it lacks.
+set -u
+D=${STUB_GH_DIR:?}
+url=""
+for a in "$@"; do
+  case "$a" in https://*) url=$a ;; esac
+done
+case "$url" in
+  https://raw.githubusercontent.com/*)
+    rel=${url#https://raw.githubusercontent.com/}
+    if [ -f "$D/raw/$rel" ]; then cat "$D/raw/$rel"; else printf '404: Not Found'; fi
+    exit 0
+    ;;
+esac
+printf 'stub curl: refused %s\n' "$url" >&2
+exit 7
+STUBCURL
+chmod +x "$STUBBIN/gh" "$STUBBIN/curl" || exit 2
+
+V4=11bd71901bbe5b1630ce
+V4="${V4}ea73d27597364c9af683"
+V5=08c6903cd8c0fde910a3
+V5="${V5}7f88322edcfb5dd907a8"
+UV=c18668ad3cf93ea998be
+UV="${UV}f934396af7bb5c839dc7"
+NOSUCH=$(printf '%040d' 0)
+TAGOBJ=$(printf '%040d' 7)
+
+stub_reset() {
+  rm -rf "$STUB"
+  mkdir -p "$STUB/api" "$STUB/raw" || exit 2
+  printf '[]\n' >"$STUB/issues.json"
+  printf '[]\n' >"$STUB/prs.json"
+}
+
+stub_api() { # path json
+  mkdir -p "$STUB/api/${1%/*}" && printf '%s\n' "$2" >"$STUB/api/$1"
+}
+
+stub_runs() { # action sha runs-block
+  mkdir -p "$STUB/raw/$1/$2" && printf '%s' "$3" >"$STUB/raw/$1/$2/action.yml"
+}
+
+# One open pull request whose diff adds the given line.
+stub_pr() { # number diff-line
+  printf '[{"number":%s,"title":"a proposal","author":{"login":"a-bot"},"headRefName":"b","files":[{"path":".github/workflows/ci.yml"}]}]\n' \
+    "$1" >"$STUB/prs.json"
+  printf 'diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml\n+%s\n' "$2" >"$STUB/diff.$1"
+}
+
+# What the real repositories answer, as far as these cases ask.
+stub_world() {
+  stub_api "repos/actions/checkout/commits/$V4" "{\"sha\":\"$V4\"}"
+  stub_api "repos/actions/checkout/commits/$V5" "{\"sha\":\"$V5\"}"
+  stub_api "repos/actions/checkout/git/ref/tags/v4.2.2" "{\"object\":{\"sha\":\"$V4\",\"type\":\"commit\"}}"
+  stub_api "repos/actions/checkout/git/ref/tags/v5.0.0" "{\"object\":{\"sha\":\"$V5\",\"type\":\"commit\"}}"
+  stub_api "repos/actions/checkout/releases/latest" '{"tag_name":"v7.0.1"}'
+  stub_api "repos/astral-sh/setup-uv/commits/$UV" "{\"sha\":\"$UV\"}"
+  stub_api "repos/astral-sh/setup-uv/git/ref/tags/v10.2.0" "{\"object\":{\"sha\":\"$UV\",\"type\":\"commit\"}}"
+  stub_api "repos/astral-sh/setup-uv/releases/latest" '{"tag_name":"v10.2.0"}'
+  stub_runs actions/checkout "$V4" 'runs:
+  using: node20
+  main: dist/index.js
+'
+  stub_runs actions/checkout "$V5" 'runs:
+  using: node24
+  main: dist/index.js
+'
+  stub_runs astral-sh/setup-uv "$UV" 'runs:
+  using: "node24"
+  main: "dist/setup/index.cjs"
+'
+}
+
+RI=check-remote-items
+RIS=common/check-remote-items
+RIJ() { printf '{"schema":"check-remote-items/1","problems":%s,"needs_human":%s,"open_prs":%s}' "$1" "$2" "$3"; }
+
+PATH_BEFORE_STUBS=$PATH
+PATH="$STUBBIN:$PATH"
+STUB_GH_DIR="$STUB"
+export PATH STUB_GH_DIR
+
+stub_reset
+agree "remote-items nothing open" "$RI" "$RIS" 0
+go_said "remote-items nothing open" "$(RIJ 0 0 0)"
+
+stub_reset
+printf '[{"number":7,"title":"a report","author":{"login":"someone"},"createdAt":"2026-09-01T00:00:00Z"}]\n' >"$STUB/issues.json"
+agree "remote-items an open issue needs a reading and fails nothing" "$RI" "$RIS" 0
+go_said "remote-items an open issue needs a reading and fails nothing" "$(RIJ 0 1 0)"
+
+# ⚠ The shape pull request 2 had: a dependency bump with no action pin in it.
+stub_reset
+stub_pr 2 'rusqlite = { version = "0.40.2" }'
+agree "remote-items a pull request with nothing checkable" "$RI" "$RIS" 0
+go_said "remote-items a pull request with nothing checkable" "$(RIJ 0 1 1)"
+
+stub_reset
+stub_world
+stub_pr 3 "      - uses: actions/checkout@$NOSUCH # v4.2.2"
+agree "remote-items a pin naming a commit the repository lacks" "$RI" "$RIS" 1
+go_said "remote-items a pin naming a commit the repository lacks" "$(RIJ 1 0 1)"
+
+# ⛔ THE CHECK THE RUNTIME DEPRECATION GOT PAST, on the real commit that declares it.
+stub_reset
+stub_world
+stub_pr 4 "      - uses: actions/checkout@$V4 # v4.2.2"
+agree "remote-items a pin declaring a deprecated runtime" "$RI" "$RIS" 1
+go_said "remote-items a pin declaring a deprecated runtime" "$(RIJ 1 1 1)"
+
+stub_reset
+stub_world
+stub_pr 5 "      - uses: actions/checkout@$V5 # v4.2.2"
+agree "remote-items a label that has drifted from its pin" "$RI" "$RIS" 1
+go_said "remote-items a label that has drifted from its pin" "$(RIJ 1 1 1)"
+
+# ⭐ QUOTED, CURRENT AND THE LATEST: the one pin here every question passes.
+stub_reset
+stub_world
+stub_pr 6 "      - uses: astral-sh/setup-uv@$UV # v10.2.0"
+agree "remote-items a quoted current runtime at the latest release" "$RI" "$RIS" 0
+go_said "remote-items a quoted current runtime at the latest release" "$(RIJ 0 0 1)"
+
+# ⚠ An annotated tag is a tag object, followed to the commit it names.
+stub_reset
+stub_world
+stub_api "repos/astral-sh/setup-uv/git/ref/tags/v9.9.9" "{\"object\":{\"sha\":\"$TAGOBJ\",\"type\":\"tag\"}}"
+stub_api "repos/astral-sh/setup-uv/git/tags/$TAGOBJ" "{\"object\":{\"sha\":\"$UV\",\"type\":\"commit\"}}"
+stub_pr 7 "      - uses: astral-sh/setup-uv@$UV # v9.9.9"
+agree "remote-items an annotated tag followed to its commit" "$RI" "$RIS" 0
+go_said "remote-items an annotated tag followed to its commit" "$(RIJ 0 1 1)"
+
+stub_reset
+stub_world
+stub_pr 8 "      - uses: astral-sh/setup-uv@$UV # v0.0.0-none"
+agree "remote-items a label that is not a tag" "$RI" "$RIS" 0
+go_said "remote-items a label that is not a tag" "$(RIJ 0 2 1)"
+
+stub_reset
+stub_world
+stub_pr 9 "      - uses: actions/checkout@$V5"
+agree "remote-items a bare pin with no label" "$RI" "$RIS" 0
+go_said "remote-items a bare pin with no label" "$(RIJ 0 1 1)"
+
+# ⚠ A PIN THE DIFF REMOVES IS NOT THE PROPOSAL. Only added lines are read; the
+# deprecated pin leaving the file must not be charged to the change removing it.
+stub_reset
+stub_world
+stub_pr 11 "      - uses: astral-sh/setup-uv@$UV # v10.2.0"
+printf -- '-      - uses: actions/checkout@%s # v4.2.2\n' "$V4" >>"$STUB/diff.11"
+agree "remote-items a pin the diff removes is not checked" "$RI" "$RIS" 0
+go_said "remote-items a pin the diff removes is not checked" "$(RIJ 0 0 1)"
+
+# ⚠ TWO PINS ON ONE LINE, which YAML's flow style allows. Every match on a line
+# is read, so the deprecated second pin is charged even behind a current first.
+# ⛔ Added when a mutation reading only the first match per line survived.
+stub_reset
+stub_world
+stub_pr 12 "      steps: [{uses: astral-sh/setup-uv@$UV}, {uses: actions/checkout@$V4}]"
+agree "remote-items two pins on one line are both read" "$RI" "$RIS" 1
+go_said "remote-items two pins on one line are both read" "$(RIJ 1 2 1)"
+
+stub_reset
+stub_pr 10 "      - uses: actions/checkout@$V5 # v5.0.0"
+rm -f "$STUB/diff.10"
+agree "remote-items a diff that cannot be read" "$RI" "$RIS" 0
+go_said "remote-items a diff that cannot be read" "$(RIJ 0 1 1)"
+
+# ⛔ COULD NOT RUN, BOTH WAYS, and never a pass: a CLI with no session, and a
+# listing the API refused.
+stub_reset
+: >"$STUB/auth-fails"
+agree "remote-items an unauthenticated gh cannot run" "$RI" "$RIS" 2
+
+stub_reset
+printf 'HTTP 502: the listing failed\n' >"$STUB/issues.fail"
+agree "remote-items a listing that fails cannot run" "$RI" "$RIS" 2
+
+PATH=$PATH_BEFORE_STUBS
+export PATH
 
 # ============================================================================
 # check-placeholders

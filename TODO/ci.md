@@ -4355,3 +4355,61 @@ staying as a library nothing calls. The doors the deletion touched:
 ⚠ **Nothing ran the catalogue harness as a `check-defaults` subject**, so there
 was no fourth door there, which a grep over that file established rather than a
 reading of its header.
+
+### ⭐ `check-remote-items` ported and compared, and it runs everywhere now. 2026-09-29
+
+⛔ **THE GATE'S ONE SKIP HAD NEVER RUN ON A SESSION HOST**, because it asks an
+authenticated `gh`, and so its logic was proved only by whatever items happened
+to be open when a CI lane ran it. ⭐ `check-bitcheck` now serves it from a stub
+`gh` and a stub `curl`, first on `PATH`, answering from files: the issues, the
+pull requests, a diff, the API's view of a commit, a tag and a release, and the
+runtime a pinned commit declares. **Fifteen cases, in the DEFAULT mode, with no
+network at all** - so the gate row runs them on every host, `gh` or not.
+
+⚠ **The pins are real where the runtime matters.** `actions/checkout` at its
+v4.2.2 commit declares `node20` and at v5.0.0 `node24`, and `astral-sh/setup-uv`
+at v10.2.0 declares `"node24"` quoted - read on 2026-09-29. Under `--compare` the
+PowerShell half fetches with `Invoke-WebRequest`, which no stub intercepts, so it
+read the REAL bytes at those commits while the other two read the copies, and
+all three agreed; a fake commit is a 404 on both routes.
+
+⛔ **THE COMPARISON NOW COVERS THE WHOLE REPORT, and it found two drifts, both the
+twin's.** This check keeps a report for a person on stderr in `--json` mode, so
+`agree` compared every line of it: the twin said *which the platform has
+deprecated* where the `sh` half says *which GitHub has*, and on a failed listing
+it discarded gh's own error where the `sh` half prints it. Both repaired in the
+twin, CRLF kept, before the clean run.
+
+#### ⛔ Two defects in the harness, found by running it
+
+- **A multi-line answer broke the report's own accounting.** `go_said` compared
+  the whole combined output, and `agree` printed both answers inline on a
+  disagreement; with a report in them, report lines landed where `store_report`
+  counts row starts, and it refused to print anything - *202 rows recorded, 167
+  counted*. `go_said` reads the last line now, and a disagreement is a `diff -u`
+  indented under its row, which is also the readable form.
+- **The dispatcher could not print a report before a refusal.** Both halves
+  print the `OPEN ISSUES` header before a listing fails, so the port must too:
+  `verdict.jsonReport` goes to stderr in `--json` mode, and a partial report now
+  precedes the reason it stopped, in both modes. ⚠ Every existing check's output
+  is unchanged by that, because none sets a report beside a refusal.
+
+#### Guard mutation over the port
+
+| plant | verdict |
+| --- | --- |
+| `node20` no longer deprecated | refused |
+| quotes left on the declared runtime | refused, three cases |
+| an annotated tag not followed to its commit | refused |
+| the commit never looked up | refused, by the verdict line alone |
+| removed lines read as proposed | refused, by a case ADDED for it |
+| an open issue asking for no reading | refused, by the verdict line alone |
+| an unauthenticated `gh` used anyway | refused |
+| only the first pin on a line | refused, by a case ADDED for it |
+
+⚠ **Two cases exist because a plant survived without them.** No diff removed a
+line, and no line carried two pins - which YAML's flow style allows - so the
+plants that read removed lines and read one match per line both passed every
+case. ⚠ And the last plant's first spelling appended an empty match per line and
+PANICKED, exiting 2: that is the mutant failing on its own nil path, counted as
+neither, and the spelling that cannot crash is the row above.

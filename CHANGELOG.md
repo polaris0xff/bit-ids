@@ -5,6 +5,26 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-29T03:07:40Z
+
+- ⭐ **`check-remote-items` IS PORTED, AND THE GATE'S ONE SKIP NOW RUNS ON EVERY
+  HOST.** Its logic had only ever been proved by whatever happened to be open
+  when a CI lane ran it; `check-bitcheck` now serves it from a stub `gh` and a
+  stub `curl`, fifteen cases in the DEFAULT mode, with no network at all. ⚠ Nothing
+  is deleted and no gate row has moved: this change is the COMPARISON.
+- ⛔ **The comparison covers the whole report, and found two drifts, both the
+  twin's**: it said *the platform* where the `sh` half says *GitHub*, and it
+  discarded gh's own error on a failed listing. Repaired in the twin, CRLF kept.
+  The twin fetched the three real `action.yml` files over the network and still
+  agreed byte for byte.
+- ⛔ **Two harness defects, found by running it**: a multi-line answer broke the
+  report's own row accounting, so the run refused to print its findings - a
+  disagreement is an indented `diff -u` now - and the dispatcher could not print
+  a partial report before a refusal, which both halves do.
+- ⚠ Eight plants into the port, all refused - two only after a case was added for
+  each: a pin the diff removes, and two pins on one line.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-10`. No version bump and no deploy.
+
 ### 2026-09-29T02:46:08Z
 
 - ⛔ **BOTH HALVES OF `check-catalogue` ARE DELETED, AND `store-lib.ps1` WITH
