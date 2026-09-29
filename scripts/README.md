@@ -77,12 +77,13 @@ from any working directory.
   against a publication it assembles. ⛔ The page is what runs, never a copy
   beside it, and its own selection rule is checked: a run that took every fenced
   block is a run whose language rule has stopped applying.
-- [`publishing/check-catalogue.sh`](publishing/check-catalogue.sh) drives the
-  consumer library against a real publication: it opens, it answers `1.2.10`
-  over `1.2.3`, and every defect a consumer could be handed is refused. ⭐ It
-  also sweeps the crate for sockets and transports, because "no network access"
-  is a property of what the code cannot do rather than of what one run did, and
-  it checks its own needle list against the crate that owns the sockets.
+- `bit-check check-catalogue` drives the consumer library against a real
+  publication: it opens, it answers `1.2.10` over `1.2.3`, and every defect a
+  consumer could be handed is refused. ⭐ It also sweeps the crate for sockets
+  and transports, because "no network access" is a property of what the code
+  cannot do rather than of what one run did, and it checks its own needle list
+  against the crate that owns the sockets. ⚠ It was
+  `publishing/check-catalogue.sh` and a PowerShell twin until 2026-09-29.
 - [`capture/capture-run.sh`](capture/capture-run.sh) and
   [`capture/capture-run.ps1`](capture/capture-run.ps1) run a capture on a host
   that has already been claimed and already had its route off itself deleted.
@@ -249,15 +250,12 @@ from any working directory.
   across directories rather than growing a second copy. It holds what a mutation
   harness needs: build an example, make a scratch tree, digest a directory,
   verify a plant landed, count a row.
-- [`corpus/store-lib.ps1`](corpus/store-lib.ps1) is its twin, dot-sourced rather
-  than sourced, and it is `CI-07`'s first step: every declared row whose subject
-  is portable waited on ONE library rather than on fifteen translations.
-  ⛔ Three of the sh half's functions have no twin here yet - `place`,
-  `tree_digest` and `tree_files` - because nothing on this lane calls them, and a
-  function nothing calls is a function nobody knows works. They land with the
-  first twin that exercises them. ⚠ Its first caller, `check-cache.ps1`, is
-  deleted: that harness is in the Go binary since 2026-09-29, and
-  `publishing/check-catalogue.ps1` is what still dot-sources this.
+- ⛔ **`corpus/store-lib.ps1` is deleted, 2026-09-29, because nothing called it.**
+  It was this library's twin and `CI-07`'s first step, and its only two callers
+  were the harness twins `CI-10` put in the Go binary, where
+  [`../tools/check/harness.go`](../tools/check/harness.go) carries what they
+  needed. A portable class-A row now closes by joining that binary rather than
+  by gaining a PowerShell half, and `check-gate.ps1`'s declared rows say so.
 - [`common/check-gate.sh`](common/check-gate.sh) and
   [`common/check-gate.ps1`](common/check-gate.ps1) run the local gate. ⭐ The
   `sh` half runs its checks **concurrently** and reads their verdicts in list

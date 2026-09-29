@@ -451,9 +451,11 @@ harvest_pairs() {
 
 # ⭐ WHY THE PATHS BELOW CARRY A DIRECTORY. Every twin this file compared lived in
 # `common/`, so the base was spelled once and the call sites named a bare file.
-# `CI-07`'s class-A rows do not, and a comparison that could only reach one
+# `CI-07`'s class-A rows did not, and a comparison that could only reach one
 # directory would have left them uncompared - which is the shape this whole file
-# exists to refuse, arriving in its own plumbing.
+# exists to refuse, arriving in its own plumbing. ⚠ Both of those pairs have left,
+# and the directory stays spelled so the next pair outside `common/` needs no
+# change here.
 #
 # ⛔ AND AN EIGHTH PAIR HAS LEFT: `check-cache`, 2026-09-29, the first harness
 # twin and the first HARNESS to leave. `check-bitcheck.sh --compare` ran six
@@ -461,13 +463,11 @@ harvest_pairs() {
 # one permitting another, one that is missing, and a retrieval repeating the
 # first - and found one drift, the twin's: its could-not-run message named a flag
 # the call does not use. Repaired in the twin, and only then did the pair leave.
-
-# ⚠ THE HARNESS PAIR THAT REMAINS, AND IT IS WHERE HARNESSES REALLY DIFFER. Both
-# halves drive the same five Rust examples over one fixture publication, so the
-# answers are identical by construction; what differs is how each PLANTS a defect
-# and restores the publication afterwards. A half that restored it differently
-# would report the same eighteen cases over a different experiment.
-compare_pair "check-catalogue" publishing/check-catalogue.sh "--json" publishing/check-catalogue.ps1 "-Json"
+#
+# ⛔ AND A NINTH: `check-catalogue`, 2026-09-29. Seven cases, and the comparison
+# found two drifts that were both the twin's and that no clean tree could show:
+# `Select-String` and `-match` fold case, so the twin refused a needle spelled in
+# another case that `grep` - and Rust - tell apart. Repaired in the twin first.
 
 # ⭐ mine-repo IS COMPARED THROUGH --selftest, AND THAT IS THE WHOLE POINT.
 # This pair used to be excluded, on the reasoning that comparing two miners

@@ -450,17 +450,20 @@ nothing is. The clone question under *Settled decisions* is spent too.
    CI parts to Go, and parallelise CI across runners; all three are measured on
    real runners, and the acceptance bound came DOWN to 20 from 45.
    ⛔ **What is left is the rest of the port**: the twin file pairs
-   `check-twins.sh` still compares - `check-catalogue`, `check-remote-items` and
-   `mine-repo`, which `grep -c '^compare_pair ' scripts/common/check-twins.sh`
-   counts. `bit-check --rows` lists what [`../tools/check/`](../tools/check/)
-   carries. ⚠ So the wall-clock value is small and the DRIFT value is unchanged,
-   which is the argument for taking them when they are cheapest rather than first.
-   ⭐ **`check-cache` IS PORTED, COMPARED AND DELETED, 2026-09-29, the first
-   HARNESS in the binary.** Six cases planted into what it reads - the register
-   and the scenario - and all three implementations agreed after one drift in the
-   twin was repaired. ⛔ Its cases build the scenario cold, measured at 25 seconds
-   of gate, so they run under `check-bitcheck --harnesses` and `--compare` and
-   not in the gate; nothing runs `--harnesses` automatically yet, and
+   `check-twins.sh` still compares - `check-remote-items` and `mine-repo`, which
+   `grep -c '^compare_pair ' scripts/common/check-twins.sh` counts.
+   `bit-check --rows` lists what [`../tools/check/`](../tools/check/) carries.
+   ⚠ So the wall-clock value is small and the DRIFT value is unchanged, which is
+   the argument for taking them when they are cheapest rather than first.
+   ⭐ **`check-cache` AND `check-catalogue` ARE PORTED, COMPARED AND DELETED,
+   2026-09-29, the first HARNESSES in the binary**, and `store-lib.ps1` went with
+   them for want of a caller. Their plants go into what each harness reads - the
+   register, the scenario, the crate, its manifest and the library - and all
+   three implementations agreed after THREE drifts, all the twins', were
+   repaired: a message naming the wrong flag, and two sweeps that folded case.
+   ⛔ Harness cases build their Rust subject cold, measured at 25 seconds of
+   gate, so they run under `check-bitcheck --harnesses` and `--compare` and not
+   in the gate; nothing runs `--harnesses` automatically yet, and
    [`ci.md`](ci.md) under `CI-10` carries that residual.
    ⛔ **A pair may leave that list ONE WAY ONLY**:
    `sh scripts/common/check-bitcheck.sh --compare` against BOTH halves, before

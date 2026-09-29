@@ -307,12 +307,13 @@ fi
 # ⭐ EVERY `common/` HALF IS PORTED NOW. `check-project` joined this list on
 # 2026-09-17 and the direct call below it is gone with the script it called; the
 # comment that used to sit there named it *the last one that is not ported*.
-# ⭐ AND THE FIRST HARNESS, 2026-09-29: `check-cache` left the prover list below
-# for this one, compared case for case against both of its halves first. It
-# builds a Rust example, which the build above has already made a no-op.
-for c in check-adapters check-cache check-changelog check-control-bytes \
-  check-docs check-ignores check-licences check-markers check-no-secrets \
-  check-one-home check-placeholders check-project; do
+# ⭐ AND THE HARNESSES, 2026-09-29: `check-cache` and `check-catalogue` left the
+# prover list below for this one, each compared case for case against both of
+# its halves first. They build Rust examples, which the build above has already
+# made a no-op.
+for c in check-adapters check-cache check-catalogue check-changelog \
+  check-control-bytes check-docs check-ignores check-licences check-markers \
+  check-no-secrets check-one-home check-placeholders check-project; do
   if [ -x "$GOBIN" ]; then
     queue "$c" "$GOBIN" "$c"
   else
@@ -417,7 +418,7 @@ for spec in acquisition/check-release-route \
   common/check-shell \
   corpus/check-corpus corpus/check-indexes publishing/check-release \
   publishing/check-formats publishing/check-publish publishing/check-access \
-  publishing/check-catalogue ci/check-staleness ci/check-step-bodies \
+  ci/check-staleness ci/check-step-bodies \
   capture/check-assemble capture/check-connector common/check-examples \
   common/check-handbook common/check-gate-rows common/check-public-row \
   common/check-bitcheck; do

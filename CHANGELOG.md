@@ -5,6 +5,23 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-29T02:46:08Z
+
+- ⛔ **BOTH HALVES OF `check-catalogue` ARE DELETED, AND `store-lib.ps1` WITH
+  THEM**, after `c40784f` committed the comparison with the twin's repairs in it.
+  The library's only two callers were the harness twins now in the Go binary, so
+  it went rather than stay as code nothing calls. `check-twins` compares two pairs.
+- ⚠ **The Windows lane's declared rows named an event that would never come.**
+  Seven said *it needs store-lib.ps1*; each says *it closes when its harness is
+  ported into bit-check* now, because a row whose reason names the wrong event
+  closes on the wrong day - `CI-01` recorded that shape once already.
+- ⭐ Run 171 put the Go `check-cache` on a real Windows runner for the first time:
+  `ok`, with no skip on that lane.
+- `LIB-01`'s `Prove` gains a runnable form under a dated note, and `CI-07` records
+  that its first step is deleted and its class-A route changed.
+- Record: [`TODO/ci.md`](TODO/ci.md), `CI-10` and `CI-07`. No version bump and no
+  deploy.
+
 ### 2026-09-29T02:39:46Z
 
 - ⭐ **`check-catalogue` IS PORTED, THE SECOND HARNESS, and it needed nothing

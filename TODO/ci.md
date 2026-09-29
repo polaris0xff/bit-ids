@@ -1438,8 +1438,9 @@ twin harness would let that shrink back to one gate-level case.
 
 ### ⭐ THE LIBRARY EXISTS AND THE FIRST CLASS-A ROW IS REAL. 2026-09-10
 
-⭐ **[`../scripts/corpus/store-lib.ps1`](../scripts/corpus/store-lib.ps1) is the
-first step this entry named**, and `scripts/acquisition/check-cache.ps1` - deleted
+⭐ **`scripts/corpus/store-lib.ps1` is the first step this entry named** - deleted
+on 2026-09-29 with its last caller, when `CI-10` put both harness twins in the
+Go binary - and `scripts/acquisition/check-cache.ps1` - deleted
 on 2026-09-29, when `CI-10` put the harness in the Go binary - is the first
 harness twin that proves it. `check-gate.ps1` runs `check-cache` as
 a row rather than declaring it: measured on 2026-09-10, that lane went from 13
@@ -1586,6 +1587,21 @@ half spelled its own flag - `check-no-secrets --public` against
 `check-no-secrets -Public` - so a label built from the flag made the lists differ
 on a row both lanes have, which is a false difference in the one comparison that
 exists to find real ones. Both name the question now.
+
+### ⛔ The first step is deleted, 2026-09-29, and the class-A route changed
+
+⛔ **`store-lib.ps1` is gone, and so are both harness twins it served.** `CI-10`
+ported `check-cache` and `check-catalogue` into the Go binary, compared each
+against both halves first, and deleted them - which left the library with no
+caller, and a function nothing calls is a function nobody knows works.
+
+⭐ **So a class-A row closes by its harness JOINING THE BINARY, not by gaining a
+PowerShell half.** Both of the rows this entry had turned real are real on the
+Windows lane still, as `bit-check` rows. ⚠ The declared rows' reasons named the
+old event - *it needs store-lib.ps1* - which would now never happen; each says
+*it closes when its harness is ported into bit-check* instead, because a row
+whose reason names the wrong event closes on the wrong day, which `CI-01`
+records once already.
 
 ## CI-08: Runner-default drift, swept rather than waited for
 
@@ -4321,3 +4337,21 @@ nearest line would, and none here does.
 - ⚠ `sed` without `g` replaces the first occurrence on each LINE and the twin's
   `.Replace` replaced every one; the port does what `sed` does. The index carries
   its generation once.
+
+#### ⛔ And both halves are deleted, and a library with them. 2026-09-29
+
+`c40784f` committed the comparison with the twin's repairs in it; the deletion
+came after. ⚠ It took one more file than it names: **`store-lib.ps1` had these
+two harness twins as its only callers**, so it went with them rather than
+staying as a library nothing calls. The doors the deletion touched:
+
+| door | what changed |
+| --- | --- |
+| `check-gate.sh` | the row left the `sh` prover list for the ported list |
+| `check-gate.ps1` | the `pwsh -File` block became `Invoke-Ported 'check-catalogue'`, and seven declared rows' reasons stopped naming `store-lib.ps1` |
+| `check-twins.sh` | the pair is gone, with a note saying how it left |
+| `scripts/README.md`, `LIB-01`, `CI-07` | each named the deleted script or library; `LIB-01`'s `Prove` gains a runnable form under a dated note |
+
+⚠ **Nothing ran the catalogue harness as a `check-defaults` subject**, so there
+was no fourth door there, which a grep over that file established rather than a
+reading of its header.

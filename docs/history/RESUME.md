@@ -54,8 +54,8 @@ Both runner images carry it.
 **In flight, 2026-09-29:** the session started at `2026-09-29T01:02:41Z` on
 `ff690a3`. The dependabot correction landed as `2451816` and was read back.
 `CI-10`'s `check-cache` is ported, compared against both halves (`621f93a`) and
-deleted (`a8cfedf`). `check-catalogue` is ported and compared, committed with
-nothing deleted; its deletion is next, then `check-remote-items` and
+deleted (`a8cfedf`), and so is `check-catalogue` (`c40784f`, then its deletion,
+which took the orphaned `store-lib.ps1` too). Next are `check-remote-items` and
 `mine-repo`, then `CI-09`'s `RunManifest` producer. Refresh this line when the
 in-flight item changes.
 
@@ -114,12 +114,13 @@ measurement rather than this sentence. Both gate runners invoke it, so those row
 are the SAME row on both lanes.
 
 ⭐ **`check-project` was the last `common/` pair**, ported, compared and deleted on
-2026-09-17. ⭐ **`check-cache` is the first HARNESS**, 2026-09-29, and
-`tools/check/harness.go` carries what it needed of `store-lib`.
+2026-09-17. ⭐ **`check-cache` and `check-catalogue` are the first HARNESSES**,
+2026-09-29, and `tools/check/harness.go` carries what they needed of
+`store-lib`; `store-lib.ps1` is deleted, having no caller left.
 
 **The pairs left** are the ones `check-twins.sh` still compares:
-`check-catalogue`, `check-remote-items` and `mine-repo`. ⛔ The remaining
-wall-clock value is small and the DRIFT value is unchanged.
+`check-remote-items` and `mine-repo`. ⛔ The remaining wall-clock value is small
+and the DRIFT value is unchanged.
 
 ⛔ **A HARNESS'S CASES BUILD ITS RUST SUBJECT, COLD**, in the scratch tree, so
 they run under `check-bitcheck --harnesses` and `--compare` and not in the gate:
@@ -151,8 +152,8 @@ step supervisor - across two targets and both routes, on byte-identical code.
    run 32 wedged in *Install the client* on both lanes and uploaded zero
    artifacts, where the unprivileged claim took 0s and the resolve step - which
    fetches through the same installer - took 1s. ⚠ Do not reopen it: absolute 16.
-1. **`CI-10`**, the pairs `check-twins.sh` still compares: `check-catalogue`,
-   `check-remote-items` and `mine-repo`. ⛔ A pair leaves that list only after
+1. **`CI-10`**, the pairs `check-twins.sh` still compares: `check-remote-items`
+   and `mine-repo`. ⛔ A pair leaves that list only after
    `check-bitcheck --compare` has run it against BOTH halves.
    ⭐ **`check-project` is ported, compared and deleted, 2026-09-17** - the
    twenty-nine refusals are in the Go binary, 49 cases ran them against both

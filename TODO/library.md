@@ -15,6 +15,11 @@ Prove: `cargo test -p bit-ids --locked --test catalogue` and
 `sh scripts/publishing/check-catalogue.sh` both pass, with a publication opened
 from bytes, a moved byte refused, and a platform and version selected with no
 network reachable from the crate at all.
+⚠ **Amended 2026-09-29**: that script and its twin are deleted and the harness is
+`bit-check check-catalogue`, so the runnable form of the second half is
+`go run . check-catalogue` from `tools/check`, where the module is, and
+`sh scripts/common/check-bitcheck.sh --harnesses` plants against it. What ran at
+closure is the sentence above, and it stays as written.
 
 ### Decision: no socket, and that is structural rather than a default
 
@@ -25,8 +30,9 @@ decides whether what came back is the publication's. A library that fetched
 would need a transport in a workspace that has argued for every dependency it
 has, and "no network by default" would be a flag somebody could set.
 
-⚠ It is checked rather than asserted. `check-catalogue.sh` sweeps the crate for
-every socket type, address type and HTTP client, and reads its dependency list.
+⚠ It is checked rather than asserted. `bit-check check-catalogue` - which was
+`check-catalogue.sh` until 2026-09-29 - sweeps the crate for every socket type,
+address type and HTTP client, and reads its dependency list.
 ⭐ **The needle list is itself checked against `bit-ids-lab`**, which really does
 carry sockets, because a sweep whose needles have stopped matching reports the
 same clean answer over a crate full of them. That is `OBS-06`'s finding applied
@@ -80,6 +86,9 @@ not, which no publication this project produces contains today.
 - `sh scripts/publishing/check-catalogue.sh`
 - `sh scripts/common/check-gate.sh`
 - `cargo clippy --workspace --locked --all-targets -- -D warnings`
+
+⚠ **Amended 2026-09-29**: the second line's script is deleted; `CI-10` carries the
+port and the comparison that preceded the deletion.
 
 ### Closure evidence, 2026-09-08
 

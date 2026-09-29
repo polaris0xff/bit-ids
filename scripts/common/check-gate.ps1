@@ -255,6 +255,11 @@ Invoke-Ported 'check-no-secrets (public)' 'check-no-secrets' @('--public')
 # answers could-not-run, which reads as a skip and never as a pass.
 Invoke-Ported 'check-cache'
 
+# ⭐ AND THE SECOND HARNESS, 2026-09-29. This row ran `check-catalogue.ps1`, and
+# like the first it was compared case for case against both halves before they
+# were deleted. With it gone, `store-lib.ps1` had no caller and went too.
+Invoke-Ported 'check-catalogue'
+
 # ⚠ NEEDS gh AND THE NETWORK, so it exits 2 on a machine without them and that
 # reads as a skip rather than a pass. Correct: nothing was verified.
 Invoke-Check 'check-remote-items' 'check-remote-items.ps1'
@@ -295,10 +300,10 @@ else {
 # one, because --strict permits it forever on the strength of a sentence nobody
 # re-read. Found by a claim audit while CI-03 was being closed.
 Add-Unavailable 'check-store' 'its plants are a symlink and a named pipe; reconsider them, do not translate; CI-07 class B'
-Add-Unavailable 'check-corpus' 'a portable Rust subject; it needs store-lib.ps1; CI-07 class A'
-Add-Unavailable 'check-indexes' 'a portable Rust subject; it needs store-lib.ps1; CI-07 class A'
-Add-Unavailable 'check-release' 'a portable Rust subject; it needs store-lib.ps1; CI-07 class A'
-Add-Unavailable 'check-formats' 'a portable Rust subject; it needs store-lib.ps1; CI-07 class A'
+Add-Unavailable 'check-corpus' 'a portable Rust subject; it closes when its harness is ported into bit-check; CI-10'
+Add-Unavailable 'check-indexes' 'a portable Rust subject; it closes when its harness is ported into bit-check; CI-10'
+Add-Unavailable 'check-release' 'a portable Rust subject; it closes when its harness is ported into bit-check; CI-10'
+Add-Unavailable 'check-formats' 'a portable Rust subject; it closes when its harness is ported into bit-check; CI-10'
 Add-Unavailable 'check-publish' 'its subject publish-data.sh has no PowerShell half; CI-07 class C'
 
 # ⚠ DECLARED FOR A DIFFERENT REASON, AND THE WORDING SAYS WHICH. check-staleness
@@ -307,27 +312,9 @@ Add-Unavailable 'check-publish' 'its subject publish-data.sh has no PowerShell h
 # derivation of a request identifier. Copying the row above would have recorded a
 # reason that is not this one.
 Add-Unavailable 'check-access' 'its subject publish-data.sh has no PowerShell half; CI-07 class C'
-# ⭐ THE SECOND CLASS-A ROW TO STOP BEING DECLARED, 2026-09-10. It needed no new
-# library function: `check-cache` proved `store-lib.ps1` and this row uses the
-# same four calls, which is the sweep's finding measured a second time.
-$cataloguePs = Join-Path $here '..' 'publishing' 'check-catalogue.ps1'
-if ($Rows) { Write-Output 'check-catalogue' }
-elseif (Test-Path -LiteralPath $cataloguePs -PathType Leaf) {
-    & pwsh -NoProfile -File $cataloguePs *> $logFile
-    $rc = $LASTEXITCODE
-    switch ($rc) {
-        0 { Add-Row '✅ ok    check-catalogue'; $pass++ }
-        2 { Add-Row 'SKIP  check-catalogue  (could not run)'; $skip++ }
-        default { Add-Row ('❌ FAIL  check-catalogue  (exit ' + $rc + ')'); $fail++ }
-    }
-}
-else {
-    Add-Row 'SKIP  check-catalogue  (not present)'
-    $skip++
-}
 Add-Unavailable 'check-examples' 'it RUNS a document sh fenced blocks and there is no sh here; CI-07 class D'
 Add-Unavailable 'check-handbook' 'it RUNS a document sh fenced blocks and there is no sh here; CI-07 class D'
-Add-Unavailable 'check-staleness' 'a portable Rust subject; it needs store-lib.ps1; CI-07 class A'
+Add-Unavailable 'check-staleness' 'a portable Rust subject; it closes when its harness is ported into bit-check; CI-10'
 
 # ⛔ AND THIS ONE IS THE ROW THAT WATCHES THIS LIST. check-gate-rows compares the
 # names this runner declares against the ones the sh runner queues, so a prover
@@ -402,16 +389,17 @@ Add-Unavailable 'check-release-route' 'an sh harness whose subject has no PowerS
 # the harness that writes the synthetic lanes and plants in them. ⚠ It is
 # `store-lib.sh`'s again - the shared library CI-07 names as its first step -
 # rather than anything about the assembler, which is platform-independent.
-Add-Unavailable 'check-assemble' 'a portable Rust subject; it needs store-lib.ps1; CI-07 class A'
+Add-Unavailable 'check-assemble' 'a portable Rust subject; it closes when its harness is ported into bit-check; CI-10'
 
 # ⛔ AND A FIFTH REASON, WHICH IS NEW WITH THE SECOND CONNECTOR. check-connector's
 # subject is `python3` and a file of stdlib Python: it runs here exactly as it
 # runs on the Linux lane, and a Windows runner carries a Python too. So this is
 # class A rather than class C - what has no PowerShell half is the harness that
-# writes the synthetic bundles and plants in them, and that is `store-lib.ps1`
-# again. ⚠ Recorded with its own reason rather than a neighbour's, because a row
-# whose reason names the wrong event closes on the wrong day.
-Add-Unavailable 'check-connector' 'a portable python3 subject; it needs store-lib.ps1; CI-07 class A'
+# writes the synthetic bundles and plants in them, and it closes by joining
+# bit-check now that `store-lib.ps1` is gone. ⚠ Recorded with its own reason
+# rather than a neighbour's, because a row whose reason names the wrong event
+# closes on the wrong day.
+Add-Unavailable 'check-connector' 'a portable python3 subject; it closes when its harness is ported into bit-check; CI-10'
 
 # ⚠ Its reason is `check-release-route`'s exactly: the decision it proves is in
 # Rust and the Rust suite exercises it on both lanes; what this lane does not
