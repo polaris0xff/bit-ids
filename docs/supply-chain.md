@@ -185,6 +185,16 @@ Dependabot proposes crate and action updates weekly, grouped, per
 [`../.github/dependabot.yml`](../.github/dependabot.yml). A proposal is a
 claim, and the procedure is what turns it into a reviewed change.
 
+⛔ **One crate is held rather than proposed.** `rusqlite` stays at 0.37 by an
+operator decision recorded in [`../TODO/PROGRESS.md`](../TODO/PROGRESS.md) under
+*Settled decisions*, and that file's `ignore` is where the decision is enforced:
+without it, a declined bump came back as a new pull request after its
+predecessor closed. ⚠ For a `0.y` crate dependabot's cargo rules call any change
+of `y` major, so the rule ignores every version from 0.38 on; a patch inside 0.37
+is still proposed, and the rule cannot silence a security update, which
+dependabot filters by explicit versions alone. Moving past 0.37 is a change somebody
+makes on purpose, with its locked packages registered, rather than a proposal.
+
 1. **Read what the item asserts, then check it.** Run
    `sh scripts/common/check-remote-items.sh`. For an action it verifies that
    the commit exists and belongs to the repository the ref names, that the tag

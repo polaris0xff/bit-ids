@@ -354,6 +354,26 @@ answer is no.** [`PROGRESS.md`](PROGRESS.md) carries it under *Settled decisions
 with the numbers and where they were read from. ⛔ Pull request 1 is closed
 unmerged and the pin is 0.37.0 in both the manifest and the lockfile.
 
+⛔ **Correction, 2026-09-29: that closure was not the decision's, and a second
+pull request stood open behind it.** Read back through `AGENTS.md` rule 8's route:
+dependabot closed pull request 1 ITSELF at 03:26 on 2026-09-15, commenting *"no
+longer updatable"*, because `76c32ea` had taken 0.40.2 at 03:23. `42789a4`
+reverted that at 04:10, which made the bump available again, and dependabot
+opened pull request 2 for the same bump on 2026-09-18 - red on all six jobs of
+CI run 167, over the same 18 unregistered packages and 5 orphaned rows.
+
+⭐ **The decision now lives where the bot reads it.** `.github/dependabot.yml`
+ignores `rusqlite` under `version-update:semver-major` and `semver-minor`.
+⚠ Read out of dependabot-core rather than assumed, through rule 8's route on
+2026-09-29 - blobs `a56c4f35` (`config/ignore_condition.rb`), `13ad05ff` (the
+common `version.rb`) and `104cccc4` (the cargo one) - because the first version
+of this reasoning was wrong: its cargo `Version` applies Cargo's pre-1.0 rules, so
+for 0.37.0 BOTH types resolve to `>= 0.38` - a change of `y` in `0.y` is major
+there, not minor - while a patch inside 0.37 is still proposed. And
+`IgnoreCondition#ignored_versions` returns only explicit `versions` for a
+security update, so the rule cannot silence one. ⚠ Pull request 2 stays the
+operator's: `docs/supply-chain.md` says nothing here closes an item.
+
 ## FOUND-05: The session host, provisioned by something rather than by memory
 
 Source: three tools installed by hand at the start of every session

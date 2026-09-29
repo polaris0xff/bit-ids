@@ -18,13 +18,14 @@ the branch, the remote, the clone depth, `git status` and `HEAD..origin/main`
 before editing anything.
 
 ⚠ **The container may start on a `claude/*` branch, with `user.name` set to an
-agent, and a shallow clone.** All three were true again on 2026-09-17, which is
-fourteen starts running. Correct them first: the branch to `main` per rule 7, the
-identity to the operator's own per rule 11, and the clone with
-`git fetch --unshallow` - after which `git rev-list --count HEAD` answered **170**
-here, from **50** before. ⚠ Measure the depth before AND after if the pair is
-going to be quoted; a session that reads only the second number is copying the
-first from this page.
+agent, and a shallow clone.** All three were true again on 2026-09-29. Correct
+them first: the branch to `main` per rule 7, the identity to the operator's own
+per rule 11, and the clone with `git fetch --unshallow` - after which
+`git rev-list --count HEAD` answered **179** here, from **50** before. ⚠ Measure
+the depth before AND after if the pair is going to be quoted; a session that
+reads only the second number is copying the first from this page. ⛔ No count of
+how many starts were like this is kept here: nothing can grep it, and the last
+one disagreed with the operator's own tally.
 
 ⛔ **AND THE SESSION HOST IS `root`, WHICH A RUNNER IS NOT.** That difference hid
 the capture hang for eight dispatches: a bound that works here is refused by the
@@ -50,23 +51,34 @@ Both runner images carry it.
 
 ## Where the work is
 
-**In flight:** nothing. `ACQ-06` closed on 2026-09-17 and with it every open P0;
-`check-project` was ported, compared and deleted the same day. The next unstarted
-work is `CI-10`'s four remaining twin pairs, or `CI-09`'s `RunManifest` producer.
+**In flight, 2026-09-29:** the session started at `2026-09-29T01:02:41Z` on
+`ff690a3`. First, a record correction found at the start (below, *the dependabot
+pull request*); then `CI-10`'s four remaining twin pairs, then `CI-09`'s
+`RunManifest` producer. Refresh this line when the in-flight item changes.
 
 ### ⚠ The state of the tree, as this was last written
 
-The gate is **40 checks, 39 passed, 0 failed, 1 skipped**, exit 0 - the one skip
-is `check-remote-items`, which needs an authenticated `gh` no session host has.
-⚠ It was 39 rows at the 2026-09-17 session's start; `check-rootless` joined with
-`ACQ-06`.
+The gate is **40 checks, 39 passed, 0 failed, 1 skipped**, exit 0, re-measured at
+this session's start on a cold build in 3m23s - the one skip is
+`check-remote-items`, which needs an authenticated `gh` no session host has.
 
-⚠ **Eight commits landed in that session and each was read back through rule 8's
-route.** CI runs **158** through **165** are green on all six jobs, the last of
-them on `4c00fa9`, which is where `origin/main` stood. ⛔ **The commit a session
+⚠ **CI run 166 on `ff690a3` was read back through rule 8's route at this
+session's start: all six jobs `completed`/`success`.** ⛔ **The commit a session
 ends on is the one with no run read back yet**, whatever its number - including
 the one carrying this sentence. Confirming it is a starting step rather than an
 assumption.
+
+### The dependabot pull request, found 2026-09-29
+
+⛔ **Pull request 2 is OPEN and re-proposes `rusqlite` 0.40.2**, opened by
+dependabot on 2026-09-18, and its CI run 167 is red on all six jobs because
+`check-licences` refuses eighteen locked packages with no register row. The
+record said *pull request 1 is closed unmerged*, which is true and is not the
+decision's doing: dependabot closed it itself at 03:26 on 2026-09-15, *"no longer
+updatable"*, because `76c32ea` had taken 0.40.2 at 03:23 - and
+`42789a4` reverted that at 04:10, which made the bump available again. Nothing in
+`.github/dependabot.yml` carried the settled answer, so the bot re-proposed it;
+the repair encodes the decision there rather than re-raising it.
 
 ### ⭐ A record exists, and a session can produce another
 
@@ -302,9 +314,12 @@ and corroborated by a connector this project did not write.
 
 ⛔ **`rusqlite` is pinned at 0.37.0 deliberately**, measured against 0.40.2 and
 chosen for thirteen fewer locked packages. ⭐ **The operator settled it on
-2026-09-16: the answer is no.** Pull request 1 is closed unmerged, and the pin is
-0.37.0 in both the manifest and the lockfile, read back the same day. ⚠ Do not
-take the bump to make a bot green, and do not re-raise the question.
+2026-09-16: the answer is no**, and the pin is 0.37.0 in both the manifest and
+the lockfile. Pull request 1 was closed by dependabot rather than by the
+decision, and pull request 2 re-proposed the same bump; `.github/dependabot.yml`
+ignores every `rusqlite` version from 0.38 since 2026-09-29, and pull request 2
+is the operator's to close. ⚠ Do not take the bump to make a bot green, and do
+not re-raise the question.
 
 ⛔ **The nine commit stamps before 2026-09-06T07:56Z are fabricated**, and so are
 the subjects of `62e1a68`, `d64c51c`, `facf9a9`, `e2d1891` and `aba7142`. They

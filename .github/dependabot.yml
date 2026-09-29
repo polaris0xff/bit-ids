@@ -4,6 +4,15 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # ⛔ rusqlite is held at 0.37 by an operator decision, recorded in
+    # TODO/PROGRESS.md under Settled decisions; without this, 0.40.2 came back
+    # as a new pull request after being declined. For a 0.y crate dependabot's cargo
+    # rules call any change of y major, so these two types ignore every version
+    # from 0.38 on. A patch inside 0.37 is still proposed, and this cannot
+    # silence a security update, which is not filtered by update type at all.
+    ignore:
+      - dependency-name: rusqlite
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
     groups:
       rust-dependencies:
         patterns: ["*"]

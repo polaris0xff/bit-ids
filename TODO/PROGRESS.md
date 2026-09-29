@@ -1,6 +1,6 @@
 # Current progress
 
-State instant: 2026-09-17
+State instant: 2026-09-29
 Total: 66
 Open: 21
 In progress: 1
@@ -512,7 +512,7 @@ anything.** They are recorded here so no session re-raises them.
 | how `LIB-02` reaches bit-cli's tests | ⭐ **Spent.** The clone works with no credential and no grant, measured; `LIB-02` closed on it and wrote nothing there. ⚠ Its suite was not run: that tree vendors and patches four HTTP crates, so a build there says something about it rather than about the adapter, which touches none of its code. |
 | whether Windows captures are permitted | yes. The guard pair exists and is mutation-proven; a hosted `windows-latest` runner is a fresh virtual machine per job, and its default routes are removed before the capture. `CI-03`. |
 | what happens to a first measured record | it publishes automatically once the capture is green. No manual gate. |
-| whether to take `rusqlite` 0.40.2 | ⭐ **No, settled by the operator on 2026-09-16.** `PUB-05`'s measurement stands: 0.40.2 resolves thirteen further packages - a WebAssembly stack this project never builds for - for the same API and the same bundled library. ⚠ Re-measured 2026-09-15 with `cargo tree` including the SQLite delta (3.53.2 against 3.50.2): the lockfile surface grows by nine and the **compiled** surface by none, so it is a currency question rather than a known defect. ⛔ Pull request 1 is closed unmerged and the pin is 0.37.0 in both the manifest and the lockfile, read back on 2026-09-16. |
+| whether to take `rusqlite` 0.40.2 | ⭐ **No, settled by the operator on 2026-09-16.** `PUB-05`'s measurement stands: 0.40.2 resolves thirteen further packages - a WebAssembly stack this project never builds for - for the same API and the same bundled library. ⚠ Re-measured 2026-09-15 with `cargo tree` including the SQLite delta (3.53.2 against 3.50.2): the lockfile surface grows by nine and the **compiled** surface by none, so it is a currency question rather than a known defect. ⛔ The pin is 0.37.0 in both the manifest and the lockfile, read back on 2026-09-16. ⚠ **Pull request 1 was closed by dependabot, not by this decision**: *"no longer updatable"* at 03:26 on 2026-09-15, because `76c32ea` had taken 0.40.2 at 03:23, and the revert re-opened the bump as pull request 2 on 2026-09-18. ⭐ `.github/dependabot.yml` carries the answer since 2026-09-29: an `ignore` over every `rusqlite` version from 0.38, so the bump stops being re-proposed. Pull request 2 is the operator's to close; nothing here closes an item. |
 
 ⛔ **A capture host was never the blocker it was recorded as, and that error
 stood for several sessions.** A hosted runner is a fresh virtual machine per job,

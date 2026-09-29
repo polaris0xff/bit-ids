@@ -5,6 +5,26 @@ Nothing is released yet. Entries accumulate here until the first
 
 ## Unreleased
 
+### 2026-09-29T01:13:49Z
+
+- ⛔ **A DECLINED BUMP CAME BACK AS A NEW PULL REQUEST.** Pull request 2 re-offers
+  `rusqlite` 0.40.2, opened by dependabot on 2026-09-18 and checked again by its
+  run of 2026-09-25, and red on all six jobs of CI run 167, because
+  `check-licences` refuses 18 unregistered packages - the register working.
+- ⚠ **The record's *pull request 1 is closed unmerged* was true and was not the
+  decision's doing.** Dependabot closed it itself, *"no longer updatable"*, two
+  minutes after `76c32ea` took 0.40.2 on 2026-09-15; the revert made the bump
+  available again, so the bot offered it anew.
+- ⭐ `.github/dependabot.yml` now ignores every `rusqlite` version from 0.38.
+  ⚠ The first reasoning about how was wrong and was corrected by reading
+  dependabot-core: its cargo rules call a change of `y` in `0.y` MAJOR, so both
+  listed types resolve to `>= 0.38`, a patch inside 0.37 is still proposed, and a
+  security update is not filtered by update type at all.
+- ⚠ Pull request 2 is left to the operator: nothing here closes an item.
+- Record: [`TODO/foundation.md`](TODO/foundation.md), `FOUND-04`, and
+  [`TODO/PROGRESS.md`](TODO/PROGRESS.md) under *Settled decisions*. No version
+  bump and no deploy.
+
 ### 2026-09-17T10:05:14Z
 
 - ⛔ **BOTH HALVES OF `check-project` ARE DELETED**, 997 lines of `sh` and its
@@ -297,7 +317,9 @@ Nothing is released yet. Entries accumulate here until the first
 - ⭐ **The `rusqlite` question is settled by the operator: the answer is no.**
   Pull request 1 is closed unmerged and the pin is 0.37.0 in both the manifest
   and the lockfile, read back. It moves to *Settled decisions*, and the three
-  pages that called it open are amended.
+  pages that called it open are amended. ⚠ Amended 2026-09-29: dependabot, not
+  the decision, closed pull request 1, and pull request 2 re-offered the bump;
+  the entry of 2026-09-29T01:13:49Z carries it.
 - ⛔ **RUN 28 EXCLUDED THE `ps` AND REPRODUCED THE LOCALISATION.** It carries the
   bound and hung anyway - twenty-five minutes, past the loop's own 780s and the
   outer 900s - so the watchdog's `ps` is not the wedge. ⭐ Its three probes
